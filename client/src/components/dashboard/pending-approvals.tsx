@@ -1,0 +1,174 @@
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError } from "@/lib/authUtils";
+
+export default function PendingApprovals() {
+  const { toast } = useToast();
+  
+  const { data: approvals, isLoading } = useQuery({
+    queryKey: ['/api/dashboard/pending-approvals'],
+  });
+
+  const approveTransactionMutation = useMutation({
+    mutationFn: async (transactionId: number) => {
+      await apiRequest('PATCH', `/api/transactions/${transactionId}/approve`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/pending-approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/recent-transactions'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
+      toast({
+        title: "Success",
+        description: "Transaction approved successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to approve transaction. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const approveLoanMutation = useMutation({
+    mutationFn: async (loanId: number) => {
+      await apiRequest('PATCH', `/api/loans/${loanId}/approve`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/pending-approvals'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
+      toast({
+        title: "Success",
+        description: "Loan approved successfully!",
+      });
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to approve loan. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const totalPending = (approvals?.loanApplications?.length || 0) + (approvals?.withdrawalRequests?.length || 0);
+
+  return (
+    <Card className="border border-slate-200 shadow-sm">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg font-semibold text-slate-900">Pending Approvals</CardTitle>
+          {totalPending > 0 && (
+            <Badge className="bg-red-100 text-red-800">
+              {totalPending}
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="animate-pulse">
+                <div className="border border-slate-200 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="h-4 bg-slate-200 rounded w-2/3 mb-1"></div>
+                      <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                    </div>
+                    <div className="h-5 bg-slate-200 rounded w-16"></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : totalPending > 0 ? (
+          <div className="space-y-3">
+            {/* Loan Applications */}
+            {approvals?.loanApplications?.map((loan: any) => (
+              <div key={`loan-${loan.id}`} className="border border-slate-200 rounded-lg p-3 hover:bg-slate-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Loan Application</p>
+                    <p className="text-xs text-slate-500">
+                      {loan.member?.user?.firstName} {loan.member?.user?.lastName} - KSh {parseFloat(loan.principalAmount).toLocaleString()}
+                    </p>
+                  </div>
+                  <Badge className="text-xs text-yellow-600 bg-yellow-100">Pending</Badge>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => approveLoanMutation.mutate(loan.id)}
+                  disabled={approveLoanMutation.isPending}
+                  className="w-full sacco-success text-white hover:opacity-90"
+                >
+                  Approve Loan
+                </Button>
+              </div>
+            ))}
+
+            {/* Withdrawal Requests */}
+            {approvals?.withdrawalRequests?.map((withdrawal: any) => (
+              <div key={`withdrawal-${withdrawal.id}`} className="border border-slate-200 rounded-lg p-3 hover:bg-slate-50">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">Withdrawal Request</p>
+                    <p className="text-xs text-slate-500">
+                      {withdrawal.member?.user?.firstName} {withdrawal.member?.user?.lastName} - KSh {parseFloat(withdrawal.amount).toLocaleString()}
+                    </p>
+                  </div>
+                  <Badge className="text-xs text-yellow-600 bg-yellow-100">Pending</Badge>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => approveTransactionMutation.mutate(withdrawal.id)}
+                  disabled={approveTransactionMutation.isPending}
+                  className="w-full sacco-success text-white hover:opacity-90"
+                >
+                  Approve Withdrawal
+                </Button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-4">
+            <p className="text-sm text-slate-500">No pending approvals</p>
+          </div>
+        )}
+
+        {totalPending > 3 && (
+          <Button variant="ghost" className="w-full mt-4 text-primary-600 hover:text-primary-700">
+            View All Approvals
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
