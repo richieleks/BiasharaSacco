@@ -122,9 +122,15 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
 - **ISSUER_URL**: OpenID Connect issuer URL
 - **REPLIT_DOMAINS**: Allowed domains for authentication
 
-## Changelog
+## Recent Changes
 
-- June 24, 2025. Initial setup
+- June 24, 2025. Initial SACCO management system setup
+- June 24, 2025. Added guarantor management module with:
+  - Guarantor request workflow for loan applications
+  - Member-to-member guarantor approval system
+  - Guarantor tracking and status management
+  - Integration with loan application process
+  - Dedicated guarantor management page
 
 ## User Preferences
 

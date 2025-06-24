@@ -102,6 +102,20 @@ export const transactions = pgTable("transactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Guarantors table
+export const guarantors = pgTable("guarantors", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").references(() => loans.id).notNull(),
+  guarantorMemberId: integer("guarantor_member_id").references(() => members.id).notNull(),
+  guaranteeAmount: decimal("guarantee_amount", { precision: 15, scale: 2 }).notNull(),
+  status: varchar("status", { enum: ["pending", "approved", "rejected"] }).default("pending"),
+  approvedAt: timestamp("approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  comments: text("comments"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({
   member: one(members, {
@@ -118,6 +132,9 @@ export const membersRelations = relations(members, ({ one, many }) => ({
   savingsAccounts: many(savingsAccounts),
   loans: many(loans),
   transactions: many(transactions),
+  guarantorsProvided: many(guarantors, {
+    relationName: "guarantorMember",
+  }),
 }));
 
 export const savingsAccountsRelations = relations(savingsAccounts, ({ one, many }) => ({
@@ -134,6 +151,7 @@ export const loansRelations = relations(loans, ({ one, many }) => ({
     references: [members.id],
   }),
   transactions: many(transactions),
+  guarantors: many(guarantors),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
@@ -152,6 +170,18 @@ export const transactionsRelations = relations(transactions, ({ one }) => ({
   processedByUser: one(users, {
     fields: [transactions.processedBy],
     references: [users.id],
+  }),
+}));
+
+export const guarantorsRelations = relations(guarantors, ({ one }) => ({
+  loan: one(loans, {
+    fields: [guarantors.loanId],
+    references: [loans.id],
+  }),
+  guarantorMember: one(members, {
+    fields: [guarantors.guarantorMemberId],
+    references: [members.id],
+    relationName: "guarantorMember",
   }),
 }));
 
@@ -180,6 +210,12 @@ export const insertTransactionSchema = createInsertSchema(transactions).omit({
   createdAt: true,
 });
 
+export const insertGuarantorSchema = createInsertSchema(guarantors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -191,6 +227,8 @@ export type InsertLoan = z.infer<typeof insertLoanSchema>;
 export type Loan = typeof loans.$inferSelect;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;
+export type InsertGuarantor = z.infer<typeof insertGuarantorSchema>;
+export type Guarantor = typeof guarantors.$inferSelect;
 
 // Extended types for API responses
 export type MemberWithDetails = Member & {
@@ -208,4 +246,10 @@ export type TransactionWithDetails = Transaction & {
 
 export type LoanWithDetails = Loan & {
   member?: Member & { user?: User };
+  guarantors?: GuarantorWithDetails[];
+};
+
+export type GuarantorWithDetails = Guarantor & {
+  guarantorMember?: Member & { user?: User };
+  loan?: Loan;
 };

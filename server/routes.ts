@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema } from "@shared/schema";
+import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -67,9 +67,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertMemberSchema.parse(req.body);
       const member = await storage.createMember(validatedData);
       
+      // Generate unique account number
+      const accountNumber = `SAV${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      
       // Create default savings account
       await storage.createSavingsAccount({
         memberId: member.id,
+        accountNumber,
         accountType: 'regular',
         balance: req.body.initialDeposit || '0.00',
       });
@@ -110,6 +114,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/members/by-user/:userId', isAuthenticated, async (req, res) => {
+    try {
+      const member = await storage.getMemberByUserId(req.params.userId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      res.json(member);
+    } catch (error) {
+      console.error("Error fetching member by user:", error);
+      res.status(500).json({ message: "Failed to fetch member" });
+    }
+  });
+
   // Savings account routes
   app.get('/api/members/:id/savings', isAuthenticated, async (req, res) => {
     try {
@@ -134,14 +151,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Account not found" });
       }
 
+      const referenceNumber = `DEP${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      
       const transaction = await storage.createTransaction({
         memberId: account.memberId,
         savingsAccountId: accountId,
         transactionType: 'deposit',
         amount,
+        referenceNumber,
         description: description || 'Savings deposit',
         status: 'completed',
-        processedBy: req.user.claims.sub,
+        processedBy: req.user?.claims?.sub,
       });
 
       res.status(201).json(transaction);
@@ -155,14 +175,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { accountId, amount, description } = req.body;
       
+      const referenceNumber = `WDR${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      
       const transaction = await storage.createTransaction({
         memberId: (await storage.getSavingsAccount(accountId))!.memberId,
         savingsAccountId: accountId,
         transactionType: 'withdrawal',
         amount,
+        referenceNumber,
         description: description || 'Savings withdrawal',
         status: 'pending', // Requires approval
-        processedBy: req.user.claims.sub,
+        processedBy: req.user?.claims?.sub,
       });
 
       res.status(201).json(transaction);
@@ -224,15 +247,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const loan = await storage.updateLoanStatus(parseInt(req.params.id), 'disbursed');
       
+      const referenceNumber = `DIS${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      
       // Create disbursement transaction
       await storage.createTransaction({
         memberId: loan.memberId,
         loanId: loan.id,
         transactionType: 'loan_disbursement',
         amount: loan.principalAmount,
+        referenceNumber,
         description: `Loan disbursement - ${loan.loanNumber}`,
         status: 'completed',
-        processedBy: req.user.claims.sub,
+        processedBy: req.user?.claims?.sub,
       });
 
       res.json(loan);
@@ -256,14 +282,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Loan not found" });
       }
 
+      const referenceNumber = `PAY${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      
       const transaction = await storage.createTransaction({
         memberId: loan.memberId!,
         loanId,
         transactionType: 'loan_payment',
         amount,
+        referenceNumber,
         description: description || `Loan payment - ${loan.loanNumber}`,
         status: 'completed',
-        processedBy: req.user.claims.sub,
+        processedBy: req.user?.claims?.sub,
       });
 
       res.status(201).json(transaction);
@@ -328,6 +357,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error approving transaction:", error);
       res.status(500).json({ message: "Failed to approve transaction" });
+    }
+  });
+
+  // Guarantor routes
+  app.post('/api/guarantors', isAuthenticated, async (req: any, res) => {
+    try {
+      const validatedData = insertGuarantorSchema.parse(req.body);
+      const guarantor = await storage.createGuarantor(validatedData);
+      res.status(201).json(guarantor);
+    } catch (error) {
+      console.error("Error creating guarantor:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      res.status(500).json({ message: "Failed to create guarantor" });
+    }
+  });
+
+  app.get('/api/guarantors/loan/:loanId', isAuthenticated, async (req, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const guarantors = await storage.getGuarantorsByLoan(loanId);
+      res.json(guarantors);
+    } catch (error) {
+      console.error("Error fetching guarantors by loan:", error);
+      res.status(500).json({ message: "Failed to fetch guarantors" });
+    }
+  });
+
+  app.get('/api/guarantors/member/:memberId', isAuthenticated, async (req, res) => {
+    try {
+      const memberId = parseInt(req.params.memberId);
+      const guarantors = await storage.getGuarantorsByMember(memberId);
+      res.json(guarantors);
+    } catch (error) {
+      console.error("Error fetching guarantors by member:", error);
+      res.status(500).json({ message: "Failed to fetch guarantors" });
+    }
+  });
+
+  app.get('/api/guarantors/pending/:memberId', isAuthenticated, async (req, res) => {
+    try {
+      const memberId = parseInt(req.params.memberId);
+      const pendingRequests = await storage.getPendingGuarantorRequests(memberId);
+      res.json(pendingRequests);
+    } catch (error) {
+      console.error("Error fetching pending guarantor requests:", error);
+      res.status(500).json({ message: "Failed to fetch pending requests" });
+    }
+  });
+
+  app.patch('/api/guarantors/:id/approve', isAuthenticated, async (req, res) => {
+    try {
+      const guarantorId = parseInt(req.params.id);
+      const { comments } = req.body;
+      const guarantor = await storage.updateGuarantorStatus(guarantorId, 'approved', comments);
+      res.json(guarantor);
+    } catch (error) {
+      console.error("Error approving guarantor:", error);
+      res.status(500).json({ message: "Failed to approve guarantor" });
+    }
+  });
+
+  app.patch('/api/guarantors/:id/reject', isAuthenticated, async (req, res) => {
+    try {
+      const guarantorId = parseInt(req.params.id);
+      const { comments } = req.body;
+      const guarantor = await storage.updateGuarantorStatus(guarantorId, 'rejected', comments);
+      res.json(guarantor);
+    } catch (error) {
+      console.error("Error rejecting guarantor:", error);
+      res.status(500).json({ message: "Failed to reject guarantor" });
     }
   });
 

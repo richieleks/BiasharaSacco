@@ -12,6 +12,7 @@ import Savings from "@/pages/savings";
 import Loans from "@/pages/loans";
 import Transactions from "@/pages/transactions";
 import Reports from "@/pages/reports";
+import Guarantors from "@/pages/guarantors";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -40,6 +41,7 @@ function Router() {
             <Route path="/savings" component={Savings} />
             <Route path="/loans" component={Loans} />
             <Route path="/transactions" component={Transactions} />
+            <Route path="/guarantors" component={Guarantors} />
             <Route path="/reports" component={Reports} />
             <Route component={NotFound} />
           </Switch>

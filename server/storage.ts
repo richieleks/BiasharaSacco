@@ -4,6 +4,7 @@ import {
   savingsAccounts,
   loans,
   transactions,
+  guarantors,
   type User,
   type UpsertUser,
   type Member,
@@ -14,9 +15,12 @@ import {
   type InsertLoan,
   type Transaction,
   type InsertTransaction,
+  type Guarantor,
+  type InsertGuarantor,
   type MemberWithDetails,
   type TransactionWithDetails,
   type LoanWithDetails,
+  type GuarantorWithDetails,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, sql, and, or, like } from "drizzle-orm";
@@ -69,6 +73,14 @@ export interface IStorage {
     loanApplications: LoanWithDetails[];
     withdrawalRequests: TransactionWithDetails[];
   }>;
+
+  // Guarantor operations
+  createGuarantor(guarantor: InsertGuarantor): Promise<Guarantor>;
+  getGuarantor(id: number): Promise<GuarantorWithDetails | undefined>;
+  getGuarantorsByLoan(loanId: number): Promise<GuarantorWithDetails[]>;
+  getGuarantorsByMember(memberId: number): Promise<GuarantorWithDetails[]>;
+  updateGuarantorStatus(id: number, status: string, comments?: string): Promise<Guarantor>;
+  getPendingGuarantorRequests(memberId: number): Promise<GuarantorWithDetails[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -525,6 +537,122 @@ export class DatabaseStorage implements IStorage {
       loanApplications,
       withdrawalRequests,
     };
+  }
+
+  // Guarantor operations
+  async createGuarantor(guarantorData: InsertGuarantor): Promise<Guarantor> {
+    const [guarantor] = await db
+      .insert(guarantors)
+      .values(guarantorData)
+      .returning();
+    return guarantor;
+  }
+
+  async getGuarantor(id: number): Promise<GuarantorWithDetails | undefined> {
+    const [result] = await db
+      .select()
+      .from(guarantors)
+      .leftJoin(members, eq(guarantors.guarantorMemberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .leftJoin(loans, eq(guarantors.loanId, loans.id))
+      .where(eq(guarantors.id, id));
+
+    if (!result) return undefined;
+
+    return {
+      ...result.guarantors,
+      guarantorMember: result.members ? {
+        ...result.members,
+        user: result.users || undefined,
+      } : undefined,
+      loan: result.loans || undefined,
+    };
+  }
+
+  async getGuarantorsByLoan(loanId: number): Promise<GuarantorWithDetails[]> {
+    const results = await db
+      .select()
+      .from(guarantors)
+      .leftJoin(members, eq(guarantors.guarantorMemberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(eq(guarantors.loanId, loanId))
+      .orderBy(guarantors.createdAt);
+
+    return results.map(result => ({
+      ...result.guarantors,
+      guarantorMember: result.members ? {
+        ...result.members,
+        user: result.users || undefined,
+      } : undefined,
+    }));
+  }
+
+  async getGuarantorsByMember(memberId: number): Promise<GuarantorWithDetails[]> {
+    const results = await db
+      .select()
+      .from(guarantors)
+      .leftJoin(loans, eq(guarantors.loanId, loans.id))
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(eq(guarantors.guarantorMemberId, memberId))
+      .orderBy(desc(guarantors.createdAt));
+
+    return results.map(result => ({
+      ...result.guarantors,
+      loan: result.loans ? {
+        ...result.loans,
+        member: result.members ? {
+          ...result.members,
+          user: result.users || undefined,
+        } : undefined,
+      } : undefined,
+    }));
+  }
+
+  async updateGuarantorStatus(id: number, status: string, comments?: string): Promise<Guarantor> {
+    const updateData: any = { status, updatedAt: new Date() };
+    
+    if (status === 'approved') {
+      updateData.approvedAt = new Date();
+    } else if (status === 'rejected') {
+      updateData.rejectedAt = new Date();
+    }
+    
+    if (comments) {
+      updateData.comments = comments;
+    }
+
+    const [guarantor] = await db
+      .update(guarantors)
+      .set(updateData)
+      .where(eq(guarantors.id, id))
+      .returning();
+    return guarantor;
+  }
+
+  async getPendingGuarantorRequests(memberId: number): Promise<GuarantorWithDetails[]> {
+    const results = await db
+      .select()
+      .from(guarantors)
+      .leftJoin(loans, eq(guarantors.loanId, loans.id))
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(and(
+        eq(guarantors.guarantorMemberId, memberId),
+        eq(guarantors.status, 'pending')
+      ))
+      .orderBy(desc(guarantors.createdAt));
+
+    return results.map(result => ({
+      ...result.guarantors,
+      loan: result.loans ? {
+        ...result.loans,
+        member: result.members ? {
+          ...result.members,
+          user: result.users || undefined,
+        } : undefined,
+      } : undefined,
+    }));
   }
 }
 

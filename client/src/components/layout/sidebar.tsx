@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
-import { PieChart, Users, Wallet, HandCoins, Receipt, BarChart3, Settings, HelpCircle } from "lucide-react";
+import { PieChart, Users, Wallet, HandCoins, Receipt, BarChart3, UserCheck, Settings, HelpCircle } from "lucide-react";
 
 const navigation = [
   {
@@ -27,6 +27,11 @@ const navigation = [
     name: "Transactions",
     href: "/transactions",
     icon: Receipt,
+  },
+  {
+    name: "Guarantors",
+    href: "/guarantors", 
+    icon: UserCheck,
   },
   {
     name: "Reports",
