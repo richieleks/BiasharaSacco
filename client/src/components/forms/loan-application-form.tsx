@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -53,6 +53,17 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     enabled: !!user?.id,
   });
 
+  // Fetch member's savings accounts to get current balance
+  const { data: savingsAccounts } = useQuery<any[]>({
+    queryKey: [`/api/members/${(currentMember as any)?.id}/savings`],
+    enabled: !!(currentMember as any)?.id,
+  });
+
+  // Calculate total savings balance
+  const totalSavingsBalance = savingsAccounts?.reduce((total, account) => {
+    return total + parseFloat(account.balance || '0');
+  }, 0) || 0;
+
   const form = useForm<LoanApplicationData>({
     resolver: zodResolver(loanApplicationSchema),
     defaultValues: {
@@ -73,6 +84,18 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
       securityOffered: "",
     },
   });
+
+  // Auto-populate form fields when member data is available
+  useEffect(() => {
+    if (currentMember && savingsAccounts) {
+      const member = currentMember as any;
+      form.setValue("averageNetPay", member.averageNetPay?.toString() || "");
+      form.setValue("staffAccountNumber", member.staffAccountNumber || "");
+      form.setValue("nextOfKin", member.nextOfKinName || "");
+      form.setValue("nextOfKinPhone", member.nextOfKinPhone || "");
+      form.setValue("currentSavings", totalSavingsBalance.toFixed(2));
+    }
+  }, [currentMember, savingsAccounts, totalSavingsBalance, form]);
 
   const calculateMonthlyPayment = () => {
     const principal = parseFloat(form.watch('principalAmount') || '0');
@@ -203,6 +226,15 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
               )}
             </div>
 
+            {/* Auto-populated fields notice */}
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="font-medium text-sm text-blue-800 mb-1">Auto-populated Fields</h4>
+              <p className="text-xs text-blue-700">
+                Fields marked with * are automatically populated from your member profile and cannot be edited.
+                If any information is incorrect, please update your member profile first.
+              </p>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Loan Details */}
               <FormField
@@ -295,14 +327,16 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                 name="averageNetPay"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Average Net Pay (for employees)</FormLabel>
+                    <FormLabel>Average Net Pay (for employees) *</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         step="0.01"
-                        placeholder="0.00"
+                        placeholder="Auto-populated from member profile"
                         value={field.value || ''}
                         onChange={field.onChange}
+                        disabled={true}
+                        className="bg-muted"
                       />
                     </FormControl>
                     <FormMessage />
@@ -315,12 +349,14 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                 name="staffAccountNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Staff Account Number</FormLabel>
+                    <FormLabel>Staff Account Number *</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Enter account number" 
+                        placeholder="Auto-populated from member profile" 
                         value={field.value || ''}
                         onChange={field.onChange}
+                        disabled={true}
+                        className="bg-muted"
                       />
                     </FormControl>
                     <FormMessage />
@@ -334,12 +370,14 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                 name="nextOfKin"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Next of Kin (NOK)</FormLabel>
+                    <FormLabel>Next of Kin (NOK) *</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Enter next of kin name" 
+                        placeholder="Auto-populated from member profile" 
                         value={field.value || ''}
                         onChange={field.onChange}
+                        disabled={true}
+                        className="bg-muted"
                       />
                     </FormControl>
                     <FormMessage />
@@ -352,12 +390,14 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                 name="nextOfKinPhone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>NOK Phone Number</FormLabel>
+                    <FormLabel>NOK Phone Number *</FormLabel>
                     <FormControl>
                       <Input 
-                        placeholder="Enter phone number" 
+                        placeholder="Auto-populated from member profile" 
                         value={field.value || ''}
                         onChange={field.onChange}
+                        disabled={true}
+                        className="bg-muted"
                       />
                     </FormControl>
                     <FormMessage />
@@ -370,14 +410,16 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                 name="currentSavings"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Current Savings Balance</FormLabel>
+                    <FormLabel>Current Savings Balance *</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
                         step="0.01"
-                        placeholder="0.00"
+                        placeholder="Auto-calculated from savings accounts"
                         value={field.value || ''}
                         onChange={field.onChange}
+                        disabled={true}
+                        className="bg-muted"
                       />
                     </FormControl>
                     <FormMessage />
