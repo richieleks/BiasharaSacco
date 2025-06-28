@@ -49,29 +49,26 @@ const updateMemberSchema = z.object({
 type UpdateMemberData = z.infer<typeof updateMemberSchema>;
 
 export default function MemberDetails() {
-  const [match, params] = useRoute("/members/:id");
   const [, setLocation] = useLocation();
+  const [match, params] = useRoute("/members/:id");
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const memberId = params?.id;
 
-  // Fetch member details
-  const { data: member, isLoading: memberLoading } = useQuery<MemberWithDetails>({
-    queryKey: ["/api/members", memberId],
+  const { data: member, isLoading } = useQuery<MemberWithDetails>({
+    queryKey: [`/api/members/${memberId}`],
     enabled: !!memberId,
   });
 
-  // Fetch member's savings accounts
   const { data: savingsAccounts } = useQuery<any[]>({
-    queryKey: ["/api/members", memberId, "savings"],
+    queryKey: [`/api/members/${memberId}/savings`],
     enabled: !!memberId,
   });
 
-  // Fetch member's loans
   const { data: loans } = useQuery<any[]>({
-    queryKey: ["/api/members", memberId, "loans"],
+    queryKey: [`/api/members/${memberId}/loans`],
     enabled: !!memberId,
   });
 
@@ -111,22 +108,21 @@ export default function MemberDetails() {
 
   const updateMemberMutation = useMutation({
     mutationFn: async (data: UpdateMemberData) => {
-      const response = await apiRequest(`/api/members/${memberId}`, "PATCH", data);
-      return response;
+      return apiRequest("PATCH", `/api/members/${memberId}`, data);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/members", memberId] });
+      setIsEditDialogOpen(false);
       toast({
         title: "Success",
-        description: "Member updated successfully",
+        description: "Member details updated successfully.",
       });
-      setIsEditDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/members", memberId] });
-      queryClient.invalidateQueries({ queryKey: ["/api/members"] });
     },
     onError: (error: Error) => {
       toast({
         title: "Error",
-        description: error.message || "Failed to update member",
+        description: error.message,
         variant: "destructive",
       });
     },
@@ -141,76 +137,94 @@ export default function MemberDetails() {
     return null;
   }
 
-  if (memberLoading) {
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-lg">Loading member details...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-2 text-muted-foreground">Loading member details...</p>
+        </div>
       </div>
     );
   }
 
   if (!member) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 space-y-4">
-        <div className="text-lg">Member not found</div>
-        <Button onClick={() => setLocation("/members")}>
-          <ArrowLeft className="mr-2 h-4 w-4" />
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">Member not found.</p>
+        <Button onClick={() => setLocation("/members")} className="mt-4">
+          <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Members
         </Button>
       </div>
     );
   }
 
+
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setLocation("/members")}
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
+            <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Members
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">
-              {member.fullName || `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim() || 'Member Details'}
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <User className="h-6 w-6" />
+              {member.user?.firstName || member.fullName?.split(' ')[0] || 'Unknown'} {member.user?.lastName || member.fullName?.split(' ')[1] || ''}
             </h1>
             <p className="text-muted-foreground">Member #{member.memberNumber}</p>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
-          <Button
-            onClick={() => setIsEditDialogOpen(true)}
-            size="sm"
-          >
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Member
-          </Button>
-
-          {/* Edit Member Dialog */}
+        
+        <div className="flex items-center gap-2">
+          <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
+            {member.status}
+          </Badge>
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogTrigger asChild>
+              <Button>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Details
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Edit Member Details</DialogTitle>
                 <DialogDescription>
-                  Update member information. All fields are optional.
+                  Update member information and contact details.
                 </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleUpdateMember)} className="space-y-6">
-                  {/* Personal Details Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Personal Details</h3>
-                    
+                <form onSubmit={form.handleSubmit(handleUpdateMember)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="fullName"
+                      name="phoneNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Full Name</FormLabel>
+                          <FormLabel>Phone Number</FormLabel>
                           <FormControl>
                             <Input {...field} value={field.value || ""} />
                           </FormControl>
@@ -218,129 +232,12 @@ export default function MemberDetails() {
                         </FormItem>
                       )}
                     />
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="idNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>ID Number</FormLabel>
-                            <FormControl>
-                              <Input {...field} value={field.value || ""} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="phoneNumber"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Phone Number</FormLabel>
-                            <FormControl>
-                              <Input {...field} value={field.value || ""} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="dateOfBirth"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Date of Birth</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} value={field.value || ""} />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="gender"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Gender</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select gender" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="male">Male</SelectItem>
-                                <SelectItem value="female">Female</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="maritalStatus"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Marital Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="single">Single</SelectItem>
-                                <SelectItem value="married">Married</SelectItem>
-                                <SelectItem value="divorced">Divorced</SelectItem>
-                                <SelectItem value="widowed">Widowed</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="status"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Member Status</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger>
-                                  <SelectValue placeholder="Select status" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                <SelectItem value="pending">Pending</SelectItem>
-                                <SelectItem value="active">Active</SelectItem>
-                                <SelectItem value="inactive">Inactive</SelectItem>
-                                <SelectItem value="suspended">Suspended</SelectItem>
-                                <SelectItem value="rejected">Rejected</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
                     <FormField
                       control={form.control}
-                      name="address"
+                      name="idNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Address</FormLabel>
+                          <FormLabel>ID Number</FormLabel>
                           <FormControl>
                             <Input {...field} value={field.value || ""} />
                           </FormControl>
@@ -350,9 +247,108 @@ export default function MemberDetails() {
                     />
                   </div>
 
-                  {/* Employment Information Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Employment Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="dateOfBirth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date of Birth</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Gender</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Address</FormLabel>
+                        <FormControl>
+                          <Textarea {...field} value={field.value || ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="maritalStatus"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Marital Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="single">Single</SelectItem>
+                              <SelectItem value="married">Married</SelectItem>
+                              <SelectItem value="divorced">Divorced</SelectItem>
+                              <SelectItem value="widowed">Widowed</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="status"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="active">Active</SelectItem>
+                              <SelectItem value="inactive">Inactive</SelectItem>
+                              <SelectItem value="suspended">Suspended</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Employment Information */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Employment Information</h4>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
@@ -393,7 +389,7 @@ export default function MemberDetails() {
                             <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
-                                  <SelectValue placeholder="Select terms" />
+                                  <SelectValue />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -429,7 +425,7 @@ export default function MemberDetails() {
                         <FormItem>
                           <FormLabel>Average Net Pay (UGX)</FormLabel>
                           <FormControl>
-                            <Input type="number" {...field} value={field.value || ""} />
+                            <Input type="number" step="0.01" {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -437,9 +433,9 @@ export default function MemberDetails() {
                     />
                   </div>
 
-                  {/* Next of Kin Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Next of Kin Information</h3>
+                  {/* Next of Kin Information */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Next of Kin Information</h4>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
@@ -471,9 +467,9 @@ export default function MemberDetails() {
                     </div>
                   </div>
 
-                  {/* Financial Information Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Financial Information</h3>
+                  {/* Financial Information */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Financial Information</h4>
                     
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
@@ -483,7 +479,7 @@ export default function MemberDetails() {
                           <FormItem>
                             <FormLabel>Monthly Savings (UGX)</FormLabel>
                             <FormControl>
-                              <Input type="number" {...field} value={field.value || ""} />
+                              <Input type="number" step="0.01" {...field} value={field.value || ""} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -496,7 +492,7 @@ export default function MemberDetails() {
                           <FormItem>
                             <FormLabel>Share Contribution (UGX)</FormLabel>
                             <FormControl>
-                              <Input type="number" {...field} value={field.value || ""} />
+                              <Input type="number" step="0.01" {...field} value={field.value || ""} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -504,7 +500,7 @@ export default function MemberDetails() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
                         name="numberOfShares"
@@ -512,12 +508,7 @@ export default function MemberDetails() {
                           <FormItem>
                             <FormLabel>Number of Shares</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="number" 
-                                {...field} 
-                                value={field.value || ""}
-                                onChange={e => field.onChange(parseInt(e.target.value) || 0)}
-                              />
+                              <Input type="number" {...field} value={field.value || ""} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
@@ -536,28 +527,27 @@ export default function MemberDetails() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="branch"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bank Branch</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-
-                    <FormField
-                      control={form.control}
-                      name="branch"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Bank Branch</FormLabel>
-                          <FormControl>
-                            <Input {...field} value={field.value || ""} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
 
-                  {/* Beneficiary Information Section */}
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium">Beneficiary Information</h3>
+                  {/* Beneficiary Information */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Beneficiary Information</h4>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
                         name="beneficiaryName"
@@ -584,21 +574,20 @@ export default function MemberDetails() {
                           </FormItem>
                         )}
                       />
+                      <FormField
+                        control={form.control}
+                        name="beneficiaryContact"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Beneficiary Contact</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
-
-                    <FormField
-                      control={form.control}
-                      name="beneficiaryContact"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Beneficiary Contact</FormLabel>
-                          <FormControl>
-                            <Input {...field} value={field.value || ""} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
 
                   <div className="flex justify-end space-x-2">
@@ -842,25 +831,37 @@ export default function MemberDetails() {
             <div>
               <p className="text-sm text-muted-foreground">Savings Accounts</p>
               <p className="text-2xl font-bold text-green-600">
-                {Array.isArray(savingsAccounts) ? savingsAccounts.length : 0}
+                {savingsAccounts?.length || 0}
               </p>
             </div>
 
             <div>
               <p className="text-sm text-muted-foreground">Active Loans</p>
               <p className="text-2xl font-bold text-orange-600">
-                {Array.isArray(loans) ? loans.length : 0}
+                {loans?.length || 0}
               </p>
             </div>
 
             <div>
+              <p className="text-sm text-muted-foreground">Monthly Savings</p>
+              <p className="font-medium">UGX {member.monthlySavings ? parseFloat(member.monthlySavings).toLocaleString() : '0'}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">Share Contribution</p>
+              <p className="font-medium">UGX {member.shareContribution ? parseFloat(member.shareContribution).toLocaleString() : '0'}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">Total Shares</p>
+              <p className="font-medium">{member.numberOfShares || 0} shares</p>
+            </div>
+
+            <Separator />
+
+            <div>
               <p className="text-sm text-muted-foreground">Status</p>
-              <Badge className={`capitalize ${
-                member.status === 'active' ? 'bg-green-100 text-green-800' :
-                member.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
-                member.status === 'suspended' ? 'bg-red-100 text-red-800' :
-                'bg-yellow-100 text-yellow-800'
-              }`}>
+              <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
                 {member.status || 'pending'}
               </Badge>
             </div>
@@ -868,28 +869,105 @@ export default function MemberDetails() {
         </Card>
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+        {/* Employment Information */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Employment Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Department</p>
+                <p className="font-medium">{member.department || 'Not specified'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Section</p>
+                <p className="font-medium">{member.section || 'Not specified'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Terms of Service</p>
+                <p className="font-medium capitalize">{member.termsOfService || 'Not specified'}</p>
+              </div>
+              {member.staffAccountNumber && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Staff Account Number</p>
+                  <p className="font-medium">{member.staffAccountNumber}</p>
+                </div>
+              )}
+              {member.averageNetPay && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Average Net Pay</p>
+                  <p className="font-medium">UGX {parseFloat(member.averageNetPay).toLocaleString()}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Next of Kin Information */}
+        {(member.nextOfKinName || member.nextOfKinPhone) && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Next of Kin Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {member.nextOfKinName && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium">{member.nextOfKinName}</p>
+                  </div>
+                )}
+                {member.nextOfKinPhone && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Phone Number</p>
+                    <p className="font-medium">{member.nextOfKinPhone}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
       {/* Savings Accounts */}
-      {Array.isArray(savingsAccounts) && savingsAccounts.length > 0 && (
-        <Card className="mt-6">
+      {savingsAccounts && savingsAccounts.length > 0 && (
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CreditCard className="h-5 w-5" />
               Savings Accounts
             </CardTitle>
+            <CardDescription>
+              All savings accounts associated with this member
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {savingsAccounts.map((account: any) => (
-                <div key={account.id} className="flex justify-between items-center p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{account.accountNumber}</p>
-                    <p className="text-sm text-muted-foreground">{account.accountType}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">UGX {parseFloat(account.balance).toLocaleString()}</p>
-                    <p className="text-sm text-muted-foreground">Balance</p>
-                  </div>
-                </div>
+                <Card key={account.id} className="border-2">
+                  <CardContent className="p-4">
+                    <div className="space-y-2">
+                      <div className="flex justify-between items-center">
+                        <p className="font-medium">{account.accountNumber}</p>
+                        <Badge variant="outline">{account.accountType}</Badge>
+                      </div>
+                      <p className="text-2xl font-bold text-green-600">
+                        UGX {parseFloat(account.balance || '0').toLocaleString()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Opened {format(new Date(account.createdAt), 'PP')}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </CardContent>
@@ -897,31 +975,44 @@ export default function MemberDetails() {
       )}
 
       {/* Loans */}
-      {Array.isArray(loans) && loans.length > 0 && (
-        <Card className="mt-6">
+      {loans && loans.length > 0 && (
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
+              <Users className="h-5 w-5" />
               Loan History
             </CardTitle>
+            <CardDescription>
+              All loans associated with this member
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               {loans.map((loan: any) => (
-                <div key={loan.id} className="flex justify-between items-center p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{loan.loanType}</p>
-                    <p className="text-sm text-muted-foreground">Applied: {format(new Date(loan.applicationDate), 'PP')}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-medium">UGX {parseFloat(loan.amount).toLocaleString()}</p>
-                    <Badge className={`${
-                      loan.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      loan.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {loan.status}
-                    </Badge>
+                <div key={loan.id} className="border rounded-lg p-4">
+                  <div className="flex justify-between items-start">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium">{loan.loanType} Loan</p>
+                        <Badge variant={
+                          loan.status === 'disbursed' ? 'default' : 
+                          loan.status === 'approved' ? 'secondary' : 
+                          loan.status === 'rejected' ? 'destructive' : 'outline'
+                        }>
+                          {loan.status}
+                        </Badge>
+                      </div>
+                      <p className="text-2xl font-bold">
+                        UGX {parseFloat(loan.requestedAmount || '0').toLocaleString()}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        Applied {format(new Date(loan.createdAt), 'PP')}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-muted-foreground">Term</p>
+                      <p className="font-medium">{loan.termMonths} months</p>
+                    </div>
                   </div>
                 </div>
               ))}
