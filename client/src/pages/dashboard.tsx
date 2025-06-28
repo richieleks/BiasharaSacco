@@ -6,6 +6,7 @@ import RecentTransactions from "@/components/dashboard/recent-transactions";
 import QuickActions from "@/components/dashboard/quick-actions";
 import PendingApprovals from "@/components/dashboard/pending-approvals";
 import MemberApprovals from "@/components/dashboard/member-approvals";
+import LoanApprovalWorkflow from "@/components/dashboard/loan-approval-workflow";
 import { Button } from "@/components/ui/button";
 import { Download, Plus } from "lucide-react";
 
@@ -56,6 +57,11 @@ export default function Dashboard() {
       {/* Member Approvals Section */}
       <div className="mb-8">
         <MemberApprovals />
+      </div>
+
+      {/* Loan Approval Workflow Section */}
+      <div className="mb-8">
+        <LoanApprovalWorkflow />
       </div>
 
       {/* Main Dashboard Content */}

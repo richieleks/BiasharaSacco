@@ -149,6 +149,14 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Restored complete storage functionality after fixing file corruption
   - Enhanced client-side error messages for registration validation failures
   - Maintained official Biashara Co-operative membership application form structure
+- January 17, 2025. Implemented advanced loan approval workflow with multiple stages:
+  - Added multi-stage approval process: Teller → Committee → Manager (for high-value loans)
+  - Created role-based access control with teller, committee, manager, and admin roles
+  - Implemented dynamic approval thresholds (KES 500K+ requires manager approval)
+  - Built comprehensive loan approval dashboard with stage-specific queues
+  - Added detailed approval history tracking with timestamps and comments
+  - Emergency loans under KES 100K bypass teller stage for faster processing
+  - Each stage can approve, reject, or move to next level with audit trail
 
 ## User Preferences
 

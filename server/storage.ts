@@ -57,6 +57,13 @@ export interface IStorage {
   updateLoanStatus(id: number, status: string): Promise<Loan>;
   updateLoanBalance(id: number, amount: string): Promise<Loan>;
   getAllPendingLoans(): Promise<LoanWithDetails[]>;
+  
+  // Advanced loan approval workflow
+  getLoansForApproval(stage: string, userRole: string): Promise<LoanWithDetails[]>;
+  approveLoanAtStage(loanId: number, stage: string, approvedBy: string, comments?: string): Promise<Loan>;
+  rejectLoan(loanId: number, rejectedBy: string, reason: string): Promise<Loan>;
+  getLoanApprovalHistory(loanId: number): Promise<any>;
+  calculateRequiredApprovalStage(loanAmount: number, loanType: string): Promise<string>;
 
   // Transaction operations
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
@@ -389,6 +396,163 @@ export class DatabaseStorage implements IStorage {
         user: result.users || undefined,
       } : undefined,
     }));
+  }
+
+  async getLoansForApproval(stage: string, userRole: string): Promise<LoanWithDetails[]> {
+    let whereCondition;
+    
+    // Define approval logic based on user role and stage
+    if (userRole === 'teller' && stage === 'teller') {
+      whereCondition = and(
+        eq(loans.status, 'pending'),
+        eq(loans.approvalStage, 'teller')
+      );
+    } else if (userRole === 'committee' && stage === 'committee') {
+      whereCondition = and(
+        eq(loans.status, 'teller_approved'),
+        eq(loans.approvalStage, 'committee')
+      );
+    } else if ((userRole === 'manager' || userRole === 'admin') && stage === 'manager') {
+      whereCondition = and(
+        eq(loans.status, 'committee_approved'),
+        eq(loans.approvalStage, 'manager')
+      );
+    } else {
+      // Return empty array if no matching conditions
+      return [];
+    }
+
+    const results = await db
+      .select()
+      .from(loans)
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(whereCondition)
+      .orderBy(desc(loans.createdAt));
+
+    return results.map(result => ({
+      ...result.loans,
+      member: result.members ? {
+        ...result.members,
+        user: result.users || undefined,
+      } : undefined,
+    }));
+  }
+
+  async approveLoanAtStage(loanId: number, stage: string, approvedBy: string, comments?: string): Promise<Loan> {
+    const currentTime = new Date();
+    let updateData: any = {};
+
+    // Determine the next stage and status
+    if (stage === 'teller') {
+      updateData = {
+        status: 'teller_approved',
+        approvalStage: 'committee',
+        tellerApprovedBy: approvedBy,
+        tellerApprovedAt: currentTime,
+        tellerComments: comments,
+      };
+    } else if (stage === 'committee') {
+      // Check if loan amount requires manager approval
+      const loan = await this.getLoan(loanId);
+      const requiresManagerApproval = loan && parseFloat(loan.principalAmount) > 500000; // KES 500K threshold
+      
+      if (requiresManagerApproval) {
+        updateData = {
+          status: 'committee_approved',
+          approvalStage: 'manager',
+          committeeApprovedBy: approvedBy,
+          committeeApprovedAt: currentTime,
+          committeeComments: comments,
+        };
+      } else {
+        updateData = {
+          status: 'approved',
+          approvalStage: 'completed',
+          committeeApprovedBy: approvedBy,
+          committeeApprovedAt: currentTime,
+          committeeComments: comments,
+        };
+      }
+    } else if (stage === 'manager') {
+      updateData = {
+        status: 'approved',
+        approvalStage: 'completed',
+        managerApprovedBy: approvedBy,
+        managerApprovedAt: currentTime,
+        managerComments: comments,
+      };
+    }
+
+    const [loan] = await db
+      .update(loans)
+      .set(updateData)
+      .where(eq(loans.id, loanId))
+      .returning();
+    
+    return loan;
+  }
+
+  async rejectLoan(loanId: number, rejectedBy: string, reason: string): Promise<Loan> {
+    const [loan] = await db
+      .update(loans)
+      .set({
+        status: 'rejected',
+        rejectedBy,
+        rejectedAt: new Date(),
+        rejectionReason: reason,
+      })
+      .where(eq(loans.id, loanId))
+      .returning();
+    
+    return loan;
+  }
+
+  async getLoanApprovalHistory(loanId: number): Promise<any> {
+    const loan = await this.getLoan(loanId);
+    if (!loan) return null;
+
+    return {
+      loanId,
+      currentStage: loan.approvalStage,
+      currentStatus: loan.status,
+      stages: {
+        teller: {
+          approvedBy: loan.tellerApprovedBy,
+          approvedAt: loan.tellerApprovedAt,
+          comments: loan.tellerComments,
+        },
+        committee: {
+          approvedBy: loan.committeeApprovedBy,
+          approvedAt: loan.committeeApprovedAt,
+          comments: loan.committeeComments,
+        },
+        manager: {
+          approvedBy: loan.managerApprovedBy,
+          approvedAt: loan.managerApprovedAt,
+          comments: loan.managerComments,
+        },
+      },
+      rejection: {
+        rejectedBy: loan.rejectedBy,
+        rejectedAt: loan.rejectedAt,
+        reason: loan.rejectionReason,
+      },
+    };
+  }
+
+  async calculateRequiredApprovalStage(loanAmount: number, loanType: string): Promise<string> {
+    // Define approval thresholds
+    const emergencyThreshold = 100000; // KES 100K
+    const managerThreshold = 500000;   // KES 500K
+    
+    if (loanType === 'emergency' && loanAmount <= emergencyThreshold) {
+      return 'committee'; // Emergency loans under 100K only need committee approval
+    } else if (loanAmount > managerThreshold) {
+      return 'manager'; // Large loans need manager approval
+    } else {
+      return 'committee'; // Regular loans need committee approval
+    }
   }
 
   async createTransaction(transactionData: InsertTransaction): Promise<Transaction> {

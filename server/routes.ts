@@ -73,10 +73,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper function to check if user has committee or admin role
+  // Helper functions for role checking
   const isCommitteeOrAdmin = async (userId: string): Promise<boolean> => {
     const user = await storage.getUser(userId);
     return user?.role === 'committee' || user?.role === 'admin';
+  };
+
+  const hasApprovalRole = async (userId: string, requiredRole: string): Promise<boolean> => {
+    const user = await storage.getUser(userId);
+    if (!user) return false;
+    
+    // Admin can perform any approval
+    if (user.role === 'admin') return true;
+    
+    // Check specific role permissions
+    if (requiredRole === 'teller' && user.role === 'teller') return true;
+    if (requiredRole === 'committee' && user.role === 'committee') return true;
+    if (requiredRole === 'manager' && user.role === 'manager') return true;
+    
+    return false;
   };
 
   // Member routes
@@ -386,6 +401,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching pending loans:", error);
       res.status(500).json({ message: "Failed to fetch pending loans" });
+    }
+  });
+
+  // Advanced loan approval endpoints
+  app.get('/api/loans/approval/:stage', isAuthenticated, async (req: any, res) => {
+    try {
+      const { stage } = req.params;
+      const userId = req.user?.claims?.sub;
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
+      const loans = await storage.getLoansForApproval(stage, user.role!);
+      res.json(loans);
+    } catch (error) {
+      console.error("Error fetching loans for approval:", error);
+      res.status(500).json({ message: "Failed to fetch loans for approval" });
+    }
+  });
+
+  app.post('/api/loans/:id/approve/:stage', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id, stage } = req.params;
+      const { comments } = req.body;
+      const userId = req.user?.claims?.sub;
+
+      if (!await hasApprovalRole(userId, stage)) {
+        return res.status(403).json({ message: `Access denied. ${stage} role required.` });
+      }
+
+      const loan = await storage.approveLoanAtStage(parseInt(id), stage, userId, comments);
+      res.json({ message: `Loan approved at ${stage} stage`, loan });
+    } catch (error) {
+      console.error(`Error approving loan at ${req.params.stage} stage:`, error);
+      res.status(500).json({ message: "Failed to approve loan" });
+    }
+  });
+
+  app.post('/api/loans/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const userId = req.user?.claims?.sub;
+
+      if (!reason?.trim()) {
+        return res.status(400).json({ message: "Rejection reason is required" });
+      }
+
+      const loan = await storage.rejectLoan(parseInt(id), userId, reason);
+      res.json({ message: "Loan rejected", loan });
+    } catch (error) {
+      console.error("Error rejecting loan:", error);
+      res.status(500).json({ message: "Failed to reject loan" });
+    }
+  });
+
+  app.get('/api/loans/:id/approval-history', isAuthenticated, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const history = await storage.getLoanApprovalHistory(parseInt(id));
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching loan approval history:", error);
+      res.status(500).json({ message: "Failed to fetch approval history" });
     }
   });
 
