@@ -12,12 +12,12 @@ export default function Guarantors() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'requests' | 'provided'>('requests');
 
-  const { data: currentMember } = useQuery({
-    queryKey: ['/api/members/by-user', user?.id],
+  const { data: currentMember } = useQuery<MemberWithDetails>({
+    queryKey: [`/api/members/by-user/${user?.id || 'undefined'}`],
     enabled: !!user?.id,
   });
 
-  const { data: providedGuarantees = [], isLoading: loadingProvided } = useQuery({
+  const { data: providedGuarantees = [], isLoading: loadingProvided } = useQuery<GuarantorWithDetails[]>({
     queryKey: ['/api/guarantors/member', currentMember?.id],
     enabled: !!currentMember?.id,
   });
@@ -118,12 +118,11 @@ export default function Guarantors() {
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <div className="font-medium">
-                          Loan for {guarantee.loan?.member?.user?.firstName} {guarantee.loan?.member?.user?.lastName}
+                          Loan for {guarantee.guarantorMember?.user?.firstName} {guarantee.guarantorMember?.user?.lastName}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Member: {guarantee.loan?.member?.memberNumber} | 
-                          Loan: KSh {Number(guarantee.loan?.principalAmount).toLocaleString()} |
-                          Your Guarantee: KSh {Number(guarantee.guaranteeAmount).toLocaleString()}
+                          Loan: KSh {Number(guarantee.loan?.principalAmount || 0).toLocaleString()} |
+                          Your Guarantee: KSh {Number(guarantee.guaranteeAmount || 0).toLocaleString()}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           Loan Type: {guarantee.loan?.loanType} | 
@@ -137,25 +136,25 @@ export default function Guarantors() {
                         )}
                       </div>
                       <div className="flex items-center gap-2">
-                        {getStatusIcon(guarantee.status)}
-                        <Badge variant={getStatusVariant(guarantee.status)}>
-                          {guarantee.status}
+                        {getStatusIcon(guarantee.status || 'pending')}
+                        <Badge variant={getStatusVariant(guarantee.status || 'pending')}>
+                          {guarantee.status || 'pending'}
                         </Badge>
                       </div>
                     </div>
 
                     <div className="flex justify-between items-center text-xs text-muted-foreground border-t pt-2">
                       <span>
-                        Guaranteed on: {new Date(guarantee.createdAt).toLocaleDateString()}
+                        Guaranteed on: {guarantee.createdAt ? new Date(guarantee.createdAt).toLocaleDateString() : 'N/A'}
                       </span>
                       {guarantee.status === 'approved' && guarantee.approvedAt && (
                         <span>
-                          Approved on: {new Date(guarantee.approvedAt).toLocaleDateString()}
+                          Approved on: {new Date(guarantee.approvedAt!).toLocaleDateString()}
                         </span>
                       )}
                       {guarantee.status === 'rejected' && guarantee.rejectedAt && (
                         <span>
-                          Rejected on: {new Date(guarantee.rejectedAt).toLocaleDateString()}
+                          Rejected on: {new Date(guarantee.rejectedAt!).toLocaleDateString()}
                         </span>
                       )}
                     </div>

@@ -7,7 +7,7 @@ import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Type augmentation for Express Request with user claims
-  type AuthRequest = Express.Request & {
+  interface AuthRequest extends Express.Request {
     user?: {
       claims?: {
         sub?: string;
@@ -17,7 +17,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profile_image_url?: string;
       };
     };
-  };
+  }
   // Auth middleware
   await setupAuth(app);
 
@@ -181,7 +181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/savings/deposit', isAuthenticated, async (req: any, res) => {
+  app.post('/api/savings/deposit', isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const { accountId, amount, description } = req.body;
       
@@ -214,7 +214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/savings/withdraw', isAuthenticated, async (req: any, res) => {
+  app.post('/api/savings/withdraw', isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const { accountId, amount, description } = req.body;
       
@@ -286,7 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/loans/:id/disburse', isAuthenticated, async (req, res) => {
+  app.patch('/api/loans/:id/disburse', isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const loan = await storage.updateLoanStatus(parseInt(req.params.id), 'disbursed');
       
@@ -311,7 +311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/loans/:id/payment', isAuthenticated, async (req: any, res) => {
+  app.post('/api/loans/:id/payment', isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const { amount, description } = req.body;
       const loanId = parseInt(req.params.id);

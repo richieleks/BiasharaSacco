@@ -49,8 +49,8 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
   const [currentLoanId, setCurrentLoanId] = useState<number | null>(null);
 
   const { data: currentMember } = useQuery({
-    queryKey: ['/api/members/by-user', (user as any)?.id],
-    enabled: !!(user as any)?.id,
+    queryKey: [`/api/members/by-user/${user?.id || 'undefined'}`],
+    enabled: !!user?.id,
   });
 
   const form = useForm<LoanApplicationData>({
