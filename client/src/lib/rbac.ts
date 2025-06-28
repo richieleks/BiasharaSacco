@@ -187,26 +187,57 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{name: string, path: strin
   ],
 };
 
-// Utility functions for RBAC
-export function hasPermission(userRole: UserRole, action: string, resource: string): boolean {
-  const permissions = ROLE_PERMISSIONS[userRole] || [];
-  return permissions.some(permission => 
-    permission.action === action && permission.resource === resource
-  );
+// Utility functions for RBAC - Updated to handle multiple roles
+export function hasPermission(userRoles: UserRole | UserRole[], action: string, resource: string): boolean {
+  const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
+  
+  return roles.some(role => {
+    const permissions = ROLE_PERMISSIONS[role] || [];
+    return permissions.some(permission => 
+      permission.action === action && permission.resource === resource
+    );
+  });
 }
 
-export function canAccessDashboardComponent(userRole: UserRole, component: string): boolean {
-  const allowedComponents = DASHBOARD_COMPONENTS[userRole] || [];
-  return allowedComponents.includes(component);
+export function canAccessDashboardComponent(userRoles: UserRole | UserRole[], component: string): boolean {
+  const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
+  
+  return roles.some(role => {
+    const allowedComponents = DASHBOARD_COMPONENTS[role] || [];
+    return allowedComponents.includes(component);
+  });
 }
 
-export function getNavigationItems(userRole: UserRole) {
-  return NAVIGATION_ITEMS[userRole] || [];
+export function getNavigationItems(userRoles: UserRole | UserRole[]) {
+  const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
+  
+  // Get the highest role for navigation (admin > manager > committee > teller > member)
+  const highestRole = roles.reduce((highest, current) => {
+    return ROLE_HIERARCHY[current] > ROLE_HIERARCHY[highest] ? current : highest;
+  }, roles[0]);
+  
+  return NAVIGATION_ITEMS[highestRole] || [];
 }
 
-export function canAccessRoute(userRole: UserRole, route: string): boolean {
-  const navItems = getNavigationItems(userRole);
+export function canAccessRoute(userRoles: UserRole | UserRole[], route: string): boolean {
+  const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
+  const navItems = getNavigationItems(roles);
   return navItems.some(item => item.path === route);
+}
+
+// Helper function to check if user has any of the specified roles
+export function hasAnyRole(userRoles: UserRole | UserRole[], requiredRoles: UserRole[]): boolean {
+  const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
+  return roles.some(role => requiredRoles.includes(role));
+}
+
+// Helper function to get the highest role for display purposes
+export function getHighestRole(userRoles: UserRole[]): UserRole {
+  if (!userRoles || userRoles.length === 0) return 'member';
+  
+  return userRoles.reduce((highest, current) => {
+    return ROLE_HIERARCHY[current] > ROLE_HIERARCHY[highest] ? current : highest;
+  }, userRoles[0]);
 }
 
 // Role hierarchy for escalation

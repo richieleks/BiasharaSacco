@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { hasAnyRole } from "@/lib/rbac";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,10 +29,11 @@ export default function LoanApprovalWorkflow() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Determine which stages the user can access
-  const canAccessTeller = user?.role === 'teller' || user?.role === 'admin';
-  const canAccessCommittee = user?.role === 'committee' || user?.role === 'admin';
-  const canAccessManager = user?.role === 'manager' || user?.role === 'admin';
+  // Determine which stages the user can access using multi-role support
+  const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : []);
+  const canAccessTeller = hasAnyRole(userRoles, ['teller', 'admin']);
+  const canAccessCommittee = hasAnyRole(userRoles, ['committee', 'admin']);
+  const canAccessManager = hasAnyRole(userRoles, ['manager', 'admin']);
 
   // Set default tab based on user role
   useState(() => {

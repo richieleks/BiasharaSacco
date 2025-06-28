@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { hasAnyRole } from "@/lib/rbac";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,8 +21,9 @@ export default function MemberApprovals() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Check if user has committee or admin role
-  const hasApprovalAccess = user?.role === 'committee' || user?.role === 'admin';
+  // Check if user has committee or admin role using multi-role support
+  const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : []);
+  const hasApprovalAccess = hasAnyRole(userRoles, ['committee', 'admin']);
 
   const { data: pendingMembers, isLoading } = useQuery<MemberWithDetails[]>({
     queryKey: ['/api/members/pending'],
