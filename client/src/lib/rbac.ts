@@ -149,6 +149,7 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{name: string, path: strin
     { name: 'Reports', path: '/reports', icon: 'BarChart3' },
     { name: 'Role Management', path: '/role-management', icon: 'UserCog' },
     { name: 'Audit Logs', path: '/audit-logs', icon: 'Shield' },
+    { name: 'Roles Matrix', path: '/roles-matrix', icon: 'Lock' },
     { name: 'Settings', path: '/settings', icon: 'Settings' },
   ],
   manager: [

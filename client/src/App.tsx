@@ -17,6 +17,7 @@ import Reports from "@/pages/reports";
 import Guarantors from "@/pages/guarantors";
 import RoleManagement from "@/pages/role-management";
 import AuditLogs from "@/pages/audit-logs";
+import RolesMatrixPage from "@/pages/roles-matrix";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -98,6 +99,11 @@ function Router() {
             <Route path="/audit-logs">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'audit-logs' }}>
                 <AuditLogs />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/roles-matrix">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'system-settings' }}>
+                <RolesMatrixPage />
               </ProtectedRoute>
             </Route>
             <Route component={NotFound} />
