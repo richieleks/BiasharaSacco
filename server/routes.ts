@@ -465,6 +465,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update member details
+  app.patch('/api/members/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const memberId = parseInt(req.params.id);
+      const updates = req.body;
+      
+      // Get requesting member for permission check
+      const requestingMember = await storage.getMemberByUserId(req.user?.claims?.sub);
+      if (!requestingMember) {
+        return res.status(403).json({ message: "Access denied - no member record found" });
+      }
+
+      // Get user's roles for permission checking
+      const roleNames = await storage.getMemberRoles(requestingMember.id);
+
+      // Access control: members can only update their own data, staff can update any
+      const isStaff = roleNames.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      const isOwnRecord = requestingMember.id === memberId;
+
+      if (!isStaff && !isOwnRecord) {
+        return res.status(403).json({ message: "Access denied - insufficient permissions" });
+      }
+
+      // Update member
+      const updatedMember = await storage.updateMember(memberId, updates);
+      
+      // Log the action
+      if (requestingMember) {
+        await storage.createAuditLog({
+          userId: req.user.claims.sub,
+          action: 'update',
+          resource: 'member',
+          resourceId: memberId.toString(),
+          details: `Updated member profile: ${updatedMember.memberNumber}`,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent']
+        });
+      }
+
+      res.json(updatedMember);
+    } catch (error) {
+      console.error("Error updating member:", error);
+      res.status(500).json({ message: "Failed to update member" });
+    }
+  });
+
   // Savings account routes
   app.get('/api/members/:id/savings', isAuthenticated, async (req, res) => {
     try {

@@ -286,6 +286,8 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Enhanced API request structure with proper response validation and error messages
   - Fixed member edit submission error by correcting apiRequest parameter order from (url, method, data) to (method, url, data)
   - Updated query invalidation keys to use proper array format for better cache management
+  - Added missing PATCH /api/members/:id endpoint for member updates with proper role-based access control
+  - Implemented member update functionality with audit logging and permission validation for Next of Kin details
 
 ## User Preferences
 
