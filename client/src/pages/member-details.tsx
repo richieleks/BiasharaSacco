@@ -59,19 +59,19 @@ export default function MemberDetails() {
 
   // Fetch member details
   const { data: member, isLoading: memberLoading } = useQuery<MemberWithDetails>({
-    queryKey: ["/api/members", memberId],
+    queryKey: [`/api/members/${memberId}`],
     enabled: !!memberId,
   });
 
   // Fetch member's savings accounts
   const { data: savingsAccounts } = useQuery<any[]>({
-    queryKey: ["/api/members", memberId, "savings"],
+    queryKey: [`/api/members/${memberId}/savings`],
     enabled: !!memberId,
   });
 
   // Fetch member's loans
   const { data: loans } = useQuery<any[]>({
-    queryKey: ["/api/members", memberId, "loans"],
+    queryKey: [`/api/members/${memberId}/loans`],
     enabled: !!memberId,
   });
 
@@ -120,7 +120,7 @@ export default function MemberDetails() {
         description: "Member updated successfully",
       });
       setIsEditDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["/api/members", memberId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/members/${memberId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/members"] });
     },
     onError: (error: Error) => {
