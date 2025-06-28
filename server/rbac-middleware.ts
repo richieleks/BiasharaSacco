@@ -125,6 +125,14 @@ function hasPermission(userRole: UserRole, action: string, resource: string): bo
       { action: 'read', resource: 'system-settings' },
       { action: 'update', resource: 'system-settings' },
       { action: 'read', resource: 'audit-logs' },
+      { action: 'read', resource: 'interest-rates' },
+      { action: 'create', resource: 'interest-rates' },
+      { action: 'update', resource: 'interest-rates' },
+      { action: 'delete', resource: 'interest-rates' },
+      { action: 'create', resource: 'amortization' },
+      { action: 'update', resource: 'amortization' },
+      { action: 'read', resource: 'payments' },
+      { action: 'create', resource: 'interest-calculations' },
     ],
     
     manager: [

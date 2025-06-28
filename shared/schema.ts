@@ -148,6 +148,63 @@ export const transactions = pgTable("transactions", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Interest rates table for different loan types and products
+export const interestRates = pgTable("interest_rates", {
+  id: serial("id").primaryKey(),
+  productType: varchar("product_type", { 
+    enum: ["normal_loan", "emergency_loan", "development_loan", "group_loan", "asset_financing"] 
+  }).notNull(),
+  baseRate: decimal("base_rate", { precision: 5, scale: 2 }).notNull(), // Annual interest rate
+  compoundingFrequency: varchar("compounding_frequency", { 
+    enum: ["daily", "monthly", "quarterly", "annually"] 
+  }).default("monthly"),
+  isActive: boolean("is_active").default(true),
+  minimumAmount: decimal("minimum_amount", { precision: 15, scale: 2 }),
+  maximumAmount: decimal("maximum_amount", { precision: 15, scale: 2 }),
+  minimumTerm: integer("minimum_term"), // months
+  maximumTerm: integer("maximum_term"), // months
+  effectiveDate: timestamp("effective_date").defaultNow(),
+  expiryDate: timestamp("expiry_date"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Amortization schedules for loans
+export const amortizationSchedules = pgTable("amortization_schedules", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").references(() => loans.id).notNull(),
+  paymentNumber: integer("payment_number").notNull(),
+  paymentDate: timestamp("payment_date").notNull(),
+  principalAmount: decimal("principal_amount", { precision: 15, scale: 2 }).notNull(),
+  interestAmount: decimal("interest_amount", { precision: 15, scale: 2 }).notNull(),
+  totalPayment: decimal("total_payment", { precision: 15, scale: 2 }).notNull(),
+  outstandingBalance: decimal("outstanding_balance", { precision: 15, scale: 2 }).notNull(),
+  status: varchar("status", { enum: ["pending", "paid", "overdue", "partial"] }).default("pending"),
+  actualPaymentDate: timestamp("actual_payment_date"),
+  actualAmountPaid: decimal("actual_amount_paid", { precision: 15, scale: 2 }),
+  lateFee: decimal("late_fee", { precision: 15, scale: 2 }).default("0"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Interest calculations history for transparency
+export const interestCalculations = pgTable("interest_calculations", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").references(() => loans.id).notNull(),
+  savingsAccountId: integer("savings_account_id").references(() => savingsAccounts.id),
+  calculationType: varchar("calculation_type", { 
+    enum: ["loan_interest", "savings_interest", "compound_interest", "simple_interest"] 
+  }).notNull(),
+  principal: decimal("principal", { precision: 15, scale: 2 }).notNull(),
+  rate: decimal("rate", { precision: 5, scale: 2 }).notNull(),
+  time: decimal("time", { precision: 10, scale: 4 }).notNull(), // in years or months
+  compoundingPeriods: integer("compounding_periods"),
+  calculatedInterest: decimal("calculated_interest", { precision: 15, scale: 2 }).notNull(),
+  formula: varchar("formula", { length: 100 }),
+  calculationDate: timestamp("calculation_date").defaultNow(),
+  notes: text("notes"),
+});
+
 // Guarantors table
 export const guarantors = pgTable("guarantors", {
   id: serial("id").primaryKey(),
@@ -198,6 +255,8 @@ export const loansRelations = relations(loans, ({ one, many }) => ({
   }),
   transactions: many(transactions),
   guarantors: many(guarantors),
+  amortizationSchedules: many(amortizationSchedules),
+  interestCalculations: many(interestCalculations),
 }));
 
 export const transactionsRelations = relations(transactions, ({ one }) => ({
@@ -228,6 +287,24 @@ export const guarantorsRelations = relations(guarantors, ({ one }) => ({
     fields: [guarantors.guarantorMemberId],
     references: [members.id],
     relationName: "guarantorMember",
+  }),
+}));
+
+export const amortizationSchedulesRelations = relations(amortizationSchedules, ({ one }) => ({
+  loan: one(loans, {
+    fields: [amortizationSchedules.loanId],
+    references: [loans.id],
+  }),
+}));
+
+export const interestCalculationsRelations = relations(interestCalculations, ({ one }) => ({
+  loan: one(loans, {
+    fields: [interestCalculations.loanId],
+    references: [loans.id],
+  }),
+  savingsAccount: one(savingsAccounts, {
+    fields: [interestCalculations.savingsAccountId],
+    references: [savingsAccounts.id],
   }),
 }));
 
@@ -310,6 +387,22 @@ export const insertGuarantorSchema = createInsertSchema(guarantors).omit({
   updatedAt: true,
 });
 
+export const insertInterestRateSchema = createInsertSchema(interestRates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertAmortizationScheduleSchema = createInsertSchema(amortizationSchedules).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInterestCalculationSchema = createInsertSchema(interestCalculations).omit({
+  id: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -323,6 +416,12 @@ export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type Transaction = typeof transactions.$inferSelect;
 export type InsertGuarantor = z.infer<typeof insertGuarantorSchema>;
 export type Guarantor = typeof guarantors.$inferSelect;
+export type InsertInterestRate = z.infer<typeof insertInterestRateSchema>;
+export type InterestRate = typeof interestRates.$inferSelect;
+export type InsertAmortizationSchedule = z.infer<typeof insertAmortizationScheduleSchema>;
+export type AmortizationSchedule = typeof amortizationSchedules.$inferSelect;
+export type InsertInterestCalculation = z.infer<typeof insertInterestCalculationSchema>;
+export type InterestCalculation = typeof interestCalculations.$inferSelect;
 
 // Extended types for API responses
 export type MemberWithDetails = Member & {
@@ -347,4 +446,20 @@ export type LoanWithDetails = Loan & {
 export type GuarantorWithDetails = Guarantor & {
   guarantorMember?: Member & { user?: User };
   loan?: LoanWithDetails;
+};
+
+// Extended types with interest calculation details
+export type LoanWithAmortization = LoanWithDetails & {
+  amortizationSchedules?: AmortizationSchedule[];
+  interestCalculations?: InterestCalculation[];
+  interestRate?: InterestRate;
+};
+
+export type AmortizationScheduleWithDetails = AmortizationSchedule & {
+  loan?: Loan & { member?: Member & { user?: User } };
+};
+
+export type InterestCalculationWithDetails = InterestCalculation & {
+  loan?: Loan;
+  savingsAccount?: SavingsAccount;
 };

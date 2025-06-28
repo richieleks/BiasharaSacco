@@ -7,6 +7,9 @@ import {
   guarantors,
   auditLogs,
   memberRoles,
+  interestRates,
+  amortizationSchedules,
+  interestCalculations,
   type User,
   type UpsertUser,
   type Member,
@@ -23,7 +26,16 @@ import {
   type Guarantor,
   type InsertGuarantor,
   type GuarantorWithDetails,
+  type InterestRate,
+  type InsertInterestRate,
+  type AmortizationSchedule,
+  type InsertAmortizationSchedule,
+  type AmortizationScheduleWithDetails,
+  type InterestCalculation,
+  type InsertInterestCalculation,
+  type InterestCalculationWithDetails,
 } from "@shared/schema";
+import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
 import { eq, desc, sql, like, or, and } from "drizzle-orm";
 
@@ -101,6 +113,35 @@ export interface IStorage {
   addMemberRole(memberId: number, role: string, assignedBy: string): Promise<void>;
   removeMemberRole(memberId: number, role: string): Promise<void>;
   replaceMemberRoles(memberId: number, roles: string[], assignedBy: string): Promise<void>;
+
+  // Interest rate management
+  createInterestRate(rate: InsertInterestRate): Promise<InterestRate>;
+  getInterestRate(id: number): Promise<InterestRate | undefined>;
+  getActiveInterestRates(): Promise<InterestRate[]>;
+  getInterestRateByProduct(productType: string): Promise<InterestRate | undefined>;
+  updateInterestRate(id: number, updates: Partial<InsertInterestRate>): Promise<InterestRate>;
+  deactivateInterestRate(id: number): Promise<InterestRate>;
+
+  // Amortization schedule operations
+  createAmortizationSchedule(schedules: InsertAmortizationSchedule[]): Promise<AmortizationSchedule[]>;
+  getAmortizationSchedule(loanId: number): Promise<AmortizationScheduleWithDetails[]>;
+  updateSchedulePayment(id: number, actualAmount: string, paymentDate: Date): Promise<AmortizationSchedule>;
+  getOverduePayments(): Promise<AmortizationScheduleWithDetails[]>;
+  getUpcomingPayments(days: number): Promise<AmortizationScheduleWithDetails[]>;
+
+  // Interest calculation operations
+  createInterestCalculation(calculation: InsertInterestCalculation): Promise<InterestCalculation>;
+  getInterestCalculations(loanId: number): Promise<InterestCalculationWithDetails[]>;
+  calculateAndSaveInterest(loanId: number): Promise<InterestCalculationResult>;
+
+  // Advanced loan calculations
+  generateLoanAmortization(loanId: number): Promise<AmortizationSchedule[]>;
+  recalculateLoanSchedule(loanId: number, newRate?: number): Promise<AmortizationSchedule[]>;
+  calculateEarlyPaymentSavings(loanId: number, paymentDate: Date, amount: number): Promise<{
+    interestSaved: number;
+    newBalance: number;
+    revisedSchedule: AmortizationSchedule[];
+  }>;
 
   // Audit log operations
   createAuditLog(log: {
@@ -1002,6 +1043,320 @@ export class DatabaseStorage implements IStorage {
         );
       }
     });
+  }
+
+  // Interest rate management
+  async createInterestRate(rateData: InsertInterestRate): Promise<InterestRate> {
+    const [rate] = await db
+      .insert(interestRates)
+      .values(rateData)
+      .returning();
+    return rate;
+  }
+
+  async getInterestRate(id: number): Promise<InterestRate | undefined> {
+    const [rate] = await db
+      .select()
+      .from(interestRates)
+      .where(eq(interestRates.id, id));
+    return rate;
+  }
+
+  async getActiveInterestRates(): Promise<InterestRate[]> {
+    return await db
+      .select()
+      .from(interestRates)
+      .where(eq(interestRates.isActive, true))
+      .orderBy(interestRates.productType);
+  }
+
+  async getInterestRateByProduct(productType: string): Promise<InterestRate | undefined> {
+    const [rate] = await db
+      .select()
+      .from(interestRates)
+      .where(
+        and(
+          eq(interestRates.productType, productType as any),
+          eq(interestRates.isActive, true)
+        )
+      )
+      .orderBy(desc(interestRates.effectiveDate));
+    return rate;
+  }
+
+  async updateInterestRate(id: number, updates: Partial<InsertInterestRate>): Promise<InterestRate> {
+    const [rate] = await db
+      .update(interestRates)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(interestRates.id, id))
+      .returning();
+    return rate;
+  }
+
+  async deactivateInterestRate(id: number): Promise<InterestRate> {
+    const [rate] = await db
+      .update(interestRates)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(interestRates.id, id))
+      .returning();
+    return rate;
+  }
+
+  // Amortization schedule operations
+  async createAmortizationSchedule(schedules: InsertAmortizationSchedule[]): Promise<AmortizationSchedule[]> {
+    return await db
+      .insert(amortizationSchedules)
+      .values(schedules)
+      .returning();
+  }
+
+  async getAmortizationSchedule(loanId: number): Promise<AmortizationScheduleWithDetails[]> {
+    const results = await db
+      .select()
+      .from(amortizationSchedules)
+      .leftJoin(loans, eq(amortizationSchedules.loanId, loans.id))
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(eq(amortizationSchedules.loanId, loanId))
+      .orderBy(amortizationSchedules.paymentNumber);
+
+    return results.map(result => ({
+      ...result.amortization_schedules,
+      loan: result.loans ? {
+        ...result.loans,
+        member: result.members ? {
+          ...result.members,
+          user: result.users || undefined,
+        } : undefined,
+      } : undefined,
+    }));
+  }
+
+  async updateSchedulePayment(id: number, actualAmount: string, paymentDate: Date): Promise<AmortizationSchedule> {
+    const [schedule] = await db
+      .update(amortizationSchedules)
+      .set({
+        actualAmountPaid: actualAmount,
+        actualPaymentDate: paymentDate,
+        status: 'paid',
+        updatedAt: new Date(),
+      })
+      .where(eq(amortizationSchedules.id, id))
+      .returning();
+    return schedule;
+  }
+
+  async getOverduePayments(): Promise<AmortizationScheduleWithDetails[]> {
+    const results = await db
+      .select()
+      .from(amortizationSchedules)
+      .leftJoin(loans, eq(amortizationSchedules.loanId, loans.id))
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(
+        and(
+          eq(amortizationSchedules.status, 'pending'),
+          sql`${amortizationSchedules.paymentDate} < NOW()`
+        )
+      )
+      .orderBy(amortizationSchedules.paymentDate);
+
+    return results.map(result => ({
+      ...result.amortization_schedules,
+      loan: result.loans ? {
+        ...result.loans,
+        member: result.members ? {
+          ...result.members,
+          user: result.users || undefined,
+        } : undefined,
+      } : undefined,
+    }));
+  }
+
+  async getUpcomingPayments(days: number): Promise<AmortizationScheduleWithDetails[]> {
+    const futureDate = new Date();
+    futureDate.setDate(futureDate.getDate() + days);
+
+    const results = await db
+      .select()
+      .from(amortizationSchedules)
+      .leftJoin(loans, eq(amortizationSchedules.loanId, loans.id))
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(
+        and(
+          eq(amortizationSchedules.status, 'pending'),
+          sql`${amortizationSchedules.paymentDate} BETWEEN NOW() AND ${futureDate}`
+        )
+      )
+      .orderBy(amortizationSchedules.paymentDate);
+
+    return results.map(result => ({
+      ...result.amortization_schedules,
+      loan: result.loans ? {
+        ...result.loans,
+        member: result.members ? {
+          ...result.members,
+          user: result.users || undefined,
+        } : undefined,
+      } : undefined,
+    }));
+  }
+
+  // Interest calculation operations
+  async createInterestCalculation(calculation: InsertInterestCalculation): Promise<InterestCalculation> {
+    const [calc] = await db
+      .insert(interestCalculations)
+      .values(calculation)
+      .returning();
+    return calc;
+  }
+
+  async getInterestCalculations(loanId: number): Promise<InterestCalculationWithDetails[]> {
+    const results = await db
+      .select()
+      .from(interestCalculations)
+      .leftJoin(loans, eq(interestCalculations.loanId, loans.id))
+      .leftJoin(savingsAccounts, eq(interestCalculations.savingsAccountId, savingsAccounts.id))
+      .where(eq(interestCalculations.loanId, loanId))
+      .orderBy(desc(interestCalculations.calculationDate));
+
+    return results.map(result => ({
+      ...result.interest_calculations,
+      loan: result.loans || undefined,
+      savingsAccount: result.savings_accounts || undefined,
+    }));
+  }
+
+  async calculateAndSaveInterest(loanId: number): Promise<InterestCalculationResult> {
+    const loan = await this.getLoan(loanId);
+    if (!loan) {
+      throw new Error('Loan not found');
+    }
+
+    const interestRate = await this.getInterestRateByProduct(loan.loanType);
+    const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loan.loanType, Number(loan.amount));
+
+    const result = InterestCalculator.calculateReducingBalancePayment(
+      Number(loan.amount),
+      rate,
+      loan.termInMonths
+    );
+
+    // Save calculation record
+    await this.createInterestCalculation(
+      InterestCalculator.createCalculationRecord(
+        loanId,
+        'reducing_balance',
+        Number(loan.amount),
+        rate,
+        loan.termInMonths / 12,
+        result,
+        'PMT = P * [r(1+r)^n] / [(1+r)^n - 1]',
+        `Calculated for ${loan.loanType} loan`
+      )
+    );
+
+    return {
+      totalInterest: result * loan.termInMonths - Number(loan.amount),
+      monthlyPayment: result,
+      totalAmount: result * loan.termInMonths,
+      effectiveRate: rate
+    };
+  }
+
+  // Advanced loan calculations
+  async generateLoanAmortization(loanId: number): Promise<AmortizationSchedule[]> {
+    const loan = await this.getLoan(loanId);
+    if (!loan) {
+      throw new Error('Loan not found');
+    }
+
+    const interestRate = await this.getInterestRateByProduct(loan.loanType);
+    const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loan.loanType, Number(loan.amount));
+
+    const scheduleData = InterestCalculator.generateAmortizationSchedule(
+      loanId,
+      Number(loan.amount),
+      rate,
+      loan.termInMonths,
+      loan.disbursementDate || new Date()
+    );
+
+    return await this.createAmortizationSchedule(scheduleData);
+  }
+
+  async recalculateLoanSchedule(loanId: number, newRate?: number): Promise<AmortizationSchedule[]> {
+    const loan = await this.getLoan(loanId);
+    if (!loan) {
+      throw new Error('Loan not found');
+    }
+
+    // Delete existing schedule
+    await db.delete(amortizationSchedules).where(eq(amortizationSchedules.loanId, loanId));
+
+    const rate = newRate || InterestCalculator.getRecommendedRate(loan.loanType, Number(loan.amount));
+
+    const scheduleData = InterestCalculator.generateAmortizationSchedule(
+      loanId,
+      Number(loan.amount),
+      rate,
+      loan.termInMonths,
+      loan.disbursementDate || new Date()
+    );
+
+    return await this.createAmortizationSchedule(scheduleData);
+  }
+
+  async calculateEarlyPaymentSavings(loanId: number, paymentDate: Date, amount: number): Promise<{
+    interestSaved: number;
+    newBalance: number;
+    revisedSchedule: AmortizationSchedule[];
+  }> {
+    const loan = await this.getLoan(loanId);
+    const schedule = await this.getAmortizationSchedule(loanId);
+    
+    if (!loan || !schedule.length) {
+      throw new Error('Loan or schedule not found');
+    }
+
+    // Calculate current outstanding balance at payment date
+    const unpaidSchedule = schedule.filter(s => s.status === 'pending' && new Date(s.paymentDate) <= paymentDate);
+    const currentBalance = unpaidSchedule.reduce((total, payment) => total + Number(payment.outstandingBalance), 0);
+
+    // Calculate new balance after early payment
+    const newBalance = Math.max(0, currentBalance - amount);
+
+    // Calculate interest saved (simplified calculation)
+    const remainingSchedule = schedule.filter(s => s.status === 'pending' && new Date(s.paymentDate) > paymentDate);
+    const originalInterest = remainingSchedule.reduce((total, payment) => total + Number(payment.interestAmount), 0);
+
+    // If paying off completely, save all remaining interest
+    const interestSaved = newBalance === 0 ? originalInterest : originalInterest * (amount / currentBalance);
+
+    // Generate revised schedule if needed
+    let revisedSchedule: AmortizationSchedule[] = [];
+    if (newBalance > 0) {
+      const remainingTerm = remainingSchedule.length;
+      const interestRate = await this.getInterestRateByProduct(loan.loanType);
+      const rate = interestRate ? Number(interestRate.baseRate) : 12;
+
+      const newScheduleData = InterestCalculator.generateAmortizationSchedule(
+        loanId,
+        newBalance,
+        rate,
+        remainingTerm,
+        paymentDate
+      );
+
+      revisedSchedule = await this.createAmortizationSchedule(newScheduleData);
+    }
+
+    return {
+      interestSaved,
+      newBalance,
+      revisedSchedule
+    };
   }
 }
 

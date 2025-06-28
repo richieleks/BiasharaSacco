@@ -783,6 +783,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Interest rate management routes
+  app.post('/api/interest-rates', isAuthenticated, requirePermission('create', 'interest-rates'), async (req: any, res) => {
+    try {
+      const { productType, baseRate, compoundingFrequency, minimumAmount, maximumAmount, minimumTerm, maximumTerm } = req.body;
+      
+      const rate = await storage.createInterestRate({
+        productType,
+        baseRate,
+        compoundingFrequency,
+        minimumAmount,
+        maximumAmount,
+        minimumTerm,
+        maximumTerm,
+        isActive: true
+      });
+
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'create',
+        resource: 'interest_rate',
+        resourceId: rate.id.toString(),
+        details: `Created interest rate for ${productType} at ${baseRate}%`,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
+      res.json(rate);
+    } catch (error) {
+      console.error("Error creating interest rate:", error);
+      res.status(500).json({ message: "Failed to create interest rate" });
+    }
+  });
+
+  app.get('/api/interest-rates', isAuthenticated, requirePermission('read', 'interest-rates'), async (req: any, res) => {
+    try {
+      const rates = await storage.getActiveInterestRates();
+      res.json(rates);
+    } catch (error) {
+      console.error("Error fetching interest rates:", error);
+      res.status(500).json({ message: "Failed to fetch interest rates" });
+    }
+  });
+
+  app.get('/api/interest-rates/product/:productType', isAuthenticated, async (req: any, res) => {
+    try {
+      const { productType } = req.params;
+      const rate = await storage.getInterestRateByProduct(productType);
+      res.json(rate);
+    } catch (error) {
+      console.error("Error fetching interest rate:", error);
+      res.status(500).json({ message: "Failed to fetch interest rate" });
+    }
+  });
+
+  // Amortization schedule routes
+  app.get('/api/loans/:id/amortization', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const schedule = await storage.getAmortizationSchedule(parseInt(id));
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error fetching amortization schedule:", error);
+      res.status(500).json({ message: "Failed to fetch amortization schedule" });
+    }
+  });
+
+  app.post('/api/loans/:id/generate-amortization', isAuthenticated, requirePermission('create', 'amortization'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const schedule = await storage.generateLoanAmortization(parseInt(id));
+
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'create',
+        resource: 'amortization_schedule',
+        resourceId: id,
+        details: `Generated amortization schedule for loan ${id}`,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
+      res.json(schedule);
+    } catch (error) {
+      console.error("Error generating amortization schedule:", error);
+      res.status(500).json({ message: "Failed to generate amortization schedule" });
+    }
+  });
+
+  app.post('/api/loans/:id/calculate-interest', isAuthenticated, requirePermission('create', 'interest-calculations'), async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const result = await storage.calculateAndSaveInterest(parseInt(id));
+
+      await storage.createAuditLog({
+        userId: req.user.claims.sub,
+        action: 'create',
+        resource: 'interest_calculation',
+        resourceId: id,
+        details: `Calculated interest for loan ${id}: Monthly payment UGX ${result.monthlyPayment.toFixed(2)}`,
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error calculating interest:", error);
+      res.status(500).json({ message: "Failed to calculate interest" });
+    }
+  });
+
+  app.get('/api/loans/:id/interest-calculations', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const calculations = await storage.getInterestCalculations(parseInt(id));
+      res.json(calculations);
+    } catch (error) {
+      console.error("Error fetching interest calculations:", error);
+      res.status(500).json({ message: "Failed to fetch interest calculations" });
+    }
+  });
+
+  app.post('/api/loans/:id/early-payment-calculation', isAuthenticated, async (req: any, res) => {
+    try {
+      const { id } = req.params;
+      const { paymentDate, amount } = req.body;
+      
+      const result = await storage.calculateEarlyPaymentSavings(
+        parseInt(id), 
+        new Date(paymentDate), 
+        parseFloat(amount)
+      );
+
+      res.json(result);
+    } catch (error) {
+      console.error("Error calculating early payment savings:", error);
+      res.status(500).json({ message: "Failed to calculate early payment savings" });
+    }
+  });
+
+  app.get('/api/payments/overdue', isAuthenticated, requirePermission('read', 'payments'), async (req: any, res) => {
+    try {
+      const overduePayments = await storage.getOverduePayments();
+      res.json(overduePayments);
+    } catch (error) {
+      console.error("Error fetching overdue payments:", error);
+      res.status(500).json({ message: "Failed to fetch overdue payments" });
+    }
+  });
+
+  app.get('/api/payments/upcoming', isAuthenticated, requirePermission('read', 'payments'), async (req: any, res) => {
+    try {
+      const { days = 30 } = req.query;
+      const upcomingPayments = await storage.getUpcomingPayments(parseInt(days as string));
+      res.json(upcomingPayments);
+    } catch (error) {
+      console.error("Error fetching upcoming payments:", error);
+      res.status(500).json({ message: "Failed to fetch upcoming payments" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
