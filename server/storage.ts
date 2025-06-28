@@ -5,6 +5,7 @@ import {
   loans,
   transactions,
   guarantors,
+  auditLogs,
   type User,
   type UpsertUser,
   type Member,
@@ -93,6 +94,26 @@ export interface IStorage {
   getGuarantorsByMember(memberId: number): Promise<GuarantorWithDetails[]>;
   updateGuarantorStatus(id: number, status: string, comments?: string): Promise<Guarantor>;
   getPendingGuarantorRequests(memberId: number): Promise<GuarantorWithDetails[]>;
+
+  // Audit log operations
+  createAuditLog(log: {
+    userId: string;
+    memberId?: number;
+    action: string;
+    resource: string;
+    resourceId?: string;
+    details?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<void>;
+  getAuditLogs(filters?: {
+    userId?: string;
+    resource?: string;
+    action?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -832,6 +853,56 @@ export class DatabaseStorage implements IStorage {
         user: result.users || undefined,
       } : undefined,
       loan: result.loans || undefined,
+    }));
+  }
+
+  async createAuditLog(log: {
+    userId: string;
+    memberId?: number;
+    action: string;
+    resource: string;
+    resourceId?: string;
+    details?: string;
+    ipAddress?: string;
+    userAgent?: string;
+  }): Promise<void> {
+    await db.insert(auditLogs).values(log);
+  }
+
+  async getAuditLogs(filters?: {
+    userId?: string;
+    resource?: string;
+    action?: string;
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+  }): Promise<any[]> {
+    const conditions = [];
+    
+    if (filters?.userId) conditions.push(eq(auditLogs.userId, filters.userId));
+    if (filters?.resource) conditions.push(eq(auditLogs.resource, filters.resource));
+    if (filters?.action) conditions.push(eq(auditLogs.action, filters.action));
+    
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const limit = filters?.limit || 100;
+    
+    const results = await db
+      .select({
+        log: auditLogs,
+        user: users,
+        member: members,
+      })
+      .from(auditLogs)
+      .leftJoin(users, eq(auditLogs.userId, users.id))
+      .leftJoin(members, eq(auditLogs.memberId, members.id))
+      .where(whereClause)
+      .orderBy(desc(auditLogs.timestamp))
+      .limit(limit);
+
+    return results.map(r => ({
+      ...r.log,
+      user: r.user || undefined,
+      member: r.member || undefined,
     }));
   }
 }

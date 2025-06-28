@@ -258,6 +258,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update member role (admin only)
+  app.patch('/api/members/:id/role', isAuthenticated, requirePermission('update', 'system-settings'), async (req: any, res) => {
+    try {
+      const memberId = parseInt(req.params.id);
+      const { role } = req.body;
+      const userId = req.user?.claims?.sub;
+      
+      if (!['admin', 'manager', 'committee', 'teller', 'member'].includes(role)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+
+      const member = await storage.updateMember(memberId, { role });
+      
+      // Log the role change
+      await storage.createAuditLog({
+        userId,
+        memberId,
+        action: 'update',
+        resource: 'member',
+        resourceId: memberId.toString(),
+        details: `Changed role to ${role}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+      
+      res.json(member);
+    } catch (error) {
+      console.error("Error updating member role:", error);
+      res.status(500).json({ message: "Failed to update member role" });
+    }
+  });
+
   app.get('/api/members/:id', isAuthenticated, async (req, res) => {
     try {
       const member = await storage.getMember(parseInt(req.params.id));
@@ -698,6 +730,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error rejecting guarantor:", error);
       res.status(500).json({ message: "Failed to reject guarantor" });
+    }
+  });
+
+  // Audit logs endpoint (admin only)
+  app.get('/api/audit-logs', isAuthenticated, requirePermission('read', 'audit-logs'), async (req: any, res) => {
+    try {
+      const filters = {
+        userId: req.query.userId as string,
+        resource: req.query.resource as string,
+        action: req.query.action as string,
+        limit: req.query.limit ? parseInt(req.query.limit as string) : 100
+      };
+      
+      const logs = await storage.getAuditLogs(filters);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching audit logs:", error);
+      res.status(500).json({ message: "Failed to fetch audit logs" });
     }
   });
 

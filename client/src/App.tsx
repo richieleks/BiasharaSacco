@@ -15,6 +15,8 @@ import Loans from "@/pages/loans";
 import Transactions from "@/pages/transactions";
 import Reports from "@/pages/reports";
 import Guarantors from "@/pages/guarantors";
+import RoleManagement from "@/pages/role-management";
+import AuditLogs from "@/pages/audit-logs";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -86,6 +88,16 @@ function Router() {
             <Route path="/reports">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'reports' }}>
                 <Reports />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/role-management">
+              <ProtectedRoute requiredPermission={{ action: 'update', resource: 'system-settings' }}>
+                <RoleManagement />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/audit-logs">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'audit-logs' }}>
+                <AuditLogs />
               </ProtectedRoute>
             </Route>
             <Route component={NotFound} />

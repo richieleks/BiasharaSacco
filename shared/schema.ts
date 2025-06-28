@@ -230,6 +230,31 @@ export const guarantorsRelations = relations(guarantors, ({ one }) => ({
   }),
 }));
 
+// Audit logs table
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull(),
+  memberId: integer("member_id").references(() => members.id),
+  action: varchar("action").notNull(), // create, update, delete, approve, reject, login, logout
+  resource: varchar("resource").notNull(), // member, loan, savings, transaction, settings
+  resourceId: varchar("resource_id"),
+  details: text("details"),
+  ipAddress: varchar("ip_address"),
+  userAgent: text("user_agent"),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+});
+
+export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [auditLogs.userId],
+    references: [users.id],
+  }),
+  member: one(members, {
+    fields: [auditLogs.memberId],
+    references: [members.id],
+  }),
+}));
+
 // Insert schemas
 export const insertMemberSchema = createInsertSchema(members, {
   monthlySavings: z.string(),

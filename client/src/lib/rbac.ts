@@ -35,6 +35,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { action: 'approve', resource: 'guarantors' },
     { action: 'read', resource: 'system-settings' },
     { action: 'update', resource: 'system-settings' },
+    { action: 'read', resource: 'audit-logs' },
   ],
   
   manager: [
@@ -146,6 +147,8 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{name: string, path: strin
     { name: 'Transactions', path: '/transactions', icon: 'Receipt' },
     { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck' },
     { name: 'Reports', path: '/reports', icon: 'BarChart3' },
+    { name: 'Role Management', path: '/role-management', icon: 'UserCog' },
+    { name: 'Audit Logs', path: '/audit-logs', icon: 'Shield' },
     { name: 'Settings', path: '/settings', icon: 'Settings' },
   ],
   manager: [
