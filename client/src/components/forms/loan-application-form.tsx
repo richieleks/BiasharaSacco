@@ -47,11 +47,10 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
   const { user } = useAuth();
   const [showGuarantorForm, setShowGuarantorForm] = useState(false);
   const [currentLoanId, setCurrentLoanId] = useState<number | null>(null);
-  const [calculatedPayment, setCalculatedPayment] = useState<number | null>(null);
 
   const { data: currentMember } = useQuery({
-    queryKey: ['/api/members/by-user', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['/api/members/by-user', (user as any)?.id],
+    enabled: !!(user as any)?.id,
   });
 
   const form = useForm<LoanApplicationData>({
@@ -75,218 +74,446 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     },
   });
 
-  const loanApplicationMutation = useMutation({
-    mutationFn: async (data: any) => {
-      await apiRequest('POST', '/api/loans', data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/pending-approvals'] });
-      onSuccess();
-      toast({
-        title: "Success",
-        description: "Loan application submitted successfully!",
-      });
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to submit loan application. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleSubmit = (data: LoanApplicationData) => {
-    loanApplicationMutation.mutate({
-      memberId: parseInt(data.memberId),
-      loanType: data.loanType,
-      principalAmount: data.principalAmount,
-      interestRate: (parseFloat(data.interestRate) / 100).toString(), // Convert to decimal
-      termMonths: parseInt(data.termMonths),
-      purpose: data.purpose,
-    });
-  };
-
-  // Calculate monthly payment
   const calculateMonthlyPayment = () => {
-    const principal = parseFloat(form.watch("principalAmount") || "0");
-    const annualRate = parseFloat(form.watch("interestRate") || "0") / 100;
-    const termMonths = parseInt(form.watch("termMonths") || "0");
-
-    if (principal > 0 && annualRate > 0 && termMonths > 0) {
-      const monthlyRate = annualRate / 12;
-      const monthlyPayment = (principal * monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / 
-        (Math.pow(1 + monthlyRate, termMonths) - 1);
-      return monthlyPayment;
+    const principal = parseFloat(form.watch('principalAmount') || '0');
+    const rate = parseFloat(form.watch('interestRate') || '0') / 100 / 12;
+    const term = parseInt(form.watch('termMonths') || '0');
+    
+    if (principal > 0 && rate > 0 && term > 0) {
+      const payment = principal * (rate * Math.pow(1 + rate, term)) / (Math.pow(1 + rate, term) - 1);
+      return payment;
     }
     return 0;
   };
 
   const monthlyPayment = calculateMonthlyPayment();
 
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <FormField
-            control={form.control}
-            name="memberId"
-            render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel>Member *</FormLabel>
-                <Select onValueChange={field.onChange} value={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select member" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {members?.map((member: any) => (
-                      <SelectItem key={member.id} value={member.id.toString()}>
-                        {member.user?.firstName} {member.user?.lastName} ({member.memberNumber})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+  const mutation = useMutation({
+    mutationFn: async (data: LoanApplicationData) => {
+      if (!(currentMember as any)?.id) {
+        throw new Error("Member information not available");
+      }
 
-          <FormField
-            control={form.control}
-            name="loanType"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Loan Type *</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select loan type" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    <SelectItem value="personal">Personal Loan</SelectItem>
-                    <SelectItem value="business">Business Loan</SelectItem>
-                    <SelectItem value="emergency">Emergency Loan</SelectItem>
-                    <SelectItem value="asset">Asset Financing</SelectItem>
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      const principal = parseFloat(data.principalAmount);
+      const rate = parseFloat(data.interestRate) / 100 / 12;
+      const term = parseInt(data.termMonths);
+      const calculatedPayment = principal * (rate * Math.pow(1 + rate, term)) / (Math.pow(1 + rate, term) - 1);
 
-          <FormField
-            control={form.control}
-            name="principalAmount"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Principal Amount (KSh) *</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="0.00" min="1000" step="100" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+      const response = await apiRequest('POST', '/api/loans', {
+        ...data,
+        memberId: (currentMember as any).id,
+        termMonths: parseInt(data.termMonths),
+        monthlyPayment: calculatedPayment.toFixed(2),
+        outstandingBalance: data.principalAmount,
+      });
+      return response;
+    },
+    onSuccess: async (response) => {
+      const loan = await response.json();
+      toast({
+        title: "Success",
+        description: "Loan application created. Now add guarantors before submission.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
+      setCurrentLoanId(loan.id);
+      form.reset();
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to submit loan application",
+        variant: "destructive",
+      });
+    },
+  });
 
-          <FormField
-            control={form.control}
-            name="interestRate"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Annual Interest Rate (%) *</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="12.0" min="1" max="50" step="0.1" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+  const handleSubmit = (data: LoanApplicationData) => {
+    mutation.mutate(data);
+  };
 
-          <FormField
-            control={form.control}
-            name="termMonths"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Term (Months) *</FormLabel>
-                <FormControl>
-                  <Input type="number" placeholder="12" min="1" max="120" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="purpose"
-            render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel>Purpose of Loan *</FormLabel>
-                <FormControl>
-                  <Textarea placeholder="Describe the purpose and intended use of this loan" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {monthlyPayment > 0 && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <h4 className="font-medium text-blue-900 mb-2">Loan Summary</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-blue-700">Principal Amount:</span>
-                <span className="float-right font-medium">KSh {parseFloat(form.watch("principalAmount") || "0").toLocaleString()}</span>
-              </div>
-              <div>
-                <span className="text-blue-700">Monthly Payment:</span>
-                <span className="float-right font-medium">KSh {monthlyPayment.toLocaleString(undefined, { maximumFractionDigits: 2 })}</span>
-              </div>
-              <div>
-                <span className="text-blue-700">Total Interest:</span>
-                <span className="float-right font-medium">
-                  KSh {((monthlyPayment * parseInt(form.watch("termMonths") || "0")) - parseFloat(form.watch("principalAmount") || "0")).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </span>
-              </div>
-              <div>
-                <span className="text-blue-700">Total Repayment:</span>
-                <span className="float-right font-medium">
-                  KSh {(monthlyPayment * parseInt(form.watch("termMonths") || "0")).toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                </span>
-              </div>
+  if (currentLoanId) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Loan Application Created
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Your loan application has been created successfully. Now add guarantors to complete the application.
+            </p>
+            <GuarantorList loanId={currentLoanId} />
+            <div className="mt-6">
+              {!showGuarantorForm ? (
+                <Button onClick={() => setShowGuarantorForm(true)} className="w-full">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Guarantor
+                </Button>
+              ) : (
+                <GuarantorForm
+                  loanId={currentLoanId}
+                  onSuccess={() => {
+                    setShowGuarantorForm(false);
+                    queryClient.invalidateQueries({ queryKey: ['/api/guarantors/loan', currentLoanId] });
+                  }}
+                  onCancel={() => setShowGuarantorForm(false)}
+                />
+              )}
             </div>
-          </div>
-        )}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCurrentLoanId(null);
+                onSuccess();
+              }}
+              className="w-full mt-4"
+            >
+              Return to Loans
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
-        <div className="flex items-center space-x-4 pt-6 border-t border-slate-200">
-          <Button type="button" variant="outline" className="flex-1" onClick={onSuccess}>
-            Cancel
-          </Button>
-          <Button
-            type="submit"
-            disabled={loanApplicationMutation.isPending}
-            className="flex-1 sacco-gradient text-white hover:opacity-90"
-          >
-            {loanApplicationMutation.isPending ? "Submitting..." : "Submit Application"}
-          </Button>
-        </div>
-      </form>
-    </Form>
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-center">BIASHARA SACCO SOCIETY LTD</CardTitle>
+        <p className="text-center text-sm text-muted-foreground">LOAN APPLICATION FORM</p>
+      </CardHeader>
+      <CardContent>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            {/* Applicant Information */}
+            <div className="p-4 bg-muted rounded-lg">
+              <h3 className="font-medium text-sm mb-2">Applicant Information</h3>
+              {currentMember ? (
+                <div className="text-sm grid grid-cols-2 gap-4">
+                  <p><strong>Name:</strong> {(currentMember as any).user?.firstName} {(currentMember as any).user?.lastName}</p>
+                  <p><strong>Member Number:</strong> {(currentMember as any).memberNumber}</p>
+                  <p><strong>ID Number:</strong> {(currentMember as any).idNumber}</p>
+                  <p><strong>Phone:</strong> {(currentMember as any).phoneNumber}</p>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Loading member information...</p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Loan Details */}
+              <FormField
+                control={form.control}
+                name="principalAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount Applied For (KSh) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="loanType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Loan Type *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select loan type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="personal">Personal Loan</SelectItem>
+                        <SelectItem value="business">Business Loan</SelectItem>
+                        <SelectItem value="emergency">Emergency Loan</SelectItem>
+                        <SelectItem value="asset">Asset Financing</SelectItem>
+                        <SelectItem value="development">Development Loan</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="termMonths"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Repayment Period (Months) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="12"
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="interestRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Interest Rate (%) *</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="12.00"
+                        value={field.value}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Staff Information */}
+              <FormField
+                control={form.control}
+                name="averageNetPay"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Average Net Pay (for employees)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="staffAccountNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Staff Account Number</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter account number" 
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Next of Kin */}
+              <FormField
+                control={form.control}
+                name="nextOfKin"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Next of Kin (NOK)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter next of kin name" 
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="nextOfKinPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>NOK Phone Number</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Enter phone number" 
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="currentSavings"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current Savings Balance</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        placeholder="0.00"
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Purpose and Security */}
+            <FormField
+              control={form.control}
+              name="purpose"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Purpose of the Loan *</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Describe the purpose of the loan"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="securityOffered"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Security Offered (if any)</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Describe any security/collateral offered"
+                      value={field.value || ''}
+                      onChange={field.onChange}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Top-up Loan Section */}
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="isTopUp"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel>This is a top-up loan</FormLabel>
+                      <p className="text-sm text-muted-foreground">
+                        Check if this loan is to top up an existing loan
+                      </p>
+                    </div>
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('isTopUp') && (
+                <FormField
+                  control={form.control}
+                  name="previousLoanBalance"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Previous Loan Balance</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          value={field.value || ''}
+                          onChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            <FormField
+              control={form.control}
+              name="repaymentScheduleAttached"
+              render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>Repayment schedule attached</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                      Check if you have attached a repayment schedule
+                    </p>
+                  </div>
+                </FormItem>
+              )}
+            />
+
+            {/* Monthly Payment Display */}
+            {monthlyPayment > 0 && (
+              <Card className="border-primary">
+                <CardContent className="pt-6">
+                  <div className="text-center">
+                    <div className="text-sm font-medium text-muted-foreground">Monthly Repayment Amount</div>
+                    <div className="text-3xl font-bold text-primary">
+                      KSh {monthlyPayment.toLocaleString()}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <Button 
+              type="submit" 
+              disabled={mutation.isPending || !currentMember} 
+              className="w-full"
+            >
+              {mutation.isPending ? "Creating Application..." : "Create Loan Application"}
+            </Button>
+          </form>
+        </Form>
+      </CardContent>
+    </Card>
   );
 }

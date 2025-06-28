@@ -492,15 +492,18 @@ export class DatabaseStorage implements IStorage {
       .from(loans)
       .where(eq(loans.status, 'completed'));
 
-    const repaymentRate = totalLoans[0].count > 0 
-      ? ((paidLoans[0].count / (totalLoans[0].count + paidLoans[0].count)) * 100).toFixed(1)
+    const totalLoansCount = (totalLoans as any)?.[0]?.count || 0;
+    const paidLoansCount = (paidLoans as any)?.[0]?.count || 0;
+    
+    const repaymentRate = (totalLoansCount + paidLoansCount) > 0 
+      ? ((paidLoansCount / (totalLoansCount + paidLoansCount)) * 100).toFixed(1)
       : '100.0';
 
     return {
-      totalMembers: memberCount[0].count,
-      totalSavings: savingsTotal[0].total,
-      activeLoans: loansTotal[0].total,
-      repaymentRate,
+      totalMembers: (memberCount as any)?.[0]?.count || 0,
+      totalSavings: (savingsTotal as any)?.[0]?.total || '0',
+      activeLoans: (loansTotal as any)?.[0]?.total || '0',
+      repaymentRate: repaymentRate + '%',
     };
   }
 
