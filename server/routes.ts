@@ -711,7 +711,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/loans/:id/approve', isAuthenticated, async (req, res) => {
     try {
-      const loan = await storage.updateLoanStatus(parseInt(req.params.id), 'approved');
+      const loanId = parseInt(req.params.id);
+      
+      // Check if all guarantors have approved before allowing formal approval
+      const guarantors = await storage.getGuarantorsByLoan(loanId);
+      if (guarantors.length > 0) {
+        const allApproved = guarantors.every(g => g.status === 'approved');
+        const anyRejected = guarantors.some(g => g.status === 'rejected');
+        
+        if (anyRejected) {
+          return res.status(400).json({ 
+            message: "Cannot approve loan - one or more guarantors have rejected the request" 
+          });
+        }
+        
+        if (!allApproved) {
+          const pendingCount = guarantors.filter(g => g.status === 'pending').length;
+          return res.status(400).json({ 
+            message: `Cannot approve loan - ${pendingCount} guarantor(s) must approve before formal approval can begin`,
+            pendingGuarantors: pendingCount
+          });
+        }
+      }
+
+      const loan = await storage.updateLoanStatus(loanId, 'approved');
       res.json(loan);
     } catch (error) {
       console.error("Error approving loan:", error);
@@ -933,6 +956,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Bulk add guarantors to a loan
+  app.post('/api/loans/:loanId/guarantors', isAuthenticated, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const { guarantors: guarantorList } = req.body;
+
+      if (!Array.isArray(guarantorList) || guarantorList.length === 0) {
+        return res.status(400).json({ message: "At least one guarantor is required" });
+      }
+
+      // Validate loan exists and belongs to user or user has permission
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      const createdGuarantors = [];
+      for (const guarantorData of guarantorList) {
+        const guarantor = await storage.createGuarantor({
+          loanId,
+          guarantorMemberId: guarantorData.guarantorMemberId,
+          guaranteeAmount: guarantorData.guaranteeAmount,
+          status: 'pending'
+        });
+        createdGuarantors.push(guarantor);
+      }
+
+      res.status(201).json(createdGuarantors);
+    } catch (error) {
+      console.error("Error adding guarantors to loan:", error);
+      res.status(500).json({ message: "Failed to add guarantors to loan" });
+    }
+  });
+
   app.get('/api/guarantors/loan/:loanId', isAuthenticated, async (req, res) => {
     try {
       const loanId = parseInt(req.params.loanId);
@@ -941,6 +998,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching guarantors by loan:", error);
       res.status(500).json({ message: "Failed to fetch guarantors" });
+    }
+  });
+
+  // Guarantor approval endpoints
+  app.patch('/api/guarantors/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const guarantorId = parseInt(req.params.id);
+      const { comments } = req.body;
+      const userId = req.user?.claims?.sub;
+
+      // Get the guarantor and verify the current user is the guarantor
+      const guarantor = await storage.getGuarantor(guarantorId);
+      if (!guarantor) {
+        return res.status(404).json({ message: "Guarantor request not found" });
+      }
+
+      // Verify the current user is the guarantor member
+      const guarantorMember = await storage.getMemberByUserId(userId);
+      if (!guarantorMember || guarantorMember.id !== guarantor.guarantorMemberId) {
+        return res.status(403).json({ message: "You can only approve your own guarantor requests" });
+      }
+
+      if (guarantor.status !== 'pending') {
+        return res.status(400).json({ message: "Guarantor request has already been processed" });
+      }
+
+      const updatedGuarantor = await storage.updateGuarantorStatus(guarantorId, 'approved', comments);
+      
+      await storage.createAuditLog({
+        userId,
+        action: 'approve',
+        resource: 'guarantor',
+        resourceId: guarantorId.toString(),
+        details: `Approved guarantor request for UGX ${guarantor.guaranteeAmount}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
+      res.json(updatedGuarantor);
+    } catch (error) {
+      console.error("Error approving guarantor:", error);
+      res.status(500).json({ message: "Failed to approve guarantor request" });
+    }
+  });
+
+  app.patch('/api/guarantors/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const guarantorId = parseInt(req.params.id);
+      const { comments } = req.body;
+      const userId = req.user?.claims?.sub;
+
+      if (!comments?.trim()) {
+        return res.status(400).json({ message: "Comments are required for rejection" });
+      }
+
+      // Get the guarantor and verify the current user is the guarantor
+      const guarantor = await storage.getGuarantor(guarantorId);
+      if (!guarantor) {
+        return res.status(404).json({ message: "Guarantor request not found" });
+      }
+
+      // Verify the current user is the guarantor member
+      const guarantorMember = await storage.getMemberByUserId(userId);
+      if (!guarantorMember || guarantorMember.id !== guarantor.guarantorMemberId) {
+        return res.status(403).json({ message: "You can only reject your own guarantor requests" });
+      }
+
+      if (guarantor.status !== 'pending') {
+        return res.status(400).json({ message: "Guarantor request has already been processed" });
+      }
+
+      const updatedGuarantor = await storage.updateGuarantorStatus(guarantorId, 'rejected', comments);
+      
+      await storage.createAuditLog({
+        userId,
+        action: 'reject',
+        resource: 'guarantor',
+        resourceId: guarantorId.toString(),
+        details: `Rejected guarantor request: ${comments}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
+      res.json(updatedGuarantor);
+    } catch (error) {
+      console.error("Error rejecting guarantor:", error);
+      res.status(500).json({ message: "Failed to reject guarantor request" });
+    }
+  });
+
+  // Get pending guarantor requests for the current user
+  app.get('/api/guarantors/pending', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const member = await storage.getMemberByUserId(userId);
+      
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+
+      const pendingRequests = await storage.getPendingGuarantorRequests(member.id);
+      res.json(pendingRequests);
+    } catch (error) {
+      console.error("Error fetching pending guarantor requests:", error);
+      res.status(500).json({ message: "Failed to fetch pending guarantor requests" });
     }
   });
 

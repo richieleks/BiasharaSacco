@@ -17,6 +17,7 @@ import LoanApplication from "@/pages/loan-application";
 import Transactions from "@/pages/transactions";
 import Reports from "@/pages/reports";
 import Guarantors from "@/pages/guarantors";
+import GuarantorRequests from "@/pages/guarantor-requests";
 import RoleManagement from "@/pages/role-management";
 import AuditLogs from "@/pages/audit-logs";
 import RolesMatrixPage from "@/pages/roles-matrix";
@@ -91,6 +92,9 @@ function Router() {
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'guarantors' }}>
                 <Guarantors />
               </ProtectedRoute>
+            </Route>
+            <Route path="/guarantor-requests">
+              <GuarantorRequests />
             </Route>
             <Route path="/reports">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'reports' }}>

@@ -9,7 +9,7 @@ interface GuarantorListProps {
 }
 
 export default function GuarantorList({ loanId }: GuarantorListProps) {
-  const { data: guarantors = [], isLoading } = useQuery({
+  const { data: guarantors = [], isLoading } = useQuery<GuarantorWithDetails[]>({
     queryKey: ['/api/guarantors/loan', loanId],
   });
 
@@ -67,34 +67,65 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
             <div className="text-muted-foreground">No guarantors added yet</div>
           </div>
         ) : (
-          <div className="space-y-3">
-            {guarantors.map((guarantor: GuarantorWithDetails) => (
-              <div
-                key={guarantor.id}
-                className="flex items-center justify-between p-3 border rounded-lg"
-              >
-                <div className="flex-1">
-                  <div className="font-medium">
-                    {guarantor.guarantorMember?.user?.firstName} {guarantor.guarantorMember?.user?.lastName}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    Member: {guarantor.guarantorMember?.memberNumber} | 
-                    Guarantee: UGX {Number(guarantor.guaranteeAmount).toLocaleString()}
-                  </div>
-                  {guarantor.comments && (
-                    <div className="text-sm text-muted-foreground mt-1">
-                      Comment: {guarantor.comments}
-                    </div>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  {getStatusIcon(guarantor.status)}
-                  <Badge variant={getStatusVariant(guarantor.status)}>
-                    {guarantor.status}
-                  </Badge>
-                </div>
+          <div className="space-y-4">
+            {/* Summary */}
+            <div className="bg-slate-50 p-3 rounded-lg">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium">Approval Status</span>
+                <Badge variant={guarantors.every(g => g.status === 'approved') ? 'default' : 'secondary'}>
+                  {guarantors.filter(g => g.status === 'approved').length} of {guarantors.length} approved
+                </Badge>
               </div>
-            ))}
+              <div className="text-sm text-muted-foreground">
+                Total Guaranteed: UGX {guarantors.reduce((sum, g) => sum + Number(g.guaranteeAmount), 0).toLocaleString()}
+              </div>
+              {!guarantors.every(g => g.status === 'approved') && (
+                <div className="text-sm text-amber-600 mt-1">
+                  ⚠️ All guarantors must approve before loan can proceed to formal approval
+                </div>
+              )}
+            </div>
+
+            {/* Individual Guarantors */}
+            <div className="space-y-3">
+              {guarantors.map((guarantor: GuarantorWithDetails) => (
+                <div
+                  key={guarantor.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
+                  <div className="flex-1">
+                    <div className="font-medium">
+                      {guarantor.guarantorMember?.user?.firstName || 'N/A'} {guarantor.guarantorMember?.user?.lastName || ''}
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      Member: {guarantor.guarantorMember?.memberNumber} | 
+                      Guarantee: UGX {Number(guarantor.guaranteeAmount).toLocaleString()}
+                    </div>
+                    {guarantor.comments && (
+                      <div className="text-sm text-muted-foreground mt-1">
+                        Comment: {guarantor.comments}
+                      </div>
+                    )}
+                    {guarantor.approvedAt && (
+                      <div className="text-xs text-green-600 mt-1">
+                        Approved: {new Date(guarantor.approvedAt).toLocaleString()}
+                      </div>
+                    )}
+                    {guarantor.rejectedAt && (
+                      <div className="text-xs text-red-600 mt-1">
+                        Rejected: {new Date(guarantor.rejectedAt).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(guarantor.status)}
+                    <Badge variant={getStatusVariant(guarantor.status)}>
+                      {guarantor.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </CardContent>

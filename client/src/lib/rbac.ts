@@ -183,7 +183,7 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{name: string, path: strin
     { name: 'My Loans', path: '/my-loans', icon: 'CreditCard' },
     { name: 'My Savings', path: '/my-savings', icon: 'PiggyBank' },
     { name: 'My Transactions', path: '/my-transactions', icon: 'Receipt' },
-    { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck' },
+    { name: 'Guarantor Requests', path: '/guarantor-requests', icon: 'UserCheck' },
   ],
 };
 
