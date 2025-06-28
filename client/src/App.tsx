@@ -136,6 +136,21 @@ function Router() {
                 <MemberDetails />
               </ProtectedRoute>
             </Route>
+            <Route path="/my-loans">
+              <ProtectedRoute>
+                <Loans />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/my-savings">
+              <ProtectedRoute>
+                <Savings />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/my-transactions">
+              <ProtectedRoute>
+                <Transactions />
+              </ProtectedRoute>
+            </Route>
             <Route component={NotFound} />
           </Switch>
         </main>

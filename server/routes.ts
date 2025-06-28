@@ -775,6 +775,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Personal data endpoints for member dashboard
+  app.get('/api/loans/my-loans', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const member = await storage.getMemberByUserId(userId);
+      if (!member) {
+        return res.status(404).json({ message: "Member record not found" });
+      }
+      const loans = await storage.getLoansByMember(member.id);
+      res.json(loans);
+    } catch (error) {
+      console.error("Error fetching personal loans:", error);
+      res.status(500).json({ message: "Failed to fetch personal loans" });
+    }
+  });
+
+  app.get('/api/savings/my-savings', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const member = await storage.getMemberByUserId(userId);
+      if (!member) {
+        return res.status(404).json({ message: "Member record not found" });
+      }
+      const savingsAccounts = await storage.getSavingsAccountsByMember(member.id);
+      res.json(savingsAccounts);
+    } catch (error) {
+      console.error("Error fetching personal savings:", error);
+      res.status(500).json({ message: "Failed to fetch personal savings" });
+    }
+  });
+
+  app.get('/api/transactions/my-transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      const member = await storage.getMemberByUserId(userId);
+      if (!member) {
+        return res.status(404).json({ message: "Member record not found" });
+      }
+      const transactions = await storage.getTransactionsByMember(member.id);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching personal transactions:", error);
+      res.status(500).json({ message: "Failed to fetch personal transactions" });
+    }
+  });
+
   // Savings account routes
   app.get('/api/savings-accounts', isAuthenticated, async (req: AuthRequest, res) => {
     try {

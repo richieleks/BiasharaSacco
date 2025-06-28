@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -13,6 +14,8 @@ import WithdrawalForm from "@/components/forms/withdrawal-form";
 import { Search, Plus, ArrowUp, ArrowDown, Wallet, PiggyBank } from "lucide-react";
 
 export default function Savings() {
+  const [location] = useLocation();
+  const isPersonalView = location === '/my-savings';
   const [searchQuery, setSearchQuery] = useState("");
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
@@ -35,7 +38,7 @@ export default function Savings() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: savingsAccounts, isLoading: accountsLoading, error } = useQuery<any[]>({
-    queryKey: ['/api/savings-accounts'],
+    queryKey: isPersonalView ? ['/api/savings/my-savings'] : ['/api/savings-accounts'],
     enabled: isAuthenticated,
   });
 
@@ -75,40 +78,49 @@ export default function Savings() {
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Savings Accounts</h2>
-            <p className="text-slate-600 mt-1">Manage member savings accounts and transactions</p>
+            <h2 className="text-2xl font-semibold text-slate-900">
+              {isPersonalView ? 'My Savings' : 'Savings Accounts'}
+            </h2>
+            <p className="text-slate-600 mt-1">
+              {isPersonalView 
+                ? 'View your savings accounts and balance history' 
+                : 'Manage member savings accounts and transactions'
+              }
+            </p>
           </div>
-          <div className="mt-4 sm:mt-0 flex space-x-3">
-            <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
-              <DialogTrigger asChild>
-                <Button className="sacco-success text-white hover:opacity-90">
-                  <ArrowUp className="w-4 h-4 mr-2" />
-                  Record Deposit
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Record Deposit</DialogTitle>
-                </DialogHeader>
-                <DepositForm onSuccess={() => setIsDepositModalOpen(false)} />
-              </DialogContent>
-            </Dialog>
+          {!isPersonalView && (
+            <div className="mt-4 sm:mt-0 flex space-x-3">
+              <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
+                <DialogTrigger asChild>
+                  <Button className="sacco-success text-white hover:opacity-90">
+                    <ArrowUp className="w-4 h-4 mr-2" />
+                    Record Deposit
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Record Deposit</DialogTitle>
+                  </DialogHeader>
+                  <DepositForm onSuccess={() => setIsDepositModalOpen(false)} />
+                </DialogContent>
+              </Dialog>
 
-            <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
-              <DialogTrigger asChild>
-                <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
-                  <ArrowDown className="w-4 h-4 mr-2" />
-                  Withdrawal Request
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Process Withdrawal</DialogTitle>
-                </DialogHeader>
-                <WithdrawalForm onSuccess={() => setIsWithdrawModalOpen(false)} />
-              </DialogContent>
-            </Dialog>
-          </div>
+              <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
+                    <ArrowDown className="w-4 h-4 mr-2" />
+                    Withdrawal Request
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Process Withdrawal</DialogTitle>
+                  </DialogHeader>
+                  <WithdrawalForm onSuccess={() => setIsWithdrawModalOpen(false)} />
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
         </div>
       </div>
 

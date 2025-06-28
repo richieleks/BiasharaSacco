@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -13,6 +14,8 @@ import LoanApplicationForm from "@/components/forms/loan-application-form";
 import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign } from "lucide-react";
 
 export default function Loans() {
+  const [location] = useLocation();
+  const isPersonalView = location === '/my-loans';
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -33,7 +36,7 @@ export default function Loans() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: pendingLoans, isLoading: pendingLoading } = useQuery<any[]>({
-    queryKey: ['/api/loans/pending'],
+    queryKey: isPersonalView ? ['/api/loans/my-loans'] : ['/api/loans/pending'],
     enabled: isAuthenticated,
   });
 
@@ -162,14 +165,21 @@ export default function Loans() {
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Loan Management</h2>
-            <p className="text-slate-600 mt-1">Process loan applications and manage disbursements</p>
+            <h2 className="text-2xl font-semibold text-slate-900">
+              {isPersonalView ? 'My Loans' : 'Loan Management'}
+            </h2>
+            <p className="text-slate-600 mt-1">
+              {isPersonalView 
+                ? 'View your loan applications and payment history' 
+                : 'Process loan applications and manage disbursements'
+              }
+            </p>
           </div>
           <Dialog open={isApplicationModalOpen} onOpenChange={setIsApplicationModalOpen}>
             <DialogTrigger asChild>
               <Button className="sacco-gradient text-white hover:opacity-90 mt-4 sm:mt-0">
                 <Plus className="w-4 h-4 mr-2" />
-                New Loan Application
+                {isPersonalView ? 'Apply for Loan' : 'New Loan Application'}
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">

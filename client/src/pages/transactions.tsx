@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -13,6 +14,8 @@ import { Search, ArrowUp, ArrowDown, DollarSign, CreditCard, CheckCircle, Clock,
 import type { TransactionWithDetails } from "@shared/schema";
 
 export default function Transactions() {
+  const [location] = useLocation();
+  const isPersonalView = location === '/my-transactions';
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -33,7 +36,7 @@ export default function Transactions() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: transactions, isLoading: transactionsLoading, error } = useQuery<any[]>({
-    queryKey: ['/api/transactions', { limit: 50 }],
+    queryKey: isPersonalView ? ['/api/transactions/my-transactions'] : ['/api/transactions', { limit: 50 }],
     enabled: isAuthenticated,
   });
 
@@ -157,8 +160,15 @@ export default function Transactions() {
       <div className="mb-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Transactions</h2>
-            <p className="text-slate-600 mt-1">View and manage all SACCO transactions</p>
+            <h2 className="text-2xl font-semibold text-slate-900">
+              {isPersonalView ? 'My Transactions' : 'Transactions'}
+            </h2>
+            <p className="text-slate-600 mt-1">
+              {isPersonalView 
+                ? 'View your transaction history and account activity' 
+                : 'View and manage all SACCO transactions'
+              }
+            </p>
           </div>
         </div>
       </div>
@@ -206,34 +216,36 @@ export default function Transactions() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Member</TableHead>
+                    {!isPersonalView && <TableHead>Member</TableHead>}
                     <TableHead>Type</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Reference</TableHead>
                     <TableHead>Date</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
+                    {!isPersonalView && <TableHead>Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredTransactions.map((transaction: TransactionWithDetails) => (
                     <TableRow key={transaction.id}>
-                      <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
-                            <span className="text-slate-600 text-sm font-medium">
-                              {transaction.member?.user?.firstName?.charAt(0)}
-                              {transaction.member?.user?.lastName?.charAt(0)}
-                            </span>
+                      {!isPersonalView && (
+                        <TableCell>
+                          <div className="flex items-center space-x-3">
+                            <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
+                              <span className="text-slate-600 text-sm font-medium">
+                                {transaction.member?.user?.firstName?.charAt(0)}
+                                {transaction.member?.user?.lastName?.charAt(0)}
+                              </span>
+                            </div>
+                            <div>
+                              <p className="font-medium text-slate-900">
+                                {transaction.member?.user?.firstName} {transaction.member?.user?.lastName}
+                              </p>
+                              <p className="text-sm text-slate-500">{transaction.member?.memberNumber}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-slate-900">
-                              {transaction.member?.user?.firstName} {transaction.member?.user?.lastName}
-                            </p>
-                            <p className="text-sm text-slate-500">{transaction.member?.memberNumber}</p>
-                          </div>
-                        </div>
-                      </TableCell>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           {getTransactionIcon(transaction.transactionType)}
@@ -259,19 +271,21 @@ export default function Transactions() {
                           </Badge>
                         </div>
                       </TableCell>
-                      <TableCell>
-                        {transaction.status === 'pending' && (
-                          <Button
-                            size="sm"
-                            onClick={() => approveTransactionMutation.mutate(transaction.id)}
-                            disabled={approveTransactionMutation.isPending}
-                            className="sacco-success text-white hover:opacity-90"
-                          >
-                            <CheckCircle className="w-3 h-3 mr-1" />
-                            Approve
-                          </Button>
-                        )}
-                      </TableCell>
+                      {!isPersonalView && (
+                        <TableCell>
+                          {transaction.status === 'pending' && (
+                            <Button
+                              size="sm"
+                              onClick={() => approveTransactionMutation.mutate(transaction.id)}
+                              disabled={approveTransactionMutation.isPending}
+                              className="sacco-success text-white hover:opacity-90"
+                            >
+                              <CheckCircle className="w-3 h-3 mr-1" />
+                              Approve
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -282,7 +296,12 @@ export default function Transactions() {
               <DollarSign className="w-12 h-12 text-slate-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-slate-900 mb-2">No transactions found</h3>
               <p className="text-slate-500">
-                {searchQuery ? "No transactions match your search criteria." : "Transactions will appear here as they are processed."}
+                {searchQuery 
+                  ? "No transactions match your search criteria." 
+                  : isPersonalView 
+                    ? "Your transaction history will appear here once you start making deposits, withdrawals, or loan payments."
+                    : "Transactions will appear here as they are processed."
+                }
               </p>
             </div>
           )}
