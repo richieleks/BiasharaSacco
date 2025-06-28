@@ -17,8 +17,8 @@ export function useWebSocket() {
 
     // Ensure we have a valid host
     const host = window.location.host;
-    if (!host || host === 'undefined') {
-      console.warn("Invalid host for WebSocket connection");
+    if (!host || host === 'undefined' || host.includes('undefined')) {
+      console.warn("Invalid host for WebSocket connection:", host);
       return;
     }
 
@@ -84,6 +84,7 @@ export function useWebSocket() {
 
       ws.onerror = (error) => {
         console.error("WebSocket error:", error);
+        console.error("WebSocket URL was:", wsUrl);
         setIsConnected(false);
       };
     } catch (error) {
