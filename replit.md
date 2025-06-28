@@ -131,6 +131,18 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Guarantor tracking and status management
   - Integration with loan application process
   - Dedicated guarantor management page
+- January 17, 2025. Redesigned loan application form based on official SACCO document:
+  - Added comprehensive loan fields including staff details and next of kin
+  - Implemented top-up loan functionality with previous balance tracking
+  - Added security/collateral description fields
+  - Automatic monthly payment calculation
+  - Professional form layout matching Biashara SACCO document structure
+- January 17, 2025. Fixed system issues:
+  - Resolved nested anchor tag warnings in navigation components
+  - Fixed dashboard metrics database queries with proper null handling
+  - Corrected member fetching API to handle undefined user IDs
+  - Added proper Dialog descriptions for accessibility compliance
+  - Implemented automatic member creation for authenticated users
 
 ## User Preferences
 

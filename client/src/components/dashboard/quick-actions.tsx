@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import MemberForm from "@/components/forms/member-form";
 import DepositForm from "@/components/forms/deposit-form";
 import LoanApplicationForm from "@/components/forms/loan-application-form";
@@ -109,6 +109,9 @@ export default function QuickActions() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add New Member</DialogTitle>
+            <DialogDescription>
+              Fill in the member details to register a new member in the SACCO system.
+            </DialogDescription>
           </DialogHeader>
           <MemberForm onSubmit={handleAddMember} isLoading={addMemberMutation.isPending} />
         </DialogContent>
@@ -118,6 +121,9 @@ export default function QuickActions() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Record Deposit</DialogTitle>
+            <DialogDescription>
+              Record a new deposit transaction for a member's savings account.
+            </DialogDescription>
           </DialogHeader>
           <DepositForm onSuccess={() => setIsDepositModalOpen(false)} />
         </DialogContent>
@@ -127,6 +133,9 @@ export default function QuickActions() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>New Loan Application</DialogTitle>
+            <DialogDescription>
+              Complete the loan application form to apply for a loan. You'll need to add guarantors after submission.
+            </DialogDescription>
           </DialogHeader>
           <LoanApplicationForm onSuccess={() => setIsLoanModalOpen(false)} />
         </DialogContent>

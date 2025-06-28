@@ -6,6 +6,18 @@ import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, inser
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Type augmentation for Express Request with user claims
+  type AuthRequest = Express.Request & {
+    user?: {
+      claims?: {
+        sub?: string;
+        email?: string;
+        first_name?: string;
+        last_name?: string;
+        profile_image_url?: string;
+      };
+    };
+  };
   // Auth middleware
   await setupAuth(app);
 
@@ -114,10 +126,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/members/by-user/:userId', isAuthenticated, async (req, res) => {
+  app.get('/api/members/by-user/:userId', isAuthenticated, async (req: any, res) => {
     try {
-      const member = await storage.getMemberByUserId(req.params.userId);
+      let userId = req.params.userId;
+      
+      // Handle "undefined" string from client
+      if (userId === 'undefined' || !userId) {
+        userId = req.user?.claims?.sub;
+      }
+      
+      if (!userId) {
+        return res.status(400).json({ message: "User ID not provided" });
+      }
+      
+      const member = await storage.getMemberByUserId(userId);
       if (!member) {
+        // Create member for authenticated user if doesn't exist
+        if (userId === req.user?.claims?.sub) {
+          // First create/update the user
+          await storage.upsertUser({
+            id: userId,
+            email: req.user.claims.email,
+            firstName: req.user.claims.first_name,
+            lastName: req.user.claims.last_name,
+            profileImageUrl: req.user.claims.profile_image_url,
+          });
+          
+          const newMember = await storage.createMember({
+            userId: userId,
+            memberNumber: `M${Date.now()}`,
+            phoneNumber: '',
+            idNumber: '',
+            status: 'active',
+          });
+          return res.json(newMember);
+        }
         return res.status(404).json({ message: "Member not found" });
       }
       res.json(member);

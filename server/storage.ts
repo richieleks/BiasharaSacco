@@ -241,7 +241,7 @@ export class DatabaseStorage implements IStorage {
     const account = await this.getSavingsAccount(id);
     if (!account) throw new Error('Account not found');
 
-    const currentBalance = parseFloat(account.balance);
+    const currentBalance = parseFloat(account.balance || '0');
     const changeAmount = parseFloat(amount);
     const newBalance = operation === 'add' 
       ? currentBalance + changeAmount 

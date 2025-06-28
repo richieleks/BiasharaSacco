@@ -40,9 +40,9 @@ export default function MobileNav() {
           const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
           return (
             <Link key={item.name} href={item.href}>
-              <a
+              <div
                 className={cn(
-                  "flex flex-col items-center py-2 px-3 rounded-lg transition-colors",
+                  "flex flex-col items-center py-2 px-3 rounded-lg transition-colors cursor-pointer",
                   isActive
                     ? "text-primary-600"
                     : "text-slate-400 hover:text-slate-600"
@@ -50,7 +50,7 @@ export default function MobileNav() {
               >
                 <item.icon className="h-5 w-5" />
                 <span className="text-xs font-medium mt-1">{item.name}</span>
-              </a>
+              </div>
             </Link>
           );
         })}
