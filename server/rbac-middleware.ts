@@ -15,7 +15,7 @@ export interface AuthRequest extends Request {
   };
   member?: {
     id: number;
-    role: UserRole;
+    roles: UserRole[]; // Changed to array of roles
     userId: string;
     memberNumber: string;
     status: string;
@@ -36,19 +36,25 @@ export function requirePermission(action: string, resource: string) {
         return res.status(403).json({ message: "Member profile not found" });
       }
 
+      // Get all roles for this member
+      const memberRoles = await storage.getMemberRoles(member.id);
+      const roles = memberRoles.length > 0 ? memberRoles as UserRole[] : ['member' as UserRole];
+
       req.member = {
         id: member.id,
-        role: (member.role as UserRole) || 'member',
+        roles: roles,
         userId: member.userId!,
         memberNumber: member.memberNumber,
         status: member.status!,
       };
 
-      // Check if user has required permission
-      if (!hasPermission(req.member.role, action, resource)) {
+      // Check if any of the user's roles has the required permission
+      const hasRequiredPermission = roles.some(role => hasPermission(role, action, resource));
+      
+      if (!hasRequiredPermission) {
         return res.status(403).json({ 
           message: `Access denied. Required permission: ${action} ${resource}`,
-          userRole: req.member.role 
+          userRoles: roles 
         });
       }
 
@@ -73,9 +79,13 @@ export function filterDataByRole() {
         return res.status(403).json({ message: "Member profile not found" });
       }
 
+      // Get all roles for this member
+      const memberRoles = await storage.getMemberRoles(member.id);
+      const roles = memberRoles.length > 0 ? memberRoles as UserRole[] : ['member' as UserRole];
+
       req.member = {
         id: member.id,
-        role: (member.role as UserRole) || 'member',
+        roles: roles,
         userId: member.userId!,
         memberNumber: member.memberNumber,
         status: member.status!,
@@ -174,50 +184,32 @@ function hasPermission(userRole: UserRole, action: string, resource: string): bo
 }
 
 // Data filtering functions for different roles
-export function filterMembersByRole(members: any[], userRole: UserRole, userId: string) {
-  switch (userRole) {
-    case 'member':
-      // Members can only see their own data
-      return members.filter(member => member.userId === userId);
-    case 'teller':
-    case 'committee':
-    case 'manager':
-    case 'admin':
-      // Staff can see all members
-      return members;
-    default:
-      return [];
+export function filterMembersByRole(members: any[], userRoles: UserRole[], userId: string) {
+  // If user has admin, manager, committee, or teller role, they can see all members
+  if (userRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role))) {
+    return members;
   }
+  
+  // Otherwise, they can only see their own data
+  return members.filter(member => member.userId === userId);
 }
 
-export function filterLoansByRole(loans: any[], userRole: UserRole, userId: string) {
-  switch (userRole) {
-    case 'member':
-      // Members can only see their own loans
-      return loans.filter(loan => loan.member?.userId === userId);
-    case 'teller':
-    case 'committee':
-    case 'manager':
-    case 'admin':
-      // Staff can see all loans
-      return loans;
-    default:
-      return [];
+export function filterLoansByRole(loans: any[], userRoles: UserRole[], userId: string) {
+  // If user has admin, manager, committee, or teller role, they can see all loans
+  if (userRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role))) {
+    return loans;
   }
+  
+  // Otherwise, they can only see their own loans
+  return loans.filter(loan => loan.member?.userId === userId);
 }
 
-export function filterTransactionsByRole(transactions: any[], userRole: UserRole, userId: string) {
-  switch (userRole) {
-    case 'member':
-      // Members can only see their own transactions
-      return transactions.filter(transaction => transaction.member?.userId === userId);
-    case 'teller':
-    case 'committee':
-    case 'manager':
-    case 'admin':
-      // Staff can see all transactions
-      return transactions;
-    default:
-      return [];
+export function filterTransactionsByRole(transactions: any[], userRoles: UserRole[], userId: string) {
+  // If user has admin, manager, committee, or teller role, they can see all transactions
+  if (userRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role))) {
+    return transactions;
   }
+  
+  // Otherwise, they can only see their own transactions
+  return transactions.filter(transaction => transaction.member?.userId === userId);
 }

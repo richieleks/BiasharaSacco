@@ -10,6 +10,7 @@ import {
   integer,
   boolean,
   serial,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -230,6 +231,15 @@ export const guarantorsRelations = relations(guarantors, ({ one }) => ({
   }),
 }));
 
+// Member roles junction table for multiple roles per member
+export const memberRoles = pgTable("member_roles", {
+  id: serial("id").primaryKey(),
+  memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+  role: varchar("role").notNull(), // admin, manager, committee, teller, member
+  assignedBy: varchar("assigned_by").references(() => users.id),
+  assignedAt: timestamp("assigned_at").defaultNow().notNull(),
+});
+
 // Audit logs table
 export const auditLogs = pgTable("audit_logs", {
   id: serial("id").primaryKey(),
@@ -243,6 +253,17 @@ export const auditLogs = pgTable("audit_logs", {
   userAgent: text("user_agent"),
   timestamp: timestamp("timestamp").defaultNow().notNull(),
 });
+
+export const memberRolesRelations = relations(memberRoles, ({ one }) => ({
+  member: one(members, {
+    fields: [memberRoles.memberId],
+    references: [members.id],
+  }),
+  assignedByUser: one(users, {
+    fields: [memberRoles.assignedBy],
+    references: [users.id],
+  }),
+}));
 
 export const auditLogsRelations = relations(auditLogs, ({ one }) => ({
   user: one(users, {
@@ -308,6 +329,7 @@ export type MemberWithDetails = Member & {
   user?: User;
   savingsAccounts?: SavingsAccount[];
   loans?: Loan[];
+  roles?: string[]; // Array of roles from member_roles table
 };
 
 export type TransactionWithDetails = Transaction & {

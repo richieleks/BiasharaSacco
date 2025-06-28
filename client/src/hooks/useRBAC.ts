@@ -11,27 +11,38 @@ import {
 export function useRBAC() {
   const { user, isLoading } = useAuth();
   
-  // Get user role from member data or default to 'member'
-  const userRole: UserRole = (user?.member?.role as UserRole) || 'member';
+  // Get user roles from member data - now supports multiple roles
+  const userRoles: UserRole[] = (user?.member?.roles as UserRole[]) || ['member'];
+  
+  // Get highest role for backward compatibility
+  const getHighestRole = (roles: UserRole[]): UserRole => {
+    const hierarchy = { member: 1, teller: 2, committee: 3, manager: 4, admin: 5 };
+    return roles.reduce((highest, current) => 
+      hierarchy[current] > hierarchy[highest] ? current : highest
+    , 'member' as UserRole);
+  };
+  
+  const userRole = getHighestRole(userRoles);
   
   return {
-    userRole,
+    userRole, // Keep for backward compatibility
+    userRoles, // New: array of all user roles
     isLoading,
     
-    // Permission checking functions
+    // Permission checking functions - now check all roles
     hasPermission: (action: string, resource: string) => 
-      hasPermission(userRole, action, resource),
+      userRoles.some(role => hasPermission(role, action, resource)),
     
     canAccessDashboardComponent: (component: string) => 
-      canAccessDashboardComponent(userRole, component),
+      userRoles.some(role => canAccessDashboardComponent(role, component)),
     
     canAccessRoute: (route: string) => 
-      canAccessRoute(userRole, route),
+      userRoles.some(role => canAccessRoute(role, route)),
     
     canApproveAtStage: (stage: string) => 
-      canApproveAtStage(userRole, stage),
+      userRoles.some(role => canApproveAtStage(role, stage)),
     
-    // Navigation and UI helpers
+    // Navigation and UI helpers - show items for highest role
     getNavigationItems: () => getNavigationItems(userRole),
     
     // Role-based content filtering
@@ -40,12 +51,12 @@ export function useRBAC() {
     },
     
     // Check if user has any of the specified roles
-    hasAnyRole: (roles: UserRole[]) => roles.includes(userRole),
+    hasAnyRole: (roles: UserRole[]) => roles.some(role => userRoles.includes(role)),
     
     // Check if user has specific role
-    hasRole: (role: UserRole) => userRole === role,
+    hasRole: (role: UserRole) => userRoles.includes(role),
     
-    // Get user's role level for comparison
+    // Get user's highest role level for comparison
     isHigherThan: (role: UserRole) => {
       const hierarchy = { member: 1, teller: 2, committee: 3, manager: 4, admin: 5 };
       return hierarchy[userRole] > hierarchy[role];

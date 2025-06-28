@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { useRBAC } from "@/hooks/useRBAC";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,9 +20,15 @@ const roles = [
   { value: "member", label: "Member", color: "bg-gray-100 text-gray-800" },
 ];
 
+interface MemberRole {
+  memberId: number;
+  roles: string[];
+}
+
 export default function RoleManagement() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleChanges, setRoleChanges] = useState<Record<number, string>>({});
+  const [roleChanges, setRoleChanges] = useState<Record<number, string[]>>({});
+  const [memberRoles, setMemberRoles] = useState<Record<number, string[]>>({});
   const { toast } = useToast();
   const { hasPermission, userRole } = useRBAC();
 
@@ -47,9 +53,48 @@ export default function RoleManagement() {
     queryKey: ['/api/members', searchQuery],
   });
 
+  // Fetch roles for all members
+  const { data: memberRolesData } = useQuery({
+    queryKey: ['/api/members/roles', members],
+    queryFn: async () => {
+      if (!members || members.length === 0) return {};
+      
+      const rolesMap: Record<number, string[]> = {};
+      
+      // Fetch roles for each member
+      await Promise.all(
+        members.map(async (member) => {
+          try {
+            const response = await fetch(`/api/members/${member.id}/roles`);
+            if (response.ok) {
+              const roles = await response.json();
+              rolesMap[member.id] = roles;
+            } else {
+              // Default to single role from member data if available
+              rolesMap[member.id] = member.role ? [member.role] : ['member'];
+            }
+          } catch (error) {
+            console.error(`Failed to fetch roles for member ${member.id}:`, error);
+            rolesMap[member.id] = member.role ? [member.role] : ['member'];
+          }
+        })
+      );
+      
+      return rolesMap;
+    },
+    enabled: !!members && members.length > 0,
+  });
+
+  // Update local state when data changes
+  useEffect(() => {
+    if (memberRolesData) {
+      setMemberRoles(memberRolesData);
+    }
+  }, [memberRolesData]);
+
   const updateRoleMutation = useMutation({
-    mutationFn: async ({ memberId, role }: { memberId: number; role: string }) => {
-      await apiRequest('PATCH', `/api/members/${memberId}/role`, { role });
+    mutationFn: async ({ memberId, roles }: { memberId: number; roles: string[] }) => {
+      await apiRequest('PATCH', `/api/members/${memberId}/roles`, { roles });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
@@ -68,16 +113,30 @@ export default function RoleManagement() {
     },
   });
 
-  const handleRoleChange = (memberId: number, newRole: string) => {
+  const handleRoleToggle = (memberId: number, role: string, checked: boolean) => {
+    const currentRoles = roleChanges[memberId] || memberRoles[memberId] || [];
+    let newRoles: string[];
+    
+    if (checked) {
+      newRoles = [...currentRoles, role];
+    } else {
+      newRoles = currentRoles.filter(r => r !== role);
+    }
+    
+    // Ensure at least one role is selected
+    if (newRoles.length === 0) {
+      newRoles = ['member'];
+    }
+    
     setRoleChanges(prev => ({
       ...prev,
-      [memberId]: newRole
+      [memberId]: newRoles
     }));
   };
 
   const saveChanges = () => {
-    Object.entries(roleChanges).forEach(([memberId, role]) => {
-      updateRoleMutation.mutate({ memberId: parseInt(memberId), role });
+    Object.entries(roleChanges).forEach(([memberId, roles]) => {
+      updateRoleMutation.mutate({ memberId: parseInt(memberId), roles });
     });
   };
 
@@ -123,7 +182,7 @@ export default function RoleManagement() {
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         {roles.map(role => {
-          const count = (members as MemberWithDetails[]).filter((m) => m.role === role.value).length;
+          const count = Object.values(memberRoles).filter(roles => roles.includes(role.value)).length;
           return (
             <Card key={role.value}>
               <CardHeader className="pb-3">
@@ -169,8 +228,8 @@ export default function RoleManagement() {
                   <TableHead>Member</TableHead>
                   <TableHead>Member Number</TableHead>
                   <TableHead>Phone</TableHead>
-                  <TableHead>Current Role</TableHead>
-                  <TableHead>New Role</TableHead>
+                  <TableHead>Current Roles</TableHead>
+                  <TableHead>Assign Roles</TableHead>
                   <TableHead>Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -189,9 +248,8 @@ export default function RoleManagement() {
                   </TableRow>
                 ) : (
                   filteredMembers.map((member: MemberWithDetails) => {
-                    const currentRole = member.role || 'member';
-                    const newRole = roleChanges[member.id] || currentRole;
-                    const roleInfo = getRoleInfo(newRole);
+                    const currentRoles = memberRoles[member.id] || ['member'];
+                    const newRoles = roleChanges[member.id] || currentRoles;
                     const hasChange = roleChanges[member.id] !== undefined;
                     
                     return (
@@ -207,29 +265,37 @@ export default function RoleManagement() {
                         <TableCell>{member.memberNumber}</TableCell>
                         <TableCell>{member.phoneNumber}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">
-                            {getRoleInfo(currentRole).label}
-                          </Badge>
+                          <div className="flex flex-wrap gap-1">
+                            {currentRoles.map(role => {
+                              const roleInfo = getRoleInfo(role);
+                              return (
+                                <Badge key={role} variant="outline" className={roleInfo.color}>
+                                  {roleInfo.label}
+                                </Badge>
+                              );
+                            })}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <Select
-                            value={newRole}
-                            onValueChange={(value) => handleRoleChange(member.id, value)}
-                          >
-                            <SelectTrigger className="w-[180px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {roles.map(role => (
-                                <SelectItem key={role.value} value={role.value}>
-                                  <div className="flex items-center gap-2">
-                                    <UserCog className="h-4 w-4" />
-                                    {role.label}
-                                  </div>
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="space-y-2">
+                            {roles.map(role => (
+                              <div key={role.value} className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`${member.id}-${role.value}`}
+                                  checked={newRoles.includes(role.value)}
+                                  onCheckedChange={(checked) => 
+                                    handleRoleToggle(member.id, role.value, checked as boolean)
+                                  }
+                                />
+                                <label
+                                  htmlFor={`${member.id}-${role.value}`}
+                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                  {role.label}
+                                </label>
+                              </div>
+                            ))}
+                          </div>
                         </TableCell>
                         <TableCell>
                           {hasChange ? (

@@ -41,7 +41,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has a member profile
       const member = await storage.getMemberByUserId(userId);
       
-      res.json({ ...user, member });
+      if (member) {
+        // Get roles for the member
+        const roles = await storage.getMemberRoles(member.id);
+        
+        // Return user with member data including roles array
+        res.json({
+          ...user,
+          member: {
+            ...member,
+            roles: roles.length > 0 ? roles : ['member'] // Default to member role if no roles
+          }
+        });
+      } else {
+        res.json({ ...user, member });
+      }
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -64,7 +78,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const allTransactions = await storage.getRecentTransactions(50); // Get more to filter
       // Filter transactions based on user role
-      const filteredTransactions = filterTransactionsByRole(allTransactions, req.member?.role || 'member', req.member?.userId || '');
+      const filteredTransactions = filterTransactionsByRole(allTransactions, req.member?.roles || ['member'], req.member?.userId || '');
       res.json(filteredTransactions.slice(0, 10)); // Return top 10 after filtering
     } catch (error) {
       console.error("Error fetching recent transactions:", error);
@@ -249,8 +263,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? await storage.searchMembers(search as string)
         : await storage.getAllMembers();
       
-      // Filter members based on user role
-      const filteredMembers = filterMembersByRole(allMembers, req.member?.role || 'member', req.member?.userId || '');
+      // Filter members based on user roles
+      const filteredMembers = filterMembersByRole(allMembers, req.member?.roles || ['member'], req.member?.userId || '');
       res.json(filteredMembers);
     } catch (error) {
       console.error("Error fetching members:", error);
@@ -258,18 +272,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update member role (admin only)
-  app.patch('/api/members/:id/role', isAuthenticated, requirePermission('update', 'system-settings'), async (req: any, res) => {
+  // Update member roles (admin only) - now supports multiple roles
+  app.patch('/api/members/:id/roles', isAuthenticated, requirePermission('update', 'system-settings'), async (req: any, res) => {
     try {
       const memberId = parseInt(req.params.id);
-      const { role } = req.body;
+      const { roles } = req.body;
       const userId = req.user?.claims?.sub;
       
-      if (!['admin', 'manager', 'committee', 'teller', 'member'].includes(role)) {
-        return res.status(400).json({ message: "Invalid role" });
+      if (!Array.isArray(roles)) {
+        return res.status(400).json({ message: "Roles must be an array" });
+      }
+      
+      const validRoles = ['admin', 'manager', 'committee', 'teller', 'member'];
+      if (!roles.every(role => validRoles.includes(role))) {
+        return res.status(400).json({ message: "Invalid role(s)" });
       }
 
-      const member = await storage.updateMember(memberId, { role });
+      // Replace all roles for the member
+      await storage.replaceMemberRoles(memberId, roles, userId);
       
       // Log the role change
       await storage.createAuditLog({
@@ -278,15 +298,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'update',
         resource: 'member',
         resourceId: memberId.toString(),
-        details: `Changed role to ${role}`,
+        details: `Changed roles to: ${roles.join(', ')}`,
         ipAddress: req.ip,
         userAgent: req.headers['user-agent']
       });
       
-      res.json(member);
+      res.json({ success: true, roles });
     } catch (error) {
-      console.error("Error updating member role:", error);
-      res.status(500).json({ message: "Failed to update member role" });
+      console.error("Error updating member roles:", error);
+      res.status(500).json({ message: "Failed to update member roles" });
+    }
+  });
+
+  // Get member roles
+  app.get('/api/members/:id/roles', isAuthenticated, async (req: any, res) => {
+    try {
+      const memberId = parseInt(req.params.id);
+      const roles = await storage.getMemberRoles(memberId);
+      res.json(roles);
+    } catch (error) {
+      console.error("Error fetching member roles:", error);
+      res.status(500).json({ message: "Failed to fetch member roles" });
     }
   });
 

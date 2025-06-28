@@ -6,6 +6,7 @@ import {
   transactions,
   guarantors,
   auditLogs,
+  memberRoles,
   type User,
   type UpsertUser,
   type Member,
@@ -94,6 +95,12 @@ export interface IStorage {
   getGuarantorsByMember(memberId: number): Promise<GuarantorWithDetails[]>;
   updateGuarantorStatus(id: number, status: string, comments?: string): Promise<Guarantor>;
   getPendingGuarantorRequests(memberId: number): Promise<GuarantorWithDetails[]>;
+
+  // Role management operations
+  getMemberRoles(memberId: number): Promise<string[]>;
+  addMemberRole(memberId: number, role: string, assignedBy: string): Promise<void>;
+  removeMemberRole(memberId: number, role: string): Promise<void>;
+  replaceMemberRoles(memberId: number, roles: string[], assignedBy: string): Promise<void>;
 
   // Audit log operations
   createAuditLog(log: {
@@ -904,6 +911,59 @@ export class DatabaseStorage implements IStorage {
       user: r.user || undefined,
       member: r.member || undefined,
     }));
+  }
+
+  async getMemberRoles(memberId: number): Promise<string[]> {
+    const roles = await db
+      .select({ role: memberRoles.role })
+      .from(memberRoles)
+      .where(eq(memberRoles.memberId, memberId));
+    
+    return roles.map(r => r.role);
+  }
+
+  async addMemberRole(memberId: number, role: string, assignedBy: string): Promise<void> {
+    try {
+      await db.insert(memberRoles).values({
+        memberId,
+        role,
+        assignedBy,
+      });
+    } catch (error: any) {
+      // Ignore duplicate role errors
+      if (!error.message?.includes('duplicate')) {
+        throw error;
+      }
+    }
+  }
+
+  async removeMemberRole(memberId: number, role: string): Promise<void> {
+    await db
+      .delete(memberRoles)
+      .where(
+        and(
+          eq(memberRoles.memberId, memberId),
+          eq(memberRoles.role, role)
+        )
+      );
+  }
+
+  async replaceMemberRoles(memberId: number, roles: string[], assignedBy: string): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Delete all existing roles
+      await tx.delete(memberRoles).where(eq(memberRoles.memberId, memberId));
+      
+      // Insert new roles
+      if (roles.length > 0) {
+        await tx.insert(memberRoles).values(
+          roles.map(role => ({
+            memberId,
+            role,
+            assignedBy,
+          }))
+        );
+      }
+    });
   }
 }
 
