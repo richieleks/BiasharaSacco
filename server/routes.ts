@@ -236,6 +236,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         balance: '0.00',
       });
 
+      // Create notification for member approval
+      await createAndBroadcastNotification({
+        type: 'member_approved',
+        title: 'Membership Approved',
+        message: `Congratulations! Your membership application has been approved. Welcome to Biashara SACCO! Your member number is ${member.memberNumber}.`,
+        priority: 'high',
+        actionUrl: '/dashboard',
+        memberId: member.id,
+        userId: member.userId,
+        isRead: false
+      });
+
       res.json({ message: "Member approved successfully", member });
     } catch (error) {
       console.error("Error approving member:", error);
@@ -585,15 +597,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { memberId, loanType, principalAmount, interestRate, termMonths } = req.body;
       
       // Validate that the member is approved for loan applications
-      const member = await storage.getMember(memberId);
-      if (!member) {
+      const applicantMember = await storage.getMember(memberId);
+      if (!applicantMember) {
         return res.status(404).json({ message: "Member not found" });
       }
       
-      if (member.status !== 'active') {
+      if (applicantMember.status !== 'active') {
         return res.status(403).json({ 
           message: "Loan applications are only available to approved members", 
-          memberStatus: member.status 
+          memberStatus: applicantMember.status 
         });
       }
       
@@ -616,6 +628,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         outstandingBalance: principalAmount,
         status: 'pending',
       });
+
+      // Create notification for loan application
+      const loanMember = await storage.getMember(memberId);
+      if (loanMember) {
+        await createAndBroadcastNotification({
+          type: 'loan_application',
+          title: 'New Loan Application Submitted',
+          message: `Loan application ${loanNumber} for UGX ${Number(principalAmount).toLocaleString()} has been submitted and is pending approval.`,
+          priority: 'medium',
+          actionUrl: `/loans/${loan.id}`,
+          memberId: memberId,
+          userId: loanMember.userId,
+          isRead: false
+        });
+
+        // Notify staff about new loan application
+        const allMembers = await storage.getAllMembers();
+        const staffMembers = allMembers.filter(m => m.id !== memberId); // Exclude the applicant
+        for (const staffMember of staffMembers) {
+          // Only notify members who have staff roles
+          const roles = await storage.getMemberRoles(staffMember.id);
+          const hasStaffRole = roles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+          
+          if (hasStaffRole) {
+            await createAndBroadcastNotification({
+              type: 'loan_application',
+              title: 'New Loan Application for Review',
+              message: `${loanMember.fullName} has submitted a loan application for UGX ${Number(principalAmount).toLocaleString()}.`,
+              priority: 'medium',
+              actionUrl: `/loans`,
+              memberId: staffMember.id,
+              userId: staffMember.userId,
+              isRead: false
+            });
+          }
+        }
+      }
 
       res.status(201).json(loan);
     } catch (error) {
@@ -673,6 +722,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const loan = await storage.approveLoanAtStage(parseInt(id), stage, userId, comments);
+      
+      // Create notification for loan approval
+      const member = await storage.getMember(loan.memberId);
+      if (member) {
+        await createAndBroadcastNotification({
+          type: 'loan_approval',
+          title: `Loan Approved at ${stage.charAt(0).toUpperCase() + stage.slice(1)} Stage`,
+          message: `Your loan application ${loan.loanNumber} has been approved at the ${stage} stage. ${loan.status === 'approved' ? 'Loan is now fully approved!' : 'Moving to next approval stage.'}`,
+          priority: loan.status === 'approved' ? 'high' : 'medium',
+          actionUrl: `/loans/${loan.id}`,
+          memberId: loan.memberId,
+          userId: member.userId,
+          isRead: false
+        });
+      }
+      
       res.json({ message: `Loan approved at ${stage} stage`, loan });
     } catch (error) {
       console.error(`Error approving loan at ${req.params.stage} stage:`, error);
@@ -1545,6 +1610,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         type: 'notification',
         data: notification
       }));
+    }
+  }
+  
+  // Helper function to create and broadcast notifications
+  async function createAndBroadcastNotification(notificationData: any) {
+    try {
+      const notification = await storage.createNotification(notificationData);
+      broadcastNotification(notification);
+      return notification;
+    } catch (error) {
+      console.error('Error creating notification:', error);
     }
   }
   
