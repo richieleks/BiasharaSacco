@@ -205,6 +205,13 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Integrated role-based permissions for interest rate management (admin/manager access)
   - Added API endpoints for all interest calculation and amortization features
   - Enhanced loan management with automatic schedule generation and recalculation capabilities
+- January 17, 2025. Converted member details from modal to separate page:
+  - Created dedicated member details page at /members/:id route with comprehensive member information display
+  - Replaced modal dialogs with navigation to separate page for better user experience and data organization
+  - Added back navigation button to return to members list page from member details
+  - Maintained edit functionality through dialog on the details page for quick updates
+  - Enhanced member details view with savings accounts, loan history, and account summary sections
+  - Improved information architecture by giving member details more space and better organization
 
 ## User Preferences
 

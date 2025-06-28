@@ -20,6 +20,7 @@ import AuditLogs from "@/pages/audit-logs";
 import RolesMatrixPage from "@/pages/roles-matrix";
 import InterestRates from "@/pages/interest-rates";
 import AmortizationDemo from "@/pages/amortization-demo";
+import MemberDetails from "@/pages/member-details";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -116,6 +117,11 @@ function Router() {
             <Route path="/amortization-demo">
               <ProtectedRoute>
                 <AmortizationDemo />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/members/:id">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'members' }}>
+                <MemberDetails />
               </ProtectedRoute>
             </Route>
             <Route component={NotFound} />
