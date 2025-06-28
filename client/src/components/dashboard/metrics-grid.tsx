@@ -44,14 +44,14 @@ export default function MetricsGrid() {
     },
     {
       title: "Total Savings",
-      value: `KSh ${parseFloat(metrics.totalSavings || "0").toLocaleString()}`,
+      value: `UGX ${parseFloat(metrics.totalSavings || "0").toLocaleString()}`,
       icon: PiggyBank,
       color: "bg-green-100 text-green-600",
       change: "+8.2%",
     },
     {
       title: "Active Loans",
-      value: `KSh ${parseFloat(metrics.activeLoans || "0").toLocaleString()}`,
+      value: `UGX ${parseFloat(metrics.activeLoans || "0").toLocaleString()}`,
       icon: HandCoins,
       color: "bg-yellow-100 text-yellow-600",
       change: "+15.3%",

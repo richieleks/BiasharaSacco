@@ -210,7 +210,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                 name="principalAmount"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Amount Applied For (KSh) *</FormLabel>
+                    <FormLabel>Amount Applied For (UGX) *</FormLabel>
                     <FormControl>
                       <Input
                         type="number"
@@ -497,7 +497,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                   <div className="text-center">
                     <div className="text-sm font-medium text-muted-foreground">Monthly Repayment Amount</div>
                     <div className="text-3xl font-bold text-primary">
-                      KSh {monthlyPayment.toLocaleString()}
+                      UGX {monthlyPayment.toLocaleString()}
                     </div>
                   </div>
                 </CardContent>

@@ -79,7 +79,7 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
                   </div>
                   <div className="text-sm text-muted-foreground">
                     Member: {guarantor.guarantorMember?.memberNumber} | 
-                    Guarantee: KSh {Number(guarantor.guaranteeAmount).toLocaleString()}
+                    Guarantee: UGX {Number(guarantor.guaranteeAmount).toLocaleString()}
                   </div>
                   {guarantor.comments && (
                     <div className="text-sm text-muted-foreground mt-1">

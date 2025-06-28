@@ -313,7 +313,7 @@ export default function Loans() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-slate-500 text-sm font-medium">Outstanding Amount</p>
-                <p className="text-2xl font-semibold text-slate-900 mt-1">KSh 0</p>
+                <p className="text-2xl font-semibold text-slate-900 mt-1">UGX 0</p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
                 <DollarSign className="text-green-600 text-xl" />
