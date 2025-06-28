@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -18,6 +19,7 @@ export default function Members() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { hasPermission, userRole } = useRBAC();
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -34,7 +36,7 @@ export default function Members() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: members, isLoading: membersLoading, error } = useQuery({
+  const { data: members = [], isLoading: membersLoading, error } = useQuery({
     queryKey: ['/api/members', searchQuery],
     enabled: isAuthenticated,
   });
@@ -166,7 +168,7 @@ export default function Members() {
             </Card>
           ))}
         </div>
-      ) : members && members.length > 0 ? (
+      ) : members && Array.isArray(members) && members.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {members.map((member: MemberWithDetails) => (
             <Card key={member.id} className="hover:shadow-md transition-shadow">
@@ -174,7 +176,7 @@ export default function Members() {
                 <div className="flex items-center space-x-4 mb-4">
                   <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center">
                     <span className="text-slate-600 text-sm font-medium">
-                      {getInitials(member.user?.firstName, member.user?.lastName)}
+                      {getInitials(member.user?.firstName || '', member.user?.lastName || '')}
                     </span>
                   </div>
                   <div className="flex-1">
@@ -192,8 +194,8 @@ export default function Members() {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Status:</span>
-                    <Badge className={getStatusColor(member.status)}>
-                      {member.status}
+                    <Badge className={getStatusColor(member.status ?? 'pending')}>
+                      {member.status ?? 'pending'}
                     </Badge>
                   </div>
                   <div className="flex justify-between text-sm">

@@ -60,6 +60,7 @@ export const members = pgTable("members", {
   beneficiaryName: varchar("beneficiary_name").default(""),
   beneficiaryRelationship: varchar("beneficiary_relationship").default(""),
   beneficiaryContact: varchar("beneficiary_contact").default(""),
+  role: varchar("role", { enum: ["admin", "manager", "committee", "teller", "member"] }).default("member"),
   status: varchar("status", { enum: ["pending", "active", "inactive", "suspended", "rejected"] }).default("pending"),
   approvedBy: varchar("approved_by").references(() => users.id),
   approvedAt: timestamp("approved_at"),

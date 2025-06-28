@@ -2,12 +2,13 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole } from "./rbac-middleware";
 import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Type augmentation for Express Request with user claims
-  type AuthRequest = Request & {
+  // Extend AuthRequest type to include member data
+  interface ExtendedAuthRequest extends Request {
     user?: {
       claims?: {
         sub?: string;
@@ -17,7 +18,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profile_image_url?: string;
       };
     };
-  };
+    member?: {
+      id: number;
+      role: 'admin' | 'manager' | 'committee' | 'teller' | 'member';
+      userId: string;
+      memberNumber: string;
+      status: string;
+    };
+  }
   // Auth middleware
   await setupAuth(app);
 
@@ -52,10 +60,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Recent transactions
-  app.get('/api/dashboard/recent-transactions', isAuthenticated, async (req, res) => {
+  app.get('/api/dashboard/recent-transactions', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
-      const transactions = await storage.getRecentTransactions(10);
-      res.json(transactions);
+      const allTransactions = await storage.getRecentTransactions(50); // Get more to filter
+      // Filter transactions based on user role
+      const filteredTransactions = filterTransactionsByRole(allTransactions, req.member?.role || 'member', req.member?.userId || '');
+      res.json(filteredTransactions.slice(0, 10)); // Return top 10 after filtering
     } catch (error) {
       console.error("Error fetching recent transactions:", error);
       res.status(500).json({ message: "Failed to fetch recent transactions" });
@@ -63,10 +73,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Pending approvals
-  app.get('/api/dashboard/pending-approvals', isAuthenticated, async (req, res) => {
+  app.get('/api/dashboard/pending-approvals', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
       const approvals = await storage.getPendingApprovals();
-      res.json(approvals);
+      
+      // Filter approvals based on user role
+      const userRole = req.member?.role || 'member';
+      let filteredApprovals: any = { loanApplications: [], withdrawalRequests: [] };
+      
+      if (['admin', 'manager', 'committee', 'teller'].includes(userRole)) {
+        // Staff can see all pending approvals
+        filteredApprovals = approvals;
+      } else {
+        // Members can only see their own pending items
+        const userId = req.member?.userId || '';
+        filteredApprovals = {
+          loanApplications: approvals.loanApplications.filter((loan: any) => loan.member?.userId === userId),
+          withdrawalRequests: approvals.withdrawalRequests.filter((req: any) => req.member?.userId === userId)
+        };
+      }
+      
+      res.json(filteredApprovals);
     } catch (error) {
       console.error("Error fetching pending approvals:", error);
       res.status(500).json({ message: "Failed to fetch pending approvals" });
@@ -215,13 +242,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/members', isAuthenticated, async (req, res) => {
+  app.get('/api/members', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
       const { search } = req.query;
-      const members = search 
+      const allMembers = search 
         ? await storage.searchMembers(search as string)
         : await storage.getAllMembers();
-      res.json(members);
+      
+      // Filter members based on user role
+      const filteredMembers = filterMembersByRole(allMembers, req.member?.role || 'member', req.member?.userId || '');
+      res.json(filteredMembers);
     } catch (error) {
       console.error("Error fetching members:", error);
       res.status(500).json({ message: "Failed to fetch members" });
@@ -394,10 +424,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/loans/pending', isAuthenticated, async (req, res) => {
+  app.get('/api/loans/pending', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
-      const loans = await storage.getAllPendingLoans();
-      res.json(loans);
+      const allLoans = await storage.getAllPendingLoans();
+      // Filter loans based on user role
+      const filteredLoans = filterLoansByRole(allLoans, req.member?.role || 'member', req.member?.userId || '');
+      res.json(filteredLoans);
     } catch (error) {
       console.error("Error fetching pending loans:", error);
       res.status(500).json({ message: "Failed to fetch pending loans" });

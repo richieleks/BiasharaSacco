@@ -1,18 +1,15 @@
 import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
-import MetricsGrid from "@/components/dashboard/metrics-grid";
-import RecentTransactions from "@/components/dashboard/recent-transactions";
-import QuickActions from "@/components/dashboard/quick-actions";
-import PendingApprovals from "@/components/dashboard/pending-approvals";
-import MemberApprovals from "@/components/dashboard/member-approvals";
-import LoanApprovalWorkflow from "@/components/dashboard/loan-approval-workflow";
+import RoleBasedDashboard from "@/components/dashboard/role-based-dashboard";
 import { Button } from "@/components/ui/button";
 import { Download, Plus } from "lucide-react";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const { userRole, hasPermission } = useRBAC();
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -29,54 +26,45 @@ export default function Dashboard() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return null;
+  }
+
   return (
-    <>
-      {/* Dashboard Header */}
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold text-slate-900">Dashboard</h2>
-            <p className="text-slate-600 mt-1">Welcome back, here's what's happening at your SACCO today.</p>
-          </div>
-          <div className="mt-4 sm:mt-0 flex space-x-3">
-            <Button variant="outline" className="border-slate-300 text-slate-700 hover:bg-slate-50">
-              <Download className="w-4 h-4 mr-2" />
-              Export
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome to Biashara SACCO Management System
+          </p>
+          <p className="text-sm text-muted-foreground capitalize mt-1">
+            {userRole} Portal
+          </p>
+        </div>
+        {hasPermission('read', 'reports') && (
+          <div className="flex items-center space-x-2">
+            <Button variant="outline">
+              <Download className="mr-2 h-4 w-4" />
+              Export Report
             </Button>
-            <Button className="sacco-gradient text-white hover:opacity-90">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Member
-            </Button>
+            {hasPermission('create', 'transactions') && (
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Quick Action
+              </Button>
+            )}
           </div>
-        </div>
+        )}
       </div>
 
-      {/* Dashboard Metrics */}
-      <MetricsGrid />
-
-      {/* Member Approvals Section */}
-      <div className="mb-8">
-        <MemberApprovals />
-      </div>
-
-      {/* Loan Approval Workflow Section */}
-      <div className="mb-8">
-        <LoanApprovalWorkflow />
-      </div>
-
-      {/* Main Dashboard Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Transactions - Takes 2/3 of the space */}
-        <div className="lg:col-span-2">
-          <RecentTransactions />
-        </div>
-
-        {/* Sidebar with Quick Actions and Pending Approvals */}
-        <div className="space-y-6">
-          <QuickActions />
-          <PendingApprovals />
-        </div>
-      </div>
-    </>
+      {/* Role-Based Dashboard Content */}
+      <RoleBasedDashboard />
+    </div>
   );
 }

@@ -4,7 +4,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
+import { useRBAC } from "@/hooks/useRBAC";
 import NotFound from "@/pages/not-found";
+import RoleBasedNavigation from "@/components/role-based-nav";
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Members from "@/pages/members";
@@ -17,8 +19,19 @@ import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import MobileNav from "@/components/layout/mobile-nav";
 
+function ProtectedRoute({ children, requiredPermission }: { children: React.ReactNode, requiredPermission?: { action: string, resource: string } }) {
+  const { hasPermission } = useRBAC();
+  
+  if (requiredPermission && !hasPermission(requiredPermission.action, requiredPermission.resource)) {
+    return <NotFound />;
+  }
+  
+  return <>{children}</>;
+}
+
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { canAccessRoute } = useRBAC();
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -33,16 +46,48 @@ function Router() {
     <div className="min-h-screen bg-slate-50">
       <Header />
       <div className="flex">
-        <Sidebar />
+        <div className="w-64 border-r border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="p-4">
+            <RoleBasedNavigation />
+          </div>
+        </div>
         <main className="flex-1 p-6 lg:p-8">
           <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/members" component={Members} />
-            <Route path="/savings" component={Savings} />
-            <Route path="/loans" component={Loans} />
-            <Route path="/transactions" component={Transactions} />
-            <Route path="/guarantors" component={Guarantors} />
-            <Route path="/reports" component={Reports} />
+            <Route path="/">
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/members">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'members' }}>
+                <Members />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/savings">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'savings' }}>
+                <Savings />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/loans">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'loans' }}>
+                <Loans />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/transactions">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'transactions' }}>
+                <Transactions />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/guarantors">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'guarantors' }}>
+                <Guarantors />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/reports">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'reports' }}>
+                <Reports />
+              </ProtectedRoute>
+            </Route>
             <Route component={NotFound} />
           </Switch>
         </main>
