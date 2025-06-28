@@ -346,5 +346,5 @@ export type LoanWithDetails = Loan & {
 
 export type GuarantorWithDetails = Guarantor & {
   guarantorMember?: Member & { user?: User };
-  loan?: Loan;
+  loan?: LoanWithDetails;
 };

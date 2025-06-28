@@ -8,7 +8,7 @@ import { Link } from "wouter";
 import type { TransactionWithDetails } from "@shared/schema";
 
 export default function RecentTransactions() {
-  const { data: transactions, isLoading } = useQuery({
+  const { data: transactions, isLoading } = useQuery<any[]>({
     queryKey: ['/api/dashboard/recent-transactions'],
   });
 
@@ -129,14 +129,14 @@ export default function RecentTransactions() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm font-medium text-slate-900">
-                      KSh {parseFloat(transaction.amount).toLocaleString()}
+                      UGX {parseFloat(transaction.amount).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-sm text-slate-500">
                       {new Date(transaction.transactionDate!).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <Badge className={getStatusColor(transaction.status)}>
-                        {transaction.status}
+                      <Badge className={getStatusColor(transaction.status || 'pending')}>
+                        {transaction.status || 'pending'}
                       </Badge>
                     </TableCell>
                   </TableRow>

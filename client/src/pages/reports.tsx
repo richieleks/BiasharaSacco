@@ -26,7 +26,12 @@ export default function Reports() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: metrics, isLoading: metricsLoading } = useQuery({
+  const { data: metrics, isLoading: metricsLoading } = useQuery<{
+    totalMembers: number;
+    totalSavings: string;
+    activeLoans: string;
+    repaymentRate: string;
+  }>({
     queryKey: ['/api/dashboard/metrics'],
     enabled: isAuthenticated,
   });
@@ -128,7 +133,7 @@ export default function Reports() {
                 <div>
                   <p className="text-slate-500 text-sm font-medium">Total Savings</p>
                   <p className="text-2xl font-semibold text-slate-900 mt-1">
-                    KSh {parseFloat(metrics.totalSavings).toLocaleString()}
+                    UGX {parseFloat(metrics.totalSavings).toLocaleString()}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -144,7 +149,7 @@ export default function Reports() {
                 <div>
                   <p className="text-slate-500 text-sm font-medium">Active Loans</p>
                   <p className="text-2xl font-semibold text-slate-900 mt-1">
-                    KSh {parseFloat(metrics.activeLoans).toLocaleString()}
+                    UGX {parseFloat(metrics.activeLoans).toLocaleString()}
                   </p>
                 </div>
                 <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">

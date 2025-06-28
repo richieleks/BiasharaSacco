@@ -20,16 +20,13 @@ export default function GuarantorRequests({ memberId }: GuarantorRequestsProps) 
   const [actioningId, setActioningId] = useState<number | null>(null);
   const [comments, setComments] = useState("");
 
-  const { data: pendingRequests = [], isLoading } = useQuery({
+  const { data: pendingRequests = [], isLoading } = useQuery<GuarantorWithDetails[]>({
     queryKey: ['/api/guarantors/pending', memberId],
   });
 
   const approveMutation = useMutation({
     mutationFn: async ({ guarantorId, comments }: { guarantorId: number; comments?: string }) => {
-      await apiRequest(`/api/guarantors/${guarantorId}/approve`, {
-        method: 'PATCH',
-        body: JSON.stringify({ comments }),
-      });
+      await apiRequest('PATCH', `/api/guarantors/${guarantorId}/approve`, { comments });
     },
     onSuccess: () => {
       toast({
@@ -51,10 +48,7 @@ export default function GuarantorRequests({ memberId }: GuarantorRequestsProps) 
 
   const rejectMutation = useMutation({
     mutationFn: async ({ guarantorId, comments }: { guarantorId: number; comments?: string }) => {
-      await apiRequest(`/api/guarantors/${guarantorId}/reject`, {
-        method: 'PATCH',
-        body: JSON.stringify({ comments }),
-      });
+      await apiRequest('PATCH', `/api/guarantors/${guarantorId}/reject`, { comments });
     },
     onSuccess: () => {
       toast({
@@ -124,8 +118,8 @@ export default function GuarantorRequests({ memberId }: GuarantorRequestsProps) 
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Member: {request.loan?.member?.memberNumber} | 
-                      Loan: KSh {Number(request.loan?.principalAmount).toLocaleString()} |
-                      Guarantee: KSh {Number(request.guaranteeAmount).toLocaleString()}
+                      Loan: UGX {Number(request.loan?.principalAmount).toLocaleString()} |
+                      Guarantee: UGX {Number(request.guaranteeAmount).toLocaleString()}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Loan Type: {request.loan?.loanType} | 

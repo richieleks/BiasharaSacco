@@ -32,7 +32,7 @@ export default function Loans() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: pendingLoans, isLoading: pendingLoading } = useQuery({
+  const { data: pendingLoans, isLoading: pendingLoading } = useQuery<any[]>({
     queryKey: ['/api/loans/pending'],
     enabled: isAuthenticated,
   });
@@ -228,7 +228,7 @@ export default function Loans() {
                     <div>
                       <p className="text-sm text-slate-500">Amount</p>
                       <p className="font-medium text-slate-900">
-                        KSh {parseFloat(loan.principalAmount).toLocaleString()}
+                        UGX {parseFloat(loan.principalAmount).toLocaleString()}
                       </p>
                     </div>
                     <div>
@@ -244,7 +244,7 @@ export default function Loans() {
                     <div>
                       <p className="text-sm text-slate-500">Monthly Payment</p>
                       <p className="font-medium text-slate-900">
-                        KSh {parseFloat(loan.monthlyPayment).toLocaleString()}
+                        UGX {parseFloat(loan.monthlyPayment).toLocaleString()}
                       </p>
                     </div>
                   </div>

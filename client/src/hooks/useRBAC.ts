@@ -12,7 +12,17 @@ export function useRBAC() {
   const { user, isLoading } = useAuth();
   
   // Get user roles from member data - now supports multiple roles
-  const userRoles: UserRole[] = (user?.member?.roles as UserRole[]) || ['member'];
+  // Handle both the old 'role' field and new 'roles' array
+  let userRoles: UserRole[] = ['member'];
+  
+  if (user?.member) {
+    const member = user.member as any;
+    if (member.roles && Array.isArray(member.roles)) {
+      userRoles = member.roles as UserRole[];
+    } else if (member.role) {
+      userRoles = [member.role as UserRole];
+    }
+  }
   
   // Get highest role for backward compatibility
   const getHighestRole = (roles: UserRole[]): UserRole => {

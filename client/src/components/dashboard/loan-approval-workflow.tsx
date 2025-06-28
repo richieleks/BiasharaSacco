@@ -168,7 +168,7 @@ export default function LoanApprovalWorkflow() {
   };
 
   const formatCurrency = (amount: string) => {
-    return `KES ${Number(amount).toLocaleString()}`;
+    return `UGX ${Number(amount).toLocaleString()}`;
   };
 
   const LoanCard = ({ loan, stage, canApprove }: { loan: LoanWithDetails; stage: string; canApprove: boolean }) => (
@@ -352,7 +352,7 @@ export default function LoanApprovalWorkflow() {
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <User className="h-4 w-4" />
-                Final approval for high-value loans (over KES 500,000)
+                Final approval for high-value loans (over UGX 500,000)
               </div>
               {managerLoading ? (
                 <p>Loading manager review queue...</p>

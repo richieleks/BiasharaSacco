@@ -193,8 +193,8 @@ export default function MemberApprovals() {
 
                     <div className="text-sm">
                       <p><strong>Member Number:</strong> {member.memberNumber}</p>
-                      <p><strong>Monthly Savings:</strong> KES {Number(member.monthlySavings).toLocaleString()}</p>
-                      <p><strong>Share Contribution:</strong> KES {Number(member.shareContribution).toLocaleString()}</p>
+                      <p><strong>Monthly Savings:</strong> UGX {Number(member.monthlySavings).toLocaleString()}</p>
+                      <p><strong>Share Contribution:</strong> UGX {Number(member.shareContribution).toLocaleString()}</p>
                       <p><strong>Beneficiary:</strong> {member.beneficiaryName} ({member.beneficiaryRelationship})</p>
                     </div>
                   </div>

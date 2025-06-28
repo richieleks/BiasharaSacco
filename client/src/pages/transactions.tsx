@@ -32,7 +32,7 @@ export default function Transactions() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: transactions, isLoading: transactionsLoading, error } = useQuery({
+  const { data: transactions, isLoading: transactionsLoading, error } = useQuery<any[]>({
     queryKey: ['/api/transactions', { limit: 50 }],
     enabled: isAuthenticated,
   });
@@ -243,7 +243,7 @@ export default function Transactions() {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
-                        KSh {parseFloat(transaction.amount).toLocaleString()}
+                        UGX {parseFloat(transaction.amount).toLocaleString()}
                       </TableCell>
                       <TableCell className="font-mono text-sm">
                         {transaction.referenceNumber}
@@ -253,9 +253,9 @@ export default function Transactions() {
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center space-x-2">
-                          {getStatusIcon(transaction.status)}
-                          <Badge className={getStatusColor(transaction.status)}>
-                            {transaction.status}
+                          {getStatusIcon(transaction.status || 'pending')}
+                          <Badge className={getStatusColor(transaction.status || 'pending')}>
+                            {transaction.status || 'pending'}
                           </Badge>
                         </div>
                       </TableCell>

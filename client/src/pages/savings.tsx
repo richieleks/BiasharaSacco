@@ -34,7 +34,7 @@ export default function Savings() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: members, isLoading: membersLoading, error } = useQuery({
+  const { data: members, isLoading: membersLoading, error } = useQuery<any[]>({
     queryKey: ['/api/members', searchQuery],
     enabled: isAuthenticated,
   });
@@ -194,7 +194,7 @@ export default function Savings() {
                         <div className="flex justify-between text-sm">
                           <span className="text-slate-500">Balance:</span>
                           <span className="font-medium text-slate-900">
-                            KSh {parseFloat(account.balance).toLocaleString()}
+                            UGX {parseFloat(account.balance).toLocaleString()}
                           </span>
                         </div>
                         <div className="flex justify-between text-sm">

@@ -91,11 +91,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const approvals = await storage.getPendingApprovals();
       
-      // Filter approvals based on user role
-      const userRole = req.member?.role || 'member';
+      // Filter approvals based on user roles
+      const userRoles = req.member?.roles || ['member'];
       let filteredApprovals: any = { loanApplications: [], withdrawalRequests: [] };
       
-      if (['admin', 'manager', 'committee', 'teller'].includes(userRole)) {
+      if (userRoles.some((role: string) => ['admin', 'manager', 'committee', 'teller'].includes(role))) {
         // Staff can see all pending approvals
         filteredApprovals = approvals;
       } else {

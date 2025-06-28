@@ -39,11 +39,11 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
     },
   });
 
-  const { data: members } = useQuery({
+  const { data: members } = useQuery<any[]>({
     queryKey: ['/api/members'],
   });
 
-  const { data: accounts } = useQuery({
+  const { data: accounts } = useQuery<any[]>({
     queryKey: ['/api/members', selectedMemberId, 'savings'],
     enabled: !!selectedMemberId,
   });
@@ -140,7 +140,7 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
                 <SelectContent>
                   {accounts?.map((account: any) => (
                     <SelectItem key={account.id} value={account.id.toString()}>
-                      {account.accountNumber} ({account.accountType}) - KSh {parseFloat(account.balance).toLocaleString()}
+                      {account.accountNumber} ({account.accountType}) - UGX {parseFloat(account.balance).toLocaleString()}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -155,7 +155,7 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
           name="amount"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Amount (KSh) *</FormLabel>
+              <FormLabel>Amount (UGX) *</FormLabel>
               <FormControl>
                 <Input type="number" placeholder="0.00" min="1" step="0.01" {...field} />
               </FormControl>

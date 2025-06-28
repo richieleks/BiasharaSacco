@@ -121,8 +121,8 @@ export default function Guarantors() {
                           Loan for {guarantee.guarantorMember?.user?.firstName} {guarantee.guarantorMember?.user?.lastName}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Loan: KSh {Number(guarantee.loan?.principalAmount || 0).toLocaleString()} |
-                          Your Guarantee: KSh {Number(guarantee.guaranteeAmount || 0).toLocaleString()}
+                          Loan: UGX {Number(guarantee.loan?.principalAmount || 0).toLocaleString()} |
+                          Your Guarantee: UGX {Number(guarantee.guaranteeAmount || 0).toLocaleString()}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           Loan Type: {guarantee.loan?.loanType} | 

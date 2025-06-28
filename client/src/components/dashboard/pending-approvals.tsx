@@ -9,7 +9,10 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 export default function PendingApprovals() {
   const { toast } = useToast();
   
-  const { data: approvals, isLoading } = useQuery({
+  const { data: approvals, isLoading } = useQuery<{
+    loanApplications: any[];
+    withdrawalRequests: any[];
+  }>({
     queryKey: ['/api/dashboard/pending-approvals'],
   });
 
@@ -118,7 +121,7 @@ export default function PendingApprovals() {
                   <div>
                     <p className="text-sm font-medium text-slate-900">Loan Application</p>
                     <p className="text-xs text-slate-500">
-                      {loan.member?.user?.firstName} {loan.member?.user?.lastName} - KSh {parseFloat(loan.principalAmount).toLocaleString()}
+                      {loan.member?.user?.firstName} {loan.member?.user?.lastName} - UGX {parseFloat(loan.principalAmount).toLocaleString()}
                     </p>
                   </div>
                   <Badge className="text-xs text-yellow-600 bg-yellow-100">Pending</Badge>
@@ -141,7 +144,7 @@ export default function PendingApprovals() {
                   <div>
                     <p className="text-sm font-medium text-slate-900">Withdrawal Request</p>
                     <p className="text-xs text-slate-500">
-                      {withdrawal.member?.user?.firstName} {withdrawal.member?.user?.lastName} - KSh {parseFloat(withdrawal.amount).toLocaleString()}
+                      {withdrawal.member?.user?.firstName} {withdrawal.member?.user?.lastName} - UGX {parseFloat(withdrawal.amount).toLocaleString()}
                     </p>
                   </div>
                   <Badge className="text-xs text-yellow-600 bg-yellow-100">Pending</Badge>

@@ -879,14 +879,26 @@ export class DatabaseStorage implements IStorage {
         )
       );
 
-    return results.map(result => ({
-      ...result.guarantors,
-      guarantorMember: result.members ? {
-        ...result.members,
-        user: result.users || undefined,
-      } : undefined,
-      loan: result.loans || undefined,
-    }));
+    // Fetch loan details with member information for each result
+    const detailedResults = await Promise.all(
+      results.map(async (result) => {
+        let loanWithDetails = null;
+        if (result.loans) {
+          loanWithDetails = await this.getLoan(result.loans.id);
+        }
+        
+        return {
+          ...result.guarantors,
+          guarantorMember: result.members ? {
+            ...result.members,
+            user: result.users || undefined,
+          } : undefined,
+          loan: loanWithDetails || undefined,
+        };
+      })
+    );
+
+    return detailedResults;
   }
 
   async createAuditLog(log: {

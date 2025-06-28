@@ -265,7 +265,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
               name="monthlySavings"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Monthly Deposit Amount (Shs) *</FormLabel>
+                  <FormLabel>Monthly Deposit Amount (UGX) *</FormLabel>
                   <FormControl>
                     <Input 
                       type="number" 
