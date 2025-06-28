@@ -299,6 +299,18 @@ export default function MemberDetails() {
                 <p className="font-medium">{member.user?.firstName || member.fullName?.split(' ')[0] || 'Unknown'} {member.user?.lastName || member.fullName?.split(' ')[1] || ''}</p>
               </div>
               <div>
+                <p className="text-sm text-muted-foreground">Gender</p>
+                <p className="font-medium capitalize">{member.gender || 'Not specified'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Date of Birth</p>
+                <p className="font-medium">{member.dateOfBirth || 'Not provided'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Marital Status</p>
+                <p className="font-medium capitalize">{member.maritalStatus || 'Not specified'}</p>
+              </div>
+              <div>
                 <p className="text-sm text-muted-foreground">ID Number</p>
                 <p className="font-medium">{member.idNumber}</p>
               </div>
@@ -336,6 +348,72 @@ export default function MemberDetails() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Employment Information */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              Employment Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground">Department</p>
+                <p className="font-medium">{member.department || 'Not specified'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Section</p>
+                <p className="font-medium">{member.section || 'Not specified'}</p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Terms of Service</p>
+                <p className="font-medium capitalize">{member.termsOfService || 'Not specified'}</p>
+              </div>
+              {member.staffAccountNumber && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Staff Account Number</p>
+                  <p className="font-medium">{member.staffAccountNumber}</p>
+                </div>
+              )}
+              {member.averageNetPay && (
+                <div>
+                  <p className="text-sm text-muted-foreground">Average Net Pay</p>
+                  <p className="font-medium">UGX {parseFloat(member.averageNetPay).toLocaleString()}</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Next of Kin Information */}
+        {(member.nextOfKinName || member.nextOfKinPhone) && (
+          <Card className="lg:col-span-2">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Next of Kin Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {member.nextOfKinName && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Name</p>
+                    <p className="font-medium">{member.nextOfKinName}</p>
+                  </div>
+                )}
+                {member.nextOfKinPhone && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Phone Number</p>
+                    <p className="font-medium">{member.nextOfKinPhone}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Account Summary */}
         <Card>

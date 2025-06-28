@@ -230,6 +230,16 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Added automatic reconnection logic and connection status indicators
   - System supports priority levels (low, medium, high, urgent) and read/unread status tracking
   - All notifications include actionable URLs for direct navigation to relevant pages
+- January 17, 2025. Enhanced member form organization and member details display:
+  - Added Gender field with male/female selection to personal details section
+  - Added Average Net Pay field for employment information (displayed in UGX)
+  - Added Staff Account Number field for employee tracking
+  - Created dedicated Next of Kin section with name and phone number fields
+  - Reorganized member registration form into logical sections: Personal Details, Employment Information, Next of Kin, Monthly Savings, Share Contribution, and Beneficiary
+  - Enhanced members page grid to display gender, department, average net pay, and next of kin information
+  - Updated member details page with comprehensive sections for Employment Information and Next of Kin Information
+  - Database schema updated with new fields: gender, averageNetPay, staffAccountNumber, nextOfKinName, nextOfKinPhone
+  - Form validation updated to include all new fields with proper type checking
 
 ## User Preferences
 

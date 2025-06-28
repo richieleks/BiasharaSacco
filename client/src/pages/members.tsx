@@ -192,6 +192,26 @@ export default function Members() {
                     <span className="text-slate-900">{member.phoneNumber}</span>
                   </div>
                   <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Gender:</span>
+                    <span className="text-slate-900 capitalize">{member.gender || 'Not specified'}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Department:</span>
+                    <span className="text-slate-900">{member.department || 'Not specified'}</span>
+                  </div>
+                  {member.averageNetPay && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Avg Net Pay:</span>
+                      <span className="text-slate-900">UGX {parseFloat(member.averageNetPay).toLocaleString()}</span>
+                    </div>
+                  )}
+                  {member.nextOfKinName && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Next of Kin:</span>
+                      <span className="text-slate-900">{member.nextOfKinName}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
                     <span className="text-slate-500">Status:</span>
                     <Badge className={getStatusColor(member.status ?? 'pending')}>
                       {member.status ?? 'pending'}
