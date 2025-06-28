@@ -348,12 +348,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/members/:id', isAuthenticated, async (req, res) => {
+  app.get('/api/members/:id', isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const member = await storage.getMember(parseInt(req.params.id));
+      // Input validation - ensure ID is a valid positive integer
+      const memberId = parseInt(req.params.id);
+      if (!req.params.id || isNaN(memberId) || memberId <= 0) {
+        return res.status(400).json({ message: "Invalid member ID" });
+      }
+
+      // Additional security check - prevent large integers that could cause issues
+      if (memberId > Number.MAX_SAFE_INTEGER) {
+        return res.status(400).json({ message: "Invalid member ID" });
+      }
+
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
+
+      // Get user's member record to check their roles and permissions
+      const requestingMember = await storage.getMemberByUserId(userId);
+      if (!requestingMember) {
+        return res.status(403).json({ message: "Access denied - no member record found" });
+      }
+
+      // Get user's roles for permission checking
+      const userRoles = await storage.getMemberRoles(requestingMember.id);
+      const roleNames = userRoles.map(r => r.role);
+
+      // Access control logic:
+      // 1. Members can only view their own data
+      // 2. Staff (teller, committee, manager, admin) can view any member data
+      const isStaff = roleNames.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      const isOwnRecord = requestingMember.id === memberId;
+
+      if (!isStaff && !isOwnRecord) {
+        return res.status(403).json({ message: "Access denied - insufficient permissions" });
+      }
+
+      // Fetch the member data
+      const member = await storage.getMember(memberId);
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
+
+      // Log access for audit purposes (especially for staff accessing other members' data)
+      if (isStaff && !isOwnRecord) {
+        await storage.createAuditLog({
+          userId,
+          memberId: requestingMember.id,
+          action: 'view',
+          resource: 'member',
+          resourceId: memberId.toString(),
+          details: `Viewed member profile: ${member.memberNumber}`,
+          ipAddress: req.ip,
+          userAgent: req.headers['user-agent']
+        });
+      }
+
       res.json(member);
     } catch (error) {
       console.error("Error fetching member:", error);
