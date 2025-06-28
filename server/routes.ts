@@ -373,8 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get user's roles for permission checking
-      const userRoles = await storage.getMemberRoles(requestingMember.id);
-      const roleNames = userRoles.map(r => r.role);
+      const roleNames = await storage.getMemberRoles(requestingMember.id);
 
       // Access control logic:
       // 1. Members can only view their own data
@@ -570,7 +569,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const allLoans = await storage.getAllPendingLoans();
       // Filter loans based on user role
-      const filteredLoans = filterLoansByRole(allLoans, req.member?.role || 'member', req.member?.userId || '');
+      const filteredLoans = filterLoansByRole(allLoans, req.member?.roles || ['member'], req.member?.userId || '');
       res.json(filteredLoans);
     } catch (error) {
       console.error("Error fetching pending loans:", error);
@@ -589,7 +588,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not found" });
       }
 
-      const loans = await storage.getLoansForApproval(stage, user.role!);
+      // Get user's member record to access roles
+      const member = await storage.getMemberByUserId(userId);
+      if (!member) {
+        return res.status(403).json({ message: "Member record not found" });
+      }
+      
+      const userRoles = await storage.getMemberRoles(member.id);
+      const loans = await storage.getLoansForApproval(stage, userRoles[0] || 'member');
       res.json(loans);
     } catch (error) {
       console.error("Error fetching loans for approval:", error);
@@ -738,8 +744,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get user's roles for permission checking
-      const userRoles = await storage.getMemberRoles(requestingMember.id);
-      const roleNames = userRoles.map(r => r.role);
+      const roleNames = await storage.getMemberRoles(requestingMember.id);
 
       // Access control: staff can see all accounts, members see only their own
       const isStaff = roleNames.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
@@ -1218,7 +1223,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     ws.on('close', () => {
       // Remove connection from clients map
-      for (const [userId, client] of clients.entries()) {
+      const entries = Array.from(clients.entries());
+      for (const [userId, client] of entries) {
         if (client === ws) {
           clients.delete(userId);
           console.log(`User ${userId} disconnected from WebSocket`);

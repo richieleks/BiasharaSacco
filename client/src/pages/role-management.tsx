@@ -94,17 +94,35 @@ export default function RoleManagement() {
 
   const updateRoleMutation = useMutation({
     mutationFn: async ({ memberId, roles }: { memberId: number; roles: string[] }) => {
-      await apiRequest('PATCH', `/api/members/${memberId}/roles`, { roles });
+      const response = await apiRequest('PATCH', `/api/members/${memberId}/roles`, { roles });
+      return { memberId, roles, response };
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Update local state immediately for instant UI feedback
+      setMemberRoles(prev => ({
+        ...prev,
+        [data.memberId]: data.roles
+      }));
+      
+      // Clear role changes after successful update
+      setRoleChanges(prev => {
+        const newChanges = { ...prev };
+        delete newChanges[data.memberId];
+        return newChanges;
+      });
+      
+      // Force refresh all related queries
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
-      setRoleChanges({});
+      queryClient.invalidateQueries({ queryKey: ['/api/members/roles'] });
+      queryClient.refetchQueries({ queryKey: ['/api/members'] });
+      
       toast({
         title: "Roles Updated",
         description: "Member roles have been updated successfully.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Role update error:", error);
       toast({
         title: "Error",
         description: "Failed to update member roles. Please try again.",
@@ -134,10 +152,14 @@ export default function RoleManagement() {
     }));
   };
 
-  const saveChanges = () => {
-    Object.entries(roleChanges).forEach(([memberId, roles]) => {
-      updateRoleMutation.mutate({ memberId: parseInt(memberId), roles });
-    });
+  const saveChanges = async () => {
+    for (const [memberId, roles] of Object.entries(roleChanges)) {
+      try {
+        await updateRoleMutation.mutateAsync({ memberId: parseInt(memberId), roles });
+      } catch (error) {
+        console.error(`Failed to update roles for member ${memberId}:`, error);
+      }
+    }
   };
 
   const hasChanges = Object.keys(roleChanges).length > 0;

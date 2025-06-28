@@ -265,6 +265,13 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Added visual indicators showing auto-populated fields with blue borders and "Auto" labels
   - Improved user experience with clear formatting of currency values and fallback messages
   - Prevents manual editing of critical fields to maintain data integrity across loan applications
+- January 17, 2025. Fixed role management system and RBAC data structure issues:
+  - Resolved TypeScript errors in RBAC middleware where roles were incorrectly accessed as objects instead of strings
+  - Fixed role management changes not reflecting after submission by improving state management and cache invalidation
+  - Enhanced role management system with better visual feedback and immediate UI updates
+  - Corrected server routes to properly handle roles as string arrays instead of single role properties
+  - Fixed WebSocket iterator compatibility issues for better browser support
+  - Improved role management mutation handling with sequential updates and proper error handling
 
 ## User Preferences
 
