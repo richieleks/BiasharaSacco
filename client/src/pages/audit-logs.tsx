@@ -30,8 +30,8 @@ const resourceIcons: Record<string, any> = {
 
 export default function AuditLogs() {
   const [filters, setFilters] = useState({
-    resource: "",
-    action: "",
+    resource: "all",
+    action: "all",
     searchQuery: "",
   });
   const { hasPermission } = useRBAC();
@@ -53,8 +53,18 @@ export default function AuditLogs() {
     );
   }
 
+  // Build query params, excluding "all" values
+  const queryParams = new URLSearchParams();
+  if (filters.resource !== 'all') queryParams.append('resource', filters.resource);
+  if (filters.action !== 'all') queryParams.append('action', filters.action);
+  
   const { data: logs = [], isLoading } = useQuery<any[]>({
-    queryKey: ['/api/audit-logs', filters],
+    queryKey: ['/api/audit-logs', queryParams.toString()],
+    queryFn: async () => {
+      const response = await fetch(`/api/audit-logs?${queryParams.toString()}`);
+      if (!response.ok) throw new Error('Failed to fetch audit logs');
+      return response.json();
+    },
   });
 
   const filteredLogs = (logs as any[]).filter((log: any) => {
@@ -116,7 +126,7 @@ export default function AuditLogs() {
                 <SelectValue placeholder="All Resources" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Resources</SelectItem>
+                <SelectItem value="all">All Resources</SelectItem>
                 <SelectItem value="member">Members</SelectItem>
                 <SelectItem value="loan">Loans</SelectItem>
                 <SelectItem value="savings">Savings</SelectItem>
@@ -133,7 +143,7 @@ export default function AuditLogs() {
                 <SelectValue placeholder="All Actions" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Actions</SelectItem>
+                <SelectItem value="all">All Actions</SelectItem>
                 <SelectItem value="create">Create</SelectItem>
                 <SelectItem value="update">Update</SelectItem>
                 <SelectItem value="delete">Delete</SelectItem>
