@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
@@ -7,7 +7,7 @@ import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Type augmentation for Express Request with user claims
-  interface AuthRequest extends Express.Request {
+  type AuthRequest = Request & {
     user?: {
       claims?: {
         sub?: string;
@@ -17,7 +17,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profile_image_url?: string;
       };
     };
-  }
+  };
   // Auth middleware
   await setupAuth(app);
 
@@ -155,8 +155,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const newMember = await storage.createMember({
             userId: userId,
             memberNumber: `M${Date.now()}`,
-            phoneNumber: '',
+            fullName: `${req.user.claims.first_name || ''} ${req.user.claims.last_name || ''}`.trim() || 'Unknown',
             idNumber: '',
+            dateOfBirth: '2000-01-01',
+            phoneNumber: '',
+            department: '',
+            monthlySavings: '0',
+            shareContribution: '20000',
+            numberOfShares: 4,
+            beneficiaryName: '',
+            beneficiaryRelationship: '',
+            beneficiaryContact: '',
             status: 'active',
           });
           return res.json(newMember);
@@ -181,7 +190,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/savings/deposit', isAuthenticated, async (req: AuthRequest, res) => {
+  app.post('/api/savings/deposit', isAuthenticated, async (req, res) => {
     try {
       const { accountId, amount, description } = req.body;
       
@@ -204,7 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referenceNumber,
         description: description || 'Savings deposit',
         status: 'completed',
-        processedBy: req.user?.claims?.sub,
+        processedBy: (req as any).user?.claims?.sub,
       });
 
       res.status(201).json(transaction);
@@ -214,7 +223,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/savings/withdraw', isAuthenticated, async (req: AuthRequest, res) => {
+  app.post('/api/savings/withdraw', isAuthenticated, async (req, res) => {
     try {
       const { accountId, amount, description } = req.body;
       
@@ -228,7 +237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referenceNumber,
         description: description || 'Savings withdrawal',
         status: 'pending', // Requires approval
-        processedBy: req.user?.claims?.sub,
+        processedBy: (req as any).user?.claims?.sub,
       });
 
       res.status(201).json(transaction);
@@ -286,7 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/loans/:id/disburse', isAuthenticated, async (req: AuthRequest, res) => {
+  app.patch('/api/loans/:id/disburse', isAuthenticated, async (req, res) => {
     try {
       const loan = await storage.updateLoanStatus(parseInt(req.params.id), 'disbursed');
       
@@ -301,7 +310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referenceNumber,
         description: `Loan disbursement - ${loan.loanNumber}`,
         status: 'completed',
-        processedBy: req.user?.claims?.sub,
+        processedBy: (req as any).user?.claims?.sub,
       });
 
       res.json(loan);
@@ -311,7 +320,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/loans/:id/payment', isAuthenticated, async (req: AuthRequest, res) => {
+  app.post('/api/loans/:id/payment', isAuthenticated, async (req, res) => {
     try {
       const { amount, description } = req.body;
       const loanId = parseInt(req.params.id);
@@ -335,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referenceNumber,
         description: description || `Loan payment - ${loan.loanNumber}`,
         status: 'completed',
-        processedBy: req.user?.claims?.sub,
+        processedBy: (req as any).user?.claims?.sub,
       });
 
       res.status(201).json(transaction);

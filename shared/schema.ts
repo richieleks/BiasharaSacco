@@ -3,6 +3,7 @@ import {
   text,
   varchar,
   timestamp,
+  date,
   jsonb,
   index,
   decimal,
@@ -42,9 +43,23 @@ export const members = pgTable("members", {
   id: serial("id").primaryKey(),
   userId: varchar("user_id").references(() => users.id),
   memberNumber: varchar("member_number").unique().notNull(),
+  fullName: varchar("full_name").default(""),
   idNumber: varchar("id_number").unique().notNull(),
+  dateOfBirth: varchar("date_of_birth").default("2000-01-01"),
   phoneNumber: varchar("phone_number").notNull(),
   address: text("address"),
+  maritalStatus: varchar("marital_status", { enum: ["single", "married", "divorced", "widowed"] }).default("single"),
+  department: varchar("department").default(""),
+  section: varchar("section"),
+  termsOfService: varchar("terms_of_service", { enum: ["permanent", "temporary", "contract", "ex-staff"] }).default("permanent"),
+  monthlySavings: decimal("monthly_savings", { precision: 15, scale: 2 }).default("0"),
+  accountNumber: varchar("account_number"),
+  branch: varchar("branch"),
+  shareContribution: decimal("share_contribution", { precision: 15, scale: 2 }).default("20000"),
+  numberOfShares: integer("number_of_shares").default(4),
+  beneficiaryName: varchar("beneficiary_name").default(""),
+  beneficiaryRelationship: varchar("beneficiary_relationship").default(""),
+  beneficiaryContact: varchar("beneficiary_contact").default(""),
   status: varchar("status", { enum: ["active", "inactive", "suspended"] }).default("active"),
   joinDate: timestamp("join_date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
@@ -198,7 +213,11 @@ export const guarantorsRelations = relations(guarantors, ({ one }) => ({
 }));
 
 // Insert schemas
-export const insertMemberSchema = createInsertSchema(members).omit({
+export const insertMemberSchema = createInsertSchema(members, {
+  monthlySavings: z.string(),
+  shareContribution: z.string(),
+  numberOfShares: z.coerce.number(),
+}).omit({
   id: true,
   createdAt: true,
   updatedAt: true,

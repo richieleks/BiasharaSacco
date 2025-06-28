@@ -116,6 +116,16 @@ export class DatabaseStorage implements IStorage {
         memberNumber,
       })
       .returning();
+    
+    // Create initial savings account for the member
+    const accountNumber = `SAV${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+    await this.createSavingsAccount({
+      memberId: member.id,
+      accountNumber,
+      accountType: 'regular',
+      balance: memberData.monthlySavings || '0',
+    });
+    
     return member;
   }
 
