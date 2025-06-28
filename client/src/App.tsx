@@ -19,6 +19,7 @@ import RoleManagement from "@/pages/role-management";
 import AuditLogs from "@/pages/audit-logs";
 import RolesMatrixPage from "@/pages/roles-matrix";
 import InterestRates from "@/pages/interest-rates";
+import AmortizationDemo from "@/pages/amortization-demo";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -110,6 +111,11 @@ function Router() {
             <Route path="/interest-rates">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'interest-rates' }}>
                 <InterestRates />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/amortization-demo">
+              <ProtectedRoute>
+                <AmortizationDemo />
               </ProtectedRoute>
             </Route>
             <Route component={NotFound} />
