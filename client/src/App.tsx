@@ -20,6 +20,7 @@ import AuditLogs from "@/pages/audit-logs";
 import RolesMatrixPage from "@/pages/roles-matrix";
 import InterestRates from "@/pages/interest-rates";
 import AmortizationDemo from "@/pages/amortization-demo";
+import LoanWorkflow from "@/pages/loan-workflow";
 import MemberDetails from "@/pages/member-details";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
@@ -117,6 +118,11 @@ function Router() {
             <Route path="/amortization-demo">
               <ProtectedRoute>
                 <AmortizationDemo />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/loan-workflow">
+              <ProtectedRoute>
+                <LoanWorkflow />
               </ProtectedRoute>
             </Route>
             <Route path="/members/:id">
