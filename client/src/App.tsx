@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useWebSocket } from "@/hooks/useWebSocket";
 import NotFound from "@/pages/not-found";
 import RoleBasedNavigation from "@/components/role-based-nav";
 import Landing from "@/pages/landing";
@@ -22,6 +23,7 @@ import InterestRates from "@/pages/interest-rates";
 import AmortizationDemo from "@/pages/amortization-demo";
 import LoanWorkflow from "@/pages/loan-workflow";
 import MemberDetails from "@/pages/member-details";
+import NotificationsPage from "@/pages/notifications";
 import Header from "@/components/layout/header";
 import Sidebar from "@/components/layout/sidebar";
 import MobileNav from "@/components/layout/mobile-nav";
@@ -39,6 +41,9 @@ function ProtectedRoute({ children, requiredPermission }: { children: React.Reac
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
   const { canAccessRoute } = useRBAC();
+  
+  // Initialize WebSocket connection for real-time notifications
+  useWebSocket();
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -123,6 +128,11 @@ function Router() {
             <Route path="/loan-workflow">
               <ProtectedRoute>
                 <LoanWorkflow />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/notifications">
+              <ProtectedRoute>
+                <NotificationsPage />
               </ProtectedRoute>
             </Route>
             <Route path="/members/:id">

@@ -1,7 +1,8 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PiggyBank, Bell, ChevronDown } from "lucide-react";
+import { PiggyBank, ChevronDown } from "lucide-react";
+import { NotificationBell } from "@/components/notifications/notification-bell";
 
 export default function Header() {
   const { user } = useAuth();
@@ -29,12 +30,7 @@ export default function Header() {
           
           <div className="flex items-center space-x-4">
             <div className="hidden md:flex items-center space-x-6">
-              <div className="relative">
-                <Bell className="text-slate-400 text-lg cursor-pointer hover:text-slate-600" />
-                <Badge className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 p-0 flex items-center justify-center">
-                  3
-                </Badge>
-              </div>
+              <NotificationBell />
             </div>
             
             <div className="flex items-center space-x-3">

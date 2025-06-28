@@ -403,6 +403,31 @@ export const insertInterestCalculationSchema = createInsertSchema(interestCalcul
   id: true,
 });
 
+// Notifications table for real-time notifications
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").references(() => users.id).notNull(),
+  memberId: integer("member_id").references(() => members.id),
+  type: varchar("type", { 
+    enum: ["loan_application", "loan_approval", "loan_rejection", "payment_due", "payment_received", 
+           "member_approved", "member_rejected", "guarantor_request", "guarantor_response", 
+           "transaction_completed", "system_alert", "role_changed", "account_update"] 
+  }).notNull(),
+  title: varchar("title").notNull(),
+  message: text("message").notNull(),
+  priority: varchar("priority", { enum: ["low", "medium", "high", "urgent"] }).default("medium"),
+  isRead: boolean("is_read").default(false),
+  actionUrl: varchar("action_url"), // URL to navigate when notification is clicked
+  metadata: jsonb("metadata"), // Additional data related to the notification
+  createdAt: timestamp("created_at").defaultNow(),
+  readAt: timestamp("read_at"),
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
@@ -422,6 +447,8 @@ export type InsertAmortizationSchedule = z.infer<typeof insertAmortizationSchedu
 export type AmortizationSchedule = typeof amortizationSchedules.$inferSelect;
 export type InsertInterestCalculation = z.infer<typeof insertInterestCalculationSchema>;
 export type InterestCalculation = typeof interestCalculations.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+export type Notification = typeof notifications.$inferSelect;
 
 // Extended types for API responses
 export type MemberWithDetails = Member & {

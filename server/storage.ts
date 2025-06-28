@@ -10,6 +10,7 @@ import {
   interestRates,
   amortizationSchedules,
   interestCalculations,
+  notifications,
   type User,
   type UpsertUser,
   type Member,
@@ -34,6 +35,8 @@ import {
   type InterestCalculation,
   type InsertInterestCalculation,
   type InterestCalculationWithDetails,
+  type Notification,
+  type InsertNotification,
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
@@ -162,6 +165,19 @@ export interface IStorage {
     endDate?: Date;
     limit?: number;
   }): Promise<any[]>;
+
+  // Notification operations
+  createNotification(notification: InsertNotification): Promise<Notification>;
+  getNotifications(userId: string, filters?: {
+    isRead?: boolean;
+    type?: string;
+    priority?: string;
+    limit?: number;
+  }): Promise<Notification[]>;
+  markNotificationAsRead(id: number, userId: string): Promise<Notification | undefined>;
+  markAllNotificationsAsRead(userId: string): Promise<void>;
+  deleteNotification(id: number, userId: string): Promise<boolean>;
+  getUnreadNotificationCount(userId: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1357,6 +1373,95 @@ export class DatabaseStorage implements IStorage {
       newBalance,
       revisedSchedule
     };
+  }
+
+  // Notification operations
+  async createNotification(notificationData: InsertNotification): Promise<Notification> {
+    const [notification] = await db
+      .insert(notifications)
+      .values(notificationData)
+      .returning();
+    return notification;
+  }
+
+  async getNotifications(userId: string, filters?: {
+    isRead?: boolean;
+    type?: string;
+    priority?: string;
+    limit?: number;
+  }): Promise<Notification[]> {
+    let conditions = [eq(notifications.userId, userId)];
+
+    if (filters?.isRead !== undefined) {
+      conditions.push(eq(notifications.isRead, filters.isRead));
+    }
+    if (filters?.type) {
+      conditions.push(eq(notifications.type, filters.type));
+    }
+    if (filters?.priority) {
+      conditions.push(eq(notifications.priority, filters.priority));
+    }
+
+    let query = db
+      .select()
+      .from(notifications)
+      .where(and(...conditions))
+      .orderBy(desc(notifications.createdAt));
+
+    if (filters?.limit) {
+      query = query.limit(filters.limit);
+    }
+
+    return await query;
+  }
+
+  async markNotificationAsRead(id: number, userId: string): Promise<Notification | undefined> {
+    const [notification] = await db
+      .update(notifications)
+      .set({ 
+        isRead: true,
+        readAt: new Date()
+      })
+      .where(and(
+        eq(notifications.id, id),
+        eq(notifications.userId, userId)
+      ))
+      .returning();
+    return notification;
+  }
+
+  async markAllNotificationsAsRead(userId: string): Promise<void> {
+    await db
+      .update(notifications)
+      .set({ 
+        isRead: true,
+        readAt: new Date()
+      })
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ));
+  }
+
+  async deleteNotification(id: number, userId: string): Promise<boolean> {
+    const result = await db
+      .delete(notifications)
+      .where(and(
+        eq(notifications.id, id),
+        eq(notifications.userId, userId)
+      ));
+    return result.rowCount > 0;
+  }
+
+  async getUnreadNotificationCount(userId: string): Promise<number> {
+    const result = await db
+      .select({ count: sql`count(*)` })
+      .from(notifications)
+      .where(and(
+        eq(notifications.userId, userId),
+        eq(notifications.isRead, false)
+      ));
+    return Number(result[0]?.count || 0);
   }
 }
 
