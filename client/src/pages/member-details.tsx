@@ -350,7 +350,7 @@ export default function MemberDetails() {
               <p className="text-sm text-muted-foreground">Member Since</p>
               <p className="font-medium flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                {format(new Date(member.createdAt), 'PP')}
+                {member.createdAt ? format(new Date(member.createdAt), 'PP') : 'Not available'}
               </p>
             </div>
 
