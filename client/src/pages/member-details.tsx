@@ -132,7 +132,7 @@ export default function MemberDetails() {
 
   const updateMemberMutation = useMutation({
     mutationFn: async (data: UpdateMemberData) => {
-      const response = await apiRequest(`/api/members/${memberId}`, "PATCH", data);
+      const response = await apiRequest("PATCH", `/api/members/${memberId}`, data);
       return response;
     },
     onSuccess: () => {
@@ -141,7 +141,7 @@ export default function MemberDetails() {
         description: "Member updated successfully",
       });
       setIsEditDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: [`/api/members/${memberId}`] });
+      queryClient.invalidateQueries({ queryKey: ['/api/members', memberId] });
       queryClient.invalidateQueries({ queryKey: ["/api/members"] });
     },
     onError: (error: Error) => {
