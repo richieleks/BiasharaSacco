@@ -87,13 +87,18 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
 
   // Auto-populate form fields when member data is available
   useEffect(() => {
-    if (currentMember && savingsAccounts) {
+    if (currentMember && savingsAccounts !== undefined) {
       const member = currentMember as any;
-      form.setValue("averageNetPay", member.averageNetPay?.toString() || "");
-      form.setValue("staffAccountNumber", member.staffAccountNumber || "");
-      form.setValue("nextOfKin", member.nextOfKinName || "");
-      form.setValue("nextOfKinPhone", member.nextOfKinPhone || "");
-      form.setValue("currentSavings", totalSavingsBalance.toFixed(2));
+      
+      // Reset form with auto-populated values
+      form.reset({
+        ...form.getValues(),
+        averageNetPay: member.averageNetPay?.toString() || "",
+        staffAccountNumber: member.staffAccountNumber || "",
+        nextOfKin: member.nextOfKinName || "",
+        nextOfKinPhone: member.nextOfKinPhone || "",
+        currentSavings: totalSavingsBalance.toFixed(2),
+      });
     }
   }, [currentMember, savingsAccounts, totalSavingsBalance, form]);
 
@@ -329,15 +334,17 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                   <FormItem>
                     <FormLabel>Average Net Pay (for employees) *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="Auto-populated from member profile"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        disabled={true}
-                        className="bg-muted"
-                      />
+                      <div className="relative">
+                        <Input
+                          type="text"
+                          placeholder="Auto-populated from member profile"
+                          value={field.value ? `UGX ${parseFloat(field.value).toLocaleString()}` : 'Not set in profile'}
+                          onChange={field.onChange}
+                          disabled={true}
+                          className="bg-muted border-blue-200"
+                        />
+                        <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -351,13 +358,16 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                   <FormItem>
                     <FormLabel>Staff Account Number *</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Auto-populated from member profile" 
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        disabled={true}
-                        className="bg-muted"
-                      />
+                      <div className="relative">
+                        <Input 
+                          placeholder="Auto-populated from member profile" 
+                          value={field.value || 'Not set in profile'}
+                          onChange={field.onChange}
+                          disabled={true}
+                          className="bg-muted border-blue-200"
+                        />
+                        <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -372,13 +382,16 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                   <FormItem>
                     <FormLabel>Next of Kin (NOK) *</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Auto-populated from member profile" 
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        disabled={true}
-                        className="bg-muted"
-                      />
+                      <div className="relative">
+                        <Input 
+                          placeholder="Auto-populated from member profile" 
+                          value={field.value || 'Not set in profile'}
+                          onChange={field.onChange}
+                          disabled={true}
+                          className="bg-muted border-blue-200"
+                        />
+                        <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -392,13 +405,16 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                   <FormItem>
                     <FormLabel>NOK Phone Number *</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="Auto-populated from member profile" 
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        disabled={true}
-                        className="bg-muted"
-                      />
+                      <div className="relative">
+                        <Input 
+                          placeholder="Auto-populated from member profile" 
+                          value={field.value || 'Not set in profile'}
+                          onChange={field.onChange}
+                          disabled={true}
+                          className="bg-muted border-blue-200"
+                        />
+                        <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -412,15 +428,17 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                   <FormItem>
                     <FormLabel>Current Savings Balance *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="Auto-calculated from savings accounts"
-                        value={field.value || ''}
-                        onChange={field.onChange}
-                        disabled={true}
-                        className="bg-muted"
-                      />
+                      <div className="relative">
+                        <Input
+                          type="text"
+                          placeholder="Auto-calculated from savings accounts"
+                          value={field.value ? `UGX ${parseFloat(field.value).toLocaleString()}` : 'UGX 0.00'}
+                          onChange={field.onChange}
+                          disabled={true}
+                          className="bg-muted border-blue-200"
+                        />
+                        <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
