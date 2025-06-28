@@ -15,8 +15,15 @@ export function useWebSocket() {
       return;
     }
 
+    // Ensure we have a valid host
+    const host = window.location.host;
+    if (!host || host === 'undefined') {
+      console.warn("Invalid host for WebSocket connection");
+      return;
+    }
+
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
+    const wsUrl = `${protocol}//${host}/ws`;
     
     try {
       const ws = new WebSocket(wsUrl);

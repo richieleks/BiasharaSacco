@@ -781,7 +781,13 @@ export default function MemberDetails() {
                 <div>
                   <p className="text-sm text-muted-foreground">Join Date</p>
                   <p className="font-medium">
-                    {member.joinDate ? format(new Date(member.joinDate), 'PPP') : 'Not recorded'}
+                    {member.joinDate ? (() => {
+                      try {
+                        return format(new Date(member.joinDate), 'PPP');
+                      } catch {
+                        return 'Invalid date';
+                      }
+                    })() : 'Not recorded'}
                   </p>
                 </div>
                 <div>
@@ -804,7 +810,13 @@ export default function MemberDetails() {
                     <div>
                       <p className="text-sm text-muted-foreground">Approval Date</p>
                       <p className="font-medium">
-                        {member.approvedAt ? format(new Date(member.approvedAt), 'PPP') : 'Not recorded'}
+                        {member.approvedAt ? (() => {
+                          try {
+                            return format(new Date(member.approvedAt), 'PPP');
+                          } catch {
+                            return 'Invalid date';
+                          }
+                        })() : 'Not recorded'}
                       </p>
                     </div>
                   </>
@@ -833,7 +845,13 @@ export default function MemberDetails() {
               <p className="text-sm text-muted-foreground">Member Since</p>
               <p className="font-medium flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                {member.createdAt ? format(new Date(member.createdAt), 'PP') : 'Not available'}
+                {member.createdAt ? (() => {
+                  try {
+                    return format(new Date(member.createdAt), 'PP');
+                  } catch {
+                    return 'Invalid date';
+                  }
+                })() : 'Not available'}
               </p>
             </div>
 
@@ -911,7 +929,13 @@ export default function MemberDetails() {
                 <div key={loan.id} className="flex justify-between items-center p-4 border rounded-lg">
                   <div>
                     <p className="font-medium">{loan.loanType}</p>
-                    <p className="text-sm text-muted-foreground">Applied: {format(new Date(loan.applicationDate), 'PP')}</p>
+                    <p className="text-sm text-muted-foreground">Applied: {loan.applicationDate ? (() => {
+                      try {
+                        return format(new Date(loan.applicationDate), 'PP');
+                      } catch {
+                        return 'Invalid date';
+                      }
+                    })() : 'Date not available'}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-medium">UGX {parseFloat(loan.amount).toLocaleString()}</p>
