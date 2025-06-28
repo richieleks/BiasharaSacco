@@ -173,6 +173,13 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Integrated audit logging into critical operations like role changes
   - Both features protected with role-based access control (admin-only access)
   - Audit logs track actions like create, update, delete, approve, reject with timestamps and user details
+- January 17, 2025. Enhanced member management features:
+  - Added View and Edit functionality for member details with dedicated dialogs
+  - Implemented automatic savings account creation when members are approved
+  - Created comprehensive member detail view showing personal, contact, and account information
+  - Built member edit form with pre-filled data for easy updates
+  - Savings accounts now automatically created with account number SAV00000001 format
+  - Multiple roles per user architecture implemented with member_roles junction table
 
 ## User Preferences
 

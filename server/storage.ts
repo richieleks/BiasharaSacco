@@ -310,6 +310,32 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(members.id, id))
       .returning();
+    
+    // Automatically create a savings account for the approved member
+    try {
+      // Check if member already has a savings account
+      const existingAccounts = await this.getSavingsAccountsByMember(member.id);
+      
+      if (existingAccounts.length === 0) {
+        // Generate account number
+        const accountCount = await db.$count(savingsAccounts);
+        const accountNumber = `SAV${String(accountCount + 1).padStart(8, '0')}`;
+        
+        // Create regular savings account with initial balance of 0
+        await this.createSavingsAccount({
+          memberId: member.id,
+          accountNumber,
+          accountType: 'regular',
+          balance: '0',
+        });
+        
+        console.log(`Created savings account ${accountNumber} for member ${member.memberNumber}`);
+      }
+    } catch (error) {
+      console.error('Error creating savings account for approved member:', error);
+      // Don't fail the approval if account creation fails
+    }
+    
     return member;
   }
 
