@@ -116,21 +116,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Helper functions for role checking
   const isCommitteeOrAdmin = async (userId: string): Promise<boolean> => {
-    const user = await storage.getUser(userId);
-    return user?.role === 'committee' || user?.role === 'admin';
+    const member = await storage.getMemberByUserId(userId);
+    if (!member) return false;
+    
+    const roles = await storage.getMemberRoles(member.id);
+    return roles.some(role => ['committee', 'admin'].includes(role));
   };
 
   const hasApprovalRole = async (userId: string, requiredRole: string): Promise<boolean> => {
-    const user = await storage.getUser(userId);
-    if (!user) return false;
+    const member = await storage.getMemberByUserId(userId);
+    if (!member) return false;
+    
+    const roles = await storage.getMemberRoles(member.id);
     
     // Admin can perform any approval
-    if (user.role === 'admin') return true;
+    if (roles.includes('admin')) return true;
     
     // Check specific role permissions
-    if (requiredRole === 'teller' && user.role === 'teller') return true;
-    if (requiredRole === 'committee' && user.role === 'committee') return true;
-    if (requiredRole === 'manager' && user.role === 'manager') return true;
+    if (requiredRole === 'teller' && roles.includes('teller')) return true;
+    if (requiredRole === 'committee' && roles.includes('committee')) return true;
+    if (requiredRole === 'manager' && roles.includes('manager')) return true;
     
     return false;
   };
