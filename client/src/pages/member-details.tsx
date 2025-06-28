@@ -17,9 +17,37 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Edit, User, Phone, Mail, MapPin, Calendar, CreditCard, Building, Users } from "lucide-react";
 import { format } from "date-fns";
-import type { z } from "zod";
+import { z } from "zod";
 
-type UpdateMemberData = z.infer<typeof insertMemberSchema>;
+// Create a specific update schema for the edit form
+const updateMemberSchema = z.object({
+  memberNumber: z.string().optional(),
+  fullName: z.string().optional(),
+  idNumber: z.string().optional(),
+  dateOfBirth: z.string().optional(),
+  gender: z.enum(["male", "female"]).optional(),
+  phoneNumber: z.string().optional(),
+  address: z.string().optional(),
+  maritalStatus: z.enum(["single", "married", "divorced", "widowed"]).optional(),
+  department: z.string().optional(),
+  section: z.string().optional(),
+  termsOfService: z.enum(["permanent", "temporary", "contract", "ex-staff"]).optional(),
+  averageNetPay: z.string().optional(),
+  staffAccountNumber: z.string().optional(),
+  monthlySavings: z.string().optional(),
+  accountNumber: z.string().optional(),
+  branch: z.string().optional(),
+  shareContribution: z.string().optional(),
+  numberOfShares: z.number().optional(),
+  beneficiaryName: z.string().optional(),
+  beneficiaryRelationship: z.string().optional(),
+  beneficiaryContact: z.string().optional(),
+  nextOfKinName: z.string().optional(),
+  nextOfKinPhone: z.string().optional(),
+  status: z.enum(["pending", "active", "inactive", "suspended", "rejected"]).optional(),
+});
+
+type UpdateMemberData = z.infer<typeof updateMemberSchema>;
 
 export default function MemberDetails() {
   const [, setLocation] = useLocation();
@@ -46,16 +74,42 @@ export default function MemberDetails() {
   });
 
   const form = useForm<UpdateMemberData>({
-    resolver: zodResolver(insertMemberSchema.omit({ userId: true })),
-    defaultValues: member || {},
+    resolver: zodResolver(updateMemberSchema),
   });
+
+  // Reset form when member data is loaded
+  if (member && form.getValues().memberNumber !== member.memberNumber) {
+    form.reset({
+      memberNumber: member.memberNumber || "",
+      fullName: member.fullName || "",
+      idNumber: member.idNumber || "",
+      dateOfBirth: member.dateOfBirth || "",
+      gender: member.gender || "male",
+      phoneNumber: member.phoneNumber || "",
+      address: member.address || "",
+      maritalStatus: member.maritalStatus || "single",
+      department: member.department || "",
+      section: member.section || "",
+      termsOfService: member.termsOfService || "permanent",
+      averageNetPay: member.averageNetPay?.toString() || "",
+      staffAccountNumber: member.staffAccountNumber || "",
+      monthlySavings: member.monthlySavings?.toString() || "",
+      accountNumber: member.accountNumber || "",
+      branch: member.branch || "",
+      shareContribution: member.shareContribution?.toString() || "",
+      numberOfShares: member.numberOfShares || 4,
+      beneficiaryName: member.beneficiaryName || "",
+      beneficiaryRelationship: member.beneficiaryRelationship || "",
+      beneficiaryContact: member.beneficiaryContact || "",
+      nextOfKinName: member.nextOfKinName || "",
+      nextOfKinPhone: member.nextOfKinPhone || "",
+      status: member.status || "active",
+    });
+  }
 
   const updateMemberMutation = useMutation({
     mutationFn: async (data: UpdateMemberData) => {
-      return apiRequest(`/api/members/${memberId}`, {
-        method: "PATCH",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PATCH", `/api/members/${memberId}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/members"] });
@@ -107,10 +161,7 @@ export default function MemberDetails() {
     );
   }
 
-  // Update form default values when member data is loaded
-  if (member && Object.keys(form.getValues()).length === 0) {
-    form.reset(member);
-  }
+
 
   return (
     <div className="space-y-6">
@@ -154,39 +205,24 @@ export default function MemberDetails() {
               </DialogHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(handleUpdateMember)} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="firstName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>First Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="lastName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Last Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+                  <FormField
+                    control={form.control}
+                    name="fullName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Full Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} value={field.value || ""} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="phone"
+                      name="phoneNumber"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Phone Number</FormLabel>
@@ -199,13 +235,50 @@ export default function MemberDetails() {
                     />
                     <FormField
                       control={form.control}
-                      name="email"
+                      name="idNumber"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email Address</FormLabel>
+                          <FormLabel>ID Number</FormLabel>
                           <FormControl>
-                            <Input type="email" {...field} value={field.value || ""} />
+                            <Input {...field} value={field.value || ""} />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="dateOfBirth"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Date of Birth</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Gender</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="male">Male</SelectItem>
+                              <SelectItem value="female">Female</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -229,13 +302,23 @@ export default function MemberDetails() {
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
-                      name="occupation"
+                      name="maritalStatus"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Occupation</FormLabel>
-                          <FormControl>
-                            <Input {...field} value={field.value || ""} />
-                          </FormControl>
+                          <FormLabel>Marital Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="single">Single</SelectItem>
+                              <SelectItem value="married">Married</SelectItem>
+                              <SelectItem value="divorced">Divorced</SelectItem>
+                              <SelectItem value="widowed">Widowed</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -246,7 +329,7 @@ export default function MemberDetails() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Status</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue />
@@ -262,6 +345,250 @@ export default function MemberDetails() {
                         </FormItem>
                       )}
                     />
+                  </div>
+
+                  {/* Employment Information */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Employment Information</h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="department"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Department</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="section"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Section</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="termsOfService"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Terms of Service</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="permanent">Permanent</SelectItem>
+                                <SelectItem value="temporary">Temporary</SelectItem>
+                                <SelectItem value="contract">Contract</SelectItem>
+                                <SelectItem value="ex-staff">Ex-Staff</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="staffAccountNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Staff Account Number</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="averageNetPay"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Average Net Pay (UGX)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  {/* Next of Kin Information */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Next of Kin Information</h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="nextOfKinName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Next of Kin Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="nextOfKinPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Next of Kin Phone</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Financial Information */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Financial Information</h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="monthlySavings"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Monthly Savings (UGX)</FormLabel>
+                            <FormControl>
+                              <Input type="number" step="0.01" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="shareContribution"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Share Contribution (UGX)</FormLabel>
+                            <FormControl>
+                              <Input type="number" step="0.01" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="numberOfShares"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Number of Shares</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="accountNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bank Account Number</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="branch"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Bank Branch</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Beneficiary Information */}
+                  <div className="space-y-4 border-t pt-4">
+                    <h4 className="font-medium text-sm text-muted-foreground">Beneficiary Information</h4>
+                    
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="beneficiaryName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Beneficiary Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="beneficiaryRelationship"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Relationship</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="beneficiaryContact"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Beneficiary Contact</FormLabel>
+                            <FormControl>
+                              <Input {...field} value={field.value || ""} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
                   </div>
 
                   <div className="flex justify-end space-x-2">
