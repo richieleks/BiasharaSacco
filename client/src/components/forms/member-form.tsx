@@ -33,29 +33,30 @@ type MemberFormData = z.infer<typeof memberFormSchema>;
 interface MemberFormProps {
   onSubmit: (data: MemberFormData) => void;
   isLoading?: boolean;
+  member?: any; // Existing member data for editing
 }
 
-export default function MemberForm({ onSubmit, isLoading }: MemberFormProps) {
+export default function MemberForm({ onSubmit, isLoading, member }: MemberFormProps) {
   const form = useForm<MemberFormData>({
     resolver: zodResolver(memberFormSchema),
     defaultValues: {
-      fullName: "",
-      idNumber: "",
-      dateOfBirth: "",
-      phoneNumber: "",
-      address: "",
-      maritalStatus: "single",
-      department: "",
-      section: "",
-      termsOfService: "permanent",
-      monthlySavings: "",
-      accountNumber: "",
-      branch: "",
-      shareContribution: "20000", // minimum 4 shares at 5000 each
-      numberOfShares: "4",
-      beneficiaryName: "",
-      beneficiaryRelationship: "",
-      beneficiaryContact: "",
+      fullName: member?.fullName || "",
+      idNumber: member?.idNumber || "",
+      dateOfBirth: member?.dateOfBirth || "",
+      phoneNumber: member?.phoneNumber || "",
+      address: member?.address || "",
+      maritalStatus: member?.maritalStatus || "single",
+      department: member?.department || "",
+      section: member?.section || "",
+      termsOfService: member?.termsOfService || "permanent",
+      monthlySavings: member?.monthlySavings || "",
+      accountNumber: member?.accountNumber || "",
+      branch: member?.branch || "",
+      shareContribution: member?.shareContribution || "20000", // minimum 4 shares at 5000 each
+      numberOfShares: member?.numberOfShares?.toString() || "4",
+      beneficiaryName: member?.beneficiaryName || "",
+      beneficiaryRelationship: member?.beneficiaryRelationship || "",
+      beneficiaryContact: member?.beneficiaryContact || "",
     },
   });
 

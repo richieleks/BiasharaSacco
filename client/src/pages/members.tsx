@@ -9,14 +9,17 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import MemberForm from "@/components/forms/member-form";
-import { Search, Plus, Eye, Edit, Users } from "lucide-react";
+import { Search, Plus, Eye, Edit, Users, Phone, Mail, MapPin, Calendar, CreditCard, User } from "lucide-react";
 import type { MemberWithDetails } from "@shared/schema";
 
 export default function Members() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [viewMember, setViewMember] = useState<MemberWithDetails | null>(null);
+  const [editMember, setEditMember] = useState<MemberWithDetails | null>(null);
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const { hasPermission, userRole } = useRBAC();
@@ -82,8 +85,46 @@ export default function Members() {
     },
   });
 
+  const updateMemberMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      await apiRequest('PATCH', `/api/members/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/members'] });
+      setEditMember(null);
+      toast({
+        title: "Success",
+        description: "Member updated successfully!",
+      });
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to update member. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleAddMember = (memberData: any) => {
     addMemberMutation.mutate(memberData);
+  };
+
+  const handleUpdateMember = (memberData: any) => {
+    if (editMember) {
+      updateMemberMutation.mutate({ id: editMember.id, data: memberData });
+    }
   };
 
   const getInitials = (firstName?: string, lastName?: string) => {
@@ -207,14 +248,26 @@ export default function Members() {
                 </div>
 
                 <div className="flex space-x-2">
-                  <Button variant="outline" size="sm" className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="flex-1"
+                    onClick={() => setViewMember(member)}
+                  >
                     <Eye className="w-4 h-4 mr-1" />
                     View
                   </Button>
-                  <Button variant="outline" size="sm" className="flex-1">
-                    <Edit className="w-4 h-4 mr-1" />
-                    Edit
-                  </Button>
+                  {hasPermission('update', 'members') && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="flex-1"
+                      onClick={() => setEditMember(member)}
+                    >
+                      <Edit className="w-4 h-4 mr-1" />
+                      Edit
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -235,6 +288,119 @@ export default function Members() {
           </CardContent>
         </Card>
       )}
+
+      {/* View Member Dialog */}
+      <Dialog open={!!viewMember} onOpenChange={() => setViewMember(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Member Details</DialogTitle>
+            <DialogDescription>Complete member information</DialogDescription>
+          </DialogHeader>
+          {viewMember && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Personal Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Full Name</Label>
+                    <p className="font-medium">{viewMember.fullName}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">ID Number</Label>
+                    <p className="font-medium">{viewMember.idNumber}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Member Number</Label>
+                    <p className="font-medium">{viewMember.memberNumber}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Status</Label>
+                    <Badge className={getStatusColor(viewMember.status!)}>
+                      {viewMember.status}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Contact Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Email</Label>
+                    <p className="font-medium flex items-center gap-2">
+                      <Mail className="w-4 h-4" />
+                      {viewMember.user?.email || 'Not provided'}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Phone Number</Label>
+                    <p className="font-medium flex items-center gap-2">
+                      <Phone className="w-4 h-4" />
+                      {viewMember.phoneNumber}
+                    </p>
+                  </div>
+                  <div className="col-span-2">
+                    <Label className="text-sm text-muted-foreground">Address</Label>
+                    <p className="font-medium flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      {viewMember.address || 'Not provided'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-3">Account Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Join Date</Label>
+                    <p className="font-medium flex items-center gap-2">
+                      <Calendar className="w-4 h-4" />
+                      {new Date(viewMember.joinDate!).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="text-sm text-muted-foreground">Role</Label>
+                    <p className="font-medium">{viewMember.role || 'Member'}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setViewMember(null)}>
+                  Close
+                </Button>
+                {hasPermission('update', 'members') && (
+                  <Button onClick={() => {
+                    setEditMember(viewMember);
+                    setViewMember(null);
+                  }}>
+                    <Edit className="w-4 h-4 mr-2" />
+                    Edit Member
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Member Dialog */}
+      <Dialog open={!!editMember} onOpenChange={() => setEditMember(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Member</DialogTitle>
+            <DialogDescription>Update member information</DialogDescription>
+          </DialogHeader>
+          {editMember && (
+            <MemberForm
+              member={editMember}
+              onSubmit={handleUpdateMember}
+              isLoading={updateMemberMutation.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
