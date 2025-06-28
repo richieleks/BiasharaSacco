@@ -122,6 +122,9 @@ function hasPermission(userRole: UserRole, action: string, resource: string): bo
       { action: 'read', resource: 'guarantors' },
       { action: 'create', resource: 'guarantors' },
       { action: 'approve', resource: 'guarantors' },
+      { action: 'read', resource: 'system-settings' },
+      { action: 'update', resource: 'system-settings' },
+      { action: 'read', resource: 'audit-logs' },
     ],
     
     manager: [

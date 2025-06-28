@@ -180,6 +180,7 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Built member edit form with pre-filled data for easy updates
   - Savings accounts now automatically created with account number SAV00000001 format
   - Multiple roles per user architecture implemented with member_roles junction table
+  - Fixed admin permissions to include system-settings access for role management
 
 ## User Preferences
 
