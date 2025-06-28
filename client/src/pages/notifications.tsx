@@ -49,10 +49,10 @@ export default function NotificationsPage() {
   } else if (activeTab === "read") {
     filters.isRead = true;
   }
-  if (priorityFilter) {
+  if (priorityFilter && priorityFilter !== "all") {
     filters.priority = priorityFilter;
   }
-  if (typeFilter) {
+  if (typeFilter && typeFilter !== "all") {
     filters.type = typeFilter;
   }
 
@@ -61,13 +61,16 @@ export default function NotificationsPage() {
   const markAllAsRead = useMarkAllNotificationsAsRead();
   const deleteNotification = useDeleteNotification();
 
+  // Ensure notifications is an array and properly typed
+  const notificationsList = Array.isArray(notifications) ? notifications as Notification[] : [];
+
   // Filter notifications by search query
-  const filteredNotifications = notifications.filter((notification: Notification) =>
-    notification.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    notification.message.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredNotifications = notificationsList.filter((notification: Notification) =>
+    notification.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    notification.message?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const unreadNotifications = notifications.filter((n: Notification) => !n.isRead);
+  const unreadNotifications = notificationsList.filter((n: Notification) => !n.isRead);
 
   const handleNotificationClick = (notification: Notification) => {
     if (!notification.isRead) {
@@ -142,7 +145,7 @@ export default function NotificationsPage() {
                 <SelectValue placeholder="Filter by priority" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All priorities</SelectItem>
+                <SelectItem value="all">All priorities</SelectItem>
                 <SelectItem value="low">Low</SelectItem>
                 <SelectItem value="medium">Medium</SelectItem>
                 <SelectItem value="high">High</SelectItem>
@@ -155,7 +158,7 @@ export default function NotificationsPage() {
                 <SelectValue placeholder="Filter by type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All types</SelectItem>
+                <SelectItem value="all">All types</SelectItem>
                 <SelectItem value="loan_application">Loan Applications</SelectItem>
                 <SelectItem value="loan_approval">Loan Approvals</SelectItem>
                 <SelectItem value="loan_rejection">Loan Rejections</SelectItem>
@@ -176,8 +179,8 @@ export default function NotificationsPage() {
               variant="outline"
               onClick={() => {
                 setSearchQuery("");
-                setPriorityFilter("");
-                setTypeFilter("");
+                setPriorityFilter("all");
+                setTypeFilter("all");
               }}
             >
               Clear filters
@@ -189,13 +192,13 @@ export default function NotificationsPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all">
-            All ({notifications.length})
+            All ({notificationsList.length})
           </TabsTrigger>
           <TabsTrigger value="unread">
             Unread ({unreadNotifications.length})
           </TabsTrigger>
           <TabsTrigger value="read">
-            Read ({notifications.length - unreadNotifications.length})
+            Read ({notificationsList.length - unreadNotifications.length})
           </TabsTrigger>
         </TabsList>
 

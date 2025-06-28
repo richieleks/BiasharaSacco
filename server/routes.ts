@@ -1000,6 +1000,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test notification endpoint for demonstration
+  app.post('/api/notifications/test', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const member = await storage.getMemberByUserId(userId);
+      
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+
+      const notification = await storage.createNotification({
+        type: 'system_alert',
+        title: 'System Test Notification',
+        message: 'This demonstrates the real-time notifications system with WebSocket support, filtering, and comprehensive management features.',
+        priority: 'high',
+        actionUrl: '/notifications',
+        memberId: member.id,
+        userId: userId,
+        isRead: false
+      });
+
+      // Broadcast to WebSocket clients
+      broadcastNotification(notification);
+
+      res.json(notification);
+    } catch (error) {
+      console.error("Error creating test notification:", error);
+      res.status(500).json({ message: "Failed to create test notification" });
+    }
+  });
+
   app.post('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
