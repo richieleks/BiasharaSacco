@@ -609,8 +609,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Convert percentage to decimal for storage (15% -> 0.15)
+      const decimalInterestRate = parseFloat(interestRate) / 100;
+      
       // Calculate monthly payment (simple calculation)
-      const monthlyInterestRate = parseFloat(interestRate) / 12 / 100;
+      const monthlyInterestRate = decimalInterestRate / 12;
       const monthlyPayment = (parseFloat(principalAmount) * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, termMonths)) / 
         (Math.pow(1 + monthlyInterestRate, termMonths) - 1);
 
@@ -622,7 +625,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         loanNumber,
         loanType,
         principalAmount,
-        interestRate,
+        interestRate: decimalInterestRate.toFixed(4), // Store as decimal
         termMonths,
         monthlyPayment: monthlyPayment.toFixed(2),
         outstandingBalance: principalAmount,

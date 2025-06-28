@@ -22,8 +22,20 @@ export function useWebSocket() {
       return;
     }
 
+    // Handle Replit domain properly
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${host}/ws`;
+    let wsUrl;
+    
+    if (host.includes('replit.dev') || host.includes('repl.co')) {
+      // For Replit domains, use the full host
+      wsUrl = `${protocol}//${host}/ws`;
+    } else if (host.includes('localhost')) {
+      // For localhost, ensure port is included
+      const port = window.location.port || '5000';
+      wsUrl = `${protocol}//localhost:${port}/ws`;
+    } else {
+      wsUrl = `${protocol}//${host}/ws`;
+    }
     
     try {
       const ws = new WebSocket(wsUrl);

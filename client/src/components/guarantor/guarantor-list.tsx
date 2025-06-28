@@ -31,7 +31,7 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
     );
   }
 
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status: string | null) => {
     switch (status) {
       case 'approved':
         return <CheckCircle className="h-4 w-4 text-green-600" />;
@@ -42,7 +42,7 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
     }
   };
 
-  const getStatusVariant = (status: string): "default" | "secondary" | "destructive" | "outline" => {
+  const getStatusVariant = (status: string | null): "default" | "secondary" | "destructive" | "outline" => {
     switch (status) {
       case 'approved':
         return 'default';
@@ -120,7 +120,7 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
                   <div className="flex items-center gap-2">
                     {getStatusIcon(guarantor.status)}
                     <Badge variant={getStatusVariant(guarantor.status)}>
-                      {guarantor.status}
+                      {guarantor.status || 'pending'}
                     </Badge>
                   </div>
                 </div>
