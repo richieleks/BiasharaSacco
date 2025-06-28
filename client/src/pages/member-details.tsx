@@ -349,6 +349,67 @@ export default function MemberDetails() {
           </CardContent>
         </Card>
 
+        {/* Account Summary */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <CreditCard className="h-5 w-5" />
+              Account Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <p className="text-sm text-muted-foreground">Member Since</p>
+              <p className="font-medium flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                {member.createdAt ? format(new Date(member.createdAt), 'PP') : 'Not available'}
+              </p>
+            </div>
+
+            <Separator />
+
+            <div>
+              <p className="text-sm text-muted-foreground">Savings Accounts</p>
+              <p className="text-2xl font-bold text-green-600">
+                {savingsAccounts?.length || 0}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">Active Loans</p>
+              <p className="text-2xl font-bold text-orange-600">
+                {loans?.length || 0}
+              </p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">Monthly Savings</p>
+              <p className="font-medium">UGX {member.monthlySavings ? parseFloat(member.monthlySavings).toLocaleString() : '0'}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">Share Contribution</p>
+              <p className="font-medium">UGX {member.shareContribution ? parseFloat(member.shareContribution).toLocaleString() : '0'}</p>
+            </div>
+
+            <div>
+              <p className="text-sm text-muted-foreground">Total Shares</p>
+              <p className="font-medium">{member.numberOfShares || 0} shares</p>
+            </div>
+
+            <Separator />
+
+            <div>
+              <p className="text-sm text-muted-foreground">Status</p>
+              <Badge variant={member.status === 'active' ? 'default' : 'secondary'}>
+                {member.status || 'pending'}
+              </Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
         {/* Employment Information */}
         <Card className="lg:col-span-2">
           <CardHeader>
@@ -414,52 +475,6 @@ export default function MemberDetails() {
             </CardContent>
           </Card>
         )}
-
-        {/* Account Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
-              Account Summary
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Member Since</p>
-              <p className="font-medium flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                {member.createdAt ? format(new Date(member.createdAt), 'PP') : 'Not available'}
-              </p>
-            </div>
-
-            <Separator />
-
-            <div>
-              <p className="text-sm text-muted-foreground">Savings Accounts</p>
-              <p className="text-2xl font-bold text-green-600">
-                {savingsAccounts?.length || 0}
-              </p>
-            </div>
-
-            <div>
-              <p className="text-sm text-muted-foreground">Active Loans</p>
-              <p className="text-2xl font-bold text-orange-600">
-                {loans?.filter((loan: any) => loan.status === 'disbursed').length || 0}
-              </p>
-            </div>
-
-            {savingsAccounts && savingsAccounts.length > 0 && (
-              <div>
-                <p className="text-sm text-muted-foreground">Total Savings</p>
-                <p className="text-2xl font-bold text-primary">
-                  UGX {savingsAccounts.reduce((total: number, account: any) => 
-                    total + parseFloat(account.balance || '0'), 0
-                  ).toLocaleString()}
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
       </div>
 
       {/* Savings Accounts */}
