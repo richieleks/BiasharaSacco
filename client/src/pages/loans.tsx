@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -14,7 +14,7 @@ import LoanApplicationForm from "@/components/forms/loan-application-form";
 import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign } from "lucide-react";
 
 export default function Loans() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const isPersonalView = location === '/my-loans';
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const { toast } = useToast();
@@ -175,20 +175,31 @@ export default function Loans() {
               }
             </p>
           </div>
-          <Dialog open={isApplicationModalOpen} onOpenChange={setIsApplicationModalOpen}>
-            <DialogTrigger asChild>
-              <Button className="sacco-gradient text-white hover:opacity-90 mt-4 sm:mt-0">
-                <Plus className="w-4 h-4 mr-2" />
-                {isPersonalView ? 'Apply for Loan' : 'New Loan Application'}
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>New Loan Application</DialogTitle>
-              </DialogHeader>
-              <LoanApplicationForm onSuccess={() => setIsApplicationModalOpen(false)} />
-            </DialogContent>
-          </Dialog>
+          <Button 
+            className="sacco-gradient text-white hover:opacity-90 mt-4 sm:mt-0"
+            onClick={() => {
+              if (isPersonalView) {
+                setLocation('/loan-application');
+              } else {
+                setIsApplicationModalOpen(true);
+              }
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {isPersonalView ? 'Apply for Loan' : 'New Loan Application'}
+          </Button>
+          
+          {/* Keep modal for admin users */}
+          {!isPersonalView && (
+            <Dialog open={isApplicationModalOpen} onOpenChange={setIsApplicationModalOpen}>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>New Loan Application</DialogTitle>
+                </DialogHeader>
+                <LoanApplicationForm onSuccess={() => setIsApplicationModalOpen(false)} />
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
       </div>
 

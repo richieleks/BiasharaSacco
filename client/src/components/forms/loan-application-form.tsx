@@ -435,7 +435,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                 name="staffAccountNumber"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Staff Account Number *</FormLabel>
+                    <FormLabel>Staff Number *</FormLabel>
                     <FormControl>
                       <div className="relative">
                         <Input 
