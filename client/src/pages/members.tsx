@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import MemberForm from "@/components/forms/member-form";
 import { Search, Plus, Eye, Users } from "lucide-react";
 import type { MemberWithDetails } from "@shared/schema";
@@ -150,96 +151,88 @@ export default function Members() {
         />
       </div>
 
-      {/* Members Grid */}
+      {/* Members Table */}
       {membersLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="pt-6">
-                <div className="flex items-center space-x-4">
-                  <div className="w-12 h-12 bg-slate-200 rounded-full"></div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="animate-pulse space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center space-x-4">
+                  <div className="w-10 h-10 bg-slate-200 rounded-full"></div>
                   <div className="flex-1">
-                    <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                    <div className="h-4 bg-slate-200 rounded w-1/4 mb-2"></div>
+                    <div className="h-3 bg-slate-200 rounded w-1/6"></div>
                   </div>
+                  <div className="h-4 bg-slate-200 rounded w-1/8"></div>
+                  <div className="h-4 bg-slate-200 rounded w-1/8"></div>
+                  <div className="h-4 bg-slate-200 rounded w-1/8"></div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       ) : members && Array.isArray(members) && members.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {members.map((member: MemberWithDetails) => (
-            <Card key={member.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="pt-6">
-                <div className="flex items-center space-x-4 mb-4">
-                  <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center">
-                    <span className="text-slate-600 text-sm font-medium">
-                      {getInitials(member.user?.firstName || '', member.user?.lastName || '')}
-                    </span>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-medium text-slate-900">
-                      {member.user?.firstName} {member.user?.lastName}
-                    </h3>
-                    <p className="text-sm text-slate-500">ID: {member.memberNumber}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Phone:</span>
-                    <span className="text-slate-900">{member.phoneNumber}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Gender:</span>
-                    <span className="text-slate-900 capitalize">{member.gender || 'Not specified'}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Department:</span>
-                    <span className="text-slate-900">{member.department || 'Not specified'}</span>
-                  </div>
-                  {member.averageNetPay && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Avg Net Pay:</span>
-                      <span className="text-slate-900">UGX {parseFloat(member.averageNetPay).toLocaleString()}</span>
-                    </div>
-                  )}
-                  {member.nextOfKinName && (
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Next of Kin:</span>
-                      <span className="text-slate-900">{member.nextOfKinName}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Status:</span>
-                    <Badge className={getStatusColor(member.status ?? 'pending')}>
-                      {member.status ?? 'pending'}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-slate-500">Join Date:</span>
-                    <span className="text-slate-900">
-                      {new Date(member.joinDate!).toLocaleDateString()}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex space-x-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex-1"
-                    onClick={() => setLocation(`/members/${member.id}`)}
-                  >
-                    <Eye className="w-4 h-4 mr-1" />
-                    View Details
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Member</TableHead>
+                  <TableHead>Phone</TableHead>
+                  <TableHead>Gender</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Avg Net Pay</TableHead>
+                  <TableHead>Next of Kin</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {members.map((member: MemberWithDetails) => (
+                  <TableRow key={member.id} className="hover:bg-slate-50">
+                    <TableCell>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
+                          <span className="text-slate-600 text-sm font-medium">
+                            {getInitials(member.user?.firstName || '', member.user?.lastName || '')}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium text-slate-900">
+                            {member.user?.firstName} {member.user?.lastName}
+                          </div>
+                          <div className="text-sm text-slate-500">ID: {member.memberNumber}</div>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-slate-900">{member.phoneNumber}</TableCell>
+                    <TableCell className="text-slate-900 capitalize">{member.gender || 'Not specified'}</TableCell>
+                    <TableCell className="text-slate-900">{member.department || 'Not specified'}</TableCell>
+                    <TableCell className="text-slate-900">
+                      {member.averageNetPay ? `UGX ${parseFloat(member.averageNetPay).toLocaleString()}` : 'Not specified'}
+                    </TableCell>
+                    <TableCell className="text-slate-900">{member.nextOfKinName || 'Not specified'}</TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(member.status ?? 'pending')}>
+                        {member.status ?? 'pending'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setLocation(`/members/${member.id}`)}
+                        className="h-8 w-8 p-0"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       ) : (
         <Card>
           <CardContent className="py-12 text-center">
