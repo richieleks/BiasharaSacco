@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import NotFound from "@/pages/not-found";
-import RoleBasedNavigation from "@/components/role-based-nav";
+
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
 import Members from "@/pages/members";
@@ -25,8 +25,7 @@ import LoanWorkflow from "@/pages/loan-workflow";
 import MemberDetails from "@/pages/member-details";
 import NotificationsPage from "@/pages/notifications";
 import Header from "@/components/layout/header";
-import Sidebar from "@/components/layout/sidebar";
-import MobileNav from "@/components/layout/mobile-nav";
+import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 
 function ProtectedRoute({ children, requiredPermission }: { children: React.ReactNode, requiredPermission?: { action: string, resource: string } }) {
   const { hasPermission } = useRBAC();
@@ -58,12 +57,9 @@ function Router() {
     <div className="min-h-screen bg-slate-50">
       <Header />
       <div className="flex">
-        <div className="w-64 border-r border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="p-4">
-            <RoleBasedNavigation />
-          </div>
-        </div>
-        <main className="flex-1 p-6 lg:p-8">
+        <CollapsibleSidebar />
+        <main className="flex-1 p-4 lg:p-6 xl:p-8 transition-all duration-300 ease-in-out">{/* Mobile padding offset for menu button */}
+          <div className="lg:hidden h-16"></div>
           <Switch>
             <Route path="/">
               <ProtectedRoute>
@@ -144,7 +140,6 @@ function Router() {
           </Switch>
         </main>
       </div>
-      <MobileNav />
     </div>
   );
 }
