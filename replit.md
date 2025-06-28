@@ -272,6 +272,12 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Corrected server routes to properly handle roles as string arrays instead of single role properties
   - Fixed WebSocket iterator compatibility issues for better browser support
   - Improved role management mutation handling with sequential updates and proper error handling
+- January 17, 2025. Fixed member details display issues in members table:
+  - Corrected member name display to use member.fullName instead of member.user?.firstName/lastName
+  - Added proper null safety checks for member fullName field to prevent TypeScript errors
+  - Enhanced member table to properly display all comprehensive member information including gender, department, average net pay, and next of kin
+  - Fixed member initials generation to work with fullName field structure
+  - Member details are now properly populated and displayed in the members table interface
 
 ## User Preferences
 

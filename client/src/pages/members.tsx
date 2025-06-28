@@ -194,12 +194,15 @@ export default function Members() {
                       <div className="flex items-center space-x-3">
                         <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
                           <span className="text-slate-600 text-sm font-medium">
-                            {getInitials(member.user?.firstName || '', member.user?.lastName || '')}
+                            {member.fullName ? getInitials(
+                              member.fullName.split(' ')[0] || '', 
+                              member.fullName.split(' ')[1] || ''
+                            ) : 'NA'}
                           </span>
                         </div>
                         <div>
                           <div className="font-medium text-slate-900">
-                            {member.user?.firstName} {member.user?.lastName}
+                            {member.fullName || 'No Name'}
                           </div>
                           <div className="text-sm text-slate-500">ID: {member.memberNumber}</div>
                         </div>
