@@ -1,23 +1,38 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { queryClient, apiRequest } from "@/lib/queryClient";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FileText, Plus } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
+import GuarantorForm from "./guarantor-form";
+import GuarantorList from "../guarantor/guarantor-list";
+import { useAuth } from "@/hooks/useAuth";
 
 const loanApplicationSchema = z.object({
-  memberId: z.string().min(1, "Please select a member"),
-  loanType: z.enum(["personal", "business", "emergency", "asset"]),
-  principalAmount: z.string().min(1, "Amount is required").refine((val) => parseFloat(val) > 0, "Amount must be greater than 0"),
-  interestRate: z.string().min(1, "Interest rate is required").refine((val) => parseFloat(val) > 0, "Interest rate must be greater than 0"),
-  termMonths: z.string().min(1, "Term is required").refine((val) => parseInt(val) > 0, "Term must be greater than 0"),
+  principalAmount: z.string().min(1, "Amount is required"),
+  interestRate: z.string().min(1, "Interest rate is required"),
+  termMonths: z.string().min(1, "Term is required"),
+  loanType: z.enum(["personal", "business", "emergency", "asset", "development"]),
   purpose: z.string().min(1, "Purpose is required"),
+  averageNetPay: z.string().optional(),
+  staffNumber: z.string().optional(),
+  staffAccountNumber: z.string().optional(),
+  nextOfKin: z.string().optional(),
+  nextOfKinPhone: z.string().optional(),
+  currentSavings: z.string().optional(),
+  isTopUp: z.boolean().default(false),
+  previousLoanBalance: z.string().optional(),
+  securityOffered: z.string().optional(),
+  repaymentScheduleAttached: z.boolean().default(false),
 });
 
 type LoanApplicationData = z.infer<typeof loanApplicationSchema>;
@@ -28,21 +43,36 @@ interface LoanApplicationFormProps {
 
 export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [showGuarantorForm, setShowGuarantorForm] = useState(false);
+  const [currentLoanId, setCurrentLoanId] = useState<number | null>(null);
+  const [calculatedPayment, setCalculatedPayment] = useState<number | null>(null);
+
+  const { data: currentMember } = useQuery({
+    queryKey: ['/api/members/by-user', user?.id],
+    enabled: !!user?.id,
+  });
 
   const form = useForm<LoanApplicationData>({
     resolver: zodResolver(loanApplicationSchema),
     defaultValues: {
-      memberId: "",
       loanType: "personal",
       principalAmount: "",
-      interestRate: "12",
+      interestRate: "12.00",
       termMonths: "12",
-      purpose: "",
+      purpose: "PERSONAL DEVELOPMENT",
+      isTopUp: false,
+      repaymentScheduleAttached: false,
+      averageNetPay: "",
+      staffNumber: "",
+      staffAccountNumber: "",
+      nextOfKin: "",
+      nextOfKinPhone: "",
+      currentSavings: "",
+      previousLoanBalance: "",
+      securityOffered: "",
     },
-  });
-
-  const { data: members } = useQuery({
-    queryKey: ['/api/members'],
   });
 
   const loanApplicationMutation = useMutation({
