@@ -14,10 +14,13 @@ const memberFormSchema = z.object({
   phoneNumber: z.string().min(1, "Phone number is required"),
   address: z.string().optional(),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
+  gender: z.enum(["male", "female"]).default("male"),
   maritalStatus: z.enum(["single", "married", "divorced", "widowed"]).default("single"),
   department: z.string().min(1, "Department is required"),
   section: z.string().optional(),
   termsOfService: z.enum(["permanent", "temporary", "contract", "ex-staff"]).default("permanent"),
+  averageNetPay: z.string().optional(),
+  staffAccountNumber: z.string().optional(),
   monthlySavings: z.string().min(1, "Monthly savings amount is required"),
   accountNumber: z.string().optional(),
   branch: z.string().optional(),
@@ -26,6 +29,8 @@ const memberFormSchema = z.object({
   beneficiaryName: z.string().min(1, "Beneficiary name is required"),
   beneficiaryRelationship: z.string().min(1, "Relationship is required"),
   beneficiaryContact: z.string().min(1, "Contact address is required"),
+  nextOfKinName: z.string().min(1, "Next of kin name is required"),
+  nextOfKinPhone: z.string().min(1, "Next of kin phone number is required"),
 });
 
 type MemberFormData = z.infer<typeof memberFormSchema>;
@@ -43,12 +48,15 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
       fullName: member?.fullName || "",
       idNumber: member?.idNumber || "",
       dateOfBirth: member?.dateOfBirth || "",
+      gender: member?.gender || "male",
       phoneNumber: member?.phoneNumber || "",
       address: member?.address || "",
       maritalStatus: member?.maritalStatus || "single",
       department: member?.department || "",
       section: member?.section || "",
       termsOfService: member?.termsOfService || "permanent",
+      averageNetPay: member?.averageNetPay || "",
+      staffAccountNumber: member?.staffAccountNumber || "",
       monthlySavings: member?.monthlySavings || "",
       accountNumber: member?.accountNumber || "",
       branch: member?.branch || "",
@@ -57,6 +65,8 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
       beneficiaryName: member?.beneficiaryName || "",
       beneficiaryRelationship: member?.beneficiaryRelationship || "",
       beneficiaryContact: member?.beneficiaryContact || "",
+      nextOfKinName: member?.nextOfKinName || "",
+      nextOfKinPhone: member?.nextOfKinPhone || "",
     },
   });
 
@@ -114,7 +124,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
               )}
             />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
                 name="idNumber"
@@ -138,6 +148,28 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                     <FormControl>
                       <Input type="date" {...field} />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="gender"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Gender *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select gender" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="male">Male</SelectItem>
+                        <SelectItem value="female">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -251,6 +283,76 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                 </FormItem>
               )}
             />
+
+            {/* Employment Information Section */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="averageNetPay"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>8. Average Net Pay (UGX)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter average net pay for employees" {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormDescription>For employees only</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="staffAccountNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>9. Staff Account Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter staff account number" {...field} value={field.value || ''} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Next of Kin Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">A2. NEXT OF KIN INFORMATION</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="nextOfKinName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Next of Kin Name *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter next of kin name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="nextOfKinPhone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>NOK Phone Number *</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter next of kin phone number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
           </CardContent>
         </Card>
 
