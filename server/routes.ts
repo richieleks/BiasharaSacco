@@ -945,6 +945,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/guarantors', isAuthenticated, async (req: any, res) => {
     try {
       const validatedData = insertGuarantorSchema.parse(req.body);
+      
+      // Validate that guarantor member is approved/active
+      const guarantorMember = await storage.getMember(validatedData.guarantorMemberId);
+      if (!guarantorMember) {
+        return res.status(404).json({ message: "Guarantor member not found" });
+      }
+      
+      if (guarantorMember.status !== 'active') {
+        return res.status(400).json({ 
+          message: "Only approved/active members can serve as guarantors",
+          memberStatus: guarantorMember.status 
+        });
+      }
+      
       const guarantor = await storage.createGuarantor(validatedData);
       res.status(201).json(guarantor);
     } catch (error) {
@@ -970,6 +984,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loan = await storage.getLoan(loanId);
       if (!loan) {
         return res.status(404).json({ message: "Loan not found" });
+      }
+
+      // Validate all guarantor members are approved/active before creating any
+      const invalidGuarantors = [];
+      for (const guarantorData of guarantorList) {
+        const guarantorMember = await storage.getMember(guarantorData.guarantorMemberId);
+        if (!guarantorMember) {
+          invalidGuarantors.push(`Member ID ${guarantorData.guarantorMemberId} not found`);
+        } else if (guarantorMember.status !== 'active') {
+          invalidGuarantors.push(`${guarantorMember.fullName || guarantorMember.memberNumber} is not an active member (status: ${guarantorMember.status})`);
+        }
+      }
+
+      if (invalidGuarantors.length > 0) {
+        return res.status(400).json({ 
+          message: "Only approved/active members can serve as guarantors",
+          invalidGuarantors 
+        });
       }
 
       const createdGuarantors = [];

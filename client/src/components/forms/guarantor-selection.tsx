@@ -39,8 +39,9 @@ export default function GuarantorSelection({
     enabled: isDialogOpen,
   });
 
-  // Filter out already selected guarantors
+  // Filter out already selected guarantors and only show approved members
   const availableMembers = members.filter(member => 
+    member.status === 'active' && 
     !guarantors.some(g => g.guarantorMemberId === member.id)
   );
 
@@ -58,7 +59,7 @@ export default function GuarantorSelection({
     const newGuarantor: GuarantorData = {
       guarantorMemberId: parseInt(selectedMemberId),
       guaranteeAmount,
-      memberName: selectedMember.fullName || `${selectedMember.user?.firstName || ''} ${selectedMember.user?.lastName || ''}`.trim(),
+      memberName: selectedMember.fullName || selectedMember.memberNumber,
       memberNumber: selectedMember.memberNumber,
     };
 
@@ -106,6 +107,10 @@ export default function GuarantorSelection({
                 <DialogTitle>Add Guarantor</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                  <strong>Note:</strong> Only approved/active SACCO members can serve as guarantors for loan applications.
+                </div>
+                
                 <div>
                   <Label htmlFor="member">Select Member</Label>
                   <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
@@ -113,12 +118,18 @@ export default function GuarantorSelection({
                       <SelectValue placeholder="Choose a member..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {availableMembers.map((member) => (
-                        <SelectItem key={member.id} value={member.id.toString()}>
-                          {member.fullName || `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim()} 
-                          ({member.memberNumber})
-                        </SelectItem>
-                      ))}
+                      {availableMembers.length === 0 ? (
+                        <div className="p-2 text-sm text-slate-500">
+                          No approved members available as guarantors
+                        </div>
+                      ) : (
+                        availableMembers.map((member) => (
+                          <SelectItem key={member.id} value={member.id.toString()}>
+                            {member.fullName || member.memberNumber} 
+                            ({member.memberNumber})
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
