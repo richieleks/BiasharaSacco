@@ -256,6 +256,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get specific member by ID
+  app.get('/api/members/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const memberId = parseInt(req.params.id);
+      if (isNaN(memberId)) {
+        return res.status(400).json({ message: "Invalid member ID" });
+      }
+
+      const member = await storage.getMember(memberId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+
+      res.json(member);
+    } catch (error) {
+      console.error("Error fetching member:", error);
+      res.status(500).json({ message: "Failed to fetch member" });
+    }
+  });
+
   app.get('/api/members', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
       const { search } = req.query;

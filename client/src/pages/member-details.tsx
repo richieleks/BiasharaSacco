@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertMemberSchema, type Member } from "@shared/schema";
+import { insertMemberSchema, type Member, type MemberWithDetails } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Edit, User, Phone, Mail, MapPin, Calendar, CreditCard, Building, Users } from "lucide-react";
@@ -30,18 +30,18 @@ export default function MemberDetails() {
 
   const memberId = params?.id;
 
-  const { data: member, isLoading } = useQuery({
-    queryKey: ["/api/members", memberId],
+  const { data: member, isLoading } = useQuery<MemberWithDetails>({
+    queryKey: [`/api/members/${memberId}`],
     enabled: !!memberId,
   });
 
-  const { data: savingsAccounts } = useQuery({
-    queryKey: ["/api/savings-accounts/member", memberId],
+  const { data: savingsAccounts } = useQuery<any[]>({
+    queryKey: [`/api/members/${memberId}/savings`],
     enabled: !!memberId,
   });
 
-  const { data: loans } = useQuery({
-    queryKey: ["/api/loans/member", memberId],
+  const { data: loans } = useQuery<any[]>({
+    queryKey: [`/api/members/${memberId}/loans`],
     enabled: !!memberId,
   });
 
@@ -128,7 +128,7 @@ export default function MemberDetails() {
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-2">
               <User className="h-6 w-6" />
-              {member.firstName} {member.lastName}
+              {member.user?.firstName || member.fullName?.split(' ')[0] || 'Unknown'} {member.user?.lastName || member.fullName?.split(' ')[1] || ''}
             </h1>
             <p className="text-muted-foreground">Member #{member.memberNumber}</p>
           </div>
@@ -296,7 +296,7 @@ export default function MemberDetails() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <p className="text-sm text-muted-foreground">Full Name</p>
-                <p className="font-medium">{member.firstName} {member.lastName}</p>
+                <p className="font-medium">{member.user?.firstName || member.fullName?.split(' ')[0] || 'Unknown'} {member.user?.lastName || member.fullName?.split(' ')[1] || ''}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">ID Number</p>
@@ -319,11 +319,11 @@ export default function MemberDetails() {
             <div className="space-y-3">
               <div className="flex items-center gap-2">
                 <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{member.phone || 'No phone number'}</span>
+                <span>{member.phoneNumber || 'No phone number'}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="h-4 w-4 text-muted-foreground" />
-                <span>{member.email || 'No email address'}</span>
+                <span>{member.user?.email || 'No email address'}</span>
               </div>
               <div className="flex items-start gap-2">
                 <MapPin className="h-4 w-4 text-muted-foreground mt-1" />
@@ -331,7 +331,7 @@ export default function MemberDetails() {
               </div>
               <div className="flex items-center gap-2">
                 <Building className="h-4 w-4 text-muted-foreground" />
-                <span>{member.occupation || 'No occupation listed'}</span>
+                <span>{member.department || 'No department listed'}</span>
               </div>
             </div>
           </CardContent>
