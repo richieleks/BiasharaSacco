@@ -280,7 +280,7 @@ export default function RolesMatrix() {
                 </div>
                 <div className="flex items-center space-x-2 overflow-x-auto">
                   {workflow.workflow.map((stage, stageIndex) => (
-                    <React.Fragment key={stageIndex}>
+                    <div key={stageIndex} className="flex items-center space-x-2">
                       <div className="flex flex-col items-center space-y-2 min-w-fit">
                         <div className={`w-3 h-3 rounded-full ${stage.color}`} />
                         <span className="text-xs text-slate-600 text-center whitespace-nowrap">
@@ -290,7 +290,7 @@ export default function RolesMatrix() {
                       {stageIndex < workflow.workflow.length - 1 && (
                         <div className="flex-shrink-0 w-8 h-px bg-slate-300" />
                       )}
-                    </React.Fragment>
+                    </div>
                   ))}
                 </div>
               </div>
