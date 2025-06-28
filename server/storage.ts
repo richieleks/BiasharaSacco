@@ -434,6 +434,23 @@ export class DatabaseStorage implements IStorage {
       .where(eq(savingsAccounts.memberId, memberId));
   }
 
+  async getAllSavingsAccounts(): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(savingsAccounts)
+      .leftJoin(members, eq(savingsAccounts.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .orderBy(desc(savingsAccounts.createdAt));
+
+    return results.map(result => ({
+      ...result.savings_accounts,
+      member: result.members ? {
+        ...result.members,
+        user: result.users || undefined,
+      } : undefined,
+    }));
+  }
+
   async updateSavingsAccountBalance(id: number, amount: string, operation: 'add' | 'subtract'): Promise<SavingsAccount> {
     const operator = operation === 'add' ? '+' : '-';
     const [account] = await db

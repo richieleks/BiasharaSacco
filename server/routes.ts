@@ -723,6 +723,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Savings account routes
+  app.get('/api/savings-accounts', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User ID not found" });
+      }
+
+      // Get user's member record to check their roles
+      const requestingMember = await storage.getMemberByUserId(userId);
+      if (!requestingMember) {
+        return res.status(403).json({ message: "Access denied - no member record found" });
+      }
+
+      // Get user's roles for permission checking
+      const userRoles = await storage.getMemberRoles(requestingMember.id);
+      const roleNames = userRoles.map(r => r.role);
+
+      // Access control: staff can see all accounts, members see only their own
+      const isStaff = roleNames.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+
+      let savingsAccounts;
+      if (isStaff) {
+        // Staff can see all savings accounts
+        savingsAccounts = await storage.getAllSavingsAccounts();
+      } else {
+        // Members can only see their own accounts
+        savingsAccounts = await storage.getSavingsAccountsByMember(requestingMember.id);
+      }
+
+      res.json(savingsAccounts);
+    } catch (error) {
+      console.error("Error fetching savings accounts:", error);
+      res.status(500).json({ message: "Failed to fetch savings accounts" });
+    }
+  });
+
   // Transaction routes
   app.get('/api/transactions', isAuthenticated, async (req, res) => {
     try {

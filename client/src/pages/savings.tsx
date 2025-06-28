@@ -34,8 +34,8 @@ export default function Savings() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: members, isLoading: membersLoading, error } = useQuery<any[]>({
-    queryKey: ['/api/members', searchQuery],
+  const { data: savingsAccounts, isLoading: accountsLoading, error } = useQuery<any[]>({
+    queryKey: ['/api/savings-accounts'],
     enabled: isAuthenticated,
   });
 
@@ -128,7 +128,7 @@ export default function Savings() {
       </Card>
 
       {/* Savings Accounts */}
-      {membersLoading ? (
+      {accountsLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
@@ -147,76 +147,72 @@ export default function Savings() {
             </Card>
           ))}
         </div>
-      ) : members && members.length > 0 ? (
-        <div className="space-y-6">
-          {members.filter((member: any) => member.savingsAccounts?.length > 0).map((member: any) => (
-            <Card key={member.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+      ) : savingsAccounts && savingsAccounts.length > 0 ? (
+        <div className="space-y-4">
+          {savingsAccounts
+            .filter((account: any) => 
+              searchQuery === '' || 
+              account.accountNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              account.member?.user?.firstName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              account.member?.user?.lastName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              account.member?.memberNumber?.toLowerCase().includes(searchQuery.toLowerCase())
+            )
+            .map((account: any) => (
+            <Card key={account.id} className="hover:shadow-md transition-shadow">
+              <CardContent className="pt-6">
+                <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
+                    <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center">
                       <span className="text-slate-600 text-sm font-medium">
-                        {member.user?.firstName?.charAt(0)}{member.user?.lastName?.charAt(0)}
+                        {account.member?.user?.firstName?.charAt(0)}{account.member?.user?.lastName?.charAt(0)}
                       </span>
                     </div>
                     <div>
-                      <CardTitle className="text-lg">
-                        {member.user?.firstName} {member.user?.lastName}
-                      </CardTitle>
-                      <p className="text-sm text-slate-500">Member: {member.memberNumber}</p>
+                      <h3 className="font-medium text-slate-900">
+                        {account.member?.user?.firstName} {account.member?.user?.lastName}
+                      </h3>
+                      <p className="text-sm text-slate-500">Member: {account.member?.memberNumber}</p>
                     </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {member.savingsAccounts?.map((account: any) => (
-                    <div key={account.id} className="border border-slate-200 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center space-x-2">
-                          <Wallet className="w-4 h-4 text-slate-400" />
-                          <span className="text-sm font-medium text-slate-900">
-                            {account.accountNumber}
-                          </span>
-                        </div>
-                        <Badge className={getStatusColor(account.status)}>
-                          {account.status}
-                        </Badge>
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500">Type:</span>
-                          <Badge className={getAccountTypeColor(account.accountType)}>
-                            {account.accountType.replace('_', ' ')}
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500">Balance:</span>
-                          <span className="font-medium text-slate-900">
-                            UGX {parseFloat(account.balance).toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-slate-500">Interest Rate:</span>
-                          <span className="text-slate-900">
-                            {(parseFloat(account.interestRate) * 100).toFixed(2)}%
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex space-x-2 mt-4">
-                        <Button size="sm" variant="outline" className="flex-1">
-                          <ArrowUp className="w-3 h-3 mr-1" />
-                          Deposit
-                        </Button>
-                        <Button size="sm" variant="outline" className="flex-1">
-                          <ArrowDown className="w-3 h-3 mr-1" />
-                          Withdraw
-                        </Button>
-                      </div>
+                  <div className="text-right">
+                    <div className="text-lg font-semibold text-slate-900">
+                      UGX {parseFloat(account.balance || '0').toLocaleString()}
                     </div>
-                  ))}
+                    <div className="text-sm text-slate-500">Current Balance</div>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="space-y-1">
+                    <div className="text-sm text-slate-500">Account Number</div>
+                    <div className="flex items-center space-x-2">
+                      <Wallet className="w-4 h-4 text-slate-400" />
+                      <span className="text-sm font-medium text-slate-900">
+                        {account.accountNumber}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="text-sm text-slate-500">Account Type</div>
+                    <Badge className={getAccountTypeColor(account.accountType)}>
+                      {account.accountType?.replace('_', ' ') || 'Regular'}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="text-sm text-slate-500">Status</div>
+                    <Badge className={getStatusColor(account.status)}>
+                      {account.status || 'active'}
+                    </Badge>
+                  </div>
+                  
+                  <div className="space-y-1">
+                    <div className="text-sm text-slate-500">Opened</div>
+                    <div className="text-sm text-slate-900">
+                      {account.createdAt ? new Date(account.createdAt).toLocaleDateString() : 'N/A'}
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
