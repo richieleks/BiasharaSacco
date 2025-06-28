@@ -51,7 +51,7 @@ export default function Members() {
         description: "Member added successfully!",
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -63,9 +63,18 @@ export default function Members() {
         }, 500);
         return;
       }
+      
+      // Handle specific validation errors
+      let errorMessage = "Failed to add member. Please try again.";
+      if (error.message && error.message.includes("A member with this ID number already exists")) {
+        errorMessage = "This ID number is already registered. Please check and use a different ID number.";
+      } else if (error.message && error.message.includes("You already have a member profile")) {
+        errorMessage = "You already have a member profile. Only one membership per user is allowed.";
+      }
+      
       toast({
-        title: "Error",
-        description: "Failed to add member. Please try again.",
+        title: "Registration Error",
+        description: errorMessage,
         variant: "destructive",
       });
     },

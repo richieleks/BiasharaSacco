@@ -76,6 +76,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Member routes
   app.post('/api/members', isAuthenticated, async (req: any, res) => {
     try {
+      // Check if ID number already exists
+      const existingMemberByIdNumber = await storage.getMemberByIdNumber(req.body.idNumber);
+      if (existingMemberByIdNumber) {
+        return res.status(400).json({ 
+          message: "A member with this ID number already exists",
+          field: "idNumber"
+        });
+      }
+
+      // Check if user already has a member profile
+      const existingMemberByUserId = await storage.getMemberByUserId(req.user?.claims?.sub);
+      if (existingMemberByUserId) {
+        return res.status(400).json({ 
+          message: "You already have a member profile",
+          field: "userId"
+        });
+      }
+      
       // Generate unique member number
       const memberNumber = `BCS${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
@@ -88,7 +106,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         joinDate: new Date(),
       };
       
-      // Skip validation for now and create member directly
+      // Create member
       const member = await storage.createMember(memberData as any);
       
       // Generate unique account number
