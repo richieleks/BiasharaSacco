@@ -59,19 +59,40 @@ export default function MemberDetails() {
 
   // Fetch member details
   const { data: member, isLoading: memberLoading } = useQuery<MemberWithDetails>({
-    queryKey: [`/api/members/${memberId}`],
+    queryKey: ['/api/members', memberId],
+    queryFn: async () => {
+      const response = await fetch(`/api/members/${memberId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch member details');
+      }
+      return response.json();
+    },
     enabled: !!memberId,
   });
 
   // Fetch member's savings accounts
   const { data: savingsAccounts } = useQuery<any[]>({
-    queryKey: [`/api/members/${memberId}/savings`],
+    queryKey: ['/api/members', memberId, 'savings'],
+    queryFn: async () => {
+      const response = await fetch(`/api/members/${memberId}/savings`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch savings accounts');
+      }
+      return response.json();
+    },
     enabled: !!memberId,
   });
 
   // Fetch member's loans
   const { data: loans } = useQuery<any[]>({
-    queryKey: [`/api/members/${memberId}/loans`],
+    queryKey: ['/api/members', memberId, 'loans'],
+    queryFn: async () => {
+      const response = await fetch(`/api/members/${memberId}/loans`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch loans');
+      }
+      return response.json();
+    },
     enabled: !!memberId,
   });
 

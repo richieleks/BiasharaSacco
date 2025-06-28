@@ -49,13 +49,28 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
   const [currentLoanId, setCurrentLoanId] = useState<number | null>(null);
 
   const { data: currentMember } = useQuery({
-    queryKey: [`/api/members/by-user/${user?.id || 'undefined'}`],
+    queryKey: ['/api/members/by-user', user?.id],
+    queryFn: async () => {
+      const response = await fetch(`/api/members/by-user/${user?.id}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch member details');
+      }
+      return response.json();
+    },
     enabled: !!user?.id,
   });
 
   // Fetch member's savings accounts to get current balance
   const { data: savingsAccounts } = useQuery<any[]>({
-    queryKey: [`/api/members/${(currentMember as any)?.id}/savings`],
+    queryKey: ['/api/members', (currentMember as any)?.id, 'savings'],
+    queryFn: async () => {
+      const memberId = (currentMember as any)?.id;
+      const response = await fetch(`/api/members/${memberId}/savings`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch savings accounts');
+      }
+      return response.json();
+    },
     enabled: !!(currentMember as any)?.id,
   });
 

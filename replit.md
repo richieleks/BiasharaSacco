@@ -278,6 +278,12 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Enhanced member table to properly display all comprehensive member information including gender, department, average net pay, and next of kin
   - Fixed member initials generation to work with fullName field structure
   - Member details are now properly populated and displayed in the members table interface
+- January 17, 2025. Fixed HTTP method errors in API requests:
+  - Resolved "Failed to execute 'fetch' on 'Window': '/api/members/2' is not a valid HTTP method" error
+  - Fixed React Query patterns to use proper queryFn with explicit fetch requests instead of URL strings as query keys
+  - Updated member details page API requests to use correct fetch patterns with proper error handling
+  - Fixed loan application form API requests for member and savings account data fetching
+  - Enhanced API request structure with proper response validation and error messages
 
 ## User Preferences
 
