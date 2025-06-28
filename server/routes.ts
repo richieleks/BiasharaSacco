@@ -73,6 +73,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to check if user has committee or admin role
+  const isCommitteeOrAdmin = async (userId: string): Promise<boolean> => {
+    const user = await storage.getUser(userId);
+    return user?.role === 'committee' || user?.role === 'admin';
+  };
+
   // Member routes
   app.post('/api/members', isAuthenticated, async (req: any, res) => {
     try {
@@ -102,7 +108,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         memberNumber,
         userId: req.user?.claims?.sub,
-        status: 'active',
+        status: 'pending', // Requires committee approval
         joinDate: new Date(),
       };
       
@@ -127,6 +133,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
       res.status(500).json({ message: "Failed to create member" });
+    }
+  });
+
+  // Get pending members for committee approval
+  app.get('/api/members/pending', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!await isCommitteeOrAdmin(userId)) {
+        return res.status(403).json({ message: "Access denied. Committee or admin role required." });
+      }
+
+      const pendingMembers = await storage.getPendingMembers();
+      res.json(pendingMembers);
+    } catch (error) {
+      console.error("Error fetching pending members:", error);
+      res.status(500).json({ message: "Failed to fetch pending members" });
+    }
+  });
+
+  // Approve member application
+  app.post('/api/members/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!await isCommitteeOrAdmin(userId)) {
+        return res.status(403).json({ message: "Access denied. Committee or admin role required." });
+      }
+
+      const { id } = req.params;
+      const { comments } = req.body;
+      
+      const member = await storage.approveMember(parseInt(id), userId, comments);
+      
+      // Create default savings account after approval
+      const accountNumber = `SAV${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      await storage.createSavingsAccount({
+        memberId: member.id,
+        accountNumber,
+        accountType: 'regular',
+        balance: '0.00',
+      });
+
+      res.json({ message: "Member approved successfully", member });
+    } catch (error) {
+      console.error("Error approving member:", error);
+      res.status(500).json({ message: "Failed to approve member" });
+    }
+  });
+
+  // Reject member application
+  app.post('/api/members/:id/reject', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!await isCommitteeOrAdmin(userId)) {
+        return res.status(403).json({ message: "Access denied. Committee or admin role required." });
+      }
+
+      const { id } = req.params;
+      const { comments } = req.body;
+      
+      const member = await storage.rejectMember(parseInt(id), userId, comments);
+      res.json({ message: "Member application rejected", member });
+    } catch (error) {
+      console.error("Error rejecting member:", error);
+      res.status(500).json({ message: "Failed to reject member" });
     }
   });
 
@@ -287,8 +357,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const monthlyPayment = (parseFloat(principalAmount) * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, termMonths)) / 
         (Math.pow(1 + monthlyInterestRate, termMonths) - 1);
 
+      // Generate unique loan number
+      const loanNumber = `LN${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
       const loan = await storage.createLoan({
         memberId,
+        loanNumber,
         loanType,
         principalAmount,
         interestRate,

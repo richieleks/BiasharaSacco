@@ -5,6 +5,7 @@ import MetricsGrid from "@/components/dashboard/metrics-grid";
 import RecentTransactions from "@/components/dashboard/recent-transactions";
 import QuickActions from "@/components/dashboard/quick-actions";
 import PendingApprovals from "@/components/dashboard/pending-approvals";
+import MemberApprovals from "@/components/dashboard/member-approvals";
 import { Button } from "@/components/ui/button";
 import { Download, Plus } from "lucide-react";
 
@@ -51,6 +52,11 @@ export default function Dashboard() {
 
       {/* Dashboard Metrics */}
       <MetricsGrid />
+
+      {/* Member Approvals Section */}
+      <div className="mb-8">
+        <MemberApprovals />
+      </div>
 
       {/* Main Dashboard Content */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

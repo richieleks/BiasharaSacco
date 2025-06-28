@@ -40,6 +40,9 @@ export interface IStorage {
   updateMember(id: number, updates: Partial<InsertMember>): Promise<Member>;
   getAllMembers(): Promise<MemberWithDetails[]>;
   searchMembers(query: string): Promise<MemberWithDetails[]>;
+  getPendingMembers(): Promise<MemberWithDetails[]>;
+  approveMember(id: number, approvedBy: string, comments?: string): Promise<Member>;
+  rejectMember(id: number, approvedBy: string, comments?: string): Promise<Member>;
 
   // Savings account operations
   createSavingsAccount(account: InsertSavingsAccount): Promise<SavingsAccount>;
@@ -221,6 +224,50 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  async getPendingMembers(): Promise<MemberWithDetails[]> {
+    const results = await db
+      .select()
+      .from(members)
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(eq(members.status, 'pending'))
+      .orderBy(desc(members.createdAt));
+
+    return results.map(result => ({
+      ...result.members,
+      user: result.users || undefined,
+    }));
+  }
+
+  async approveMember(id: number, approvedBy: string, comments?: string): Promise<Member> {
+    const [member] = await db
+      .update(members)
+      .set({
+        status: 'active',
+        approvedBy,
+        approvedAt: new Date(),
+        approvalComments: comments,
+        updatedAt: new Date(),
+      })
+      .where(eq(members.id, id))
+      .returning();
+    return member;
+  }
+
+  async rejectMember(id: number, approvedBy: string, comments?: string): Promise<Member> {
+    const [member] = await db
+      .update(members)
+      .set({
+        status: 'rejected',
+        approvedBy,
+        rejectedAt: new Date(),
+        approvalComments: comments,
+        updatedAt: new Date(),
+      })
+      .where(eq(members.id, id))
+      .returning();
+    return member;
+  }
+
   async createSavingsAccount(accountData: InsertSavingsAccount): Promise<SavingsAccount> {
     const [account] = await db
       .insert(savingsAccounts)
@@ -305,7 +352,10 @@ export class DatabaseStorage implements IStorage {
   async updateLoanStatus(id: number, status: string): Promise<Loan> {
     const [loan] = await db
       .update(loans)
-      .set({ status, updatedAt: new Date() })
+      .set({ 
+        status: status as "pending" | "active" | "approved" | "disbursed" | "completed" | "defaulted", 
+        updatedAt: new Date() 
+      })
       .where(eq(loans.id, id))
       .returning();
     return loan;
@@ -419,7 +469,9 @@ export class DatabaseStorage implements IStorage {
   async updateTransactionStatus(id: number, status: string): Promise<Transaction> {
     const [transaction] = await db
       .update(transactions)
-      .set({ status, updatedAt: new Date() })
+      .set({ 
+        status: status as "pending" | "completed" | "failed" | "cancelled"
+      })
       .where(eq(transactions.id, id))
       .returning();
     return transaction;

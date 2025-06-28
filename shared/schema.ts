@@ -33,7 +33,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role", { enum: ["admin", "teller", "member"] }).default("member"),
+  role: varchar("role", { enum: ["admin", "committee", "teller", "member"] }).default("member"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -60,7 +60,11 @@ export const members = pgTable("members", {
   beneficiaryName: varchar("beneficiary_name").default(""),
   beneficiaryRelationship: varchar("beneficiary_relationship").default(""),
   beneficiaryContact: varchar("beneficiary_contact").default(""),
-  status: varchar("status", { enum: ["active", "inactive", "suspended"] }).default("active"),
+  status: varchar("status", { enum: ["pending", "active", "inactive", "suspended", "rejected"] }).default("pending"),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  approvalComments: text("approval_comments"),
   joinDate: timestamp("join_date").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -233,7 +237,6 @@ export const insertLoanSchema = createInsertSchema(loans).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-  loanNumber: true,
 });
 
 export const insertTransactionSchema = createInsertSchema(transactions).omit({
