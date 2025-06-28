@@ -7,10 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { insertMemberSchema } from "@shared/schema";
 
-const memberFormSchema = insertMemberSchema.extend({
+const memberFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
+  idNumber: z.string().min(1, "ID number is required"),
+  phoneNumber: z.string().min(1, "Phone number is required"),
+  address: z.string().optional(),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   maritalStatus: z.enum(["single", "married", "divorced", "widowed"]).default("single"),
   department: z.string().min(1, "Department is required"),
@@ -24,11 +26,6 @@ const memberFormSchema = insertMemberSchema.extend({
   beneficiaryName: z.string().min(1, "Beneficiary name is required"),
   beneficiaryRelationship: z.string().min(1, "Relationship is required"),
   beneficiaryContact: z.string().min(1, "Contact address is required"),
-}).omit({ 
-  memberNumber: true,
-  userId: true,
-  status: true,
-  joinDate: true 
 });
 
 type MemberFormData = z.infer<typeof memberFormSchema>;

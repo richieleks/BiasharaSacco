@@ -31,7 +31,7 @@ export interface IStorage {
   upsertUser(user: UpsertUser): Promise<User>;
 
   // Member operations
-  createMember(member: InsertMember): Promise<Member>;
+  createMember(member: InsertMember & { memberNumber: string }): Promise<Member>;
   getMember(id: number): Promise<MemberWithDetails | undefined>;
   getMemberByNumber(memberNumber: string): Promise<MemberWithDetails | undefined>;
   getMemberByUserId(userId: string): Promise<MemberWithDetails | undefined>;
