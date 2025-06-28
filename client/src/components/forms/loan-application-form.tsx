@@ -60,6 +60,10 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     enabled: !!user?.id,
   });
 
+  // Check if member is approved for loan applications
+  const isMemberApproved = currentMember?.status === 'active';
+  const memberStatus = currentMember?.status;
+
   // Fetch member's savings accounts to get current balance
   const { data: savingsAccounts } = useQuery<any[]>({
     queryKey: ['/api/members', (currentMember as any)?.id, 'savings'],
@@ -161,10 +165,28 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
       setCurrentLoanId(loan.id);
       form.reset();
     },
-    onError: (error) => {
+    onError: async (error) => {
+      let errorMessage = "Failed to submit loan application";
+      
+      // Handle membership status errors specifically
+      if (error.message.includes('403')) {
+        try {
+          const errorData = JSON.parse(error.message.split('403: ')[1]);
+          if (errorData.memberStatus) {
+            errorMessage = `Membership must be approved before applying for loans. Current status: ${errorData.memberStatus}`;
+          } else {
+            errorMessage = errorData.message || "Membership approval required";
+          }
+        } catch {
+          errorMessage = "Membership approval required before applying for loans";
+        }
+      } else {
+        errorMessage = error.message || "Failed to submit loan application";
+      }
+      
       toast({
         title: "Error",
-        description: error.message || "Failed to submit loan application",
+        description: errorMessage,
         variant: "destructive",
       });
     },
@@ -219,6 +241,48 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
           </CardContent>
         </Card>
       </div>
+    );
+  }
+
+  // Show membership status warning if not approved
+  if (!isMemberApproved && currentMember) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-center text-red-700">Membership Approval Required</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center p-6">
+            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FileText className="w-8 h-8 text-red-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Membership Not Yet Approved
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Your membership status is currently <span className="font-medium capitalize text-red-600">{memberStatus}</span>. 
+              You must have an approved membership before you can apply for loans.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800">
+                <strong>Next Steps:</strong>
+              </p>
+              <ul className="text-sm text-blue-700 mt-2 list-disc list-inside">
+                <li>Wait for admin approval of your membership application</li>
+                <li>Ensure all required documents have been submitted</li>
+                <li>Contact SACCO administration if you have questions</li>
+              </ul>
+            </div>
+            <Button 
+              variant="outline" 
+              onClick={onSuccess}
+              className="w-full"
+            >
+              Return to Dashboard
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 

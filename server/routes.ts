@@ -584,6 +584,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { memberId, loanType, principalAmount, interestRate, termMonths } = req.body;
       
+      // Validate that the member is approved for loan applications
+      const member = await storage.getMember(memberId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+      
+      if (member.status !== 'active') {
+        return res.status(403).json({ 
+          message: "Loan applications are only available to approved members", 
+          memberStatus: member.status 
+        });
+      }
+      
       // Calculate monthly payment (simple calculation)
       const monthlyInterestRate = parseFloat(interestRate) / 12 / 100;
       const monthlyPayment = (parseFloat(principalAmount) * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, termMonths)) / 
