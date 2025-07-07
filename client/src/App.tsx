@@ -14,7 +14,7 @@ import Dashboard from "@/pages/dashboard";
 import Members from "@/pages/members";
 import Savings from "@/pages/savings";
 import Loans from "@/pages/loans";
-import LoanApplication from "@/pages/loan-application";
+
 import Transactions from "@/pages/transactions";
 import Reports from "@/pages/reports";
 import Guarantors from "@/pages/guarantors";
@@ -146,11 +146,7 @@ function Router() {
               </ProtectedRoute>
             </Route>
 
-            <Route path="/loan-application">
-              <ProtectedRoute requiredPermission={{ action: 'create', resource: 'loans' }}>
-                <LoanApplication />
-              </ProtectedRoute>
-            </Route>
+
             <Route path="/rbac-management">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'roles' }}>
                 <RBACManagement />

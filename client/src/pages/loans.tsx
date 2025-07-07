@@ -212,30 +212,24 @@ export default function Loans() {
             </div>
             <Button 
               className="sacco-gradient text-white hover:opacity-90"
-              onClick={() => {
-                if (isPersonalView) {
-                  setLocation('/loan-application');
-                } else {
-                  setIsApplicationModalOpen(true);
-                }
-              }}
+              onClick={() => setIsApplicationModalOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
               {isPersonalView ? 'Apply for Loan' : 'New Loan Application'}
             </Button>
           </div>
           
-          {/* Keep modal for admin users */}
-          {!isPersonalView && (
-            <Dialog open={isApplicationModalOpen} onOpenChange={setIsApplicationModalOpen}>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                  <DialogTitle>New Loan Application</DialogTitle>
-                </DialogHeader>
-                <LoanApplicationForm onSuccess={() => setIsApplicationModalOpen(false)} />
-              </DialogContent>
-            </Dialog>
-          )}
+          {/* Loan Application Modal for all users */}
+          <Dialog open={isApplicationModalOpen} onOpenChange={setIsApplicationModalOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>
+                  {isPersonalView ? 'Apply for Loan' : 'New Loan Application'}
+                </DialogTitle>
+              </DialogHeader>
+              <LoanApplicationForm onSuccess={() => setIsApplicationModalOpen(false)} />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 

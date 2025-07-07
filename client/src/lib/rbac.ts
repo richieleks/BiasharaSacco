@@ -147,7 +147,7 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Members', path: '/members', icon: 'Users', permission: { action: 'read', resource: 'members' } },
   { name: 'Loans', path: '/loans', icon: 'CreditCard', permission: { action: 'read', resource: 'loans' } },
   { name: 'Loan Workflow', path: '/loan-workflow', icon: 'GitBranch', permission: { action: 'approve', resource: 'loans' } },
-  { name: 'Loan Application', path: '/loan-application', icon: 'FileText', permission: { action: 'create', resource: 'loans' } },
+
   { name: 'Savings', path: '/savings', icon: 'PiggyBank', permission: { action: 'read', resource: 'savings' } },
   { name: 'Transactions', path: '/transactions', icon: 'Receipt', permission: { action: 'read', resource: 'transactions' } },
   { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck', permission: { action: 'read', resource: 'guarantors' } },
