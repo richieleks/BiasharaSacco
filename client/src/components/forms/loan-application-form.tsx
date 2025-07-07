@@ -96,16 +96,6 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     return total + parseFloat(account.balance || '0');
   }, 0) || 0;
 
-  // Get selected loan type details
-  const selectedLoanType = loanTypes.find(lt => lt.name === form.watch('loanType'));
-
-  // Update interest rate when loan type changes
-  useEffect(() => {
-    if (selectedLoanType) {
-      form.setValue('interestRate', (selectedLoanType.interestRate || selectedLoanType.interest_rate || '12.00').toString());
-    }
-  }, [selectedLoanType, form]);
-
   const form = useForm<LoanApplicationData>({
     resolver: zodResolver(loanApplicationSchema),
     defaultValues: {
@@ -143,6 +133,16 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
       });
     }
   }, [currentMember, savingsAccounts, totalSavingsBalance, form]);
+
+  // Get selected loan type details
+  const selectedLoanType = loanTypes.find(lt => lt.name === form.watch('loanType'));
+
+  // Update interest rate when loan type changes
+  useEffect(() => {
+    if (selectedLoanType) {
+      form.setValue('interestRate', (selectedLoanType.interestRate || selectedLoanType.interest_rate || '12.00').toString());
+    }
+  }, [selectedLoanType, form]);
 
   const calculateMonthlyPayment = () => {
     const principal = parseFloat(form.watch('principalAmount') || '0');
