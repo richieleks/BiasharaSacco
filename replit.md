@@ -362,6 +362,7 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Enhanced ProtectedRoute with proper permission checks for all routes
   - Deleted member-details-broken.tsx duplicate file
   - Navigation items now dynamically filtered based on user permissions rather than roles
+  - Made Pending Member Approvals and Loan Approval Workflow components full width across all dashboard layouts
 
 ## User Preferences
 

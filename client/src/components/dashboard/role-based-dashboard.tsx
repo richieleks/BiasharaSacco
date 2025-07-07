@@ -16,10 +16,8 @@ function AdminDashboard() {
     <div className="space-y-6">
       <MetricsGrid />
       <AnalyticsCharts />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <MemberApprovals />
-        <LoanApprovalWorkflow />
-      </div>
+      <MemberApprovals />
+      <LoanApprovalWorkflow />
       <RecentTransactions />
       <QuickActions />
       <PendingApprovals />
@@ -32,10 +30,8 @@ function ManagerDashboard() {
     <div className="space-y-6">
       <MetricsGrid />
       <AnalyticsCharts />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <LoanApprovalWorkflow />
-        <MemberApprovals />
-      </div>
+      <LoanApprovalWorkflow />
+      <MemberApprovals />
       <RecentTransactions />
       <Card>
         <CardHeader>
@@ -56,10 +52,8 @@ function CommitteeDashboard() {
   return (
     <div className="space-y-6">
       <MetricsGrid />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <LoanApprovalWorkflow />
-        <MemberApprovals />
-      </div>
+      <LoanApprovalWorkflow />
+      <MemberApprovals />
       <Card>
         <CardHeader>
           <CardTitle>Committee Queue</CardTitle>
