@@ -37,6 +37,15 @@ import {
   type InterestCalculationWithDetails,
   type Notification,
   type InsertNotification,
+  roles,
+  permissions,
+  rolePermissions,
+  type Role,
+  type InsertRole,
+  type Permission,
+  type InsertPermission,
+  type RolePermission,
+  type InsertRolePermission,
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
@@ -123,6 +132,20 @@ export interface IStorage {
   addMemberRole(memberId: number, role: string, assignedBy: string): Promise<void>;
   removeMemberRole(memberId: number, role: string): Promise<void>;
   replaceMemberRoles(memberId: number, roles: string[], assignedBy: string): Promise<void>;
+  
+  // RBAC operations
+  getAllRoles(): Promise<Role[]>;
+  getRoleById(id: number): Promise<Role | undefined>;
+  getRoleByName(name: string): Promise<Role | undefined>;
+  createRole(role: InsertRole): Promise<Role>;
+  updateRole(id: number, updates: Partial<InsertRole>): Promise<Role>;
+  deleteRole(id: number): Promise<void>;
+  
+  getAllPermissions(): Promise<Permission[]>;
+  getPermissionsByRole(roleId: number): Promise<Permission[]>;
+  assignPermissionsToRole(roleId: number, permissionIds: number[]): Promise<void>;
+  getRolePermissions(roleId: number): Promise<RolePermission[]>;
+  getMemberPermissions(memberId: number): Promise<Permission[]>;
 
   // Interest rate management
   createInterestRate(rate: InsertInterestRate): Promise<InterestRate>;
@@ -1193,6 +1216,124 @@ export class DatabaseStorage implements IStorage {
         );
       }
     });
+  }
+
+  // RBAC operations implementation
+  async getAllRoles(): Promise<Role[]> {
+    return await db
+      .select()
+      .from(roles)
+      .orderBy(roles.name);
+  }
+
+  async getRoleById(id: number): Promise<Role | undefined> {
+    const [role] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.id, id));
+    return role;
+  }
+
+  async getRoleByName(name: string): Promise<Role | undefined> {
+    const [role] = await db
+      .select()
+      .from(roles)
+      .where(eq(roles.name, name));
+    return role;
+  }
+
+  async createRole(roleData: InsertRole): Promise<Role> {
+    const [role] = await db
+      .insert(roles)
+      .values(roleData)
+      .returning();
+    return role;
+  }
+
+  async updateRole(id: number, updates: Partial<InsertRole>): Promise<Role> {
+    const [role] = await db
+      .update(roles)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(roles.id, id))
+      .returning();
+    return role;
+  }
+
+  async deleteRole(id: number): Promise<void> {
+    await db.delete(roles).where(eq(roles.id, id));
+  }
+
+  async getAllPermissions(): Promise<Permission[]> {
+    return await db
+      .select()
+      .from(permissions)
+      .orderBy(permissions.category, permissions.resource, permissions.action);
+  }
+
+  async getPermissionsByRole(roleId: number): Promise<Permission[]> {
+    const result = await db
+      .select({
+        permission: permissions,
+      })
+      .from(rolePermissions)
+      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+      .where(eq(rolePermissions.roleId, roleId));
+    
+    return result.map(r => r.permission);
+  }
+
+  async assignPermissionsToRole(roleId: number, permissionIds: number[]): Promise<void> {
+    await db.transaction(async (tx) => {
+      // Delete existing permissions
+      await tx.delete(rolePermissions).where(eq(rolePermissions.roleId, roleId));
+      
+      // Insert new permissions
+      if (permissionIds.length > 0) {
+        await tx.insert(rolePermissions).values(
+          permissionIds.map(permissionId => ({
+            roleId,
+            permissionId,
+          }))
+        );
+      }
+    });
+  }
+
+  async getRolePermissions(roleId: number): Promise<RolePermission[]> {
+    return await db
+      .select()
+      .from(rolePermissions)
+      .where(eq(rolePermissions.roleId, roleId));
+  }
+
+  async getMemberPermissions(memberId: number): Promise<Permission[]> {
+    // Get all roles for the member
+    const memberRolesData = await db
+      .select({ roleId: memberRoles.role })
+      .from(memberRoles)
+      .where(eq(memberRoles.memberId, memberId));
+    
+    // Get role IDs from the new roles table for each role name
+    const roleIds: number[] = [];
+    for (const { roleId } of memberRolesData) {
+      const role = await this.getRoleByName(roleId);
+      if (role) {
+        roleIds.push(role.id);
+      }
+    }
+    
+    if (roleIds.length === 0) return [];
+    
+    // Get all permissions for these roles
+    const result = await db
+      .selectDistinct({
+        permission: permissions,
+      })
+      .from(rolePermissions)
+      .innerJoin(permissions, eq(rolePermissions.permissionId, permissions.id))
+      .where(sql`${rolePermissions.roleId} IN (${sql.join(roleIds, sql`, `)})`);
+    
+    return result.map(r => r.permission);
   }
 
   // Interest rate management

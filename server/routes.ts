@@ -1281,6 +1281,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // RBAC Management Endpoints
+  app.get('/api/rbac/roles', isAuthenticated, requirePermission('read', 'roles'), async (req: AuthRequest, res) => {
+    try {
+      const roles = await storage.getAllRoles();
+      res.json(roles);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      res.status(500).json({ message: "Failed to fetch roles" });
+    }
+  });
+
+  app.get('/api/rbac/roles/:id', isAuthenticated, requirePermission('read', 'roles'), async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const role = await storage.getRoleById(roleId);
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+      res.json(role);
+    } catch (error) {
+      console.error("Error fetching role:", error);
+      res.status(500).json({ message: "Failed to fetch role" });
+    }
+  });
+
+  app.post('/api/rbac/roles', isAuthenticated, requirePermission('create', 'roles'), async (req: AuthRequest, res) => {
+    try {
+      const roleData = req.body;
+      const role = await storage.createRole(roleData);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub!,
+        action: 'create',
+        resource: 'role',
+        resourceId: role.id.toString(),
+        details: `Created role: ${role.name}`,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      
+      res.json(role);
+    } catch (error) {
+      console.error("Error creating role:", error);
+      res.status(500).json({ message: "Failed to create role" });
+    }
+  });
+
+  app.put('/api/rbac/roles/:id', isAuthenticated, requirePermission('update', 'roles'), async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const updates = req.body;
+      const role = await storage.updateRole(roleId, updates);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub!,
+        action: 'update',
+        resource: 'role',
+        resourceId: role.id.toString(),
+        details: `Updated role: ${role.name}`,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      
+      res.json(role);
+    } catch (error) {
+      console.error("Error updating role:", error);
+      res.status(500).json({ message: "Failed to update role" });
+    }
+  });
+
+  app.delete('/api/rbac/roles/:id', isAuthenticated, requirePermission('delete', 'roles'), async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const role = await storage.getRoleById(roleId);
+      
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+      
+      if (role.isSystem) {
+        return res.status(400).json({ message: "Cannot delete system roles" });
+      }
+      
+      await storage.deleteRole(roleId);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub!,
+        action: 'delete',
+        resource: 'role',
+        resourceId: roleId.toString(),
+        details: `Deleted role: ${role.name}`,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      
+      res.json({ message: "Role deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting role:", error);
+      res.status(500).json({ message: "Failed to delete role" });
+    }
+  });
+
+  app.get('/api/rbac/permissions', isAuthenticated, requirePermission('read', 'roles'), async (req: AuthRequest, res) => {
+    try {
+      const permissions = await storage.getAllPermissions();
+      res.json(permissions);
+    } catch (error) {
+      console.error("Error fetching permissions:", error);
+      res.status(500).json({ message: "Failed to fetch permissions" });
+    }
+  });
+
+  app.get('/api/rbac/roles/:id/permissions', isAuthenticated, requirePermission('read', 'roles'), async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const permissions = await storage.getPermissionsByRole(roleId);
+      res.json(permissions);
+    } catch (error) {
+      console.error("Error fetching role permissions:", error);
+      res.status(500).json({ message: "Failed to fetch role permissions" });
+    }
+  });
+
+  app.put('/api/rbac/roles/:id/permissions', isAuthenticated, requirePermission('update', 'roles'), async (req: AuthRequest, res) => {
+    try {
+      const roleId = parseInt(req.params.id);
+      const { permissionIds } = req.body;
+      
+      await storage.assignPermissionsToRole(roleId, permissionIds);
+      
+      const role = await storage.getRoleById(roleId);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub!,
+        action: 'update',
+        resource: 'role-permissions',
+        resourceId: roleId.toString(),
+        details: `Updated permissions for role: ${role?.name}`,
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+      
+      res.json({ message: "Permissions updated successfully" });
+    } catch (error) {
+      console.error("Error updating role permissions:", error);
+      res.status(500).json({ message: "Failed to update role permissions" });
+    }
+  });
+
   // Interest rate management routes
   app.post('/api/interest-rates', isAuthenticated, requirePermission('create', 'interest-rates'), async (req: any, res) => {
     try {

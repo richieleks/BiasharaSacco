@@ -26,6 +26,7 @@ import AmortizationDemo from "@/pages/amortization-demo";
 import LoanWorkflow from "@/pages/loan-workflow";
 import MemberDetails from "@/pages/member-details";
 import NotificationsPage from "@/pages/notifications";
+import RBACManagement from "@/pages/rbac-management";
 import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 
@@ -104,6 +105,11 @@ function Router() {
             <Route path="/role-management">
               <ProtectedRoute requiredPermission={{ action: 'update', resource: 'system-settings' }}>
                 <RoleManagement />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/rbac-management">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'roles' }}>
+                <RBACManagement />
               </ProtectedRoute>
             </Route>
             <Route path="/audit-logs">
