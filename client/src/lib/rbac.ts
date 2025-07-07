@@ -141,55 +141,32 @@ export const DASHBOARD_COMPONENTS: Record<UserRole, string[]> = {
   ],
 };
 
-// Navigation items by role
-export const NAVIGATION_ITEMS: Record<UserRole, Array<{name: string, path: string, icon?: string}>> = {
-  admin: [
-    { name: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
-    { name: 'Members', path: '/members', icon: 'Users' },
-    { name: 'Loans', path: '/loans', icon: 'CreditCard' },
-    { name: 'Loan Workflow', path: '/loan-workflow', icon: 'GitBranch' },
-    { name: 'Savings', path: '/savings', icon: 'PiggyBank' },
-    { name: 'Transactions', path: '/transactions', icon: 'Receipt' },
-    { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck' },
-    { name: 'Reports', path: '/reports', icon: 'BarChart3' },
+// All available navigation items with permission requirements
+export const ALL_NAVIGATION_ITEMS = [
+  { name: 'Dashboard', path: '/', icon: 'LayoutDashboard', permission: { action: 'read', resource: 'dashboard' } },
+  { name: 'Members', path: '/members', icon: 'Users', permission: { action: 'read', resource: 'members' } },
+  { name: 'Loans', path: '/loans', icon: 'CreditCard', permission: { action: 'read', resource: 'loans' } },
+  { name: 'Loan Workflow', path: '/loan-workflow', icon: 'GitBranch', permission: { action: 'approve', resource: 'loans' } },
+  { name: 'Loan Application', path: '/loan-application', icon: 'FileText', permission: { action: 'create', resource: 'loans' } },
+  { name: 'Savings', path: '/savings', icon: 'PiggyBank', permission: { action: 'read', resource: 'savings' } },
+  { name: 'Transactions', path: '/transactions', icon: 'Receipt', permission: { action: 'read', resource: 'transactions' } },
+  { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck', permission: { action: 'read', resource: 'guarantors' } },
+  { name: 'Guarantor Requests', path: '/guarantor-requests', icon: 'UserCheck', permission: { action: 'create', resource: 'guarantors' } },
+  { name: 'Reports', path: '/reports', icon: 'BarChart3', permission: { action: 'read', resource: 'reports' } },
+  { name: 'RBAC Management', path: '/rbac-management', icon: 'ShieldCheck', permission: { action: 'read', resource: 'roles' } },
+  { name: 'Audit Logs', path: '/audit-logs', icon: 'Shield', permission: { action: 'read', resource: 'audit-logs' } },
+  { name: 'Roles Matrix', path: '/roles-matrix', icon: 'Lock', permission: { action: 'read', resource: 'system-settings' } },
+  { name: 'Interest Rates', path: '/interest-rates', icon: 'Percent', permission: { action: 'read', resource: 'interest-rates' } },
+  { name: 'Notifications', path: '/notifications', icon: 'Bell', permission: { action: 'read', resource: 'notifications' } },
+];
 
-    { name: 'RBAC Management', path: '/rbac-management', icon: 'ShieldCheck' },
-    { name: 'Audit Logs', path: '/audit-logs', icon: 'Shield' },
-    { name: 'Roles Matrix', path: '/roles-matrix', icon: 'Lock' },
-    { name: 'Settings', path: '/settings', icon: 'Settings' },
-  ],
-  manager: [
-    { name: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
-    { name: 'Members', path: '/members', icon: 'Users' },
-    { name: 'Loans', path: '/loans', icon: 'CreditCard' },
-    { name: 'Loan Workflow', path: '/loan-workflow', icon: 'GitBranch' },
-    { name: 'Savings', path: '/savings', icon: 'PiggyBank' },
-    { name: 'Transactions', path: '/transactions', icon: 'Receipt' },
-    { name: 'Reports', path: '/reports', icon: 'BarChart3' },
-  ],
-  committee: [
-    { name: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
-    { name: 'Members', path: '/members', icon: 'Users' },
-    { name: 'Loans', path: '/loans', icon: 'CreditCard' },
-    { name: 'Loan Workflow', path: '/loan-workflow', icon: 'GitBranch' },
-    { name: 'Savings', path: '/savings', icon: 'PiggyBank' },
-    { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck' },
-  ],
-  teller: [
-    { name: 'Dashboard', path: '/', icon: 'LayoutDashboard' },
-    { name: 'Members', path: '/members', icon: 'Users' },
-    { name: 'Loans', path: '/loans', icon: 'CreditCard' },
-    { name: 'Loan Workflow', path: '/loan-workflow', icon: 'GitBranch' },
-    { name: 'Savings', path: '/savings', icon: 'PiggyBank' },
-    { name: 'Transactions', path: '/transactions', icon: 'Receipt' },
-  ],
-  member: [
-    { name: 'My Dashboard', path: '/', icon: 'LayoutDashboard' },
-    { name: 'My Loans', path: '/my-loans', icon: 'CreditCard' },
-    { name: 'My Savings', path: '/my-savings', icon: 'PiggyBank' },
-    { name: 'My Transactions', path: '/my-transactions', icon: 'Receipt' },
-    { name: 'Guarantor Requests', path: '/guarantor-requests', icon: 'UserCheck' },
-  ],
+// Legacy navigation items by role (deprecated - use getNavigationItems function instead)
+export const NAVIGATION_ITEMS: Record<UserRole, Array<{name: string, path: string, icon?: string}>> = {
+  admin: ALL_NAVIGATION_ITEMS,
+  manager: ALL_NAVIGATION_ITEMS,
+  committee: ALL_NAVIGATION_ITEMS,
+  teller: ALL_NAVIGATION_ITEMS,
+  member: ALL_NAVIGATION_ITEMS,
 };
 
 // Utility functions for RBAC - Updated to handle multiple roles
@@ -216,12 +193,10 @@ export function canAccessDashboardComponent(userRoles: UserRole | UserRole[], co
 export function getNavigationItems(userRoles: UserRole | UserRole[]) {
   const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
   
-  // Get the highest role for navigation (admin > manager > committee > teller > member)
-  const highestRole = roles.reduce((highest, current) => {
-    return ROLE_HIERARCHY[current] > ROLE_HIERARCHY[highest] ? current : highest;
-  }, roles[0]);
-  
-  return NAVIGATION_ITEMS[highestRole] || [];
+  // Filter navigation items based on user permissions
+  return ALL_NAVIGATION_ITEMS.filter(item => {
+    return hasPermission(roles, item.permission.action, item.permission.resource);
+  });
 }
 
 export function canAccessRoute(userRoles: UserRole | UserRole[], route: string): boolean {

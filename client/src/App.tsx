@@ -125,17 +125,17 @@ function Router() {
               </ProtectedRoute>
             </Route>
             <Route path="/amortization-demo">
-              <ProtectedRoute>
+              <ProtectedRoute requiredPermission={{ action: 'create', resource: 'amortization' }}>
                 <AmortizationDemo />
               </ProtectedRoute>
             </Route>
             <Route path="/loan-workflow">
-              <ProtectedRoute>
+              <ProtectedRoute requiredPermission={{ action: 'approve', resource: 'loans' }}>
                 <LoanWorkflow />
               </ProtectedRoute>
             </Route>
             <Route path="/notifications">
-              <ProtectedRoute>
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'notifications' }}>
                 <NotificationsPage />
               </ProtectedRoute>
             </Route>
@@ -144,26 +144,14 @@ function Router() {
                 <MemberDetails />
               </ProtectedRoute>
             </Route>
-            <Route path="/my-loans">
-              <ProtectedRoute>
-                <Loans />
-              </ProtectedRoute>
-            </Route>
+
             <Route path="/loan-application">
-              <ProtectedRoute>
+              <ProtectedRoute requiredPermission={{ action: 'create', resource: 'loans' }}>
                 <LoanApplication />
               </ProtectedRoute>
             </Route>
-            <Route path="/my-savings">
-              <ProtectedRoute>
-                <Savings />
-              </ProtectedRoute>
-            </Route>
-            <Route path="/my-transactions">
-              <ProtectedRoute>
-                <Transactions />
-              </ProtectedRoute>
-            </Route>
+
+
             <Route component={NotFound} />
           </Switch>
         </main>
