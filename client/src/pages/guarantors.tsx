@@ -3,8 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Users, Clock, CheckCircle, XCircle, FileText, DollarSign, CreditCard, UserCheck } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Users, Clock, CheckCircle, XCircle, FileText, DollarSign, CreditCard, UserCheck, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +22,15 @@ export default function Guarantors() {
   const [selectedGuarantor, setSelectedGuarantor] = useState<any>(null);
   const [isApprovalDialogOpen, setIsApprovalDialogOpen] = useState(false);
   const [comments, setComments] = useState("");
+  const [selectedLoanForGuarantors, setSelectedLoanForGuarantors] = useState<any>(null);
+  const [isGuarantorSelectionOpen, setIsGuarantorSelectionOpen] = useState(false);
+  const [selectedGuarantors, setSelectedGuarantors] = useState<Array<{memberId: number, guaranteeAmount: string}>>([]);
+
+  // Get all eligible members for guarantor selection
+  const { data: allMembers = [] } = useQuery<MemberWithDetails[]>({
+    queryKey: ['/api/members'],
+    enabled: !!user?.id,
+  });
 
   const { data: currentMember } = useQuery<MemberWithDetails>({
     queryKey: [`/api/members/by-user/${user?.id || 'undefined'}`],
@@ -188,6 +200,94 @@ export default function Guarantors() {
     setSelectedGuarantor(guarantor);
     setComments("");
     setIsApprovalDialogOpen(true);
+  };
+
+  const addGuarantorMutation = useMutation({
+    mutationFn: async ({ loanId, guarantors }: { loanId: number; guarantors: Array<{guarantorMemberId: number, guaranteeAmount: number}> }) => {
+      await apiRequest('POST', `/api/loans/${loanId}/guarantors`, { guarantors });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/my-loans'] });
+      toast({
+        title: "Success",
+        description: "Guarantor requests sent successfully!",
+      });
+      setIsGuarantorSelectionOpen(false);
+      setSelectedGuarantors([]);
+      setSelectedLoanForGuarantors(null);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      toast({
+        title: "Error",
+        description: error.message || "Failed to add guarantors",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const openGuarantorSelection = (loan: any) => {
+    setSelectedLoanForGuarantors(loan);
+    setSelectedGuarantors([{ memberId: 0, guaranteeAmount: '' }]);
+    setIsGuarantorSelectionOpen(true);
+  };
+
+  const addGuarantorRow = () => {
+    setSelectedGuarantors([...selectedGuarantors, { memberId: 0, guaranteeAmount: '' }]);
+  };
+
+  const removeGuarantorRow = (index: number) => {
+    setSelectedGuarantors(selectedGuarantors.filter((_, i) => i !== index));
+  };
+
+  const updateGuarantorRow = (index: number, field: string, value: string | number) => {
+    const updated = [...selectedGuarantors];
+    updated[index] = { ...updated[index], [field]: value };
+    setSelectedGuarantors(updated);
+  };
+
+  const submitGuarantors = () => {
+    if (!selectedLoanForGuarantors) return;
+    
+    const validGuarantors = selectedGuarantors.filter(g => g.memberId > 0 && g.guaranteeAmount);
+    if (validGuarantors.length === 0) {
+      toast({
+        title: "Error",
+        description: "Please select at least one guarantor with an amount",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const guarantorData = validGuarantors.map(g => ({
+      guarantorMemberId: g.memberId,
+      guaranteeAmount: parseFloat(g.guaranteeAmount)
+    }));
+
+    addGuarantorMutation.mutate({
+      loanId: selectedLoanForGuarantors.id,
+      guarantors: guarantorData
+    });
+  };
+
+  // Filter eligible guarantors (active members excluding the loan applicant)
+  const getEligibleGuarantors = (loan: any) => {
+    return allMembers.filter(member => 
+      member.status === 'active' && 
+      member.id !== currentMember?.id &&
+      member.id !== loan.memberId
+    );
   };
 
   if (!currentMember) {
@@ -382,7 +482,28 @@ export default function Guarantors() {
                             <div className="text-center py-4 text-slate-500">
                               <UserCheck className="h-8 w-8 mx-auto mb-2 text-slate-400" />
                               <p>No guarantors assigned yet</p>
+                              <Button 
+                                onClick={() => openGuarantorSelection(loan)}
+                                className="mt-3"
+                                size="sm"
+                              >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Select Guarantors
+                              </Button>
                             </div>
+                          </div>
+                        )}
+
+                        {guarantors.length > 0 && (
+                          <div className="mt-6 pt-4 border-t flex justify-center">
+                            <Button 
+                              onClick={() => openGuarantorSelection(loan)}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              Add More Guarantors
+                            </Button>
                           </div>
                         )}
                       </CardContent>
@@ -641,6 +762,128 @@ export default function Guarantors() {
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   Reject Request
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Guarantor Selection Dialog */}
+      <Dialog open={isGuarantorSelectionOpen} onOpenChange={setIsGuarantorSelectionOpen}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              Select Guarantors for Loan #{selectedLoanForGuarantors?.loanNumber}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedLoanForGuarantors && (
+            <div className="space-y-6">
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <h4 className="font-medium mb-2">Loan Details</h4>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-slate-600">Amount:</span> 
+                    <span className="font-medium ml-2">UGX {Number(selectedLoanForGuarantors.principalAmount).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-600">Type:</span> 
+                    <span className="font-medium ml-2">{selectedLoanForGuarantors.loanType}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="font-medium">Select Guarantors</h4>
+                  <Button onClick={addGuarantorRow} size="sm" variant="outline">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Another
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  {selectedGuarantors.map((guarantor, index) => (
+                    <div key={index} className="flex items-center gap-4 p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <Label htmlFor={`guarantor-${index}`}>Select Member</Label>
+                        <Select 
+                          value={guarantor.memberId.toString()}
+                          onValueChange={(value) => updateGuarantorRow(index, 'memberId', parseInt(value))}
+                        >
+                          <SelectTrigger id={`guarantor-${index}`}>
+                            <SelectValue placeholder="Choose a member" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getEligibleGuarantors(selectedLoanForGuarantors).map((member) => (
+                              <SelectItem key={member.id} value={member.id.toString()}>
+                                {member.fullName} ({member.memberNumber})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="w-48">
+                        <Label htmlFor={`amount-${index}`}>Guarantee Amount (UGX)</Label>
+                        <Input
+                          id={`amount-${index}`}
+                          type="number"
+                          placeholder="Enter amount"
+                          value={guarantor.guaranteeAmount}
+                          onChange={(e) => updateGuarantorRow(index, 'guaranteeAmount', e.target.value)}
+                        />
+                      </div>
+
+                      {selectedGuarantors.length > 1 && (
+                        <Button
+                          onClick={() => removeGuarantorRow(index)}
+                          size="icon"
+                          variant="outline"
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="bg-blue-50 p-4 rounded-lg mt-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <DollarSign className="h-4 w-4 text-blue-600" />
+                    <span className="font-medium text-blue-900">Total Guarantee Coverage</span>
+                  </div>
+                  <div className="text-2xl font-bold text-blue-900">
+                    UGX {selectedGuarantors.reduce((total, g) => total + (parseFloat(g.guaranteeAmount) || 0), 0).toLocaleString()}
+                  </div>
+                  <div className="text-sm text-blue-700 mt-1">
+                    Loan Amount: UGX {Number(selectedLoanForGuarantors.principalAmount).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t">
+                <Button
+                  onClick={submitGuarantors}
+                  disabled={addGuarantorMutation.isPending}
+                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                >
+                  {addGuarantorMutation.isPending ? (
+                    <>Sending Requests...</>
+                  ) : (
+                    <>
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Send Guarantor Requests
+                    </>
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsGuarantorSelectionOpen(false)}
+                  className="flex-1"
+                >
+                  Cancel
                 </Button>
               </div>
             </div>
