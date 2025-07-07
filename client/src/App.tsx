@@ -108,7 +108,7 @@ function Router() {
               </ProtectedRoute>
             </Route>
             <Route path="/rbac-management">
-              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'roles' }}>
+              <ProtectedRoute>
                 <RBACManagement />
               </ProtectedRoute>
             </Route>
