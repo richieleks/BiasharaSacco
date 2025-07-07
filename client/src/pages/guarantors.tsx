@@ -31,6 +31,24 @@ export default function Guarantors() {
     enabled: !!user?.id,
   });
 
+  // Get guarantors for each loan
+  const loanGuarantors = useQuery({
+    queryKey: ['/api/loans/guarantors', myLoans.map(loan => loan.id)],
+    queryFn: async () => {
+      const guarantorPromises = myLoans.map(async (loan) => {
+        const response = await fetch(`/api/guarantors/loan/${loan.id}`);
+        const guarantors = await response.json();
+        return { loanId: loan.id, guarantors };
+      });
+      const results = await Promise.all(guarantorPromises);
+      return results.reduce((acc, { loanId, guarantors }) => {
+        acc[loanId] = guarantors;
+        return acc;
+      }, {} as Record<number, any[]>);
+    },
+    enabled: myLoans.length > 0,
+  });
+
   // Get pending guarantor requests for current user to approve/reject
   const { data: guarantorRequests = [], isLoading: loadingRequests } = useQuery<GuarantorWithDetails[]>({
     queryKey: ['/api/guarantors/pending'],
@@ -234,7 +252,7 @@ export default function Guarantors() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {loadingMyLoans ? (
+            {loadingMyLoans || loanGuarantors.isLoading ? (
               <div className="text-center py-4">
                 <div className="text-muted-foreground">Loading your loans...</div>
               </div>
@@ -247,35 +265,130 @@ export default function Guarantors() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {loansNeedingGuarantors.map((loan: any) => (
-                  <div key={loan.id} className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="font-medium">
-                          Loan Application #{loan.loanNumber}
+              <div className="space-y-6">
+                {loansNeedingGuarantors.map((loan: any) => {
+                  const guarantors = loanGuarantors.data?.[loan.id] || [];
+                  const approvedGuarantors = guarantors.filter(g => g.status === 'approved').length;
+                  const pendingGuarantors = guarantors.filter(g => g.status === 'pending').length;
+                  const rejectedGuarantors = guarantors.filter(g => g.status === 'rejected').length;
+                  
+                  return (
+                    <Card key={loan.id} className="border-l-4 border-l-blue-400">
+                      <CardHeader>
+                        <CardTitle className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <CreditCard className="h-5 w-5 text-blue-600" />
+                            <span>Loan Application #{loan.loanNumber}</span>
+                          </div>
+                          <Badge variant={getStatusVariant(loan.status)}>
+                            {loan.status}
+                          </Badge>
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid md:grid-cols-2 gap-6">
+                          {/* Loan Details */}
+                          <div className="space-y-3">
+                            <h4 className="font-medium text-slate-900">Loan Details</h4>
+                            <div className="space-y-2 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Amount:</span>
+                                <span className="font-medium">UGX {Number(loan.principalAmount || 0).toLocaleString()}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Type:</span>
+                                <span className="font-medium">{loan.loanType}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Term:</span>
+                                <span className="font-medium">{loan.termMonths} months</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Purpose:</span>
+                                <span className="font-medium">{loan.purpose}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-slate-600">Applied:</span>
+                                <span className="font-medium">{new Date(loan.createdAt).toLocaleDateString()}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Guarantor Status */}
+                          <div className="space-y-3">
+                            <h4 className="font-medium text-slate-900">Guarantor Status</h4>
+                            <div className="bg-slate-50 p-4 rounded-lg">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">Progress</span>
+                                <span className="text-sm text-slate-600">
+                                  {approvedGuarantors} of {guarantors.length} approved
+                                </span>
+                              </div>
+                              <div className="w-full bg-slate-200 rounded-full h-2">
+                                <div 
+                                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                                  style={{ width: `${guarantors.length ? (approvedGuarantors / guarantors.length) * 100 : 0}%` }}
+                                ></div>
+                              </div>
+                              <div className="flex gap-4 mt-2 text-xs">
+                                <span className="text-green-600">✓ {approvedGuarantors} Approved</span>
+                                <span className="text-yellow-600">⏳ {pendingGuarantors} Pending</span>
+                                <span className="text-red-600">✗ {rejectedGuarantors} Rejected</span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          Amount: UGX {Number(loan.principalAmount || 0).toLocaleString()} |
-                          Type: {loan.loanType} |
-                          Term: {loan.termMonths} months
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Purpose: {loan.purpose}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(loan.status)}
-                        <Badge variant={getStatusVariant(loan.status)}>
-                          {loan.status}
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="text-xs text-muted-foreground border-t pt-2">
-                      Applied on: {new Date(loan.createdAt).toLocaleDateString()}
-                    </div>
-                  </div>
-                ))}
+
+                        {/* Guarantor Details */}
+                        {guarantors.length > 0 && (
+                          <div className="mt-6 pt-4 border-t">
+                            <h4 className="font-medium text-slate-900 mb-3">Guarantor Details</h4>
+                            <div className="space-y-3">
+                              {guarantors.map((guarantor: any) => (
+                                <div key={guarantor.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                      <UserCheck className="h-4 w-4 text-blue-600" />
+                                    </div>
+                                    <div>
+                                      <div className="font-medium">
+                                        {guarantor.guarantorMember?.user?.firstName} {guarantor.guarantorMember?.user?.lastName}
+                                      </div>
+                                      <div className="text-sm text-slate-600">
+                                        {guarantor.guarantorMember?.memberNumber} | 
+                                        UGX {Number(guarantor.guaranteeAmount).toLocaleString()}
+                                      </div>
+                                      {guarantor.comments && (
+                                        <div className="text-xs text-slate-500 mt-1">
+                                          Comment: {guarantor.comments}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {getStatusIcon(guarantor.status)}
+                                    <Badge variant={getStatusVariant(guarantor.status)}>
+                                      {guarantor.status}
+                                    </Badge>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {guarantors.length === 0 && (
+                          <div className="mt-6 pt-4 border-t">
+                            <div className="text-center py-4 text-slate-500">
+                              <UserCheck className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                              <p>No guarantors assigned yet</p>
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </CardContent>
