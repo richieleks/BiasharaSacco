@@ -53,12 +53,25 @@ export default function Settings() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loan-types'] });
       setIsAddLoanTypeOpen(false);
+      // Reset form data to defaults
+      setFormData({
+        approvalWorkflow: 'simple',
+        interestType: 'reducing_balance',
+        compoundingFrequency: 'monthly'
+      });
       toast({ title: "Success", description: "Loan type created successfully" });
     },
     onError: (error) => {
       console.error('Error creating loan type:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to create loan type';
-      if (errorMessage.includes('constraint') || errorMessage.includes('approval_workflow')) {
+      
+      if (errorMessage.includes('duplicate key') || errorMessage.includes('already exists') || errorMessage.includes('unique constraint')) {
+        toast({ 
+          title: "Duplicate Name", 
+          description: "A loan type with this name already exists. Please choose a different name.", 
+          variant: "destructive" 
+        });
+      } else if (errorMessage.includes('constraint') || errorMessage.includes('approval_workflow')) {
         toast({ 
           title: "Validation Error", 
           description: "Please ensure all required fields are filled out correctly, especially the approval workflow.", 
@@ -268,10 +281,12 @@ export default function Settings() {
                         <div>
                           <Label htmlFor="name">System Name*</Label>
                           <Input id="name" name="name" required placeholder="normal_loan" />
+                          <p className="text-xs text-slate-500 mt-1">Must be unique (used internally)</p>
                         </div>
                         <div>
                           <Label htmlFor="displayName">Display Name*</Label>
                           <Input id="displayName" name="displayName" required placeholder="Normal Loan" />
+                          <p className="text-xs text-slate-500 mt-1">Shown to users</p>
                         </div>
                       </div>
                       
