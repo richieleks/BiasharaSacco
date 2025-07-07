@@ -35,7 +35,7 @@ const typeIcons = {
 };
 
 export default function NotificationsPage() {
-  const [activeTab, setActiveTab] = useState("all");
+  const [activeTab, setActiveTab] = useState("unread");
   const [searchQuery, setSearchQuery] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -191,11 +191,11 @@ export default function NotificationsPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="all">
-            All ({notificationsList.length})
-          </TabsTrigger>
           <TabsTrigger value="unread">
             Unread ({unreadNotifications.length})
+          </TabsTrigger>
+          <TabsTrigger value="all">
+            All ({notificationsList.length})
           </TabsTrigger>
           <TabsTrigger value="read">
             Read ({notificationsList.length - unreadNotifications.length})

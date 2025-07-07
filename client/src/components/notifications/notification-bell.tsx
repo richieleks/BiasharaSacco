@@ -56,10 +56,13 @@ export function NotificationBell() {
     if (notification.actionUrl) {
       window.location.href = notification.actionUrl;
     }
+    
+    setIsOpen(false);
   };
 
   const handleMarkAllAsRead = () => {
     markAllAsRead.mutate();
+    setIsOpen(false);
   };
 
   const handleDeleteNotification = (e: React.MouseEvent, notificationId: number) => {

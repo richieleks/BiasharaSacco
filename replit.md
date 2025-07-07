@@ -363,6 +363,13 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Deleted member-details-broken.tsx duplicate file
   - Navigation items now dynamically filtered based on user permissions rather than roles
   - Made Pending Member Approvals and Loan Approval Workflow components full width across all dashboard layouts
+- July 07, 2025. Fixed notifications system to improve user experience:
+  - Fixed API request format in notification hooks to properly use apiRequest function
+  - Changed default notifications tab from "all" to "unread" for better usability
+  - Notifications now disappear from the unread view after being marked as read
+  - Enhanced mark all as read functionality with proper API calls
+  - Added auto-close behavior for notification bell popover after actions
+  - Fixed notification click handlers to properly mark notifications as read
 
 ## User Preferences
 

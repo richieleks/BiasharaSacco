@@ -32,9 +32,7 @@ export function useMarkNotificationAsRead() {
   
   return useMutation({
     mutationFn: async (notificationId: number) => {
-      return await apiRequest(`/api/notifications/${notificationId}/read`, {
-        method: "PATCH",
-      });
+      return await apiRequest("PATCH", `/api/notifications/${notificationId}/read`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -48,9 +46,7 @@ export function useMarkAllNotificationsAsRead() {
   
   return useMutation({
     mutationFn: async () => {
-      return await apiRequest("/api/notifications/read-all", {
-        method: "PATCH",
-      });
+      return await apiRequest("PATCH", "/api/notifications/read-all");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -64,9 +60,7 @@ export function useDeleteNotification() {
   
   return useMutation({
     mutationFn: async (notificationId: number) => {
-      return await apiRequest(`/api/notifications/${notificationId}`, {
-        method: "DELETE",
-      });
+      return await apiRequest("DELETE", `/api/notifications/${notificationId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
@@ -88,10 +82,7 @@ export function useCreateNotification() {
       metadata?: any;
       memberId?: number;
     }) => {
-      return await apiRequest("/api/notifications", {
-        method: "POST",
-        body: JSON.stringify(notification),
-      });
+      return await apiRequest("POST", "/api/notifications", notification);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
