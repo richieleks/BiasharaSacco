@@ -7,14 +7,18 @@ import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertGuarantorSchema } from "@shared/schema";
 import type { MemberWithDetails } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
 
-const guarantorFormSchema = insertGuarantorSchema.extend({
-  guarantorMemberNumber: z.string().min(1, "Guarantor is required"),
+const guarantorFormSchema = insertGuarantorSchema.omit({ guarantorMemberNumber: true }).extend({
+  guarantorMemberId: z.number().min(1, "Please select a guarantor"),
 });
 
 type GuarantorFormData = z.infer<typeof guarantorFormSchema>;
@@ -28,7 +32,8 @@ interface GuarantorFormProps {
 export default function GuarantorForm({ loanId, onSuccess, onCancel }: GuarantorFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [selectedMember, setSelectedMember] = useState<MemberWithDetails | null>(null);
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
 
   const form = useForm<GuarantorFormData>({
     resolver: zodResolver(guarantorFormSchema),
@@ -40,26 +45,30 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
     },
   });
 
-  const { data: members = [] } = useQuery({
+  const { data: allMembers = [] } = useQuery<MemberWithDetails[]>({
     queryKey: ['/api/members'],
   });
 
+  const { data: currentMember } = useQuery<MemberWithDetails>({
+    queryKey: [`/api/members/by-user/${user?.id || 'undefined'}`],
+    enabled: !!user?.id,
+  });
+
+  const { data: loanDetails } = useQuery({
+    queryKey: [`/api/loans/${loanId}`],
+    enabled: !!loanId,
+  });
+
+  // Filter eligible guarantors (active members excluding the loan applicant and current user)
+  const eligibleMembers = allMembers.filter(member => 
+    member.status === 'active' && 
+    member.id !== currentMember?.id &&
+    member.id !== loanDetails?.memberId
+  );
+
   const mutation = useMutation({
     mutationFn: async (data: GuarantorFormData) => {
-      const member = members.find((m: MemberWithDetails) => m.memberNumber === data.guarantorMemberNumber);
-      if (!member) {
-        throw new Error("Invalid guarantor member number");
-      }
-
-      const guarantorData = {
-        ...data,
-        guarantorMemberId: member.id,
-      };
-
-      await apiRequest('/api/guarantors', {
-        method: 'POST',
-        body: JSON.stringify(guarantorData),
-      });
+      await apiRequest('POST', '/api/guarantors', data);
     },
     onSuccess: () => {
       toast({
@@ -82,16 +91,7 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
     mutation.mutate(data);
   };
 
-  const handleMemberNumberChange = (memberNumber: string) => {
-    const member = members.find((m: MemberWithDetails) => m.memberNumber === memberNumber);
-    if (member) {
-      setSelectedMember(member);
-      form.setValue('guarantorMemberId', member.id);
-    } else {
-      setSelectedMember(null);
-      form.setValue('guarantorMemberId', 0);
-    }
-  };
+  const selectedMember = eligibleMembers.find(m => m.id === form.watch('guarantorMemberId'));
 
   return (
     <div className="space-y-6">
@@ -106,24 +106,73 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
           <FormField
             control={form.control}
-            name="guarantorMemberNumber"
+            name="guarantorMemberId"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Guarantor Member Number</FormLabel>
-                <FormControl>
-                  <Input
-                    placeholder="Enter member number"
-                    {...field}
-                    onChange={(e) => {
-                      field.onChange(e);
-                      handleMemberNumberChange(e.target.value);
-                    }}
-                  />
-                </FormControl>
+              <FormItem className="flex flex-col">
+                <FormLabel>Select Guarantor</FormLabel>
+                <Popover open={open} onOpenChange={setOpen}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className={cn(
+                          "w-full justify-between",
+                          !field.value && "text-muted-foreground"
+                        )}
+                      >
+                        {field.value
+                          ? `${selectedMember?.fullName || selectedMember?.memberNumber} (${selectedMember?.memberNumber})`
+                          : "Search and select a member..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0" align="start">
+                    <Command>
+                      <CommandInput 
+                        placeholder="Search members by name or number..." 
+                        className="h-9" 
+                      />
+                      <CommandEmpty>No eligible members found.</CommandEmpty>
+                      <CommandGroup>
+                        {eligibleMembers.map((member) => (
+                          <CommandItem
+                            key={member.id}
+                            value={`${member.fullName} ${member.memberNumber}`}
+                            onSelect={() => {
+                              form.setValue("guarantorMemberId", member.id);
+                              setOpen(false);
+                            }}
+                          >
+                            <div className="flex flex-col">
+                              <span className="font-medium">
+                                {member.fullName || `${member.user?.firstName} ${member.user?.lastName}`}
+                              </span>
+                              <span className="text-sm text-muted-foreground">
+                                {member.memberNumber} • {member.department || 'No Department'}
+                              </span>
+                            </div>
+                            <Check
+                              className={cn(
+                                "ml-auto h-4 w-4",
+                                member.id === field.value
+                                  ? "opacity-100"
+                                  : "opacity-0"
+                              )}
+                            />
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
                 <FormMessage />
                 {selectedMember && (
                   <div className="text-sm text-muted-foreground">
-                    Selected: {selectedMember.user?.firstName} {selectedMember.user?.lastName}
+                    Selected: {selectedMember.fullName} ({selectedMember.memberNumber})
+                    {selectedMember.department && ` • ${selectedMember.department}`}
                   </div>
                 )}
               </FormItem>
@@ -135,16 +184,19 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
             name="guaranteeAmount"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Guarantee Amount</FormLabel>
+                <FormLabel>Guarantee Amount (UGX)</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
-                    step="0.01"
-                    placeholder="0.00"
+                    step="1000"
+                    placeholder="Enter amount in UGX"
                     {...field}
                   />
                 </FormControl>
                 <FormMessage />
+                <div className="text-xs text-muted-foreground">
+                  Amount this member will guarantee for the loan
+                </div>
               </FormItem>
             )}
           />
@@ -152,7 +204,7 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
           <div className="flex gap-3 pt-4">
             <Button
               type="submit"
-              disabled={mutation.isPending || !selectedMember}
+              disabled={mutation.isPending || !selectedMember || !form.watch('guaranteeAmount')}
               className="flex-1"
             >
               {mutation.isPending ? "Sending Request..." : "Send Guarantor Request"}
