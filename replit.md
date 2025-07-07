@@ -413,6 +413,15 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Added loading states and fallback handling for loan types dropdown
   - Fixed JavaScript "Cannot access 'form' before initialization" error by reordering variable declarations
   - Enhanced user experience with loan type constraints and auto-populated fields based on centralized configuration
+- July 07, 2025. Implemented dynamic repayment calculations and conditional guarantor workflow:
+  - Built dynamic repayment schedule calculations based on loan type's interest method (simple, compound, reducing balance)
+  - Added support for all three interest calculation types with accurate mathematical formulas for each method
+  - Implemented compound interest calculations with configurable compounding frequencies (monthly, quarterly, annually)
+  - Enhanced loan type dropdown to display interest calculation method and guarantor requirements
+  - Created conditional guarantor workflow that only shows guarantor step for loan types requiring guarantors
+  - Added visual indicators throughout the form showing calculation methods and guarantor requirements
+  - Built completion flow that adapts based on guarantor requirements with appropriate success messages
+  - Loan applications now store interest type and compounding frequency for accurate future calculations
 
 ## User Preferences
 
