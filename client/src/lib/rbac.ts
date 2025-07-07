@@ -151,7 +151,7 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Savings', path: '/savings', icon: 'PiggyBank', permission: { action: 'read', resource: 'savings' } },
   { name: 'Transactions', path: '/transactions', icon: 'Receipt', permission: { action: 'read', resource: 'transactions' } },
   { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck', permission: { action: 'read', resource: 'guarantors' } },
-  { name: 'Guarantor Requests', path: '/guarantor-requests', icon: 'UserCheck', permission: { action: 'create', resource: 'guarantors' } },
+
   { name: 'Reports', path: '/reports', icon: 'BarChart3', permission: { action: 'read', resource: 'reports' } },
   { name: 'RBAC Management', path: '/rbac-management', icon: 'ShieldCheck', permission: { action: 'read', resource: 'roles' } },
   { name: 'Settings', path: '/settings', icon: 'Settings', permission: { action: 'read', resource: 'system-settings' } },
