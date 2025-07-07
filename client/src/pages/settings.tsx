@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { isUnauthorizedError } from "@/lib/authUtils";
 import type { LoanType, LoanTypeWithTerms, LoanTerm, InsertLoanType, InsertLoanTerm } from "@shared/schema";
 
 export default function Settings() {
@@ -25,9 +26,20 @@ export default function Settings() {
   const [editingTerm, setEditingTerm] = useState<LoanTerm | null>(null);
 
   // Fetch loan types
-  const { data: loanTypes = [], isLoading: loanTypesLoading } = useQuery({
+  const { data: loanTypes = [], isLoading: loanTypesLoading, error: loanTypesError } = useQuery({
     queryKey: ['/api/loan-types'],
     queryFn: () => apiRequest('GET', '/api/loan-types'),
+    retry: (failureCount, error) => {
+      if (isUnauthorizedError(error as Error)) {
+        toast({
+          title: "Session Expired",
+          description: "Please refresh the page to continue.",
+          variant: "destructive",
+        });
+        return false;
+      }
+      return failureCount < 3;
+    },
   });
 
   // Create loan type mutation
@@ -172,6 +184,27 @@ export default function Settings() {
         <Card>
           <CardContent className="py-12 text-center">
             <div className="animate-pulse">Loading settings...</div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (loanTypesError) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center space-x-2">
+          <SettingsIcon className="w-8 h-8 text-slate-600" />
+          <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
+        </div>
+        <Card>
+          <CardContent className="py-12 text-center">
+            <div className="text-red-600 mb-4">
+              Failed to load settings. Please refresh the page or try again later.
+            </div>
+            <Button onClick={() => window.location.reload()} variant="outline">
+              Refresh Page
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -341,7 +374,7 @@ export default function Settings() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4">
-                {loanTypes.map((loanType: LoanTypeWithTerms) => (
+                {Array.isArray(loanTypes) && loanTypes.map((loanType: LoanTypeWithTerms) => (
                   <Card key={loanType.id} className="border">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
@@ -463,7 +496,7 @@ export default function Settings() {
                   </Card>
                 ))}
 
-                {loanTypes.length === 0 && (
+                {(!Array.isArray(loanTypes) || loanTypes.length === 0) && !loanTypesError && (
                   <div className="text-center py-12">
                     <SettingsIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-slate-900 mb-2">No loan types configured</h3>
