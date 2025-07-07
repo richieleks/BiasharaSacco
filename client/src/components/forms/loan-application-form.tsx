@@ -10,18 +10,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FileText, Plus } from "lucide-react";
+import { FileText, Plus, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import GuarantorForm from "./guarantor-form";
 import GuarantorList from "../guarantor/guarantor-list";
 import { useAuth } from "@/hooks/useAuth";
+import type { LoanTypeWithTerms } from "@shared/schema";
 
 const loanApplicationSchema = z.object({
   principalAmount: z.string().min(1, "Amount is required"),
   interestRate: z.string().min(1, "Interest rate is required"),
   termMonths: z.string().min(1, "Term is required"),
-  loanType: z.enum(["personal", "business", "emergency", "asset", "development"]),
+  loanType: z.string().min(1, "Loan type is required"),
   purpose: z.string().min(1, "Purpose is required"),
   averageNetPay: z.string().optional(),
   staffNumber: z.string().optional(),
@@ -47,6 +48,18 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
   const { user } = useAuth();
   const [showGuarantorForm, setShowGuarantorForm] = useState(false);
   const [currentLoanId, setCurrentLoanId] = useState<number | null>(null);
+
+  // Fetch available loan types
+  const { data: loanTypes = [], isLoading: loadingLoanTypes } = useQuery<LoanTypeWithTerms[]>({
+    queryKey: ['/api/loan-types/active'],
+    queryFn: async () => {
+      const response = await fetch('/api/loan-types/active');
+      if (!response.ok) {
+        throw new Error('Failed to fetch loan types');
+      }
+      return response.json();
+    },
+  });
 
   const { data: currentMember } = useQuery({
     queryKey: ['/api/members/by-user', user?.id],
@@ -83,10 +96,20 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     return total + parseFloat(account.balance || '0');
   }, 0) || 0;
 
+  // Get selected loan type details
+  const selectedLoanType = loanTypes.find(lt => lt.name === form.watch('loanType'));
+
+  // Update interest rate when loan type changes
+  useEffect(() => {
+    if (selectedLoanType) {
+      form.setValue('interestRate', (selectedLoanType.interestRate || selectedLoanType.interest_rate || '12.00').toString());
+    }
+  }, [selectedLoanType, form]);
+
   const form = useForm<LoanApplicationData>({
     resolver: zodResolver(loanApplicationSchema),
     defaultValues: {
-      loanType: "personal",
+      loanType: "",
       principalAmount: "",
       interestRate: "12.00",
       termMonths: "12",
@@ -332,10 +355,18 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                         type="number"
                         step="0.01"
                         placeholder="0.00"
+                        min={selectedLoanType ? (selectedLoanType.minAmount || selectedLoanType.min_amount || 0) : 0}
+                        max={selectedLoanType ? (selectedLoanType.maxAmount || selectedLoanType.max_amount || undefined) : undefined}
                         value={field.value}
                         onChange={field.onChange}
                       />
                     </FormControl>
+                    {selectedLoanType && (
+                      <p className="text-xs text-muted-foreground">
+                        Allowed range: UGX {Number(selectedLoanType.minAmount || selectedLoanType.min_amount || 0).toLocaleString()} - 
+                        UGX {Number(selectedLoanType.maxAmount || selectedLoanType.max_amount || 0).toLocaleString()}
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -347,18 +378,38 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Loan Type *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={loadingLoanTypes}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select loan type" />
+                          <SelectValue placeholder={loadingLoanTypes ? "Loading loan types..." : "Select loan type"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="personal">Personal Loan</SelectItem>
-                        <SelectItem value="business">Business Loan</SelectItem>
-                        <SelectItem value="emergency">Emergency Loan</SelectItem>
-                        <SelectItem value="asset">Asset Financing</SelectItem>
-                        <SelectItem value="development">Development Loan</SelectItem>
+                        {loadingLoanTypes ? (
+                          <SelectItem value="_loading" disabled>
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Loading loan types...
+                            </div>
+                          </SelectItem>
+                        ) : loanTypes.length === 0 ? (
+                          <SelectItem value="_empty" disabled>
+                            No loan types available
+                          </SelectItem>
+                        ) : (
+                          loanTypes.map((loanType) => (
+                            <SelectItem key={loanType.id} value={loanType.name}>
+                              <div className="flex flex-col">
+                                <span className="font-medium">{loanType.displayName || loanType.display_name || loanType.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {loanType.interestRate || loanType.interest_rate}% | 
+                                  UGX {Number(loanType.minAmount || loanType.min_amount || 0).toLocaleString()} - 
+                                  UGX {Number(loanType.maxAmount || loanType.max_amount || 0).toLocaleString()}
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -376,10 +427,17 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                       <Input
                         type="number"
                         placeholder="12"
+                        min={selectedLoanType ? (selectedLoanType.minTerm || selectedLoanType.min_term || 1) : 1}
+                        max={selectedLoanType ? (selectedLoanType.maxTerm || selectedLoanType.max_term || 60) : 60}
                         value={field.value}
                         onChange={field.onChange}
                       />
                     </FormControl>
+                    {selectedLoanType && (
+                      <p className="text-xs text-muted-foreground">
+                        Allowed range: {selectedLoanType.minTerm || selectedLoanType.min_term || 1} - {selectedLoanType.maxTerm || selectedLoanType.max_term || 60} months
+                      </p>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -392,13 +450,20 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                   <FormItem>
                     <FormLabel>Interest Rate (%) *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        placeholder="12.00"
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          placeholder="12.00"
+                          value={field.value}
+                          onChange={field.onChange}
+                          disabled={!!selectedLoanType}
+                          className={selectedLoanType ? "bg-muted border-blue-200" : ""}
+                        />
+                        {selectedLoanType && (
+                          <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
+                        )}
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

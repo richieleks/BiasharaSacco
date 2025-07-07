@@ -1847,6 +1847,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public endpoint for active loan types (for loan applications)
+  app.get('/api/loan-types/active', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const activeLoanTypes = await storage.getActiveLoanTypes();
+      res.json(activeLoanTypes);
+    } catch (error) {
+      console.error('Error fetching active loan types:', error);
+      res.status(500).json({ message: 'Failed to fetch active loan types' });
+    }
+  });
+
   app.get('/api/loan-types/:id', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
