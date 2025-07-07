@@ -49,7 +49,8 @@ export function Pagination({
     return rangeWithDots;
   };
 
-  if (totalPages <= 1) {
+  // Always show pagination if there are items (allows changing items per page)
+  if (totalItems === 0) {
     return null;
   }
 
@@ -81,62 +82,64 @@ export function Pagination({
         )}
       </div>
 
-      <div className="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
-        >
-          <ChevronsLeft className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
+      {totalPages > 1 && (
+        <div className="flex items-center space-x-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronsLeft className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
 
-        {getVisiblePages().map((page, index) => {
-          if (page === '...') {
+          {getVisiblePages().map((page, index) => {
+            if (page === '...') {
+              return (
+                <span key={index} className="px-2 text-muted-foreground">
+                  ...
+                </span>
+              );
+            }
+            
             return (
-              <span key={index} className="px-2 text-muted-foreground">
-                ...
-              </span>
+              <Button
+                key={index}
+                variant={currentPage === page ? "default" : "outline"}
+                size="sm"
+                onClick={() => onPageChange(page as number)}
+              >
+                {page}
+              </Button>
             );
-          }
-          
-          return (
-            <Button
-              key={index}
-              variant={currentPage === page ? "default" : "outline"}
-              size="sm"
-              onClick={() => onPageChange(page as number)}
-            >
-              {page}
-            </Button>
-          );
-        })}
+          })}
 
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(totalPages)}
-          disabled={currentPage === totalPages}
-        >
-          <ChevronsRight className="h-4 w-4" />
-        </Button>
-      </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onPageChange(totalPages)}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
