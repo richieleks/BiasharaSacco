@@ -96,6 +96,22 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     return total + parseFloat(account.balance || '0');
   }, 0) || 0;
 
+  // Check for pending loans to disable form
+  const { data: memberLoans = [] } = useQuery<any[]>({
+    queryKey: ['/api/loans/member', (currentMember as any)?.id],
+    queryFn: async () => {
+      const memberId = (currentMember as any)?.id;
+      const response = await fetch(`/api/loans/member/${memberId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch member loans');
+      }
+      return response.json();
+    },
+    enabled: !!(currentMember as any)?.id,
+  });
+
+  const hasPendingLoans = memberLoans.some(loan => loan.status === 'pending');
+
   const form = useForm<LoanApplicationData>({
     resolver: zodResolver(loanApplicationSchema),
     defaultValues: {
@@ -258,6 +274,17 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
         } catch {
           errorMessage = "Membership approval required before applying for loans";
         }
+      } else if (error.message.includes('400')) {
+        try {
+          const errorData = JSON.parse(error.message.split('400: ')[1]);
+          if (errorData.pendingLoans) {
+            errorMessage = `${errorData.message}${errorData.pendingLoanNumbers ? ` (Loan Numbers: ${errorData.pendingLoanNumbers.join(', ')})` : ''}`;
+          } else {
+            errorMessage = errorData.message || "Cannot apply for new loan";
+          }
+        } catch {
+          errorMessage = error.message || "Failed to submit loan application";
+        }
       } else {
         errorMessage = error.message || "Failed to submit loan application";
       }
@@ -390,6 +417,19 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
         <p className="text-center text-sm text-muted-foreground">LOAN APPLICATION FORM</p>
       </CardHeader>
       <CardContent>
+        {/* Pending Loans Warning */}
+        {hasPendingLoans && (
+          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-center">
+              <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
+              <div className="text-sm text-red-800">
+                <strong>Pending Loan Application:</strong> You currently have a loan application pending approval. 
+                You cannot apply for a new loan until your existing application is approved or rejected.
+              </div>
+            </div>
+          </div>
+        )}
+        
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             {/* Applicant Information */}
@@ -801,10 +841,10 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
 
             <Button 
               type="submit" 
-              disabled={mutation.isPending || !currentMember} 
+              disabled={mutation.isPending || !currentMember || hasPendingLoans} 
               className="w-full"
             >
-              {mutation.isPending ? "Creating Application..." : "Create Loan Application"}
+              {mutation.isPending ? "Creating Application..." : hasPendingLoans ? "Cannot Apply - Pending Loan Exists" : "Create Loan Application"}
             </Button>
           </form>
         </Form>

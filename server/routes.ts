@@ -620,6 +620,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Check if member has any pending loans
+      const existingPendingLoans = await storage.getMemberPendingLoans(memberId);
+      if (existingPendingLoans && existingPendingLoans.length > 0) {
+        return res.status(400).json({ 
+          message: "Cannot apply for a new loan while you have a loan application pending approval", 
+          pendingLoans: existingPendingLoans.length,
+          pendingLoanNumbers: existingPendingLoans.map(loan => loan.loanNumber)
+        });
+      }
+      
       // Convert percentage to decimal for storage (15% -> 0.15)
       const decimalInterestRate = parseFloat(interestRate) / 100;
       
@@ -696,6 +706,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching pending loans:", error);
       res.status(500).json({ message: "Failed to fetch pending loans" });
+    }
+  });
+
+  app.get('/api/loans/member/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const memberId = parseInt(req.params.id);
+      const loans = await storage.getLoansByMember(memberId);
+      res.json(loans);
+    } catch (error) {
+      console.error("Error fetching member loans:", error);
+      res.status(500).json({ message: "Failed to fetch member loans" });
     }
   });
 
