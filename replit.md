@@ -396,6 +396,15 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Added comprehensive guarantor request approval/rejection workflow with comments and validation
   - Users can now see their loans awaiting guarantors, approve/reject requests from others, and track guarantees they've provided
   - Removed redundant navigation item "Guarantor Requests" and consolidated under main "Guarantors" page
+- July 07, 2025. Enhanced guarantor selection and tracking functionality:
+  - Added detailed guarantor status display to "My Loan Applications" with progress bars and approval tracking
+  - Implemented comprehensive guarantor selection dialog allowing users to select multiple guarantors from eligible active members
+  - Created dynamic guarantor selection interface with member dropdown, guarantee amount inputs, and real-time total coverage calculation
+  - Added validation ensuring only active members can be selected as guarantors and preventing self-selection
+  - Enhanced loan cards with individual guarantor details showing name, member number, guarantee amount, approval status, and comments
+  - Integrated "Select Guarantors" and "Add More Guarantors" buttons for easy guarantor management from loan applications
+  - Built smart filtering system excluding loan applicant and existing guarantors from selection options
+  - Added visual progress indicators showing approved/pending/rejected guarantor counts with status icons
 
 ## User Preferences
 
