@@ -24,6 +24,11 @@ export default function Settings() {
   const [selectedLoanType, setSelectedLoanType] = useState<LoanTypeWithTerms | null>(null);
   const [editingLoanType, setEditingLoanType] = useState<LoanTypeWithTerms | null>(null);
   const [editingTerm, setEditingTerm] = useState<LoanTerm | null>(null);
+  const [formData, setFormData] = useState({
+    approvalWorkflow: 'simple',
+    interestType: 'reducing_balance',
+    compoundingFrequency: 'monthly'
+  });
 
   // Fetch loan types
   const { data: loanTypes = [], isLoading: loanTypesLoading, error: loanTypesError } = useQuery({
@@ -50,8 +55,24 @@ export default function Settings() {
       setIsAddLoanTypeOpen(false);
       toast({ title: "Success", description: "Loan type created successfully" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to create loan type", variant: "destructive" });
+    onError: (error) => {
+      console.error('Error creating loan type:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create loan type';
+      if (errorMessage.includes('constraint') || errorMessage.includes('approval_workflow')) {
+        toast({ 
+          title: "Validation Error", 
+          description: "Please ensure all required fields are filled out correctly, especially the approval workflow.", 
+          variant: "destructive" 
+        });
+      } else if (isUnauthorizedError(error as Error)) {
+        toast({ 
+          title: "Session Expired", 
+          description: "Please refresh the page to continue.", 
+          variant: "destructive" 
+        });
+      } else {
+        toast({ title: "Error", description: errorMessage, variant: "destructive" });
+      }
     }
   });
 
@@ -123,26 +144,26 @@ export default function Settings() {
 
   const handleCreateLoanType = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData(e.currentTarget);
+    const htmlFormData = new FormData(e.currentTarget);
     
     const data: InsertLoanType = {
-      name: formData.get('name') as string,
-      displayName: formData.get('displayName') as string,
-      description: formData.get('description') as string,
-      interestRate: formData.get('interestRate') as string,
-      interestType: formData.get('interestType') as any,
-      compoundingFrequency: formData.get('compoundingFrequency') as any,
-      minAmount: formData.get('minAmount') as string,
-      maxAmount: formData.get('maxAmount') as string,
-      minTerm: parseInt(formData.get('minTerm') as string),
-      maxTerm: parseInt(formData.get('maxTerm') as string),
-      gracePeriod: parseInt(formData.get('gracePeriod') as string) || 0,
-      lateFeeRate: formData.get('lateFeeRate') as string,
-      processingFee: formData.get('processingFee') as string,
-      requiresGuarantor: formData.has('requiresGuarantor'),
-      guarantorRatio: formData.get('guarantorRatio') as string,
-      approvalWorkflow: formData.get('approvalWorkflow') as any,
-      requiresCollateral: formData.has('requiresCollateral'),
+      name: htmlFormData.get('name') as string,
+      displayName: htmlFormData.get('displayName') as string,
+      description: htmlFormData.get('description') as string,
+      interestRate: htmlFormData.get('interestRate') as string,
+      interestType: formData.interestType,
+      compoundingFrequency: formData.compoundingFrequency,
+      minAmount: htmlFormData.get('minAmount') as string || null,
+      maxAmount: htmlFormData.get('maxAmount') as string || null,
+      minTerm: parseInt(htmlFormData.get('minTerm') as string),
+      maxTerm: parseInt(htmlFormData.get('maxTerm') as string),
+      gracePeriod: parseInt(htmlFormData.get('gracePeriod') as string) || 0,
+      lateFeeRate: htmlFormData.get('lateFeeRate') as string || "0",
+      processingFee: htmlFormData.get('processingFee') as string || "0",
+      requiresGuarantor: htmlFormData.has('requiresGuarantor'),
+      guarantorRatio: htmlFormData.get('guarantorRatio') as string || "1.50",
+      approvalWorkflow: formData.approvalWorkflow,
+      requiresCollateral: htmlFormData.has('requiresCollateral'),
     };
 
     createLoanTypeMutation.mutate(data);
@@ -266,7 +287,12 @@ export default function Settings() {
                         </div>
                         <div>
                           <Label htmlFor="interestType">Interest Type*</Label>
-                          <Select name="interestType" required>
+                          <Select 
+                            name="interestType" 
+                            required 
+                            value={formData.interestType}
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, interestType: value }))}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Select type" />
                             </SelectTrigger>
@@ -279,7 +305,11 @@ export default function Settings() {
                         </div>
                         <div>
                           <Label htmlFor="compoundingFrequency">Compounding</Label>
-                          <Select name="compoundingFrequency">
+                          <Select 
+                            name="compoundingFrequency" 
+                            value={formData.compoundingFrequency}
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, compoundingFrequency: value }))}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Select frequency" />
                             </SelectTrigger>
@@ -343,7 +373,11 @@ export default function Settings() {
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <Label htmlFor="approvalWorkflow">Approval Workflow</Label>
-                          <Select name="approvalWorkflow">
+                          <Select 
+                            name="approvalWorkflow" 
+                            value={formData.approvalWorkflow}
+                            onValueChange={(value) => setFormData(prev => ({ ...prev, approvalWorkflow: value }))}
+                          >
                             <SelectTrigger>
                               <SelectValue placeholder="Select workflow" />
                             </SelectTrigger>
