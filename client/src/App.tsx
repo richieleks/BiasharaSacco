@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import NotFound from "@/pages/not-found";
+import Forbidden from "@/pages/forbidden";
 
 import Landing from "@/pages/landing";
 import Dashboard from "@/pages/dashboard";
@@ -34,7 +35,7 @@ function ProtectedRoute({ children, requiredPermission }: { children: React.Reac
   const { hasPermission } = useRBAC();
   
   if (requiredPermission && !hasPermission(requiredPermission.action, requiredPermission.resource)) {
-    return <NotFound />;
+    return <Forbidden />;
   }
   
   return <>{children}</>;
@@ -108,7 +109,7 @@ function Router() {
               </ProtectedRoute>
             </Route>
             <Route path="/rbac-management">
-              <ProtectedRoute>
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'roles' }}>
                 <RBACManagement />
               </ProtectedRoute>
             </Route>
