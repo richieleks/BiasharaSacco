@@ -20,10 +20,8 @@ function AdminDashboard() {
         <MemberApprovals />
         <LoanApprovalWorkflow />
       </div>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentTransactions />
-        <QuickActions />
-      </div>
+      <RecentTransactions />
+      <QuickActions />
       <PendingApprovals />
     </div>
   );
@@ -81,10 +79,8 @@ function TellerDashboard() {
   return (
     <div className="space-y-6">
       <MetricsGrid />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <QuickActions />
-        <RecentTransactions />
-      </div>
+      <RecentTransactions />
+      <QuickActions />
       <Card>
         <CardHeader>
           <CardTitle>Daily Operations</CardTitle>
