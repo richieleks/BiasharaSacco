@@ -146,12 +146,35 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
 
   const calculateMonthlyPayment = () => {
     const principal = parseFloat(form.watch('principalAmount') || '0');
-    const rate = parseFloat(form.watch('interestRate') || '0') / 100 / 12;
-    const term = parseInt(form.watch('termMonths') || '0');
+    const annualRate = parseFloat(form.watch('interestRate') || '0');
+    const termMonths = parseInt(form.watch('termMonths') || '0');
     
-    if (principal > 0 && rate > 0 && term > 0) {
-      const payment = principal * (rate * Math.pow(1 + rate, term)) / (Math.pow(1 + rate, term) - 1);
-      return payment;
+    if (principal > 0 && annualRate > 0 && termMonths > 0 && selectedLoanType) {
+      const interestType = selectedLoanType.interestType || selectedLoanType.interest_type || 'reducing_balance';
+      const timeInYears = termMonths / 12;
+      
+      switch (interestType) {
+        case 'simple':
+          // Simple Interest: I = P * R * T, Monthly Payment = (P + I) / months
+          const simpleInterest = principal * (annualRate / 100) * timeInYears;
+          return (principal + simpleInterest) / termMonths;
+          
+        case 'compound':
+          // Compound Interest: A = P(1 + r/n)^(nt), where n = compounding frequency
+          const compoundingFrequency = selectedLoanType.compoundingFrequency || selectedLoanType.compounding_frequency || 'monthly';
+          let n = 12; // default monthly
+          if (compoundingFrequency === 'quarterly') n = 4;
+          if (compoundingFrequency === 'annually') n = 1;
+          
+          const compoundAmount = principal * Math.pow(1 + (annualRate / 100) / n, n * timeInYears);
+          return compoundAmount / termMonths;
+          
+        case 'reducing_balance':
+        default:
+          // Reducing Balance (EMI): PMT = P * [r(1+r)^n] / [(1+r)^n - 1]
+          const monthlyRate = annualRate / 100 / 12;
+          return principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
+      }
     }
     return 0;
   };
@@ -165,16 +188,47 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
       }
 
       const principal = parseFloat(data.principalAmount);
-      const rate = parseFloat(data.interestRate) / 100 / 12;
-      const term = parseInt(data.termMonths);
-      const calculatedPayment = principal * (rate * Math.pow(1 + rate, term)) / (Math.pow(1 + rate, term) - 1);
+      const annualRate = parseFloat(data.interestRate);
+      const termMonths = parseInt(data.termMonths);
+      
+      // Calculate payment based on interest type
+      let calculatedPayment = 0;
+      if (selectedLoanType) {
+        const interestType = selectedLoanType.interestType || selectedLoanType.interest_type || 'reducing_balance';
+        const timeInYears = termMonths / 12;
+        
+        switch (interestType) {
+          case 'simple':
+            const simpleInterest = principal * (annualRate / 100) * timeInYears;
+            calculatedPayment = (principal + simpleInterest) / termMonths;
+            break;
+            
+          case 'compound':
+            const compoundingFrequency = selectedLoanType.compoundingFrequency || selectedLoanType.compounding_frequency || 'monthly';
+            let n = 12;
+            if (compoundingFrequency === 'quarterly') n = 4;
+            if (compoundingFrequency === 'annually') n = 1;
+            
+            const compoundAmount = principal * Math.pow(1 + (annualRate / 100) / n, n * timeInYears);
+            calculatedPayment = compoundAmount / termMonths;
+            break;
+            
+          case 'reducing_balance':
+          default:
+            const monthlyRate = annualRate / 100 / 12;
+            calculatedPayment = principal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
+            break;
+        }
+      }
 
       const response = await apiRequest('POST', '/api/loans', {
         ...data,
         memberId: (currentMember as any).id,
-        termMonths: parseInt(data.termMonths),
+        termMonths: termMonths,
         monthlyPayment: calculatedPayment.toFixed(2),
         outstandingBalance: data.principalAmount,
+        interestType: selectedLoanType?.interestType || selectedLoanType?.interest_type || 'reducing_balance',
+        compoundingFrequency: selectedLoanType?.compoundingFrequency || selectedLoanType?.compounding_frequency || 'monthly',
       });
       return response;
     },
@@ -402,7 +456,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                               <div className="flex flex-col">
                                 <span className="font-medium">{loanType.displayName || loanType.display_name || loanType.name}</span>
                                 <span className="text-xs text-muted-foreground">
-                                  {loanType.interestRate || loanType.interest_rate}% | 
+                                  {loanType.interestRate || loanType.interest_rate}% ({(loanType.interestType || loanType.interest_type || 'reducing_balance').replace('_', ' ')}) | 
                                   UGX {Number(loanType.minAmount || loanType.min_amount || 0).toLocaleString()} - 
                                   UGX {Number(loanType.maxAmount || loanType.max_amount || 0).toLocaleString()}
                                 </span>
@@ -695,13 +749,25 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
             />
 
             {/* Monthly Payment Display */}
-            {monthlyPayment > 0 && (
+            {monthlyPayment > 0 && selectedLoanType && (
               <Card className="border-primary">
                 <CardContent className="pt-6">
                   <div className="text-center">
                     <div className="text-sm font-medium text-muted-foreground">Monthly Repayment Amount</div>
                     <div className="text-3xl font-bold text-primary">
                       UGX {monthlyPayment.toLocaleString()}
+                    </div>
+                    <div className="mt-2 text-xs text-muted-foreground">
+                      Calculated using{' '}
+                      <span className="font-medium capitalize">
+                        {(selectedLoanType.interestType || selectedLoanType.interest_type || 'reducing_balance').replace('_', ' ')}
+                      </span>{' '}
+                      interest method
+                      {(selectedLoanType.interestType || selectedLoanType.interest_type) === 'compound' && (
+                        <span className="ml-1">
+                          ({selectedLoanType.compoundingFrequency || selectedLoanType.compounding_frequency || 'monthly'} compounding)
+                        </span>
+                      )}
                     </div>
                   </div>
                 </CardContent>
