@@ -49,15 +49,8 @@ export default function Dashboard() {
         </div>
         {hasPermission('read', 'reports') && (
           <div className="flex items-center space-x-2">
-            <Button variant="outline">
-              <Download className="mr-2 h-4 w-4" />
-              Export Report
-            </Button>
             {hasPermission('create', 'transactions') && (
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Quick Action
-              </Button>
+              <></>
             )}
           </div>
         )}
