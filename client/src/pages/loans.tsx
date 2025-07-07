@@ -41,8 +41,8 @@ export default function Loans() {
   });
 
   const approveLoanMutation = useMutation({
-    mutationFn: async (loanId: number) => {
-      await apiRequest('PATCH', `/api/loans/${loanId}/approve`);
+    mutationFn: async (loan: any) => {
+      await apiRequest('PATCH', `/api/loans/${loan.uuid}/approve`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
@@ -72,8 +72,8 @@ export default function Loans() {
   });
 
   const disburseLoanMutation = useMutation({
-    mutationFn: async (loanId: number) => {
-      await apiRequest('PATCH', `/api/loans/${loanId}/disburse`);
+    mutationFn: async (loan: any) => {
+      await apiRequest('PATCH', `/api/loans/${loan.uuid}/disburse`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
@@ -275,7 +275,7 @@ export default function Loans() {
                       <>
                         <Button
                           size="sm"
-                          onClick={() => approveLoanMutation.mutate(loan.id)}
+                          onClick={() => approveLoanMutation.mutate(loan)}
                           disabled={approveLoanMutation.isPending}
                           className="sacco-success text-white hover:opacity-90"
                         >
@@ -291,7 +291,7 @@ export default function Loans() {
                     {loan.status === 'approved' && (
                       <Button
                         size="sm"
-                        onClick={() => disburseLoanMutation.mutate(loan.id)}
+                        onClick={() => disburseLoanMutation.mutate(loan)}
                         disabled={disburseLoanMutation.isPending}
                         className="sacco-gradient text-white hover:opacity-90"
                       >

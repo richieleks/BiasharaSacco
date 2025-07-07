@@ -50,8 +50,8 @@ export default function PendingApprovals() {
   });
 
   const approveLoanMutation = useMutation({
-    mutationFn: async (loanId: number) => {
-      await apiRequest('PATCH', `/api/loans/${loanId}/approve`);
+    mutationFn: async (loan: any) => {
+      await apiRequest('PATCH', `/api/loans/${loan.uuid}/approve`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/pending-approvals'] });
@@ -128,7 +128,7 @@ export default function PendingApprovals() {
                 </div>
                 <Button
                   size="sm"
-                  onClick={() => approveLoanMutation.mutate(loan.id)}
+                  onClick={() => approveLoanMutation.mutate(loan)}
                   disabled={approveLoanMutation.isPending}
                   className="w-full sacco-success text-white hover:opacity-90"
                 >

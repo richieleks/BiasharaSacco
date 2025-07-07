@@ -59,8 +59,8 @@ export default function LoanApprovalWorkflow() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: async ({ loanId, stage, comments }: { loanId: number; stage: string; comments?: string }) => {
-      await apiRequest('POST', `/api/loans/${loanId}/approve/${stage}`, { comments });
+    mutationFn: async ({ loan, stage, comments }: { loan: any; stage: string; comments?: string }) => {
+      await apiRequest('POST', `/api/loans/${loan.uuid}/approve/${stage}`, { comments });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans/approval'] });
@@ -93,8 +93,8 @@ export default function LoanApprovalWorkflow() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: async ({ loanId, reason }: { loanId: number; reason: string }) => {
-      await apiRequest('POST', `/api/loans/${loanId}/reject`, { reason });
+    mutationFn: async ({ loan, reason }: { loan: any; reason: string }) => {
+      await apiRequest('POST', `/api/loans/${loan.uuid}/reject`, { reason });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans/approval'] });
@@ -136,13 +136,13 @@ export default function LoanApprovalWorkflow() {
 
     if (selectedAction.action === 'approve') {
       approveMutation.mutate({ 
-        loanId: selectedAction.loan.id, 
+        loan: selectedAction.loan, 
         stage: selectedAction.stage, 
         comments 
       });
     } else {
       rejectMutation.mutate({ 
-        loanId: selectedAction.loan.id, 
+        loan: selectedAction.loan, 
         reason: rejectionReason 
       });
     }

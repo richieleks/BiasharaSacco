@@ -50,7 +50,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
 
   const generateScheduleMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/loans/${loan.id}/generate-amortization`, {
+      return await apiRequest(`/api/loans/${loan.uuid}/generate-amortization`, {
         method: 'POST',
       });
     },
@@ -72,7 +72,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
 
   const calculateInterestMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest(`/api/loans/${loan.id}/calculate-interest`, {
+      return await apiRequest(`/api/loans/${loan.uuid}/calculate-interest`, {
         method: 'POST',
       });
     },

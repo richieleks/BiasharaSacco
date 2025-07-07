@@ -11,6 +11,7 @@ import {
   boolean,
   serial,
   unique,
+  uuid,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
@@ -93,6 +94,7 @@ export const savingsAccounts = pgTable("savings_accounts", {
 // Loans table
 export const loans = pgTable("loans", {
   id: serial("id").primaryKey(),
+  uuid: uuid("uuid").defaultRandom().unique(),
   memberId: integer("member_id").references(() => members.id).notNull(),
   loanNumber: varchar("loan_number").unique().notNull(),
   loanType: varchar("loan_type", { enum: ["personal", "business", "emergency", "asset", "development"] }).default("personal"),

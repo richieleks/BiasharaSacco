@@ -651,7 +651,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           title: 'New Loan Application Submitted',
           message: `Loan application ${loanNumber} for UGX ${Number(principalAmount).toLocaleString()} has been submitted and is pending approval.`,
           priority: 'medium',
-          actionUrl: `/loans/${loan.id}`,
+          actionUrl: `/loans/${loan.uuid}`,
           memberId: memberId,
           userId: loanMember.userId,
           isRead: false
@@ -725,9 +725,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/loans/:id/approve/:stage', isAuthenticated, async (req: any, res) => {
+  app.post('/api/loans/:uuid/approve/:stage', isAuthenticated, async (req: any, res) => {
     try {
-      const { id, stage } = req.params;
+      const { uuid, stage } = req.params;
       const { comments } = req.body;
       const userId = req.user?.claims?.sub;
 
@@ -735,7 +735,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: `Access denied. ${stage} role required.` });
       }
 
-      const loan = await storage.approveLoanAtStage(parseInt(id), stage, userId, comments);
+      // Get loan by UUID first to get the ID for legacy methods
+      const loanByUuid = await storage.getLoanByUuid(uuid);
+      if (!loanByUuid) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      const loan = await storage.approveLoanAtStage(loanByUuid.id, stage, userId, comments);
       
       // Create notification for loan approval
       const member = await storage.getMember(loan.memberId);
@@ -745,7 +751,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           title: `Loan Approved at ${stage.charAt(0).toUpperCase() + stage.slice(1)} Stage`,
           message: `Your loan application ${loan.loanNumber} has been approved at the ${stage} stage. ${loan.status === 'approved' ? 'Loan is now fully approved!' : 'Moving to next approval stage.'}`,
           priority: loan.status === 'approved' ? 'high' : 'medium',
-          actionUrl: `/loans/${loan.id}`,
+          actionUrl: `/loans/${loan.uuid}`,
           memberId: loan.memberId,
           userId: member.userId,
           isRead: false
@@ -759,9 +765,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/loans/:id/reject', isAuthenticated, async (req: any, res) => {
+  app.post('/api/loans/:uuid/reject', isAuthenticated, async (req: any, res) => {
     try {
-      const { id } = req.params;
+      const { uuid } = req.params;
       const { reason } = req.body;
       const userId = req.user?.claims?.sub;
 
@@ -769,7 +775,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Rejection reason is required" });
       }
 
-      const loan = await storage.rejectLoan(parseInt(id), userId, reason);
+      // Get loan by UUID first to get the ID for legacy methods
+      const loanByUuid = await storage.getLoanByUuid(uuid);
+      if (!loanByUuid) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      const loan = await storage.rejectLoan(loanByUuid.id, userId, reason);
       res.json({ message: "Loan rejected", loan });
     } catch (error) {
       console.error("Error rejecting loan:", error);
@@ -777,10 +789,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/loans/:id/approval-history', isAuthenticated, async (req, res) => {
+  app.get('/api/loans/:uuid/approval-history', isAuthenticated, async (req, res) => {
     try {
-      const { id } = req.params;
-      const history = await storage.getLoanApprovalHistory(parseInt(id));
+      const { uuid } = req.params;
+      // Get loan by UUID first to get the ID for legacy methods
+      const loan = await storage.getLoanByUuid(uuid);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      const history = await storage.getLoanApprovalHistory(loan.id);
       res.json(history);
     } catch (error) {
       console.error("Error fetching loan approval history:", error);
@@ -1489,10 +1507,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Amortization schedule routes
-  app.get('/api/loans/:id/amortization', isAuthenticated, async (req: any, res) => {
+  app.get('/api/loans/:uuid/amortization', isAuthenticated, async (req: any, res) => {
     try {
-      const { id } = req.params;
-      const schedule = await storage.getAmortizationSchedule(parseInt(id));
+      const { uuid } = req.params;
+      // Get loan by UUID first to get the ID for legacy methods
+      const loan = await storage.getLoanByUuid(uuid);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      const schedule = await storage.getAmortizationSchedule(loan.id);
       res.json(schedule);
     } catch (error) {
       console.error("Error fetching amortization schedule:", error);
@@ -1500,16 +1524,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/loans/:id/generate-amortization', isAuthenticated, requirePermission('create', 'amortization'), async (req: any, res) => {
+  app.post('/api/loans/:uuid/generate-amortization', isAuthenticated, requirePermission('create', 'amortization'), async (req: any, res) => {
     try {
-      const { id } = req.params;
-      const schedule = await storage.generateLoanAmortization(parseInt(id));
+      const { uuid } = req.params;
+      // Get loan by UUID first to get the ID for legacy methods
+      const loan = await storage.getLoanByUuid(uuid);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      const schedule = await storage.generateLoanAmortization(loan.id);
 
       await storage.createAuditLog({
         userId: req.user.claims.sub,
         action: 'create',
         resource: 'amortization_schedule',
-        resourceId: id,
+        resourceId: uuid,
         details: `Generated amortization schedule for loan ${id}`,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')
@@ -1522,17 +1552,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/loans/:id/calculate-interest', isAuthenticated, requirePermission('create', 'interest-calculations'), async (req: any, res) => {
+  app.post('/api/loans/:uuid/calculate-interest', isAuthenticated, requirePermission('create', 'interest-calculations'), async (req: any, res) => {
     try {
-      const { id } = req.params;
-      const result = await storage.calculateAndSaveInterest(parseInt(id));
+      const { uuid } = req.params;
+      // Get loan by UUID first to get the ID for legacy methods
+      const loan = await storage.getLoanByUuid(uuid);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      const result = await storage.calculateAndSaveInterest(loan.id);
 
       await storage.createAuditLog({
         userId: req.user.claims.sub,
         action: 'create',
         resource: 'interest_calculation',
-        resourceId: id,
-        details: `Calculated interest for loan ${id}: Monthly payment UGX ${result.monthlyPayment.toFixed(2)}`,
+        resourceId: uuid,
+        details: `Calculated interest for loan ${uuid}: Monthly payment UGX ${result.monthlyPayment.toFixed(2)}`,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')
       });
@@ -1544,10 +1580,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/loans/:id/interest-calculations', isAuthenticated, async (req: any, res) => {
+  app.get('/api/loans/:uuid/interest-calculations', isAuthenticated, async (req: any, res) => {
     try {
-      const { id } = req.params;
-      const calculations = await storage.getInterestCalculations(parseInt(id));
+      const { uuid } = req.params;
+      // Get loan by UUID first to get the ID for legacy methods
+      const loan = await storage.getLoanByUuid(uuid);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+      
+      const calculations = await storage.getInterestCalculations(loan.id);
       res.json(calculations);
     } catch (error) {
       console.error("Error fetching interest calculations:", error);

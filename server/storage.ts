@@ -79,6 +79,7 @@ export interface IStorage {
   // Loan operations
   createLoan(loan: InsertLoan): Promise<Loan>;
   getLoan(id: number): Promise<LoanWithDetails | undefined>;
+  getLoanByUuid(uuid: string): Promise<LoanWithDetails | undefined>;
   getLoansByMember(memberId: number): Promise<LoanWithDetails[]>;
   updateLoanStatus(id: number, status: string): Promise<Loan>;
   updateLoanBalance(id: number, amount: string): Promise<Loan>;
@@ -509,6 +510,25 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(members, eq(loans.memberId, members.id))
       .leftJoin(users, eq(members.userId, users.id))
       .where(eq(loans.id, id));
+
+    if (!loan) return undefined;
+
+    return {
+      ...loan.loans,
+      member: loan.members ? {
+        ...loan.members,
+        user: loan.users || undefined,
+      } : undefined,
+    };
+  }
+
+  async getLoanByUuid(uuid: string): Promise<LoanWithDetails | undefined> {
+    const [loan] = await db
+      .select()
+      .from(loans)
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(eq(loans.uuid, uuid));
 
     if (!loan) return undefined;
 
