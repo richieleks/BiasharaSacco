@@ -19,7 +19,7 @@ import Transactions from "@/pages/transactions";
 import Reports from "@/pages/reports";
 import Guarantors from "@/pages/guarantors";
 import GuarantorRequests from "@/pages/guarantor-requests";
-import RoleManagement from "@/pages/role-management";
+
 import AuditLogs from "@/pages/audit-logs";
 import RolesMatrixPage from "@/pages/roles-matrix";
 import InterestRates from "@/pages/interest-rates";
@@ -103,11 +103,7 @@ function Router() {
                 <Reports />
               </ProtectedRoute>
             </Route>
-            <Route path="/role-management">
-              <ProtectedRoute requiredPermission={{ action: 'update', resource: 'system-settings' }}>
-                <RoleManagement />
-              </ProtectedRoute>
-            </Route>
+
             <Route path="/rbac-management">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'roles' }}>
                 <RBACManagement />

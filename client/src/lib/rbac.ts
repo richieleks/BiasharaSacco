@@ -152,7 +152,7 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{name: string, path: strin
     { name: 'Transactions', path: '/transactions', icon: 'Receipt' },
     { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck' },
     { name: 'Reports', path: '/reports', icon: 'BarChart3' },
-    { name: 'Role Management', path: '/role-management', icon: 'UserCog' },
+
     { name: 'RBAC Management', path: '/rbac-management', icon: 'ShieldCheck' },
     { name: 'Audit Logs', path: '/audit-logs', icon: 'Shield' },
     { name: 'Roles Matrix', path: '/roles-matrix', icon: 'Lock' },
