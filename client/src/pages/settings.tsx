@@ -458,16 +458,16 @@ export default function Settings() {
                 </div>
               )}
               <div className="grid gap-4">
-
-                {Array.isArray(loanTypes) && loanTypes.map((loanType: LoanTypeWithTerms) => (
+                {console.log('Rendering loan types:', loanTypes, 'Length:', loanTypes?.length, 'Is Array:', Array.isArray(loanTypes))}
+                {Array.isArray(loanTypes) && loanTypes.length > 0 && loanTypes.map((loanType: LoanTypeWithTerms) => (
                   <Card key={loanType.id} className="border">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-2">
-                            <h3 className="font-semibold text-lg">{loanType.displayName}</h3>
-                            <Badge variant={loanType.isActive ? "default" : "secondary"}>
-                              {loanType.isActive ? "Active" : "Inactive"}
+                            <h3 className="font-semibold text-lg">{loanType.displayName || loanType.display_name || loanType.name}</h3>
+                            <Badge variant={(loanType.isActive ?? loanType.is_active ?? true) ? "default" : "secondary"}>
+                              {(loanType.isActive ?? loanType.is_active ?? true) ? "Active" : "Inactive"}
                             </Badge>
                           </div>
                           
@@ -475,19 +475,19 @@ export default function Settings() {
                             <div>
                               <span className="text-slate-500">Interest Rate:</span>
                               <br />
-                              <span className="font-medium">{formatPercentage(loanType.interestRate)}</span>
+                              <span className="font-medium">{formatPercentage(loanType.interestRate || loanType.interest_rate)}</span>
                             </div>
                             <div>
                               <span className="text-slate-500">Amount Range:</span>
                               <br />
                               <span className="font-medium">
-                                {formatCurrency(loanType.minAmount)} - {formatCurrency(loanType.maxAmount)}
+                                {formatCurrency(loanType.minAmount || loanType.min_amount)} - {formatCurrency(loanType.maxAmount || loanType.max_amount)}
                               </span>
                             </div>
                             <div>
                               <span className="text-slate-500">Term Range:</span>
                               <br />
-                              <span className="font-medium">{loanType.minTerm} - {loanType.maxTerm} months</span>
+                              <span className="font-medium">{loanType.minTerm || loanType.min_term || 'N/A'} - {loanType.maxTerm || loanType.max_term || 'N/A'} months</span>
                             </div>
                             <div>
                               <span className="text-slate-500">Terms:</span>
@@ -586,7 +586,14 @@ export default function Settings() {
                     <SettingsIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-slate-900 mb-2">No loan types configured</h3>
                     <p className="text-slate-500 mb-4">Create your first loan type to get started.</p>
-
+                    <div className="text-xs text-gray-400 mt-4">
+                      Debug Info:<br/>
+                      loanTypes: {JSON.stringify(loanTypes)}<br/>
+                      isArray: {String(Array.isArray(loanTypes))}<br/>
+                      length: {loanTypes?.length}<br/>
+                      loading: {String(loanTypesLoading)}<br/>
+                      error: {String(!!loanTypesError)}
+                    </div>
                   </div>
                 )}
               </div>
