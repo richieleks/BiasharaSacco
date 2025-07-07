@@ -199,13 +199,23 @@ export default function Settings() {
   };
 
   const formatCurrency = (amount: string | null) => {
-    if (!amount) return 'Not set';
-    return `UGX ${parseFloat(amount).toLocaleString()}`;
+    if (!amount || amount === 'null') return 'Not set';
+    try {
+      return `UGX ${parseFloat(amount).toLocaleString()}`;
+    } catch (error) {
+      console.error('Error formatting currency:', error, amount);
+      return 'Invalid amount';
+    }
   };
 
   const formatPercentage = (rate: string | null) => {
-    if (!rate) return 'Not set';
-    return `${parseFloat(rate)}%`;
+    if (!rate || rate === 'null') return 'Not set';
+    try {
+      return `${parseFloat(rate)}%`;
+    } catch (error) {
+      console.error('Error formatting percentage:', error, rate);
+      return 'Invalid rate';
+    }
   };
 
   if (loanTypesLoading) {
@@ -422,7 +432,13 @@ export default function Settings() {
               </div>
             </CardHeader>
             <CardContent>
+              {loanTypesError && (
+                <div className="text-red-600 mb-4 p-4 border border-red-200 rounded">
+                  Error loading loan types. Please refresh the page.
+                </div>
+              )}
               <div className="grid gap-4">
+
                 {Array.isArray(loanTypes) && loanTypes.map((loanType: LoanTypeWithTerms) => (
                   <Card key={loanType.id} className="border">
                     <CardContent className="p-4">
@@ -545,11 +561,12 @@ export default function Settings() {
                   </Card>
                 ))}
 
-                {(!Array.isArray(loanTypes) || loanTypes.length === 0) && !loanTypesError && (
+                {(!Array.isArray(loanTypes) || loanTypes.length === 0) && !loanTypesError && !loanTypesLoading && (
                   <div className="text-center py-12">
                     <SettingsIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-slate-900 mb-2">No loan types configured</h3>
                     <p className="text-slate-500 mb-4">Create your first loan type to get started.</p>
+
                   </div>
                 )}
               </div>
