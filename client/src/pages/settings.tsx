@@ -434,7 +434,27 @@ export default function Settings() {
             <CardContent>
               {loanTypesError && (
                 <div className="text-red-600 mb-4 p-4 border border-red-200 rounded">
-                  Error loading loan types. Please refresh the page.
+                  <div className="font-semibold mb-2">Error loading loan types</div>
+                  <div className="text-sm mb-2">
+                    {isUnauthorizedError(loanTypesError as Error) ? 
+                      'Authentication required. Please log in.' : 
+                      'Failed to load settings. Please try again.'
+                    }
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    Error details: {loanTypesError instanceof Error ? loanTypesError.message : String(loanTypesError)}
+                  </div>
+                  <div className="mt-3 space-x-2">
+                    {isUnauthorizedError(loanTypesError as Error) ? (
+                      <Button onClick={() => window.location.href = '/api/login'} size="sm">
+                        Log In
+                      </Button>
+                    ) : (
+                      <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+                        Refresh Page
+                      </Button>
+                    )}
+                  </div>
                 </div>
               )}
               <div className="grid gap-4">
