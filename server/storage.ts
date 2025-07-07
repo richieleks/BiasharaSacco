@@ -915,14 +915,14 @@ export class DatabaseStorage implements IStorage {
         .select({ total: sql<number>`COALESCE(sum(balance), 0)::numeric` })
         .from(savingsAccounts);
       
-      const [loans] = await db
+      const [loansTotal] = await db
         .select({ total: sql<number>`COALESCE(sum(outstanding_balance), 0)::numeric` })
         .from(loans);
 
       savingsVsLoans.push({
         month: monthName,
         totalSavings: savings?.total || 0,
-        totalLoans: loans?.total || 0,
+        totalLoans: loansTotal?.total || 0,
       });
     }
 
