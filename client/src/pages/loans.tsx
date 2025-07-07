@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { usePagination } from "@/hooks/usePagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Pagination } from "@/components/ui/pagination";
 import LoanApplicationForm from "@/components/forms/loan-application-form";
 import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign } from "lucide-react";
 
@@ -17,6 +19,7 @@ export default function Loans() {
   const [location, setLocation] = useLocation();
   const isPersonalView = location === '/my-loans';
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -35,10 +38,32 @@ export default function Loans() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: pendingLoans, isLoading: pendingLoading } = useQuery<any[]>({
+  const { data: allLoans, isLoading: pendingLoading } = useQuery<any[]>({
     queryKey: isPersonalView ? ['/api/loans/my-loans'] : ['/api/loans/pending'],
     enabled: isAuthenticated,
   });
+
+  // Filter loans based on search query
+  const filteredLoans = (allLoans || []).filter((loan: any) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      loan.loanNumber?.toLowerCase().includes(query) ||
+      loan.member?.fullName?.toLowerCase().includes(query) ||
+      loan.loanType?.toLowerCase().includes(query) ||
+      loan.status?.toLowerCase().includes(query)
+    );
+  });
+
+  // Apply pagination
+  const {
+    currentPage,
+    itemsPerPage,
+    paginatedData: pendingLoans,
+    totalItems,
+    handlePageChange,
+    handleItemsPerPageChange,
+  } = usePagination({ data: filteredLoans, initialItemsPerPage: 10 });
 
   const approveLoanMutation = useMutation({
     mutationFn: async (loan: any) => {
@@ -175,19 +200,30 @@ export default function Loans() {
               }
             </p>
           </div>
-          <Button 
-            className="sacco-gradient text-white hover:opacity-90 mt-4 sm:mt-0"
-            onClick={() => {
-              if (isPersonalView) {
-                setLocation('/loan-application');
-              } else {
-                setIsApplicationModalOpen(true);
-              }
-            }}
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            {isPersonalView ? 'Apply for Loan' : 'New Loan Application'}
-          </Button>
+          <div className="flex space-x-2 mt-4 sm:mt-0">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+              <Input
+                placeholder="Search loans..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-64"
+              />
+            </div>
+            <Button 
+              className="sacco-gradient text-white hover:opacity-90"
+              onClick={() => {
+                if (isPersonalView) {
+                  setLocation('/loan-application');
+                } else {
+                  setIsApplicationModalOpen(true);
+                }
+              }}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              {isPersonalView ? 'Apply for Loan' : 'New Loan Application'}
+            </Button>
+          </div>
           
           {/* Keep modal for admin users */}
           {!isPersonalView && (
@@ -311,6 +347,15 @@ export default function Loans() {
             </div>
           )}
         </CardContent>
+        {filteredLoans.length > 0 && (
+          <Pagination
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </Card>
 
       {/* Active Loans Summary */}

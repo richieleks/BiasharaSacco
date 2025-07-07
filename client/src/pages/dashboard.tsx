@@ -47,13 +47,7 @@ export default function Dashboard() {
             {userRole} Portal
           </p>
         </div>
-        {hasPermission('read', 'reports') && (
-          <div className="flex items-center space-x-2">
-            {hasPermission('create', 'transactions') && (
-              <></>
-            )}
-          </div>
-        )}
+
       </div>
 
       {/* Role-Based Dashboard Content */}

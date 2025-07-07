@@ -3,6 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
+import { usePagination } from "@/hooks/usePagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
 import { Search, ArrowUp, ArrowDown, DollarSign, CreditCard, CheckCircle, Clock, X } from "lucide-react";
 import type { TransactionWithDetails } from "@shared/schema";
 
@@ -35,10 +37,32 @@ export default function Transactions() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: transactions, isLoading: transactionsLoading, error } = useQuery<any[]>({
-    queryKey: isPersonalView ? ['/api/transactions/my-transactions'] : ['/api/transactions', { limit: 50 }],
+  const { data: allTransactions, isLoading: transactionsLoading, error } = useQuery<any[]>({
+    queryKey: isPersonalView ? ['/api/transactions/my-transactions'] : ['/api/transactions'],
     enabled: isAuthenticated,
   });
+
+  // Filter transactions based on search query
+  const filteredTransactions = (allTransactions || []).filter((transaction: any) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      transaction.member?.fullName?.toLowerCase().includes(query) ||
+      transaction.type?.toLowerCase().includes(query) ||
+      transaction.description?.toLowerCase().includes(query) ||
+      transaction.status?.toLowerCase().includes(query)
+    );
+  });
+
+  // Apply pagination
+  const {
+    currentPage,
+    itemsPerPage,
+    paginatedData: transactions,
+    totalItems,
+    handlePageChange,
+    handleItemsPerPageChange,
+  } = usePagination({ data: filteredTransactions, initialItemsPerPage: 10 });
 
   const approveTransactionMutation = useMutation({
     mutationFn: async (transactionId: number) => {
@@ -138,17 +162,7 @@ export default function Transactions() {
     return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-  const filteredTransactions = transactions?.filter((transaction: TransactionWithDetails) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      transaction.referenceNumber.toLowerCase().includes(query) ||
-      transaction.member?.user?.firstName?.toLowerCase().includes(query) ||
-      transaction.member?.user?.lastName?.toLowerCase().includes(query) ||
-      transaction.member?.memberNumber?.toLowerCase().includes(query) ||
-      transaction.transactionType.toLowerCase().includes(query)
-    );
-  });
+
 
   if (error && isUnauthorizedError(error)) {
     return null; // Will redirect in useEffect
@@ -211,7 +225,7 @@ export default function Transactions() {
                 </div>
               ))}
             </div>
-          ) : filteredTransactions && filteredTransactions.length > 0 ? (
+          ) : transactions && transactions.length > 0 ? (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -306,6 +320,15 @@ export default function Transactions() {
             </div>
           )}
         </CardContent>
+        {filteredTransactions.length > 0 && (
+          <Pagination
+            totalItems={totalItems}
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
+          />
+        )}
       </Card>
     </>
   );

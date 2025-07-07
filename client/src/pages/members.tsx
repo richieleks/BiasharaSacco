@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
+import { usePagination } from "@/hooks/usePagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Pagination } from "@/components/ui/pagination";
 import MemberForm from "@/components/forms/member-form";
 import { Search, Plus, Eye, Users } from "lucide-react";
 import type { MemberWithDetails } from "@shared/schema";
@@ -39,10 +41,33 @@ export default function Members() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: members = [], isLoading: membersLoading, error } = useQuery({
-    queryKey: ['/api/members', searchQuery],
+  const { data: allMembers = [], isLoading: membersLoading, error } = useQuery({
+    queryKey: ['/api/members'],
     enabled: isAuthenticated,
   });
+
+  // Filter members based on search query
+  const filteredMembers = allMembers.filter((member: MemberWithDetails) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      member.fullName?.toLowerCase().includes(query) ||
+      member.memberNumber?.toLowerCase().includes(query) ||
+      member.phoneNumber?.toLowerCase().includes(query) ||
+      member.department?.toLowerCase().includes(query) ||
+      member.status?.toLowerCase().includes(query)
+    );
+  });
+
+  // Apply pagination
+  const {
+    currentPage,
+    itemsPerPage,
+    paginatedData: members,
+    totalItems,
+    handlePageChange,
+    handleItemsPerPageChange,
+  } = usePagination({ data: filteredMembers, initialItemsPerPage: 10 });
 
   const addMemberMutation = useMutation({
     mutationFn: async (memberData: any) => {
@@ -235,6 +260,15 @@ export default function Members() {
               </TableBody>
             </Table>
           </CardContent>
+          {filteredMembers.length > 0 && (
+            <Pagination
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          )}
         </Card>
       ) : (
         <Card>
