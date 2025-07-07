@@ -33,7 +33,6 @@ export default function Settings() {
   // Fetch loan types
   const { data: loanTypes = [], isLoading: loanTypesLoading, error: loanTypesError } = useQuery({
     queryKey: ['/api/loan-types'],
-    queryFn: () => apiRequest('GET', '/api/loan-types'),
     retry: (failureCount, error) => {
       if (isUnauthorizedError(error as Error)) {
         toast({
@@ -434,31 +433,22 @@ export default function Settings() {
             <CardContent>
               {loanTypesError && (
                 <div className="text-red-600 mb-4 p-4 border border-red-200 rounded">
-                  <div className="font-semibold mb-2">Error loading loan types</div>
+                  <div className="font-semibold mb-2">Unable to load loan types</div>
                   <div className="text-sm mb-2">
                     {isUnauthorizedError(loanTypesError as Error) ? 
-                      'Authentication required. Please log in.' : 
+                      'Your session has expired. Please log in again.' : 
                       'Failed to load settings. Please try again.'
                     }
                   </div>
-                  <div className="text-xs text-gray-600">
-                    Error details: {loanTypesError instanceof Error ? loanTypesError.message : String(loanTypesError)}
-                  </div>
-                  <div className="mt-3 space-x-2">
-                    {isUnauthorizedError(loanTypesError as Error) ? (
-                      <Button onClick={() => window.location.href = '/api/login'} size="sm">
-                        Log In
-                      </Button>
-                    ) : (
-                      <Button onClick={() => window.location.reload()} variant="outline" size="sm">
-                        Refresh Page
-                      </Button>
-                    )}
+                  <div className="mt-3">
+                    <Button onClick={() => window.location.href = '/api/login'} size="sm" className="bg-blue-600 hover:bg-blue-700">
+                      Log In Again
+                    </Button>
                   </div>
                 </div>
               )}
               <div className="grid gap-4">
-                {console.log('Rendering loan types:', loanTypes, 'Length:', loanTypes?.length, 'Is Array:', Array.isArray(loanTypes))}
+
                 {Array.isArray(loanTypes) && loanTypes.length > 0 && loanTypes.map((loanType: LoanTypeWithTerms) => (
                   <Card key={loanType.id} className="border">
                     <CardContent className="p-4">
@@ -586,14 +576,7 @@ export default function Settings() {
                     <SettingsIcon className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-slate-900 mb-2">No loan types configured</h3>
                     <p className="text-slate-500 mb-4">Create your first loan type to get started.</p>
-                    <div className="text-xs text-gray-400 mt-4">
-                      Debug Info:<br/>
-                      loanTypes: {JSON.stringify(loanTypes)}<br/>
-                      isArray: {String(Array.isArray(loanTypes))}<br/>
-                      length: {loanTypes?.length}<br/>
-                      loading: {String(loanTypesLoading)}<br/>
-                      error: {String(!!loanTypesError)}
-                    </div>
+
                   </div>
                 )}
               </div>
