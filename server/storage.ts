@@ -11,6 +11,8 @@ import {
   amortizationSchedules,
   interestCalculations,
   notifications,
+  loanTypes,
+  loanTerms,
   type User,
   type UpsertUser,
   type Member,
@@ -37,6 +39,11 @@ import {
   type InterestCalculationWithDetails,
   type Notification,
   type InsertNotification,
+  type LoanType,
+  type InsertLoanType,
+  type LoanTypeWithTerms,
+  type LoanTerm,
+  type InsertLoanTerm,
   roles,
   permissions,
   rolePermissions,
@@ -209,6 +216,21 @@ export interface IStorage {
   markAllNotificationsAsRead(userId: string): Promise<void>;
   deleteNotification(id: number, userId: string): Promise<boolean>;
   getUnreadNotificationCount(userId: string): Promise<number>;
+
+  // Loan Types operations
+  createLoanType(loanType: InsertLoanType): Promise<LoanType>;
+  getLoanType(id: number): Promise<LoanTypeWithTerms | undefined>;
+  getAllLoanTypes(): Promise<LoanTypeWithTerms[]>;
+  getActiveLoanTypes(): Promise<LoanTypeWithTerms[]>;
+  updateLoanType(id: number, updates: Partial<InsertLoanType>): Promise<LoanType>;
+  deleteLoanType(id: number): Promise<boolean>;
+
+  // Loan Terms operations
+  createLoanTerm(loanTerm: InsertLoanTerm): Promise<LoanTerm>;
+  getLoanTerm(id: number): Promise<LoanTerm | undefined>;
+  getLoanTermsByType(loanTypeId: number): Promise<LoanTerm[]>;
+  updateLoanTerm(id: number, updates: Partial<InsertLoanTerm>): Promise<LoanTerm>;
+  deleteLoanTerm(id: number): Promise<boolean>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1757,6 +1779,134 @@ export class DatabaseStorage implements IStorage {
         eq(notifications.isRead, false)
       ));
     return Number(result[0]?.count || 0);
+  }
+
+  // Loan Types operations
+  async createLoanType(loanTypeData: InsertLoanType): Promise<LoanType> {
+    const [loanType] = await db
+      .insert(loanTypes)
+      .values(loanTypeData)
+      .returning();
+    return loanType;
+  }
+
+  async getLoanType(id: number): Promise<LoanTypeWithTerms | undefined> {
+    const [loanType] = await db
+      .select()
+      .from(loanTypes)
+      .where(eq(loanTypes.id, id));
+
+    if (!loanType) return undefined;
+
+    const terms = await this.getLoanTermsByType(id);
+    
+    return {
+      ...loanType,
+      terms,
+    };
+  }
+
+  async getAllLoanTypes(): Promise<LoanTypeWithTerms[]> {
+    const allTypes = await db
+      .select()
+      .from(loanTypes)
+      .orderBy(loanTypes.displayName);
+
+    const typesWithTerms = await Promise.all(
+      allTypes.map(async (type) => {
+        const terms = await this.getLoanTermsByType(type.id);
+        return {
+          ...type,
+          terms,
+        };
+      })
+    );
+
+    return typesWithTerms;
+  }
+
+  async getActiveLoanTypes(): Promise<LoanTypeWithTerms[]> {
+    const activeTypes = await db
+      .select()
+      .from(loanTypes)
+      .where(eq(loanTypes.isActive, true))
+      .orderBy(loanTypes.displayName);
+
+    const typesWithTerms = await Promise.all(
+      activeTypes.map(async (type) => {
+        const terms = await this.getLoanTermsByType(type.id);
+        return {
+          ...type,
+          terms,
+        };
+      })
+    );
+
+    return typesWithTerms;
+  }
+
+  async updateLoanType(id: number, updates: Partial<InsertLoanType>): Promise<LoanType> {
+    const [updated] = await db
+      .update(loanTypes)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(loanTypes.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteLoanType(id: number): Promise<boolean> {
+    try {
+      await db.delete(loanTypes).where(eq(loanTypes.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting loan type:', error);
+      return false;
+    }
+  }
+
+  // Loan Terms operations
+  async createLoanTerm(loanTermData: InsertLoanTerm): Promise<LoanTerm> {
+    const [loanTerm] = await db
+      .insert(loanTerms)
+      .values(loanTermData)
+      .returning();
+    return loanTerm;
+  }
+
+  async getLoanTerm(id: number): Promise<LoanTerm | undefined> {
+    const [loanTerm] = await db
+      .select()
+      .from(loanTerms)
+      .where(eq(loanTerms.id, id));
+    return loanTerm || undefined;
+  }
+
+  async getLoanTermsByType(loanTypeId: number): Promise<LoanTerm[]> {
+    const terms = await db
+      .select()
+      .from(loanTerms)
+      .where(eq(loanTerms.loanTypeId, loanTypeId))
+      .orderBy(loanTerms.sortOrder, loanTerms.termName);
+    return terms;
+  }
+
+  async updateLoanTerm(id: number, updates: Partial<InsertLoanTerm>): Promise<LoanTerm> {
+    const [updated] = await db
+      .update(loanTerms)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(loanTerms.id, id))
+      .returning();
+    return updated;
+  }
+
+  async deleteLoanTerm(id: number): Promise<boolean> {
+    try {
+      await db.delete(loanTerms).where(eq(loanTerms.id, id));
+      return true;
+    } catch (error) {
+      console.error('Error deleting loan term:', error);
+      return false;
+    }
   }
 }
 

@@ -560,3 +560,82 @@ export type InterestCalculationWithDetails = InterestCalculation & {
   loan?: Loan;
   savingsAccount?: SavingsAccount;
 };
+
+export type MemberRoleDetails = {
+  member: MemberWithDetails;
+  roles: string[];
+};
+
+// Loan Types table for configurable loan products
+export const loanTypes = pgTable("loan_types", {
+  id: serial("id").primaryKey(),
+  name: varchar("name", { length: 100 }).notNull().unique(),
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  description: text("description"),
+  interestRate: decimal("interest_rate", { precision: 5, scale: 2 }).notNull(), // e.g., 12.50 for 12.5%
+  interestType: varchar("interest_type", { enum: ["simple", "compound", "reducing_balance"] }).default("reducing_balance"),
+  compoundingFrequency: varchar("compounding_frequency", { enum: ["monthly", "quarterly", "annually"] }).default("monthly"),
+  minAmount: decimal("min_amount", { precision: 12, scale: 2 }).default("0"),
+  maxAmount: decimal("max_amount", { precision: 12, scale: 2 }),
+  minTerm: integer("min_term").default(1), // in months
+  maxTerm: integer("max_term").default(60), // in months
+  gracePeriod: integer("grace_period").default(0), // in days
+  lateFeeRate: decimal("late_fee_rate", { precision: 5, scale: 2 }).default("2.00"), // percentage per month
+  processingFee: decimal("processing_fee", { precision: 5, scale: 2 }).default("0"), // percentage of loan amount
+  requiresGuarantor: boolean("requires_guarantor").default(true),
+  guarantorRatio: decimal("guarantor_ratio", { precision: 3, scale: 2 }).default("1.50"), // 1.5x means guarantors must cover 150% of loan
+  isActive: boolean("is_active").default(true),
+  approvalWorkflow: varchar("approval_workflow", { enum: ["simple", "multi_stage"] }).default("multi_stage"),
+  requiresCollateral: boolean("requires_collateral").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Loan Terms table for specific terms and conditions
+export const loanTerms = pgTable("loan_terms", {
+  id: serial("id").primaryKey(),
+  loanTypeId: integer("loan_type_id").notNull().references(() => loanTypes.id, { onDelete: "cascade" }),
+  termName: varchar("term_name", { length: 100 }).notNull(),
+  termCategory: varchar("term_category", { enum: ["eligibility", "documentation", "collateral", "repayment", "penalty", "other"] }).notNull(),
+  description: text("description").notNull(),
+  isRequired: boolean("is_required").default(true),
+  sortOrder: integer("sort_order").default(0), // for ordering terms in display
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Relations for loan types and terms
+export const loanTypesRelations = relations(loanTypes, ({ many }) => ({
+  terms: many(loanTerms),
+  loans: many(loans),
+}));
+
+export const loanTermsRelations = relations(loanTerms, ({ one }) => ({
+  loanType: one(loanTypes, {
+    fields: [loanTerms.loanTypeId],
+    references: [loanTypes.id],
+  }),
+}));
+
+// Insert schemas for loan types and terms
+export const insertLoanTypeSchema = createInsertSchema(loanTypes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertLoanTermSchema = createInsertSchema(loanTerms).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types
+export type LoanType = typeof loanTypes.$inferSelect;
+export type InsertLoanType = typeof loanTypes.$inferInsert;
+export type LoanTerm = typeof loanTerms.$inferSelect;
+export type InsertLoanTerm = typeof loanTerms.$inferInsert;
+
+export type LoanTypeWithTerms = LoanType & {
+  terms: LoanTerm[];
+};

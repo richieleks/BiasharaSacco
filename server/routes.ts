@@ -1836,5 +1836,200 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Make broadcastNotification available globally for use in other parts of the application
   (global as any).broadcastNotification = broadcastNotification;
 
+  // Loan Types API endpoints
+  app.get('/api/loan-types', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const loanTypes = await storage.getAllLoanTypes();
+      res.json(loanTypes);
+    } catch (error) {
+      console.error('Error fetching loan types:', error);
+      res.status(500).json({ message: 'Failed to fetch loan types' });
+    }
+  });
+
+  app.get('/api/loan-types/:id', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const loanType = await storage.getLoanType(id);
+      if (!loanType) {
+        return res.status(404).json({ message: 'Loan type not found' });
+      }
+      res.json(loanType);
+    } catch (error) {
+      console.error('Error fetching loan type:', error);
+      res.status(500).json({ message: 'Failed to fetch loan type' });
+    }
+  });
+
+  app.post('/api/loan-types', isAuthenticated, requirePermission('create', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const loanType = await storage.createLoanType(req.body);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub || '',
+        action: 'create',
+        resource: 'loan_type',
+        resourceId: loanType.id.toString(),
+        details: `Created loan type: ${loanType.displayName}`,
+      });
+
+      res.status(201).json(loanType);
+    } catch (error) {
+      console.error('Error creating loan type:', error);
+      res.status(500).json({ message: 'Failed to create loan type' });
+    }
+  });
+
+  app.put('/api/loan-types/:id', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const loanType = await storage.updateLoanType(id, req.body);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub || '',
+        action: 'update',
+        resource: 'loan_type',
+        resourceId: id.toString(),
+        details: `Updated loan type: ${loanType.displayName}`,
+      });
+
+      res.json(loanType);
+    } catch (error) {
+      console.error('Error updating loan type:', error);
+      res.status(500).json({ message: 'Failed to update loan type' });
+    }
+  });
+
+  app.delete('/api/loan-types/:id', isAuthenticated, requirePermission('delete', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const loanType = await storage.getLoanType(id);
+      if (!loanType) {
+        return res.status(404).json({ message: 'Loan type not found' });
+      }
+
+      const success = await storage.deleteLoanType(id);
+      if (!success) {
+        return res.status(500).json({ message: 'Failed to delete loan type' });
+      }
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub || '',
+        action: 'delete',
+        resource: 'loan_type',
+        resourceId: id.toString(),
+        details: `Deleted loan type: ${loanType.displayName}`,
+      });
+
+      res.json({ message: 'Loan type deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting loan type:', error);
+      res.status(500).json({ message: 'Failed to delete loan type' });
+    }
+  });
+
+  // Loan Terms API endpoints
+  app.get('/api/loan-terms', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const { loanTypeId } = req.query;
+      if (loanTypeId) {
+        const terms = await storage.getLoanTermsByType(parseInt(loanTypeId as string));
+        res.json(terms);
+      } else {
+        res.status(400).json({ message: 'loanTypeId query parameter is required' });
+      }
+    } catch (error) {
+      console.error('Error fetching loan terms:', error);
+      res.status(500).json({ message: 'Failed to fetch loan terms' });
+    }
+  });
+
+  app.get('/api/loan-terms/:id', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const loanTerm = await storage.getLoanTerm(id);
+      if (!loanTerm) {
+        return res.status(404).json({ message: 'Loan term not found' });
+      }
+      res.json(loanTerm);
+    } catch (error) {
+      console.error('Error fetching loan term:', error);
+      res.status(500).json({ message: 'Failed to fetch loan term' });
+    }
+  });
+
+  app.post('/api/loan-terms', isAuthenticated, requirePermission('create', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const loanTerm = await storage.createLoanTerm(req.body);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub || '',
+        action: 'create',
+        resource: 'loan_term',
+        resourceId: loanTerm.id.toString(),
+        details: `Created loan term: ${loanTerm.termName}`,
+      });
+
+      res.status(201).json(loanTerm);
+    } catch (error) {
+      console.error('Error creating loan term:', error);
+      res.status(500).json({ message: 'Failed to create loan term' });
+    }
+  });
+
+  app.put('/api/loan-terms/:id', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const loanTerm = await storage.updateLoanTerm(id, req.body);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub || '',
+        action: 'update',
+        resource: 'loan_term',
+        resourceId: id.toString(),
+        details: `Updated loan term: ${loanTerm.termName}`,
+      });
+
+      res.json(loanTerm);
+    } catch (error) {
+      console.error('Error updating loan term:', error);
+      res.status(500).json({ message: 'Failed to update loan term' });
+    }
+  });
+
+  app.delete('/api/loan-terms/:id', isAuthenticated, requirePermission('delete', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const loanTerm = await storage.getLoanTerm(id);
+      if (!loanTerm) {
+        return res.status(404).json({ message: 'Loan term not found' });
+      }
+
+      const success = await storage.deleteLoanTerm(id);
+      if (!success) {
+        return res.status(500).json({ message: 'Failed to delete loan term' });
+      }
+
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub || '',
+        action: 'delete',
+        resource: 'loan_term',
+        resourceId: id.toString(),
+        details: `Deleted loan term: ${loanTerm.termName}`,
+      });
+
+      res.json({ message: 'Loan term deleted successfully' });
+    } catch (error) {
+      console.error('Error deleting loan term:', error);
+      res.status(500).json({ message: 'Failed to delete loan term' });
+    }
+  });
+
   return httpServer;
 }

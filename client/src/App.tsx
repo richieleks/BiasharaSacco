@@ -28,6 +28,7 @@ import LoanWorkflow from "@/pages/loan-workflow";
 import MemberDetails from "@/pages/member-details";
 import NotificationsPage from "@/pages/notifications";
 import RBACManagement from "@/pages/rbac-management";
+import Settings from "@/pages/settings";
 import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 
@@ -150,7 +151,16 @@ function Router() {
                 <LoanApplication />
               </ProtectedRoute>
             </Route>
-
+            <Route path="/rbac-management">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'roles' }}>
+                <RBACManagement />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/settings">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'system-settings' }}>
+                <Settings />
+              </ProtectedRoute>
+            </Route>
 
             <Route component={NotFound} />
           </Switch>
