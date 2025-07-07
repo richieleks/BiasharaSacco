@@ -229,6 +229,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
         outstandingBalance: data.principalAmount,
         interestType: selectedLoanType?.interestType || selectedLoanType?.interest_type || 'reducing_balance',
         compoundingFrequency: selectedLoanType?.compoundingFrequency || selectedLoanType?.compounding_frequency || 'monthly',
+        requiresGuarantor: selectedLoanType?.requiresGuarantor ?? selectedLoanType?.requires_guarantor ?? true,
       });
       return response;
     },
@@ -274,6 +275,8 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
   };
 
   if (currentLoanId) {
+    const requiresGuarantor = selectedLoanType?.requiresGuarantor ?? selectedLoanType?.requires_guarantor ?? true;
+    
     return (
       <div className="space-y-6">
         <Card>
@@ -284,27 +287,44 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Your loan application has been created successfully. Now add guarantors to complete the application.
-            </p>
-            <GuarantorList loanId={currentLoanId} />
-            <div className="mt-6">
-              {!showGuarantorForm ? (
-                <Button onClick={() => setShowGuarantorForm(true)} className="w-full">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Guarantor
-                </Button>
-              ) : (
-                <GuarantorForm
-                  loanId={currentLoanId}
-                  onSuccess={() => {
-                    setShowGuarantorForm(false);
-                    queryClient.invalidateQueries({ queryKey: ['/api/guarantors/loan', currentLoanId] });
-                  }}
-                  onCancel={() => setShowGuarantorForm(false)}
-                />
-              )}
-            </div>
+            {requiresGuarantor ? (
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Your loan application has been created successfully. Now add guarantors to complete the application.
+                </p>
+                <GuarantorList loanId={currentLoanId} />
+                <div className="mt-6">
+                  {!showGuarantorForm ? (
+                    <Button onClick={() => setShowGuarantorForm(true)} className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Guarantor
+                    </Button>
+                  ) : (
+                    <GuarantorForm
+                      loanId={currentLoanId}
+                      onSuccess={() => {
+                        setShowGuarantorForm(false);
+                        queryClient.invalidateQueries({ queryKey: ['/api/guarantors/loan', currentLoanId] });
+                      }}
+                      onCancel={() => setShowGuarantorForm(false)}
+                    />
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-center p-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <FileText className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Application Complete
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Your loan application has been created successfully. This loan type does not require guarantors, 
+                  so your application is ready for review by the loan committee.
+                </p>
+              </div>
+            )}
             <Button
               variant="outline"
               onClick={() => {
@@ -419,6 +439,10 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                       <p className="text-xs text-muted-foreground">
                         Allowed range: UGX {Number(selectedLoanType.minAmount || selectedLoanType.min_amount || 0).toLocaleString()} - 
                         UGX {Number(selectedLoanType.maxAmount || selectedLoanType.max_amount || 0).toLocaleString()}
+                        <br />
+                        {(selectedLoanType.requiresGuarantor ?? selectedLoanType.requires_guarantor ?? true) 
+                          ? 'This loan type requires guarantors' 
+                          : 'This loan type does not require guarantors'}
                       </p>
                     )}
                     <FormMessage />
@@ -459,6 +483,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                                   {loanType.interestRate || loanType.interest_rate}% ({(loanType.interestType || loanType.interest_type || 'reducing_balance').replace('_', ' ')}) | 
                                   UGX {Number(loanType.minAmount || loanType.min_amount || 0).toLocaleString()} - 
                                   UGX {Number(loanType.maxAmount || loanType.max_amount || 0).toLocaleString()}
+                                  {(loanType.requiresGuarantor ?? loanType.requires_guarantor ?? true) ? ' | Guarantor Required' : ' | No Guarantor Required'}
                                 </span>
                               </div>
                             </SelectItem>
