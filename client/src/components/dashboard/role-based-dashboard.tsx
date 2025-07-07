@@ -1,7 +1,6 @@
 import { useRBAC } from "@/hooks/useRBAC";
 import MetricsGrid from "./metrics-grid";
 import RecentTransactions from "./recent-transactions";
-import QuickActions from "./quick-actions";
 import PendingApprovals from "./pending-approvals";
 import MemberApprovals from "./member-approvals";
 import LoanApprovalWorkflow from "./loan-approval-workflow";
@@ -19,7 +18,6 @@ function AdminDashboard() {
       <MemberApprovals />
       <LoanApprovalWorkflow />
       <RecentTransactions />
-      <QuickActions />
       <PendingApprovals />
     </div>
   );
@@ -74,7 +72,6 @@ function TellerDashboard() {
     <div className="space-y-6">
       <MetricsGrid />
       <RecentTransactions />
-      <QuickActions />
       <Card>
         <CardHeader>
           <CardTitle>Daily Operations</CardTitle>
