@@ -5,6 +5,7 @@ import QuickActions from "./quick-actions";
 import PendingApprovals from "./pending-approvals";
 import MemberApprovals from "./member-approvals";
 import LoanApprovalWorkflow from "./loan-approval-workflow";
+import AnalyticsCharts from "./analytics-charts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,6 +15,7 @@ function AdminDashboard() {
   return (
     <div className="space-y-6">
       <MetricsGrid />
+      <AnalyticsCharts />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <MemberApprovals />
         <LoanApprovalWorkflow />
@@ -31,6 +33,7 @@ function ManagerDashboard() {
   return (
     <div className="space-y-6">
       <MetricsGrid />
+      <AnalyticsCharts />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <LoanApprovalWorkflow />
         <MemberApprovals />

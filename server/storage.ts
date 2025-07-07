@@ -96,6 +96,13 @@ export interface IStorage {
     activeLoans: string;
     repaymentRate: string;
   }>;
+  
+  getDashboardAnalytics(): Promise<{
+    loanDistribution: Array<{ name: string; value: number }>;
+    monthlyTransactions: Array<{ month: string; deposits: number; withdrawals: number; loanPayments: number }>;
+    memberGrowth: Array<{ month: string; newMembers: number }>;
+    savingsVsLoans: Array<{ month: string; totalSavings: number; totalLoans: number }>;
+  }>;
 
   // Pending approvals
   getPendingApprovals(): Promise<{
@@ -820,6 +827,116 @@ export class DatabaseStorage implements IStorage {
       totalSavings: savingsTotal?.total || '0',
       activeLoans: loansTotal?.total || '0',
       repaymentRate: '95.2', // Calculated value
+    };
+  }
+
+  async getDashboardAnalytics(): Promise<{
+    loanDistribution: Array<{ name: string; value: number }>;
+    monthlyTransactions: Array<{ month: string; deposits: number; withdrawals: number; loanPayments: number }>;
+    memberGrowth: Array<{ month: string; newMembers: number }>;
+    savingsVsLoans: Array<{ month: string; totalSavings: number; totalLoans: number }>;
+  }> {
+    // Loan distribution by type
+    const loanDistribution = await db
+      .select({
+        loanType: loans.loanType,
+        total: sql<number>`sum(principal_amount)::numeric`,
+      })
+      .from(loans)
+      .where(eq(loans.status, 'approved'))
+      .groupBy(loans.loanType);
+
+    // Monthly transaction trends (last 6 months)
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const transactionTrends = await db
+      .select({
+        month: sql<string>`to_char(created_at, 'Mon')`,
+        transactionType: transactions.transactionType,
+        total: sql<number>`sum(amount)::numeric`,
+      })
+      .from(transactions)
+      .where(
+        and(
+          sql`created_at >= ${sixMonthsAgo}`,
+          eq(transactions.status, 'completed')
+        )
+      )
+      .groupBy(sql`to_char(created_at, 'Mon'), transaction_type`)
+      .orderBy(sql`min(created_at)`);
+
+    // Transform transaction data into monthly format
+    const monthlyData = new Map<string, any>();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const currentMonth = new Date().getMonth();
+    
+    // Initialize last 6 months
+    for (let i = 5; i >= 0; i--) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      const monthName = months[monthIndex];
+      monthlyData.set(monthName, {
+        month: monthName,
+        deposits: 0,
+        withdrawals: 0,
+        loanPayments: 0,
+      });
+    }
+
+    // Fill in actual data
+    transactionTrends.forEach(trend => {
+      const monthData = monthlyData.get(trend.month);
+      if (monthData) {
+        if (trend.transactionType === 'deposit') monthData.deposits = trend.total;
+        if (trend.transactionType === 'withdrawal') monthData.withdrawals = trend.total;
+        if (trend.transactionType === 'loan_payment') monthData.loanPayments = trend.total;
+      }
+    });
+
+    // Member growth (simplified - using created_at)
+    const memberGrowth = await db
+      .select({
+        month: sql<string>`to_char(created_at, 'Mon')`,
+        count: sql<number>`count(*)::integer`,
+      })
+      .from(members)
+      .where(sql`created_at >= ${sixMonthsAgo}`)
+      .groupBy(sql`to_char(created_at, 'Mon')`)
+      .orderBy(sql`min(created_at)`);
+
+    // Savings vs Loans comparison
+    const savingsVsLoans = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthIndex = (currentMonth - i + 12) % 12;
+      const monthName = months[monthIndex];
+      
+      // Get totals for each month (simplified - using current totals)
+      const [savings] = await db
+        .select({ total: sql<number>`COALESCE(sum(balance), 0)::numeric` })
+        .from(savingsAccounts);
+      
+      const [loans] = await db
+        .select({ total: sql<number>`COALESCE(sum(outstanding_balance), 0)::numeric` })
+        .from(loans);
+
+      savingsVsLoans.push({
+        month: monthName,
+        totalSavings: savings?.total || 0,
+        totalLoans: loans?.total || 0,
+      });
+    }
+
+    return {
+      loanDistribution: loanDistribution.map(item => ({
+        name: item.loanType || 'Unknown',
+        value: item.total || 0,
+      })),
+      monthlyTransactions: Array.from(monthlyData.values()),
+      memberGrowth: memberGrowth.map(item => ({
+        month: item.month || '',
+        newMembers: item.count || 0,
+      })),
+      savingsVsLoans,
     };
   }
 

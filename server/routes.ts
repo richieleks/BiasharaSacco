@@ -74,6 +74,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard analytics API
+  app.get('/api/dashboard/analytics', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const analytics = await storage.getDashboardAnalytics();
+      res.json(analytics);
+    } catch (error) {
+      console.error('Error fetching dashboard analytics:', error);
+      res.status(500).json({ message: 'Failed to fetch analytics data' });
+    }
+  });
+
   // Recent transactions
   app.get('/api/dashboard/recent-transactions', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
