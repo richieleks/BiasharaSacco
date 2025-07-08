@@ -70,8 +70,8 @@ export function useRBAC() {
     canApproveAtStage: (stage: string) => 
       userRoles.some(role => canApproveAtStage(role, stage)),
     
-    // Navigation and UI helpers - show items for highest role
-    getNavigationItems: () => getNavigationItems(userRole),
+    // Navigation and UI helpers - pass all user roles for proper filtering
+    getNavigationItems: () => getNavigationItems(userRoles),
     
     // Role-based content filtering
     filterContentByRole: <T>(content: T[], filter: (item: T) => boolean) => {
