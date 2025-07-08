@@ -82,7 +82,7 @@ export const members = pgTable("members", {
   isFullyPaidShareholder: boolean("is_fully_paid_shareholder").default(false),
   isActiveSaver: boolean("is_active_saver").default(false),
   isPaidUp: boolean("is_paid_up").default(false),
-  isPaidUp: boolean("is_paid_up").default(false),
+  hasActiveLoans: boolean("has_active_loans").default(false),
   isDefaulter: boolean("is_defaulter").default(false),
   isGuarantorForDefaulter: boolean("is_guarantor_for_defaulter").default(false),
   hasActiveLoans: boolean("has_active_loans").default(false),

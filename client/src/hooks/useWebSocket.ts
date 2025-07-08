@@ -30,9 +30,8 @@ export function useWebSocket() {
       // For Replit domains, use the full host
       wsUrl = `${protocol}//${host}/ws`;
     } else if (host.includes('localhost')) {
-      // For localhost, ensure port is included
-      const port = window.location.port || '5000';
-      wsUrl = `${protocol}//localhost:${port}/ws`;
+      // For localhost, always use port 5000
+      wsUrl = `${protocol}//localhost:5000/ws`;
     } else {
       wsUrl = `${protocol}//${host}/ws`;
     }
