@@ -29,6 +29,7 @@ import MemberDetails from "@/pages/member-details";
 import NotificationsPage from "@/pages/notifications";
 import RBACManagement from "@/pages/rbac-management";
 import Settings from "@/pages/settings";
+import Profile from "@/pages/profile";
 import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 
@@ -138,21 +139,24 @@ function Router() {
                 <NotificationsPage />
               </ProtectedRoute>
             </Route>
+            <Route path="/profile">
+              <ProtectedRoute>
+                <Profile />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/settings">
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            </Route>
             <Route path="/members/:id">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'members' }}>
                 <MemberDetails />
               </ProtectedRoute>
             </Route>
-
-
             <Route path="/rbac-management">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'roles' }}>
                 <RBACManagement />
-              </ProtectedRoute>
-            </Route>
-            <Route path="/settings">
-              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'system-settings' }}>
-                <Settings />
               </ProtectedRoute>
             </Route>
 

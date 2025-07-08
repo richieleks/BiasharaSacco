@@ -11,14 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useState } from "react";
-import UserProfileDialog from "@/components/dialogs/user-profile-dialog";
-import UserSettingsDialog from "@/components/dialogs/user-settings-dialog";
+import { useLocation } from "wouter";
 
 export default function Header() {
   const { user } = useAuth();
-  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
-  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [, navigate] = useLocation();
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return "U";
@@ -78,12 +75,12 @@ export default function Header() {
                 
                 <DropdownMenuSeparator />
                 
-                <DropdownMenuItem onClick={() => setProfileDialogOpen(true)}>
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem onClick={() => setSettingsDialogOpen(true)}>
+                <DropdownMenuItem onClick={() => navigate('/settings')}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
@@ -97,15 +94,7 @@ export default function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <UserProfileDialog 
-              open={profileDialogOpen} 
-              onOpenChange={setProfileDialogOpen} 
-            />
-            
-            <UserSettingsDialog 
-              open={settingsDialogOpen} 
-              onOpenChange={setSettingsDialogOpen} 
-            />
+
           </div>
         </div>
       </div>
