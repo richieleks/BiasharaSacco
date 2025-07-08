@@ -213,6 +213,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
         memberId,
         requestedAmount: amount
       });
+      console.log('Eligibility check response:', response);
       setEligibilityResult(response);
     } catch (error) {
       console.error('Error checking eligibility:', error);
@@ -537,6 +538,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                     
                     {eligibilityResult && (
                       <div className="mt-2">
+                        {console.log('Displaying eligibility result:', eligibilityResult)}
                         {eligibilityResult.isEligible ? (
                           <Alert className="border-green-500 bg-green-50">
                             <CheckCircle className="h-5 w-5 text-green-600" />
@@ -569,11 +571,12 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                               <div className="space-y-3">
                                 <div className="font-semibold text-red-800 mb-2">You must meet the following requirements before applying:</div>
                                 <div className="space-y-2">
+                                  {console.log('Violations to display:', eligibilityResult.violations)}
                                   {eligibilityResult.violations?.map((violation: string, index: number) => (
                                     <div key={index} className="p-3 bg-white border border-red-200 rounded-md">
                                       <div className="text-sm font-medium text-red-900">{violation}</div>
                                     </div>
-                                  ))}
+                                  )) || <div className="text-red-600">No violations data available</div>}
                                 </div>
                                 <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
                                   <div className="text-sm text-blue-800">
