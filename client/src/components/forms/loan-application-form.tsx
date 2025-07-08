@@ -499,6 +499,59 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
               </p>
             </div>
 
+            {/* Full-width eligibility result display at top */}
+            {eligibilityResult && (
+              <div className="w-full mb-6">
+                {eligibilityResult.isEligible ? (
+                  <Alert className="border-green-500 bg-green-50">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                    <AlertDescription className="text-green-900">
+                      <div className="font-bold text-lg text-green-800 mb-2">✅ LOAN APPLICATION ELIGIBLE</div>
+                      {eligibilityResult.maxLoanAmount && (
+                        <div className="text-sm font-medium text-green-800 mb-2">
+                          💰 Maximum loan amount: UGX {eligibilityResult.maxLoanAmount.toLocaleString()}
+                        </div>
+                      )}
+                      {eligibilityResult.warnings?.length > 0 && (
+                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                          <div className="text-sm">
+                            <strong className="text-yellow-800">⚠️ Important Notes:</strong>
+                            <ul className="list-disc list-inside mt-1 space-y-1">
+                              {eligibilityResult.warnings.map((warning: string, index: number) => (
+                                <li key={index} className="text-yellow-800">{warning}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert className="border-red-500 bg-red-50">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                    <AlertDescription className="text-red-900">
+                      <div className="font-bold text-xl mb-4">❌ LOAN APPLICATION NOT ELIGIBLE</div>
+                      <div className="space-y-4">
+                        <div className="font-semibold text-red-800 mb-3">You must meet the following requirements before applying:</div>
+                        <div className="space-y-3">
+                          {eligibilityResult.violations?.map((violation: string, index: number) => (
+                            <div key={index} className="p-4 bg-white border border-red-200 rounded-md shadow-sm">
+                              <div className="text-sm font-medium text-red-900">{violation}</div>
+                            </div>
+                          )) || <div className="text-red-600">No violations data available</div>}
+                        </div>
+                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
+                          <div className="text-sm text-blue-800">
+                            <strong>📞 Need Help?</strong> Contact the SACCO office for assistance with any of these requirements.
+                          </div>
+                        </div>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Loan Details */}
               <FormField
@@ -898,58 +951,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
               </Card>
             )}
 
-            {/* Full-width eligibility result display */}
-            {eligibilityResult && (
-              <div className="w-full mb-6">
-                {eligibilityResult.isEligible ? (
-                  <Alert className="border-green-500 bg-green-50">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                    <AlertDescription className="text-green-900">
-                      <div className="font-bold text-lg text-green-800 mb-2">✅ LOAN APPLICATION ELIGIBLE</div>
-                      {eligibilityResult.maxLoanAmount && (
-                        <div className="text-sm font-medium text-green-800 mb-2">
-                          💰 Maximum loan amount: UGX {eligibilityResult.maxLoanAmount.toLocaleString()}
-                        </div>
-                      )}
-                      {eligibilityResult.warnings?.length > 0 && (
-                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                          <div className="text-sm">
-                            <strong className="text-yellow-800">⚠️ Important Notes:</strong>
-                            <ul className="list-disc list-inside mt-1 space-y-1">
-                              {eligibilityResult.warnings.map((warning: string, index: number) => (
-                                <li key={index} className="text-yellow-800">{warning}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        </div>
-                      )}
-                    </AlertDescription>
-                  </Alert>
-                ) : (
-                  <Alert className="border-red-500 bg-red-50">
-                    <AlertCircle className="h-5 w-5 text-red-600" />
-                    <AlertDescription className="text-red-900">
-                      <div className="font-bold text-xl mb-4">❌ LOAN APPLICATION NOT ELIGIBLE</div>
-                      <div className="space-y-4">
-                        <div className="font-semibold text-red-800 mb-3">You must meet the following requirements before applying:</div>
-                        <div className="space-y-3">
-                          {eligibilityResult.violations?.map((violation: string, index: number) => (
-                            <div key={index} className="p-4 bg-white border border-red-200 rounded-md shadow-sm">
-                              <div className="text-sm font-medium text-red-900">{violation}</div>
-                            </div>
-                          )) || <div className="text-red-600">No violations data available</div>}
-                        </div>
-                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                          <div className="text-sm text-blue-800">
-                            <strong>📞 Need Help?</strong> Contact the SACCO office for assistance with any of these requirements.
-                          </div>
-                        </div>
-                      </div>
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            )}
+
 
             <Button 
               type="submit" 
