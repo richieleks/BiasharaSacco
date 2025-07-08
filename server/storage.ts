@@ -389,10 +389,18 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(members.userId, users.id))
       .orderBy(desc(members.createdAt));
 
-    return results.map(result => ({
-      ...result.members,
-      user: result.users || undefined,
-    }));
+    const membersWithDetails = await Promise.all(
+      results.map(async (result) => {
+        const roles = await this.getMemberRoles(result.members.id);
+        return {
+          ...result.members,
+          user: result.users || undefined,
+          roles
+        };
+      })
+    );
+
+    return membersWithDetails;
   }
 
   async searchMembers(query: string): Promise<MemberWithDetails[]> {
@@ -409,10 +417,18 @@ export class DatabaseStorage implements IStorage {
       )
       .orderBy(desc(members.createdAt));
 
-    return results.map(result => ({
-      ...result.members,
-      user: result.users || undefined,
-    }));
+    const membersWithDetails = await Promise.all(
+      results.map(async (result) => {
+        const roles = await this.getMemberRoles(result.members.id);
+        return {
+          ...result.members,
+          user: result.users || undefined,
+          roles
+        };
+      })
+    );
+
+    return membersWithDetails;
   }
 
   async getPendingMembers(): Promise<MemberWithDetails[]> {
