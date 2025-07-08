@@ -14,8 +14,9 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
+import { Skeleton } from "@/components/ui/skeleton";
 import MemberForm from "@/components/forms/member-form";
-import { Search, Plus, Eye, Users } from "lucide-react";
+import { Search, Plus, Eye, Users, UserCheck, UserX, AlertCircle } from "lucide-react";
 import type { MemberWithDetails } from "@shared/schema";
 
 export default function Members() {
