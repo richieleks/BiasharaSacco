@@ -85,7 +85,6 @@ export const members = pgTable("members", {
   hasActiveLoans: boolean("has_active_loans").default(false),
   isDefaulter: boolean("is_defaulter").default(false),
   isGuarantorForDefaulter: boolean("is_guarantor_for_defaulter").default(false),
-  hasActiveLoans: boolean("has_active_loans").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

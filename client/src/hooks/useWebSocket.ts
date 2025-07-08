@@ -15,28 +15,26 @@ export function useWebSocket() {
       return;
     }
 
-    // Ensure we have a valid host
-    const host = window.location.host;
-    if (!host || host === 'undefined' || host.includes('undefined')) {
-      console.warn("Invalid host for WebSocket connection:", host);
-      return;
-    }
-
-    // Handle Replit domain properly
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    let wsUrl;
-    
-    if (host.includes('replit.dev') || host.includes('repl.co')) {
-      // For Replit domains, use the full host
-      wsUrl = `${protocol}//${host}/ws`;
-    } else if (host.includes('localhost')) {
-      // For localhost, always use port 5000
-      wsUrl = `${protocol}//localhost:5000/ws`;
-    } else {
-      wsUrl = `${protocol}//${host}/ws`;
-    }
-    
     try {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const host = window.location.host;
+      
+      // Validate host before construction
+      if (!host || host === 'undefined' || host.includes('undefined')) {
+        console.warn("Invalid host for WebSocket connection:", host);
+        return;
+      }
+
+      let wsUrl;
+      if (host.includes('replit.dev') || host.includes('repl.co')) {
+        wsUrl = `${protocol}//${host}/ws`;
+      } else {
+        // For localhost and other environments, ensure proper port
+        wsUrl = `${protocol}//${host}/ws`;
+      }
+
+      console.log("Attempting WebSocket connection to:", wsUrl);
+      
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
