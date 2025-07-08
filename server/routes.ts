@@ -1657,47 +1657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/members/:id/roles', isAuthenticated, requirePermission('update', 'members'), async (req: AuthRequest, res) => {
-    try {
-      const memberId = parseInt(req.params.id);
-      const { roles } = req.body;
 
-      if (!Array.isArray(roles)) {
-        res.status(400).json({ message: 'Roles must be an array' });
-        return;
-      }
-
-      const [updatedMember] = await db
-        .update(members)
-        .set({
-          roles,
-          updatedAt: new Date(),
-        })
-        .where(eq(members.id, memberId))
-        .returning();
-
-      if (!updatedMember) {
-        res.status(404).json({ message: 'Member not found' });
-        return;
-      }
-
-      // Log the role change
-      await createAndBroadcastNotification({
-        userId: req.member?.userId,
-        memberId: req.member?.id,
-        type: 'role_change',
-        title: 'Role Updated',
-        message: `Roles updated for member ${updatedMember.memberNumber}`,
-        priority: 'medium',
-        actionUrl: `/members/${memberId}`,
-      });
-
-      res.json({ message: 'Member roles updated successfully' });
-    } catch (error) {
-      console.error('Error updating member roles:', error);
-      res.status(500).json({ message: 'Failed to update member roles' });
-    }
-  });
 
   // Interest rate management routes
   app.post('/api/interest-rates', isAuthenticated, requirePermission('create', 'interest-rates'), async (req: any, res) => {

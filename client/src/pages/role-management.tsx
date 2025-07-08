@@ -72,7 +72,7 @@ export default function RoleManagementPage() {
 
   const updateMemberRolesMutation = useMutation({
     mutationFn: async ({ memberId, roles }: { memberId: number; roles: string[] }) => {
-      return await apiRequest('PUT', `/api/members/${memberId}/roles`, { roles });
+      return await apiRequest('PATCH', `/api/members/${memberId}/roles`, { roles });
     },
     onSuccess: () => {
       toast({
