@@ -156,10 +156,13 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
   // Get selected loan type details
   const selectedLoanType = loanTypes.find(lt => lt.name === form.watch('loanType'));
 
-  // Update interest rate when loan type changes
+  // Update interest rate and repayment period when loan type changes
   useEffect(() => {
     if (selectedLoanType) {
       form.setValue('interestRate', (selectedLoanType.interestRate || selectedLoanType.interest_rate || '12.00').toString());
+      // Set repayment period to the loan type's maximum term
+      const maxTerm = selectedLoanType.maxTerm || selectedLoanType.max_term || 12;
+      form.setValue('termMonths', maxTerm.toString());
     }
   }, [selectedLoanType, form]);
 
@@ -633,17 +636,24 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                   <FormItem>
                     <FormLabel>Repayment Period (Months) *</FormLabel>
                     <FormControl>
-                      <Input
-                        type="number"
-                        placeholder="12"
-                        min={selectedLoanType ? (selectedLoanType.minTerm || selectedLoanType.min_term || 1) : 1}
-                        max={selectedLoanType ? (selectedLoanType.maxTerm || selectedLoanType.max_term || 60) : 60}
-                        value={field.value}
-                        onChange={field.onChange}
-                      />
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          placeholder="12"
+                          min={selectedLoanType ? (selectedLoanType.minTerm || selectedLoanType.min_term || 1) : 1}
+                          max={selectedLoanType ? (selectedLoanType.maxTerm || selectedLoanType.max_term || 60) : 60}
+                          value={field.value}
+                          onChange={field.onChange}
+                          className={selectedLoanType ? "bg-muted border-blue-200" : ""}
+                        />
+                        {selectedLoanType && (
+                          <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
+                        )}
+                      </div>
                     </FormControl>
                     {selectedLoanType && (
                       <p className="text-xs text-muted-foreground">
+                        Auto-set to maximum term ({selectedLoanType.maxTerm || selectedLoanType.max_term || 60} months). 
                         Allowed range: {selectedLoanType.minTerm || selectedLoanType.min_term || 1} - {selectedLoanType.maxTerm || selectedLoanType.max_term || 60} months
                       </p>
                     )}
