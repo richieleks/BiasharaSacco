@@ -12,7 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 
 export default function Header() {
   const { user } = useAuth();
@@ -29,7 +29,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-3">
+            <Link href="/dashboard" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
               <div className="w-10 h-10 sacco-gradient rounded-lg flex items-center justify-center">
                 <PiggyBank className="text-white text-lg" />
               </div>
@@ -37,7 +37,7 @@ export default function Header() {
                 <h1 className="text-xl font-semibold text-slate-900">Biashara SACCO</h1>
                 <p className="text-xs text-slate-500">Savings & Loans Management</p>
               </div>
-            </div>
+            </Link>
           </div>
           
           <div className="flex items-center space-x-4">
