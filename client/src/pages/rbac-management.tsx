@@ -422,21 +422,21 @@ export default function RBACManagement() {
 
       {/* Manage Permissions Dialog */}
       <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh]">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Manage Permissions for {selectedRole?.displayName}</DialogTitle>
             <DialogDescription>
               Select the permissions this role should have
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[500px] pr-4">
-            <div className="space-y-6">
+          <ScrollArea className="flex-1 px-1">
+            <div className="space-y-6 pr-4">
               {Object.entries(permissionsByCategory).map(([category, categoryPermissions]) => (
                 <div key={category}>
                   <h3 className="font-semibold mb-3">{category}</h3>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {categoryPermissions.map((permission: Permission) => (
-                      <div key={permission.id} className="flex items-center space-x-2">
+                      <div key={permission.id} className="flex items-start space-x-3">
                         <Checkbox
                           id={`permission-${permission.id}`}
                           checked={selectedPermissions.includes(permission.id)}
@@ -447,17 +447,22 @@ export default function RBACManagement() {
                               setSelectedPermissions(selectedPermissions.filter(id => id !== permission.id));
                             }
                           }}
+                          className="mt-1"
                         />
                         <Label
                           htmlFor={`permission-${permission.id}`}
-                          className="text-sm font-normal cursor-pointer"
+                          className="text-sm font-normal cursor-pointer flex-1 space-y-1"
                         >
-                          <span className="font-medium">{permission.displayName}</span>
-                          <span className="text-muted-foreground ml-2">
-                            ({permission.resource}:{permission.action})
-                          </span>
+                          <div className="flex flex-wrap items-baseline gap-x-2">
+                            <span className="font-medium">{permission.displayName}</span>
+                            <span className="text-muted-foreground text-xs">
+                              ({permission.resource}:{permission.action})
+                            </span>
+                          </div>
                           {permission.description && (
-                            <p className="text-xs text-muted-foreground">{permission.description}</p>
+                            <p className="text-xs text-muted-foreground break-words">
+                              {permission.description}
+                            </p>
                           )}
                         </Label>
                       </div>
@@ -467,7 +472,7 @@ export default function RBACManagement() {
               ))}
             </div>
           </ScrollArea>
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
             <Button variant="outline" onClick={() => setIsPermissionsDialogOpen(false)}>
               Cancel
             </Button>
