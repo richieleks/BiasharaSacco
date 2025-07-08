@@ -1,11 +1,22 @@
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PiggyBank, ChevronDown } from "lucide-react";
+import { PiggyBank, ChevronDown, User, Settings, LogOut } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/notification-bell";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { useState } from "react";
+import UserProfileDialog from "@/components/dialogs/user-profile-dialog";
 
 export default function Header() {
   const { user } = useAuth();
+  const [profileDialogOpen, setProfileDialogOpen] = useState(false);
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return "U";
@@ -33,27 +44,61 @@ export default function Header() {
               <NotificationBell />
             </div>
             
-            <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 sacco-success rounded-full flex items-center justify-center">
-                <span className="text-white text-sm font-medium">
-                  {getInitials(user?.firstName, user?.lastName)}
-                </span>
-              </div>
-              <div className="hidden sm:block">
-                <p className="text-sm font-medium">
-                  {user?.firstName} {user?.lastName}
-                </p>
-                <p className="text-xs text-slate-500">{user?.role || "Member"}</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => window.location.href = '/api/logout'}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <ChevronDown className="text-sm" />
-              </Button>
-            </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="flex items-center space-x-3 hover:bg-gray-50">
+                  <div className="w-8 h-8 sacco-success rounded-full flex items-center justify-center">
+                    <span className="text-white text-sm font-medium">
+                      {getInitials(user?.firstName, user?.lastName)}
+                    </span>
+                  </div>
+                  <div className="hidden sm:block text-left">
+                    <p className="text-sm font-medium">
+                      {user?.firstName} {user?.lastName}
+                    </p>
+                    <p className="text-xs text-slate-500">{user?.role || "Member"}</p>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                </Button>
+              </DropdownMenuTrigger>
+              
+              <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuLabel>
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none">
+                      {user?.firstName} {user?.lastName}
+                    </p>
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                </DropdownMenuLabel>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={() => setProfileDialogOpen(true)}>
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuItem>
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                <DropdownMenuItem onClick={() => window.location.href = '/api/logout'}>
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Log out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <UserProfileDialog 
+              open={profileDialogOpen} 
+              onOpenChange={setProfileDialogOpen} 
+            />
           </div>
         </div>
       </div>
