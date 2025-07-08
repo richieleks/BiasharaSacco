@@ -377,3 +377,20 @@ function RoleAssignmentDialog({
   );
 }
 
+function getRoleBadgeVariant(role: string) {
+  switch (role) {
+    case 'admin':
+      return 'destructive';
+    case 'manager':
+      return 'default';
+    case 'committee':
+      return 'secondary';
+    case 'teller':
+      return 'outline';
+    case 'member':
+      return 'secondary';
+    default:
+      return 'outline';
+  }
+}
+
