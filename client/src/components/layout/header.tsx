@@ -1,7 +1,8 @@
 import { useAuth } from "@/hooks/useAuth";
+import { useRBAC } from "@/hooks/useRBAC";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PiggyBank, ChevronDown, User, Settings, LogOut } from "lucide-react";
+import { PiggyBank, ChevronDown, User, Settings, LogOut, Shield } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import {
   DropdownMenu,
@@ -15,6 +16,7 @@ import { useLocation } from "wouter";
 
 export default function Header() {
   const { user } = useAuth();
+  const { hasPermission } = useRBAC();
   const [, navigate] = useLocation();
 
   const getInitials = (firstName?: string, lastName?: string) => {
@@ -84,6 +86,13 @@ export default function Header() {
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
+                
+                {hasPermission('read', 'system-settings') && (
+                  <DropdownMenuItem onClick={() => navigate('/admin-settings')}>
+                    <Shield className="mr-2 h-4 w-4" />
+                    <span>Admin Settings</span>
+                  </DropdownMenuItem>
+                )}
                 
                 <DropdownMenuSeparator />
                 

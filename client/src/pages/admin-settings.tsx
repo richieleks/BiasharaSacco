@@ -1,0 +1,902 @@
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+  FormDescription,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { 
+  Settings, 
+  Shield, 
+  Database, 
+  Mail, 
+  Bell,
+  Users,
+  CreditCard,
+  FileText,
+  Activity,
+  ArrowLeft,
+  Server,
+  Lock,
+  AlertTriangle,
+  Globe
+} from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useLocation } from "wouter";
+import { Textarea } from "@/components/ui/textarea";
+
+const adminSettingsSchema = z.object({
+  // System Configuration
+  maintenanceMode: z.boolean().default(false),
+  systemAnnouncement: z.string().default(""),
+  maxLoanAmount: z.number().min(0).default(5000000),
+  maxLoanTerm: z.number().min(1).max(60).default(24),
+  defaultInterestRate: z.number().min(0).max(100).default(12),
+  
+  // Security Settings
+  sessionTimeout: z.number().min(15).max(1440).default(240),
+  maxLoginAttempts: z.number().min(3).max(10).default(5),
+  passwordComplexity: z.enum(["low", "medium", "high"]).default("medium"),
+  twoFactorRequired: z.boolean().default(false),
+  
+  // Email Configuration
+  emailEnabled: z.boolean().default(true),
+  smtpServer: z.string().default(""),
+  smtpPort: z.number().min(1).max(65535).default(587),
+  emailFromAddress: z.string().default(""),
+  
+  // Notification Settings
+  systemNotifications: z.boolean().default(true),
+  memberNotifications: z.boolean().default(true),
+  loanNotifications: z.boolean().default(true),
+  
+  // Business Rules
+  minimumSavingsBalance: z.number().min(0).default(10000),
+  loanToSavingsRatio: z.number().min(1).max(10).default(2.5),
+  membershipDurationMonths: z.number().min(1).max(12).default(3),
+  
+  // Backup and Maintenance
+  autoBackupEnabled: z.boolean().default(true),
+  backupFrequency: z.enum(["daily", "weekly", "monthly"]).default("daily"),
+  logRetentionDays: z.number().min(30).max(365).default(90),
+});
+
+type AdminSettingsData = z.infer<typeof adminSettingsSchema>;
+
+export default function AdminSettingsPage() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
+  const [activeTab, setActiveTab] = useState<'system' | 'security' | 'email' | 'notifications' | 'business' | 'maintenance'>('system');
+
+  // Load system settings
+  const { data: systemSettings, isLoading } = useQuery({
+    queryKey: ['/api/admin/settings'],
+    // In a real app, you'd fetch from API
+    queryFn: async () => {
+      // Mock data for demonstration
+      return {
+        maintenanceMode: false,
+        systemAnnouncement: "",
+        maxLoanAmount: 5000000,
+        maxLoanTerm: 24,
+        defaultInterestRate: 12,
+        sessionTimeout: 240,
+        maxLoginAttempts: 5,
+        passwordComplexity: "medium",
+        twoFactorRequired: false,
+        emailEnabled: true,
+        smtpServer: "smtp.gmail.com",
+        smtpPort: 587,
+        emailFromAddress: "noreply@biasharasacco.com",
+        systemNotifications: true,
+        memberNotifications: true,
+        loanNotifications: true,
+        minimumSavingsBalance: 10000,
+        loanToSavingsRatio: 2.5,
+        membershipDurationMonths: 3,
+        autoBackupEnabled: true,
+        backupFrequency: "daily",
+        logRetentionDays: 90,
+      };
+    },
+  });
+
+  const form = useForm<AdminSettingsData>({
+    resolver: zodResolver(adminSettingsSchema),
+    defaultValues: systemSettings || {
+      maintenanceMode: false,
+      systemAnnouncement: "",
+      maxLoanAmount: 5000000,
+      maxLoanTerm: 24,
+      defaultInterestRate: 12,
+      sessionTimeout: 240,
+      maxLoginAttempts: 5,
+      passwordComplexity: "medium",
+      twoFactorRequired: false,
+      emailEnabled: true,
+      smtpServer: "",
+      smtpPort: 587,
+      emailFromAddress: "",
+      systemNotifications: true,
+      memberNotifications: true,
+      loanNotifications: true,
+      minimumSavingsBalance: 10000,
+      loanToSavingsRatio: 2.5,
+      membershipDurationMonths: 3,
+      autoBackupEnabled: true,
+      backupFrequency: "daily",
+      logRetentionDays: 90,
+    },
+  });
+
+  const updateSettingsMutation = useMutation({
+    mutationFn: async (data: AdminSettingsData) => {
+      return await apiRequest('PATCH', `/api/admin/settings`, data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Settings Updated",
+        description: "System settings have been updated successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update settings. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (data: AdminSettingsData) => {
+    updateSettingsMutation.mutate(data);
+  };
+
+  const TabButton = ({ tab, icon: Icon, label, isActive }: { 
+    tab: typeof activeTab, 
+    icon: React.ComponentType<any>, 
+    label: string, 
+    isActive: boolean 
+  }) => (
+    <Button
+      variant={isActive ? "default" : "ghost"}
+      size="sm"
+      onClick={() => setActiveTab(tab)}
+      className="justify-start w-full"
+    >
+      <Icon className="mr-2 h-4 w-4" />
+      {label}
+    </Button>
+  );
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto p-6">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-6">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Dashboard
+        </Button>
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2">
+            <Settings className="h-6 w-6" />
+            System Administration
+          </h1>
+          <p className="text-muted-foreground">
+            Configure system-wide settings and manage SACCO operations
+          </p>
+        </div>
+      </div>
+
+      <div className="flex gap-6">
+        {/* Sidebar Navigation */}
+        <div className="w-64 space-y-2">
+          <TabButton
+            tab="system"
+            icon={Server}
+            label="System Configuration"
+            isActive={activeTab === 'system'}
+          />
+          <TabButton
+            tab="security"
+            icon={Shield}
+            label="Security & Access"
+            isActive={activeTab === 'security'}
+          />
+          <TabButton
+            tab="email"
+            icon={Mail}
+            label="Email Configuration"
+            isActive={activeTab === 'email'}
+          />
+          <TabButton
+            tab="notifications"
+            icon={Bell}
+            label="Notifications"
+            isActive={activeTab === 'notifications'}
+          />
+          <TabButton
+            tab="business"
+            icon={CreditCard}
+            label="Business Rules"
+            isActive={activeTab === 'business'}
+          />
+          <TabButton
+            tab="maintenance"
+            icon={Database}
+            label="Backup & Maintenance"
+            isActive={activeTab === 'maintenance'}
+          />
+        </div>
+
+        {/* Settings Content */}
+        <div className="flex-1">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+              
+              {/* System Configuration Tab */}
+              {activeTab === 'system' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">System Configuration</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Configure global system settings and operational parameters
+                    </p>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        System Status
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="maintenanceMode"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between space-y-0">
+                            <div className="space-y-1">
+                              <FormLabel className="flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4" />
+                                Maintenance Mode
+                              </FormLabel>
+                              <FormDescription>
+                                Enable to restrict system access during maintenance
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="systemAnnouncement"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>System Announcement</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Enter system announcement message..."
+                                className="resize-none"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormDescription>
+                              Display important announcements to all users
+                            </FormDescription>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Loan Configuration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="maxLoanAmount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Maximum Loan Amount (UGX)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Maximum loan amount that can be approved
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="maxLoanTerm"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Maximum Loan Term (months)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  max="60"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Maximum loan repayment period
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="defaultInterestRate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Default Interest Rate (%)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  max="100"
+                                  step="0.1"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Default annual interest rate for loans
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Security Tab */}
+              {activeTab === 'security' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Security & Access Control</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Configure security policies and access controls
+                    </p>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        Authentication Settings
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="sessionTimeout"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Session Timeout (minutes)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="15" 
+                                  max="1440"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Auto-logout after inactivity
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="maxLoginAttempts"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Max Login Attempts</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="3" 
+                                  max="10"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Account lockout after failed attempts
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="passwordComplexity"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Password Complexity</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select complexity level" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="low">Low - Basic requirements</SelectItem>
+                                  <SelectItem value="medium">Medium - Moderate requirements</SelectItem>
+                                  <SelectItem value="high">High - Strong requirements</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormDescription>
+                                Password strength requirements
+                              </FormDescription>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <FormField
+                        control={form.control}
+                        name="twoFactorRequired"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between space-y-0">
+                            <div className="space-y-1">
+                              <FormLabel>Require Two-Factor Authentication</FormLabel>
+                              <FormDescription>
+                                Mandate 2FA for all user accounts
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Email Configuration Tab */}
+              {activeTab === 'email' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Email Configuration</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Configure email server settings and notification preferences
+                    </p>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Mail className="h-4 w-4" />
+                        SMTP Configuration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="emailEnabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between space-y-0">
+                            <div className="space-y-1">
+                              <FormLabel>Email System Enabled</FormLabel>
+                              <FormDescription>
+                                Enable or disable email notifications
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="smtpServer"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>SMTP Server</FormLabel>
+                              <FormControl>
+                                <Input placeholder="smtp.gmail.com" {...field} />
+                              </FormControl>
+                              <FormDescription>
+                                SMTP server hostname
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="smtpPort"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>SMTP Port</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  max="65535"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                SMTP server port (usually 587)
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="emailFromAddress"
+                          render={({ field }) => (
+                            <FormItem className="md:col-span-2">
+                              <FormLabel>From Email Address</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="email" 
+                                  placeholder="noreply@biasharasacco.com" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Email address used for outgoing notifications
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Notifications Tab */}
+              {activeTab === 'notifications' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">System Notifications</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Configure system-wide notification settings
+                    </p>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Bell className="h-4 w-4" />
+                        Notification Categories
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="systemNotifications"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between space-y-0">
+                            <div className="space-y-1">
+                              <FormLabel>System Notifications</FormLabel>
+                              <FormDescription>
+                                Enable system maintenance and security alerts
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="memberNotifications"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between space-y-0">
+                            <div className="space-y-1">
+                              <FormLabel>Member Notifications</FormLabel>
+                              <FormDescription>
+                                Enable member-related notifications
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="loanNotifications"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between space-y-0">
+                            <div className="space-y-1">
+                              <FormLabel>Loan Notifications</FormLabel>
+                              <FormDescription>
+                                Enable loan application and approval notifications
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Business Rules Tab */}
+              {activeTab === 'business' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Business Rules</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Configure SACCO business rules and operational limits
+                    </p>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Loan Eligibility Rules
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="minimumSavingsBalance"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Minimum Savings Balance (UGX)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Minimum balance required for loan eligibility
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="loanToSavingsRatio"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Loan-to-Savings Ratio</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  max="10"
+                                  step="0.1"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Maximum loan amount as multiple of savings
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="membershipDurationMonths"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Minimum Membership Duration (months)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  max="12"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Required membership duration for loan eligibility
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Maintenance Tab */}
+              {activeTab === 'maintenance' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Backup & Maintenance</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Configure backup schedules and maintenance settings
+                    </p>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Database className="h-4 w-4" />
+                        Backup Configuration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <FormField
+                        control={form.control}
+                        name="autoBackupEnabled"
+                        render={({ field }) => (
+                          <FormItem className="flex items-center justify-between space-y-0">
+                            <div className="space-y-1">
+                              <FormLabel>Automatic Backups</FormLabel>
+                              <FormDescription>
+                                Enable automatic database backups
+                              </FormDescription>
+                            </div>
+                            <FormControl>
+                              <Switch checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="backupFrequency"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Backup Frequency</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select frequency" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="daily">Daily</SelectItem>
+                                  <SelectItem value="weekly">Weekly</SelectItem>
+                                  <SelectItem value="monthly">Monthly</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormDescription>
+                                How often to perform backups
+                              </FormDescription>
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="logRetentionDays"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Log Retention (days)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="30" 
+                                  max="365"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                How long to keep system logs
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-4 pt-4 border-t">
+                <Button variant="outline" onClick={() => navigate('/')}>
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={updateSettingsMutation.isPending}
+                >
+                  {updateSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </div>
+      </div>
+    </div>
+  );
+}

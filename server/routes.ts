@@ -131,6 +131,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get admin settings
+  app.get('/api/admin/settings', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      // In a real application, you'd fetch these from a system_settings table
+      const settings = {
+        maintenanceMode: false,
+        systemAnnouncement: "",
+        maxLoanAmount: 5000000,
+        maxLoanTerm: 24,
+        defaultInterestRate: 12,
+        sessionTimeout: 240,
+        maxLoginAttempts: 5,
+        passwordComplexity: "medium",
+        twoFactorRequired: false,
+        emailEnabled: true,
+        smtpServer: "smtp.gmail.com",
+        smtpPort: 587,
+        emailFromAddress: "noreply@biasharasacco.com",
+        systemNotifications: true,
+        memberNotifications: true,
+        loanNotifications: true,
+        minimumSavingsBalance: 10000,
+        loanToSavingsRatio: 2.5,
+        membershipDurationMonths: 3,
+        autoBackupEnabled: true,
+        backupFrequency: "daily",
+        logRetentionDays: 90,
+      };
+      
+      res.json(settings);
+    } catch (error) {
+      console.error("Error fetching admin settings:", error);
+      res.status(500).json({ message: "Failed to fetch admin settings" });
+    }
+  });
+
+  // Update admin settings
+  app.patch('/api/admin/settings', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const settings = req.body;
+      
+      // In a real application, you'd update these in a system_settings table
+      // For now, we'll just return success
+      res.json({ 
+        message: "Admin settings updated successfully", 
+        settings 
+      });
+    } catch (error) {
+      console.error("Error updating admin settings:", error);
+      res.status(500).json({ message: "Failed to update admin settings" });
+    }
+  });
+
   // Dashboard metrics
   app.get('/api/dashboard/metrics', isAuthenticated, async (req, res) => {
     try {

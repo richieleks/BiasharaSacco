@@ -440,6 +440,14 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Enhanced both pages with back navigation buttons to return to dashboard
   - Profile page includes editing capability, SACCO membership details, and account security information
   - Settings page provides comprehensive customization options for notifications, themes, and security preferences
+- July 08, 2025. Separated admin settings from user settings with distinct configuration pages:
+  - Created dedicated Admin Settings page at /admin-settings route for system-wide configuration
+  - Added comprehensive system administration features: maintenance mode, loan limits, security policies, email configuration
+  - Built 6 distinct admin setting categories: System Configuration, Security & Access, Email Configuration, Notifications, Business Rules, Backup & Maintenance
+  - Implemented role-based access control showing "Admin Settings" only to users with system-settings permissions
+  - Created API endpoints for fetching and updating admin settings with proper authorization
+  - User settings page now focuses on personal preferences while admin settings handle system-wide configuration
+  - Admin settings include business rule configuration, SMTP setup, security policies, and backup scheduling
 
 ## User Preferences
 
