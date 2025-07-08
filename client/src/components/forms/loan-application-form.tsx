@@ -538,39 +538,48 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                     {eligibilityResult && (
                       <div className="mt-2">
                         {eligibilityResult.isEligible ? (
-                          <Alert className="border-green-200 bg-green-50">
-                            <CheckCircle className="h-4 w-4 text-green-600" />
-                            <AlertDescription className="text-green-800">
-                              <div className="font-medium">✓ Eligible for loan</div>
+                          <Alert className="border-green-500 bg-green-50">
+                            <CheckCircle className="h-5 w-5 text-green-600" />
+                            <AlertDescription className="text-green-900">
+                              <div className="font-bold text-lg text-green-800 mb-2">✅ LOAN APPLICATION ELIGIBLE</div>
                               {eligibilityResult.maxLoanAmount && (
-                                <div className="text-sm">
-                                  Maximum allowed: UGX {eligibilityResult.maxLoanAmount.toLocaleString()}
+                                <div className="text-sm font-medium text-green-800 mb-2">
+                                  💰 Maximum loan amount: UGX {eligibilityResult.maxLoanAmount.toLocaleString()}
                                 </div>
                               )}
                               {eligibilityResult.warnings?.length > 0 && (
-                                <div className="text-sm mt-1">
-                                  <strong>Warnings:</strong>
-                                  <ul className="list-disc list-inside">
-                                    {eligibilityResult.warnings.map((warning: string, index: number) => (
-                                      <li key={index}>{warning}</li>
-                                    ))}
-                                  </ul>
+                                <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                  <div className="text-sm">
+                                    <strong className="text-yellow-800">⚠️ Important Notes:</strong>
+                                    <ul className="list-disc list-inside mt-1 space-y-1">
+                                      {eligibilityResult.warnings.map((warning: string, index: number) => (
+                                        <li key={index} className="text-yellow-800">{warning}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
                                 </div>
                               )}
                             </AlertDescription>
                           </Alert>
                         ) : (
-                          <Alert className="border-red-200 bg-red-50">
-                            <AlertCircle className="h-4 w-4 text-red-600" />
-                            <AlertDescription className="text-red-800">
-                              <div className="font-medium">✗ Not eligible for loan</div>
-                              <div className="text-sm mt-1">
-                                <strong>Requirements not met:</strong>
-                                <ul className="list-disc list-inside">
+                          <Alert className="border-red-500 bg-red-50">
+                            <AlertCircle className="h-5 w-5 text-red-600" />
+                            <AlertDescription className="text-red-900">
+                              <div className="font-bold text-lg mb-3">❌ LOAN APPLICATION NOT ELIGIBLE</div>
+                              <div className="space-y-3">
+                                <div className="font-semibold text-red-800 mb-2">You must meet the following requirements before applying:</div>
+                                <div className="space-y-2">
                                   {eligibilityResult.violations?.map((violation: string, index: number) => (
-                                    <li key={index}>{violation}</li>
+                                    <div key={index} className="p-3 bg-white border border-red-200 rounded-md">
+                                      <div className="text-sm font-medium text-red-900">{violation}</div>
+                                    </div>
                                   ))}
-                                </ul>
+                                </div>
+                                <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                  <div className="text-sm text-blue-800">
+                                    <strong>📞 Need Help?</strong> Contact the SACCO office for assistance with any of these requirements.
+                                  </div>
+                                </div>
                               </div>
                             </AlertDescription>
                           </Alert>

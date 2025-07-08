@@ -29,27 +29,28 @@ export class BusinessRulesValidator {
 
       // BR-L001: Only fully paid up shareholders with active savings accounts
       if (!member.isPaidUp) {
-        violations.push("Member must be fully paid up shareholder");
+        violations.push("❌ SHARE CAPITAL: Complete your share capital payments to qualify for loans. Contact the SACCO office to update your contributions.");
       }
 
       if (member.status !== 'active') {
-        violations.push("Member must have active status");
+        violations.push("❌ MEMBERSHIP STATUS: Your membership status must be active. Please contact the SACCO office to resolve any account issues.");
       }
 
       // BR-L002: Must not be defaulter on outstanding loans
       if (member.isDefaulter) {
-        violations.push("Member is currently a defaulter on outstanding loans");
+        violations.push("❌ LOAN DEFAULTER: You have outstanding loan defaults. Clear all outstanding balances before applying for new loans.");
       }
 
       // BR-L003: Must not be guarantor for defaulting borrowers
       if (member.isGuarantorForDefaulter) {
-        violations.push("Member is guarantor for defaulting borrowers");
+        violations.push("❌ GUARANTOR LIABILITY: You are guarantor for defaulting borrowers. Resolve guarantor obligations before applying for new loans.");
       }
 
       // BR-L004: Must have been member for at least 3 months
       const membershipDuration = differenceInMonths(new Date(), member.membershipStartDate || member.createdAt);
       if (membershipDuration < 3) {
-        violations.push(`Member must be active for at least 3 months. Current: ${membershipDuration} months`);
+        const remainingMonths = Math.ceil(3 - membershipDuration);
+        violations.push(`❌ MEMBERSHIP DURATION: You need ${remainingMonths} more month(s) of active membership. SACCO requires 3 months minimum membership period.`);
       }
 
       // BR-L005: Savings account operated for at least 3 months
@@ -57,18 +58,19 @@ export class BusinessRulesValidator {
       const activeSavingsAccount = savingsAccounts.find(acc => acc.status === 'active');
       
       if (!activeSavingsAccount) {
-        violations.push("Member must have an active savings account");
+        violations.push("❌ SAVINGS ACCOUNT: You must have an active savings account. Open a savings account with the SACCO before applying for loans.");
       } else {
         const accountDuration = differenceInMonths(new Date(), activeSavingsAccount.createdAt);
         if (accountDuration < 3) {
-          violations.push(`Savings account must be operated for at least 3 months. Current: ${accountDuration} months`);
+          const remainingMonths = Math.ceil(3 - accountDuration);
+          violations.push(`❌ SAVINGS DURATION: Your savings account needs ${remainingMonths} more month(s) of operation. SACCO requires 3 months minimum savings history.`);
         }
       }
 
       // BR-L006: Cannot have pending loan applications
       const pendingLoans = await storage.getMemberPendingLoans(memberId);
       if (pendingLoans.length > 0) {
-        violations.push(`Member has ${pendingLoans.length} pending loan application(s)`);
+        violations.push(`❌ PENDING APPLICATIONS: You already have ${pendingLoans.length} pending loan application(s). Wait for current applications to be processed.`);
       }
 
       // Calculate maximum loan amount based on BR-L010: 1:2.5 savings ratio
@@ -78,7 +80,8 @@ export class BusinessRulesValidator {
         maxLoanAmount = totalSavings * 2.5; // 1:2.5 ratio
         
         if (requestedAmount > maxLoanAmount) {
-          violations.push(`Requested amount (UGX ${requestedAmount.toLocaleString()}) exceeds maximum allowed (UGX ${maxLoanAmount.toLocaleString()}) based on savings ratio 1:2.5`);
+          const currentSavings = parseFloat(activeSavingsAccount.balance);
+          violations.push(`❌ LOAN AMOUNT LIMIT: Your requested UGX ${requestedAmount.toLocaleString()} exceeds the maximum UGX ${maxLoanAmount.toLocaleString()}. With current savings of UGX ${currentSavings.toLocaleString()}, you can borrow up to 2.5 times your savings balance.`);
         }
 
         // BR-L011: Check if savings gradually built up
