@@ -69,7 +69,12 @@ function Router() {
         <main className="flex-1 p-4 lg:p-6 xl:p-8 transition-all duration-300 ease-in-out">{/* Mobile padding offset for menu button */}
           <div className="lg:hidden h-16"></div>
           <Switch>
-            <Route path="/">
+            <Route path="/" exact>
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/dashboard">
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
