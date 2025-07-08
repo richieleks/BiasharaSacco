@@ -53,25 +53,26 @@ export function useRBAC() {
         (p: any) => p.action === action && p.resource === resource
       );
       
-      // If not found, check hardcoded permissions for backward compatibility
-      if (!hasDynamicPermission) {
-        return userRoles.some(role => hasPermission(role, action, resource));
+      // If we have dynamic permissions, use them exclusively
+      if (dynamicPermissions.length > 0) {
+        return hasDynamicPermission;
       }
       
-      return hasDynamicPermission;
+      // Otherwise fallback to hardcoded permissions
+      return userRoles.some(role => hasPermission(role, action, resource));
     },
     
     canAccessDashboardComponent: (component: string) => 
       userRoles.some(role => canAccessDashboardComponent(role, component)),
     
     canAccessRoute: (route: string) => 
-      userRoles.some(role => canAccessRoute(role, route)),
+      canAccessRoute(userRoles, route, dynamicPermissions),
     
     canApproveAtStage: (stage: string) => 
       userRoles.some(role => canApproveAtStage(role, stage)),
     
-    // Navigation and UI helpers - pass all user roles for proper filtering
-    getNavigationItems: () => getNavigationItems(userRoles),
+    // Navigation and UI helpers - pass all user roles and dynamic permissions for proper filtering
+    getNavigationItems: () => getNavigationItems(userRoles, dynamicPermissions),
     
     // Role-based content filtering
     filterContentByRole: <T>(content: T[], filter: (item: T) => boolean) => {

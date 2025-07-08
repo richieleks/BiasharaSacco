@@ -192,18 +192,25 @@ export function canAccessDashboardComponent(userRoles: UserRole | UserRole[], co
   });
 }
 
-export function getNavigationItems(userRoles: UserRole | UserRole[]) {
+export function getNavigationItems(userRoles: UserRole | UserRole[], dynamicPermissions?: any[]) {
   const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
   
   // Filter navigation items based on user permissions
   return ALL_NAVIGATION_ITEMS.filter(item => {
+    // If dynamic permissions are provided, use them
+    if (dynamicPermissions && dynamicPermissions.length > 0) {
+      return dynamicPermissions.some(
+        (p: any) => p.action === item.permission.action && p.resource === item.permission.resource
+      );
+    }
+    // Otherwise fallback to hardcoded permissions
     return hasPermission(roles, item.permission.action, item.permission.resource);
   });
 }
 
-export function canAccessRoute(userRoles: UserRole | UserRole[], route: string): boolean {
+export function canAccessRoute(userRoles: UserRole | UserRole[], route: string, dynamicPermissions?: any[]): boolean {
   const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
-  const navItems = getNavigationItems(roles);
+  const navItems = getNavigationItems(roles, dynamicPermissions);
   return navItems.some(item => item.path === route);
 }
 
