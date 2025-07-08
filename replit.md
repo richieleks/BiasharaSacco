@@ -457,6 +457,13 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Role management accessible to users with 'update members' permission through dedicated navigation item
   - Supports multiple role assignment per member with comprehensive role display and management
   - All new users are automatically assigned the 'member' role by default upon registration
+- July 08, 2025. Fixed RBAC permissions to use dynamic database permissions:
+  - Updated server-side RBAC middleware to check permissions from database instead of hardcoded list
+  - Created `/api/auth/permissions` endpoint to fetch user's actual permissions from database
+  - Modified client-side useRBAC hook to fetch and use dynamic permissions from the server
+  - System now properly honors permission changes made through RBAC Management interface
+  - Maintains backward compatibility with hardcoded permissions while prioritizing database permissions
+  - Users with assigned permissions can now properly perform the roles they are granted access to
 
 ## User Preferences
 

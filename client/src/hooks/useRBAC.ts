@@ -1,4 +1,5 @@
 import { useAuth } from "./useAuth";
+import { useQuery } from "@tanstack/react-query";
 import { 
   hasPermission, 
   canAccessDashboardComponent, 
@@ -10,6 +11,12 @@ import {
 
 export function useRBAC() {
   const { user, isLoading } = useAuth();
+  
+  // Fetch dynamic permissions from the server
+  const { data: dynamicPermissions = [] } = useQuery({
+    queryKey: ["/api/auth/permissions"],
+    enabled: !!user && !!user.member,
+  });
   
   // Get user roles from member data - now supports multiple roles
   // Handle both the old 'role' field and new 'roles' array
@@ -39,9 +46,20 @@ export function useRBAC() {
     userRoles, // New: array of all user roles
     isLoading,
     
-    // Permission checking functions - now check all roles
-    hasPermission: (action: string, resource: string) => 
-      userRoles.some(role => hasPermission(role, action, resource)),
+    // Permission checking functions - now check both hardcoded and dynamic permissions
+    hasPermission: (action: string, resource: string) => {
+      // First check dynamic permissions from database
+      const hasDynamicPermission = dynamicPermissions.some(
+        (p: any) => p.action === action && p.resource === resource
+      );
+      
+      // If not found, check hardcoded permissions for backward compatibility
+      if (!hasDynamicPermission) {
+        return userRoles.some(role => hasPermission(role, action, resource));
+      }
+      
+      return hasDynamicPermission;
+    },
     
     canAccessDashboardComponent: (component: string) => 
       userRoles.some(role => canAccessDashboardComponent(role, component)),

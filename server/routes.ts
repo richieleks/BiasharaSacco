@@ -66,6 +66,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get current user's permissions
+  app.get('/api/auth/permissions', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user!.claims!.sub!;
+      const member = await storage.getMemberByUserId(userId);
+      
+      if (!member) {
+        return res.json([]); // Return empty permissions if no member profile
+      }
+      
+      // Get all roles for this member
+      const memberRoles = await storage.getMemberRoles(member.id);
+      const roleNames = memberRoles.length > 0 ? memberRoles : ['member'];
+      
+      // Get all permissions for all user's roles
+      const allPermissions: any[] = [];
+      
+      for (const roleName of roleNames) {
+        const role = await storage.getRoleByName(roleName);
+        if (role) {
+          const permissions = await storage.getPermissionsByRole(role.id);
+          allPermissions.push(...permissions);
+        }
+      }
+      
+      // Remove duplicates
+      const uniquePermissions = Array.from(
+        new Map(allPermissions.map(p => [`${p.action}-${p.resource}`, p])).values()
+      );
+      
+      res.json(uniquePermissions);
+    } catch (error) {
+      console.error("Error fetching user permissions:", error);
+      res.status(500).json({ message: "Failed to fetch permissions" });
+    }
+  });
+
   // Update user profile
   app.patch('/api/auth/profile', isAuthenticated, async (req: AuthRequest, res) => {
     try {

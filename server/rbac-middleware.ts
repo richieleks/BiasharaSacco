@@ -49,7 +49,27 @@ export function requirePermission(action: string, resource: string) {
       };
 
       // Check if any of the user's roles has the required permission
-      const hasRequiredPermission = roles.some(role => hasPermission(role, action, resource));
+      let hasRequiredPermission = false;
+      
+      // First check hardcoded permissions for backward compatibility
+      const hasHardcodedPermission = roles.some(role => hasPermission(role, action, resource));
+      
+      // Then check dynamic permissions from database
+      for (const roleName of roles) {
+        const role = await storage.getRoleByName(roleName);
+        if (role) {
+          const permissions = await storage.getPermissionsByRole(role.id);
+          if (permissions.some(p => p.action === action && p.resource === resource)) {
+            hasRequiredPermission = true;
+            break;
+          }
+        }
+      }
+      
+      // Use hardcoded permission if no dynamic permission found (for backward compatibility)
+      if (!hasRequiredPermission && hasHardcodedPermission) {
+        hasRequiredPermission = true;
+      }
       
       if (!hasRequiredPermission) {
         return res.status(403).json({ 
