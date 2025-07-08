@@ -456,6 +456,7 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Integrated with notification system to track role changes with audit trail
   - Role management accessible to users with 'update members' permission through dedicated navigation item
   - Supports multiple role assignment per member with comprehensive role display and management
+  - All new users are automatically assigned the 'member' role by default upon registration
 
 ## User Preferences
 
