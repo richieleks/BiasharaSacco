@@ -448,6 +448,14 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Created API endpoints for fetching and updating admin settings with proper authorization
   - User settings page now focuses on personal preferences while admin settings handle system-wide configuration
   - Admin settings include business rule configuration, SMTP setup, security policies, and backup scheduling
+- July 08, 2025. Restored role management functionality to the system:
+  - Added comprehensive role management page at /role-management route for assigning roles to members
+  - Created member role assignment interface with search, filtering, and role selection capabilities
+  - Built role assignment dialog with checkbox-based role selection and visual role badges
+  - Added API endpoints for fetching and updating member roles with proper RBAC validation
+  - Integrated with notification system to track role changes with audit trail
+  - Role management accessible to users with 'update members' permission through dedicated navigation item
+  - Supports multiple role assignment per member with comprehensive role display and management
 
 ## User Preferences
 

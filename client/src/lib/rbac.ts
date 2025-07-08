@@ -154,6 +154,7 @@ export const ALL_NAVIGATION_ITEMS = [
 
   { name: 'Reports', path: '/reports', icon: 'BarChart3', permission: { action: 'read', resource: 'reports' } },
   { name: 'RBAC Management', path: '/rbac-management', icon: 'ShieldCheck', permission: { action: 'read', resource: 'roles' } },
+  { name: 'Role Management', path: '/role-management', icon: 'Users', permission: { action: 'update', resource: 'members' } },
   { name: 'Settings', path: '/settings', icon: 'Settings', permission: { action: 'read', resource: 'system-settings' } },
   { name: 'Audit Logs', path: '/audit-logs', icon: 'Shield', permission: { action: 'read', resource: 'audit-logs' } },
   { name: 'Roles Matrix', path: '/roles-matrix', icon: 'Lock', permission: { action: 'read', resource: 'system-settings' } },
