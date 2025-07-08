@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole } from "./rbac-middleware";
 import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema } from "@shared/schema";
+import { businessRulesValidator } from "./business-rules-validator";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -602,6 +603,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Loan eligibility check endpoint  
+  app.post('/api/loans/check-eligibility', isAuthenticated, async (req: any, res) => {
+    try {
+      const { memberId, requestedAmount } = req.body;
+      
+      if (!memberId || !requestedAmount) {
+        return res.status(400).json({ message: "Member ID and requested amount are required" });
+      }
+      
+      const eligibilityResult = await businessRulesValidator.checkLoanEligibility(memberId, requestedAmount);
+      res.json(eligibilityResult);
+    } catch (error) {
+      console.error("Error checking loan eligibility:", error);
+      res.status(500).json({ message: "Failed to check loan eligibility" });
+    }
+  });
+
   // Loan routes
   app.post('/api/loans', isAuthenticated, async (req: any, res) => {
     try {
@@ -618,6 +636,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: "Loan applications are only available to approved members", 
           memberStatus: applicantMember.status 
         });
+      }
+
+      // Apply business rules validation
+      const eligibilityResult = await businessRulesValidator.checkLoanEligibility(
+        memberId, 
+        parseFloat(principalAmount)
+      );
+      
+      if (!eligibilityResult.isEligible) {
+        return res.status(400).json({ 
+          message: "Loan application does not meet eligibility requirements",
+          violations: eligibilityResult.violations,
+          warnings: eligibilityResult.warnings
+        });
+      }
+
+      // Validate loan period (24 months max)
+      const periodValidation = businessRulesValidator.validateLoanPeriod(termMonths);
+      if (!periodValidation.isValid) {
+        return res.status(400).json({ message: periodValidation.message });
       }
       
       // Check if member has any pending loans

@@ -361,6 +361,27 @@ export class DatabaseStorage implements IStorage {
     return member;
   }
 
+  async getMemberPendingLoans(memberId: number): Promise<Loan[]> {
+    return await db
+      .select()
+      .from(loans)
+      .where(and(
+        eq(loans.memberId, memberId),
+        or(
+          eq(loans.status, 'pending'),
+          eq(loans.status, 'teller_approved'),
+          eq(loans.status, 'committee_approved')
+        )
+      ));
+  }
+
+  async getSavingsAccountsByMember(memberId: number): Promise<SavingsAccount[]> {
+    return await db
+      .select()
+      .from(savingsAccounts)
+      .where(eq(savingsAccounts.memberId, memberId));
+  }
+
   async getAllMembers(): Promise<MemberWithDetails[]> {
     const results = await db
       .select()

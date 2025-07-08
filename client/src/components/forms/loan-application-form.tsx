@@ -10,9 +10,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { FileText, Plus, Loader2, AlertCircle } from "lucide-react";
+import { FileText, Plus, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import GuarantorForm from "./guarantor-form";
 import GuarantorList from "../guarantor/guarantor-list";
 import { useAuth } from "@/hooks/useAuth";
@@ -48,6 +49,8 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
   const { user } = useAuth();
   const [showGuarantorForm, setShowGuarantorForm] = useState(false);
   const [currentLoanId, setCurrentLoanId] = useState<number | null>(null);
+  const [eligibilityResult, setEligibilityResult] = useState<any>(null);
+  const [checkingEligibility, setCheckingEligibility] = useState(false);
 
   // Fetch available loan types
   const { data: loanTypes = [], isLoading: loadingLoanTypes } = useQuery<LoanTypeWithTerms[]>({
@@ -196,6 +199,41 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
   };
 
   const monthlyPayment = calculateMonthlyPayment();
+
+  // Check loan eligibility function
+  const checkEligibility = async (memberId: number, amount: number) => {
+    if (!memberId || !amount || amount <= 0) return;
+    
+    setCheckingEligibility(true);
+    try {
+      const response = await apiRequest('POST', '/api/loans/check-eligibility', {
+        memberId,
+        requestedAmount: amount
+      });
+      setEligibilityResult(response);
+    } catch (error) {
+      console.error('Error checking eligibility:', error);
+      setEligibilityResult(null);
+    } finally {
+      setCheckingEligibility(false);
+    }
+  };
+
+  // Auto-check eligibility when amount changes
+  useEffect(() => {
+    const amount = parseFloat(form.watch('principalAmount') || '0');
+    const memberId = (currentMember as any)?.id;
+    
+    if (memberId && amount > 0) {
+      const timer = setTimeout(() => {
+        checkEligibility(memberId, amount);
+      }, 1000); // Debounce for 1 second
+      
+      return () => clearTimeout(timer);
+    } else {
+      setEligibilityResult(null);
+    }
+  }, [form.watch('principalAmount'), currentMember]);
 
   const mutation = useMutation({
     mutationFn: async (data: LoanApplicationData) => {
@@ -485,6 +523,58 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                           : 'This loan type does not require guarantors'}
                       </p>
                     )}
+                    
+                    {/* Real-time eligibility check */}
+                    {checkingEligibility && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Checking eligibility...
+                      </div>
+                    )}
+                    
+                    {eligibilityResult && (
+                      <div className="mt-2">
+                        {eligibilityResult.isEligible ? (
+                          <Alert className="border-green-200 bg-green-50">
+                            <CheckCircle className="h-4 w-4 text-green-600" />
+                            <AlertDescription className="text-green-800">
+                              <div className="font-medium">✓ Eligible for loan</div>
+                              {eligibilityResult.maxLoanAmount && (
+                                <div className="text-sm">
+                                  Maximum allowed: UGX {eligibilityResult.maxLoanAmount.toLocaleString()}
+                                </div>
+                              )}
+                              {eligibilityResult.warnings?.length > 0 && (
+                                <div className="text-sm mt-1">
+                                  <strong>Warnings:</strong>
+                                  <ul className="list-disc list-inside">
+                                    {eligibilityResult.warnings.map((warning: string, index: number) => (
+                                      <li key={index}>{warning}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
+                            </AlertDescription>
+                          </Alert>
+                        ) : (
+                          <Alert className="border-red-200 bg-red-50">
+                            <AlertCircle className="h-4 w-4 text-red-600" />
+                            <AlertDescription className="text-red-800">
+                              <div className="font-medium">✗ Not eligible for loan</div>
+                              <div className="text-sm mt-1">
+                                <strong>Requirements not met:</strong>
+                                <ul className="list-disc list-inside">
+                                  {eligibilityResult.violations?.map((violation: string, index: number) => (
+                                    <li key={index}>{violation}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </AlertDescription>
+                          </Alert>
+                        )}
+                      </div>
+                    )}
+                    
                     <FormMessage />
                   </FormItem>
                 )}
@@ -841,11 +931,24 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
 
             <Button 
               type="submit" 
-              disabled={mutation.isPending || !currentMember || hasPendingLoans} 
+              disabled={mutation.isPending || !currentMember || hasPendingLoans || (eligibilityResult && !eligibilityResult.isEligible)} 
               className="w-full"
             >
-              {mutation.isPending ? "Creating Application..." : hasPendingLoans ? "Cannot Apply - Pending Loan Exists" : "Create Loan Application"}
+              {mutation.isPending 
+                ? "Creating Application..." 
+                : hasPendingLoans 
+                  ? "Cannot Apply - Pending Loan Exists" 
+                  : (eligibilityResult && !eligibilityResult.isEligible)
+                    ? "Eligibility Requirements Not Met"
+                    : "Create Loan Application"
+              }
             </Button>
+            
+            {eligibilityResult && !eligibilityResult.isEligible && (
+              <p className="text-sm text-red-600 text-center mt-2">
+                Application cannot be submitted until all eligibility requirements are met.
+              </p>
+            )}
           </form>
         </Form>
       </CardContent>

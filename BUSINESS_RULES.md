@@ -24,27 +24,46 @@
 
 ## 2. Loan Application Rules
 
-### 2.1 Eligibility Requirements
-- **BR-L001**: Only active SACCO members can apply for loans
-- **BR-L002**: Members cannot have more than one pending loan application
-- **BR-L003**: Members must have minimum savings balance before loan eligibility
-- **BR-L004**: Staff account number is required for employee members
+### 2.1 Eligibility Requirements (Official Biashara SACCO Rules)
+- **BR-L001**: Only fully paid up shareholders with active savings accounts can apply for loans
+- **BR-L002**: Loan applicants must not be defaulters on any outstanding loans
+- **BR-L003**: Loan applicants must not be guarantors for defaulting borrowers
+- **BR-L004**: Members must have been active for at least 3 months before loan eligibility
+- **BR-L005**: Savings account must have been operated for at least 3 months
+- **BR-L006**: Members cannot have more than one pending loan application
+- **BR-L007**: Staff account number is required for employee members
 
-### 2.2 Loan Application Process
-- **BR-L005**: Loan applications must specify:
+### 2.2 Loan Size Determination (Official Rules)
+- **BR-L008**: Maximum loan size determined by member's interest and support to society
+- **BR-L009**: Loan size based on combination of:
+  - Ratio of borrower's share capital to loan
+  - Saving pattern of the borrower
+  - Loan graduation stages of the borrower
+- **BR-L010**: Ratio of total savings to loan size never exceeds 1:2.5
+- **BR-L011**: Savings must be gradually built up (not lump sum deposits)
+- **BR-L012**: Committee has discretion for considering lump sum deposits
+
+### 2.3 Loan Period and Repayment (Official Rules)
+- **BR-L013**: Maximum loan period is 24 months
+- **BR-L014**: All loans must be repaid in equal monthly installments
+- **BR-L015**: Repayment period designed to enable many members to access credit facilities
+
+### 2.4 Loan Application Process
+- **BR-L016**: Loan applications must specify:
   - Amount applied for (in figures and words)
   - Purpose of the loan
   - Repayment period and monthly repayment amount
   - Security/collateral offered (if any)
   - Whether it's a top-up loan or new loan
 
-### 2.3 Guarantor Requirements
-- **BR-L006**: Most loans require guarantors (except emergency loans under certain limits)
-- **BR-L007**: Guarantors must be active SACCO members
-- **BR-L008**: Each guarantor must specify guaranteed amount
-- **BR-L009**: Total guaranteed amount must cover loan principal
-- **BR-L010**: Guarantors must approve before loan disbursement
-- **BR-L011**: Members cannot guarantee themselves
+### 2.5 Guarantor Requirements
+- **BR-L017**: Most loans require guarantors (except emergency loans under certain limits)
+- **BR-L018**: Guarantors must be active SACCO members
+- **BR-L019**: Guarantors must not be defaulters on loans
+- **BR-L020**: Each guarantor must specify guaranteed amount
+- **BR-L021**: Total guaranteed amount must cover loan principal
+- **BR-L022**: Guarantors must approve before loan disbursement
+- **BR-L023**: Members cannot guarantee themselves
 
 ### 2.4 Top-up Loans
 - **BR-L012**: Top-up loans are allowed for existing borrowers

@@ -74,6 +74,17 @@ export const members = pgTable("members", {
   rejectedAt: timestamp("rejected_at"),
   approvalComments: text("approval_comments"),
   joinDate: timestamp("join_date").defaultNow(),
+  // Business rule compliance fields
+  membershipStartDate: timestamp("membership_start_date").defaultNow(),
+  lastActivityDate: timestamp("last_activity_date"),
+  shareCapital: decimal("share_capital", { precision: 15, scale: 2 }).default("0"),
+  totalSavings: decimal("total_savings", { precision: 15, scale: 2 }).default("0"),
+  isFullyPaidShareholder: boolean("is_fully_paid_shareholder").default(false),
+  isActiveSaver: boolean("is_active_saver").default(false),
+  isPaidUp: boolean("is_paid_up").default(false),
+  isDefaulter: boolean("is_defaulter").default(false),
+  isGuarantorForDefaulter: boolean("is_guarantor_for_defaulter").default(false),
+  hasActiveLoans: boolean("has_active_loans").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -87,6 +98,10 @@ export const savingsAccounts = pgTable("savings_accounts", {
   balance: decimal("balance", { precision: 15, scale: 2 }).default("0.00"),
   interestRate: decimal("interest_rate", { precision: 5, scale: 4 }).default("0.0500"),
   status: varchar("status", { enum: ["active", "closed", "frozen"] }).default("active"),
+  // Business rule compliance fields
+  firstDepositDate: timestamp("first_deposit_date"),
+  isGraduallyBuiltUp: boolean("is_gradually_built_up").default(true), // Track if savings built gradually vs lump sum
+  lastDepositDate: timestamp("last_deposit_date"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -103,6 +118,9 @@ export const loans = pgTable("loans", {
   termMonths: integer("term_months").notNull(),
   monthlyPayment: decimal("monthly_payment", { precision: 15, scale: 2 }).notNull(),
   outstandingBalance: decimal("outstanding_balance", { precision: 15, scale: 2 }).notNull(),
+  // Business rule compliance fields
+  maxAllowedAmount: decimal("max_allowed_amount", { precision: 15, scale: 2 }), // Based on 1:2.5 savings ratio
+  savingsToLoanRatio: decimal("savings_to_loan_ratio", { precision: 5, scale: 2 }), // Track compliance with 1:2.5 rule
   status: varchar("status", { enum: ["pending", "teller_approved", "committee_approved", "manager_approved", "approved", "rejected", "disbursed", "active", "completed", "defaulted"] }).default("pending"),
   approvalStage: varchar("approval_stage", { enum: ["teller", "committee", "manager", "completed"] }).default("teller"),
   tellerApprovedBy: varchar("teller_approved_by").references(() => users.id),
