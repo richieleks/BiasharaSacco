@@ -18,8 +18,14 @@ export class BusinessRulesValidator {
     const warnings: string[] = [];
     
     try {
+      console.log('=== BUSINESS RULES VALIDATOR ===');
+      console.log('Checking eligibility for member ID:', memberId, 'amount:', requestedAmount);
+      
       const member = await storage.getMember(memberId);
+      console.log('Member data:', JSON.stringify(member, null, 2));
+      
       if (!member) {
+        console.log('Member not found, returning violations');
         return {
           isEligible: false,
           violations: ["Member not found"],
@@ -90,12 +96,18 @@ export class BusinessRulesValidator {
         }
       }
 
-      return {
+      const result = {
         isEligible: violations.length === 0,
         violations,
         warnings,
         maxLoanAmount
       };
+      
+      console.log('=== ELIGIBILITY RESULT ===');
+      console.log(JSON.stringify(result, null, 2));
+      console.log('==========================');
+      
+      return result;
 
     } catch (error) {
       console.error("Error checking loan eligibility:", error);

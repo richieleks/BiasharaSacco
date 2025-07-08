@@ -606,13 +606,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Loan eligibility check endpoint  
   app.post('/api/loans/check-eligibility', isAuthenticated, async (req: any, res) => {
     try {
+      console.log('=== ELIGIBILITY API ENDPOINT ===');
+      console.log('Request body:', req.body);
       const { memberId, requestedAmount } = req.body;
       
       if (!memberId || !requestedAmount) {
+        console.log('Missing required parameters');
         return res.status(400).json({ message: "Member ID and requested amount are required" });
       }
       
+      console.log('Calling business rules validator with:', { memberId, requestedAmount });
       const eligibilityResult = await businessRulesValidator.checkLoanEligibility(memberId, requestedAmount);
+      console.log('API sending response:', JSON.stringify(eligibilityResult, null, 2));
       res.json(eligibilityResult);
     } catch (error) {
       console.error("Error checking loan eligibility:", error);
