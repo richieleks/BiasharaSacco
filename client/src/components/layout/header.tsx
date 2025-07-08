@@ -13,10 +13,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useState } from "react";
 import UserProfileDialog from "@/components/dialogs/user-profile-dialog";
+import UserSettingsDialog from "@/components/dialogs/user-settings-dialog";
 
 export default function Header() {
   const { user } = useAuth();
   const [profileDialogOpen, setProfileDialogOpen] = useState(false);
+  const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
 
   const getInitials = (firstName?: string, lastName?: string) => {
     if (!firstName && !lastName) return "U";
@@ -81,7 +83,7 @@ export default function Header() {
                   <span>Profile</span>
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setSettingsDialogOpen(true)}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
@@ -98,6 +100,11 @@ export default function Header() {
             <UserProfileDialog 
               open={profileDialogOpen} 
               onOpenChange={setProfileDialogOpen} 
+            />
+            
+            <UserSettingsDialog 
+              open={settingsDialogOpen} 
+              onOpenChange={setSettingsDialogOpen} 
             />
           </div>
         </div>

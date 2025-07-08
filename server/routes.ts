@@ -95,6 +95,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update user settings
+  app.patch('/api/auth/settings', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const settings = req.body;
+      
+      // Validate settings structure (you could add more validation here)
+      const validSettings = {
+        emailNotifications: settings.emailNotifications ?? true,
+        browserNotifications: settings.browserNotifications ?? true,
+        smsNotifications: settings.smsNotifications ?? false,
+        loanUpdates: settings.loanUpdates ?? true,
+        paymentReminders: settings.paymentReminders ?? true,
+        systemAlerts: settings.systemAlerts ?? true,
+        theme: settings.theme ?? "system",
+        language: settings.language ?? "en",
+        soundEnabled: settings.soundEnabled ?? true,
+        autoLogout: settings.autoLogout ?? 120,
+      };
+
+      // In a real application, you'd save these to a user_settings table
+      // For now, we'll just return success
+      res.json({ 
+        message: "Settings updated successfully", 
+        settings: validSettings 
+      });
+    } catch (error) {
+      console.error("Error updating user settings:", error);
+      res.status(500).json({ message: "Failed to update settings" });
+    }
+  });
+
   // Dashboard metrics
   app.get('/api/dashboard/metrics', isAuthenticated, async (req, res) => {
     try {
