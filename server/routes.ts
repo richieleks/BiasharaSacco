@@ -435,8 +435,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ? await storage.searchMembers(search as string)
         : await storage.getAllMembers();
       
+      // Add roles to each member
+      const membersWithRoles = await Promise.all(
+        allMembers.map(async (member: any) => {
+          const roles = member.roles || [];
+          return {
+            ...member,
+            roles
+          };
+        })
+      );
+      
       // Filter members based on user roles
-      const filteredMembers = filterMembersByRole(allMembers, req.member?.roles || ['member'], req.member?.userId || '');
+      const filteredMembers = filterMembersByRole(membersWithRoles, req.member?.roles || ['member'], req.member?.userId || '');
       res.json(filteredMembers);
     } catch (error) {
       console.error("Error fetching members:", error);
