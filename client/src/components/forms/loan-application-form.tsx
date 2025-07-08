@@ -213,7 +213,9 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
         memberId,
         requestedAmount: amount
       });
-      setEligibilityResult(response);
+      
+      const eligibilityData = await response.json();
+      setEligibilityResult(eligibilityData);
     } catch (error) {
       console.error('Error checking eligibility:', error);
       setEligibilityResult(null);
