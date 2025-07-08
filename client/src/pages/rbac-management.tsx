@@ -422,57 +422,61 @@ export default function RBACManagement() {
 
       {/* Manage Permissions Dialog */}
       <Dialog open={isPermissionsDialogOpen} onOpenChange={setIsPermissionsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Manage Permissions for {selectedRole?.displayName}</DialogTitle>
-            <DialogDescription>
-              Select the permissions this role should have
-            </DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="flex-1 px-1">
-            <div className="space-y-6 pr-4">
-              {Object.entries(permissionsByCategory).map(([category, categoryPermissions]) => (
-                <div key={category}>
-                  <h3 className="font-semibold mb-3">{category}</h3>
-                  <div className="space-y-3">
-                    {categoryPermissions.map((permission: Permission) => (
-                      <div key={permission.id} className="flex items-start space-x-3">
-                        <Checkbox
-                          id={`permission-${permission.id}`}
-                          checked={selectedPermissions.includes(permission.id)}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              setSelectedPermissions([...selectedPermissions, permission.id]);
-                            } else {
-                              setSelectedPermissions(selectedPermissions.filter(id => id !== permission.id));
-                            }
-                          }}
-                          className="mt-1"
-                        />
-                        <Label
-                          htmlFor={`permission-${permission.id}`}
-                          className="text-sm font-normal cursor-pointer flex-1 space-y-1"
-                        >
-                          <div className="flex flex-wrap items-baseline gap-x-2">
-                            <span className="font-medium">{permission.displayName}</span>
-                            <span className="text-muted-foreground text-xs">
-                              ({permission.resource}:{permission.action})
-                            </span>
-                          </div>
-                          {permission.description && (
-                            <p className="text-xs text-muted-foreground break-words">
-                              {permission.description}
-                            </p>
-                          )}
-                        </Label>
-                      </div>
-                    ))}
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col p-0">
+          <div className="p-6 pb-0">
+            <DialogHeader>
+              <DialogTitle>Manage Permissions for {selectedRole?.displayName}</DialogTitle>
+              <DialogDescription>
+                Select the permissions this role should have
+              </DialogDescription>
+            </DialogHeader>
+          </div>
+          <div className="flex-1 overflow-hidden px-6">
+            <ScrollArea className="h-[calc(90vh-200px)] pr-4">
+              <div className="space-y-6 pb-4">
+                {Object.entries(permissionsByCategory).map(([category, categoryPermissions]) => (
+                  <div key={category}>
+                    <h3 className="font-semibold mb-3">{category}</h3>
+                    <div className="space-y-3">
+                      {categoryPermissions.map((permission: Permission) => (
+                        <div key={permission.id} className="flex items-start space-x-3">
+                          <Checkbox
+                            id={`permission-${permission.id}`}
+                            checked={selectedPermissions.includes(permission.id)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedPermissions([...selectedPermissions, permission.id]);
+                              } else {
+                                setSelectedPermissions(selectedPermissions.filter(id => id !== permission.id));
+                              }
+                            }}
+                            className="mt-1"
+                          />
+                          <Label
+                            htmlFor={`permission-${permission.id}`}
+                            className="text-sm font-normal cursor-pointer flex-1 space-y-1"
+                          >
+                            <div className="flex flex-wrap items-baseline gap-x-2">
+                              <span className="font-medium">{permission.displayName}</span>
+                              <span className="text-muted-foreground text-xs">
+                                ({permission.resource}:{permission.action})
+                              </span>
+                            </div>
+                            {permission.description && (
+                              <p className="text-xs text-muted-foreground break-words">
+                                {permission.description}
+                              </p>
+                            )}
+                          </Label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-          <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+          <div className="flex justify-end gap-2 p-6 pt-0 mt-4 border-t">
             <Button variant="outline" onClick={() => setIsPermissionsDialogOpen(false)}>
               Cancel
             </Button>
