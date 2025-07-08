@@ -40,6 +40,23 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
+import { Plus, Edit, Trash2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const adminSettingsSchema = z.object({
   // System Configuration
@@ -84,7 +101,7 @@ export default function AdminSettingsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
-  const [activeTab, setActiveTab] = useState<'system' | 'security' | 'email' | 'notifications' | 'business' | 'maintenance'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'security' | 'email' | 'notifications' | 'business' | 'maintenance' | 'loantypes'>('system');
 
   // Load system settings
   const { data: systemSettings, isLoading } = useQuery({
@@ -171,6 +188,31 @@ export default function AdminSettingsPage() {
     updateSettingsMutation.mutate(data);
   };
 
+  // Load loan types for management
+  const { data: loanTypes } = useQuery({
+    queryKey: ['/api/loan-types'],
+  });
+
+  const createLoanTypeMutation = useMutation({
+    mutationFn: async (data: any) => {
+      return await apiRequest('POST', '/api/loan-types', data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Loan Type Created",
+        description: "New loan type has been created successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-types'] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Creation Failed",
+        description: error.message || "Failed to create loan type. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const TabButton = ({ tab, icon: Icon, label, isActive }: { 
     tab: typeof activeTab, 
     icon: React.ComponentType<any>, 
@@ -254,6 +296,12 @@ export default function AdminSettingsPage() {
             icon={Database}
             label="Backup & Maintenance"
             isActive={activeTab === 'maintenance'}
+          />
+          <TabButton
+            tab="loantypes"
+            icon={CreditCard}
+            label="Loan Types"
+            isActive={activeTab === 'loantypes'}
           />
         </div>
 
@@ -882,6 +930,76 @@ export default function AdminSettingsPage() {
                 </div>
               )}
 
+              {/* Loan Types Tab */}
+              {activeTab === 'loantypes' && (
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-medium mb-4">Loan Type Management</h3>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Create and manage loan types, interest rates, and lending terms
+                    </p>
+                  </div>
+
+                  <Card>
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <CreditCard className="h-4 w-4" />
+                          Loan Types
+                        </CardTitle>
+                        <LoanTypeFormDialog />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      {loanTypes && loanTypes.length > 0 ? (
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Interest Rate</TableHead>
+                              <TableHead>Min Amount</TableHead>
+                              <TableHead>Max Amount</TableHead>
+                              <TableHead>Min Term</TableHead>
+                              <TableHead>Max Term</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {loanTypes.map((loanType: any) => (
+                              <TableRow key={loanType.id}>
+                                <TableCell className="font-medium">
+                                  {loanType.displayName}
+                                </TableCell>
+                                <TableCell>{loanType.interestRate}%</TableCell>
+                                <TableCell>UGX {loanType.minAmount?.toLocaleString()}</TableCell>
+                                <TableCell>UGX {loanType.maxAmount?.toLocaleString()}</TableCell>
+                                <TableCell>{loanType.minTermMonths} months</TableCell>
+                                <TableCell>{loanType.maxTermMonths} months</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-2">
+                                    <Button variant="ghost" size="sm">
+                                      <Edit className="h-4 w-4" />
+                                    </Button>
+                                    <Button variant="ghost" size="sm">
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      ) : (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground mb-4">No loan types configured</p>
+                          <LoanTypeFormDialog />
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
               <div className="flex justify-end gap-4 pt-4 border-t">
                 <Button variant="outline" onClick={() => navigate('/')}>
                   Cancel
@@ -898,5 +1016,433 @@ export default function AdminSettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+// Loan Type Form Dialog Component
+function LoanTypeFormDialog() {
+  const [open, setOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const loanTypeSchema = z.object({
+    name: z.string().min(1, "Name is required"),
+    displayName: z.string().min(1, "Display name is required"),
+    description: z.string().min(1, "Description is required"),
+    interestRate: z.number().min(0, "Interest rate must be positive"),
+    interestCalculationMethod: z.enum(["simple", "compound", "reducing_balance"]),
+    compoundingFrequency: z.enum(["monthly", "quarterly", "annually"]).optional(),
+    minAmount: z.number().min(1, "Minimum amount must be positive"),
+    maxAmount: z.number().min(1, "Maximum amount must be positive"),
+    minTermMonths: z.number().min(1, "Minimum term must be at least 1 month"),
+    maxTermMonths: z.number().min(1, "Maximum term must be at least 1 month"),
+    requiresGuarantors: z.boolean().default(false),
+    maxGuarantors: z.number().min(0).optional(),
+    processingFeePercentage: z.number().min(0).max(100).default(0),
+    isActive: z.boolean().default(true),
+  });
+
+  type LoanTypeFormData = z.infer<typeof loanTypeSchema>;
+
+  const form = useForm<LoanTypeFormData>({
+    resolver: zodResolver(loanTypeSchema),
+    defaultValues: {
+      name: "",
+      displayName: "",
+      description: "",
+      interestRate: 12,
+      interestCalculationMethod: "reducing_balance",
+      compoundingFrequency: "monthly",
+      minAmount: 50000,
+      maxAmount: 5000000,
+      minTermMonths: 1,
+      maxTermMonths: 24,
+      requiresGuarantors: false,
+      maxGuarantors: 0,
+      processingFeePercentage: 0,
+      isActive: true,
+    },
+  });
+
+  const createLoanTypeMutation = useMutation({
+    mutationFn: async (data: LoanTypeFormData) => {
+      return await apiRequest('POST', '/api/loan-types', data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Loan Type Created",
+        description: "New loan type has been created successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-types'] });
+      setOpen(false);
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Creation Failed",
+        description: error.message || "Failed to create loan type. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleSubmit = (data: LoanTypeFormData) => {
+    if (data.maxAmount < data.minAmount) {
+      toast({
+        title: "Validation Error",
+        description: "Maximum amount must be greater than minimum amount.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (data.maxTermMonths < data.minTermMonths) {
+      toast({
+        title: "Validation Error",
+        description: "Maximum term must be greater than minimum term.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createLoanTypeMutation.mutate(data);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Loan Type
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Create New Loan Type</DialogTitle>
+          <DialogDescription>
+            Configure a new loan product with interest rates, terms, and requirements.
+          </DialogDescription>
+        </DialogHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+            {/* Basic Information */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Internal Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="emergency_loan" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Internal identifier (lowercase, no spaces)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="displayName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Display Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Emergency Loan" {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Name shown to users
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Quick financial assistance for urgent needs..."
+                      className="resize-none"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Detailed description of the loan product
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Interest Configuration */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <FormField
+                control={form.control}
+                name="interestRate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Interest Rate (%)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.1" 
+                        min="0"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormDescription>Annual interest rate</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="interestCalculationMethod"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Calculation Method</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="simple">Simple Interest</SelectItem>
+                        <SelectItem value="compound">Compound Interest</SelectItem>
+                        <SelectItem value="reducing_balance">Reducing Balance</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('interestCalculationMethod') === 'compound' && (
+                <FormField
+                  control={form.control}
+                  name="compoundingFrequency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Compounding</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="monthly">Monthly</SelectItem>
+                          <SelectItem value="quarterly">Quarterly</SelectItem>
+                          <SelectItem value="annually">Annually</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            {/* Amount Limits */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="minAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Minimum Amount (UGX)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="1"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="maxAmount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Maximum Amount (UGX)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="1"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Term Limits */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="minTermMonths"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Minimum Term (months)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="1"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="maxTermMonths"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Maximum Term (months)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="1"
+                        {...field}
+                        onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Guarantor Requirements */}
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="requiresGuarantors"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between space-y-0">
+                    <div className="space-y-1">
+                      <FormLabel>Requires Guarantors</FormLabel>
+                      <FormDescription>
+                        Whether this loan type requires guarantors
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+
+              {form.watch('requiresGuarantors') && (
+                <FormField
+                  control={form.control}
+                  name="maxGuarantors"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Maximum Guarantors</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number" 
+                          min="1"
+                          max="10"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value))}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Maximum number of guarantors allowed
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </div>
+
+            {/* Additional Settings */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="processingFeePercentage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Processing Fee (%)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        step="0.1"
+                        min="0"
+                        max="100"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Percentage of loan amount charged as processing fee
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="isActive"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between space-y-0">
+                    <div className="space-y-1">
+                      <FormLabel>Active</FormLabel>
+                      <FormDescription>
+                        Whether this loan type is available for applications
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch checked={field.value} onCheckedChange={field.onChange} />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="flex justify-end gap-4 pt-4 border-t">
+              <Button variant="outline" type="button" onClick={() => setOpen(false)}>
+                Cancel
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={createLoanTypeMutation.isPending}
+              >
+                {createLoanTypeMutation.isPending ? "Creating..." : "Create Loan Type"}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 }
