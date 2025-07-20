@@ -124,19 +124,19 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
       const memberData = {
         fullName: accountName,
         nationalId: `STMT${accountNumber}`, // Use account number as temporary ID
-        phoneNumber: '',
-        email: '',
+        phoneNumber: '0700000000',
+        email: `${accountName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
         department: 'Import',
-        monthlySavings: '0',
+        monthlySavings: '100000',
         shareContribution: '20000',
         numberOfShares: 4,
         status: 'active' as const,
         membershipDate: new Date(),
-        gender: '',
-        averageNetPay: 0,
+        gender: 'male' as const, // Set valid gender
+        averageNetPay: Math.round(closingBalance / 12).toString(), // Convert to string
         staffAccountNumber: accountNumber,
-        nextOfKinName: '',
-        nextOfKinPhone: ''
+        nextOfKinName: 'Next of Kin',
+        nextOfKinPhone: '0700000000'
       };
 
       // Check if member already exists
