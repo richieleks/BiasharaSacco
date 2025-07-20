@@ -44,10 +44,18 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
   };
 
   try {
-    // Dynamic import of XLSX to handle ES module issues
-    const XLSX = await import('xlsx');
+    // Use require for XLSX to avoid ES module issues
+    const XLSX = require('xlsx');
+    
+    // Check if file exists
+    const fs = require('fs');
+    if (!fs.existsSync(filePath)) {
+      result.errors.push({ row: 0, error: `File not found: ${filePath}` });
+      return result;
+    }
     
     // Read the Excel file
+    console.log('Reading file from:', filePath);
     const workbook = XLSX.readFile(filePath);
     console.log('Workbook sheets:', workbook.SheetNames);
     const sheetName = workbook.SheetNames[0]; // Use first sheet
