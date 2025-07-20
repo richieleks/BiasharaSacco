@@ -57,6 +57,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { action: 'read', resource: 'savings' },
     { action: 'read', resource: 'reports' },
     { action: 'read', resource: 'guarantors' },
+    { action: 'read', resource: 'interest-calculations' },
+    { action: 'create', resource: 'interest-calculations' },
+    { action: 'update', resource: 'interest-calculations' },
   ],
   
   committee: [
