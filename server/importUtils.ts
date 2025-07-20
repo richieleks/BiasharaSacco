@@ -228,7 +228,7 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
                 description: details,
                 transactionDate: new Date(postingDate),
                 referenceNumber: `STMT-${accountNumber}-${i + 1}`,
-                processedBy: 'system',
+                processedBy: '43104392', // Use admin user ID for automated imports
                 status: 'completed' as const
               };
 
