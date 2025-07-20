@@ -2381,7 +2381,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Data Import API endpoints
-  app.post('/api/import/savings', isAuthenticated, requirePermission('create', 'members'), async (req: any, res) => {
+  app.post('/api/import/savings', isAuthenticated, async (req: any, res) => {
     try {
       const { importSavingsFromExcel } = await import('./importUtils');
       

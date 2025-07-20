@@ -45,7 +45,7 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
 
   try {
     // Dynamic import of XLSX to handle ES module issues
-    const XLSX = require('xlsx');
+    const XLSX = await import('xlsx');
     
     // Read the Excel file
     const workbook = XLSX.readFile(filePath);
