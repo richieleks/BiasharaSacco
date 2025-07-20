@@ -14,7 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { type Member, type MemberWithDetails } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Edit, User, Phone, Mail, MapPin, Calendar, CreditCard, Building, Users } from "lucide-react";
+import { ArrowLeft, Edit, User, Phone, Mail, MapPin, Calendar, CreditCard, Building, Users, Eye, FileText, Calculator } from "lucide-react";
 import { format } from "date-fns";
 import { z } from "zod";
 
@@ -947,26 +947,62 @@ export default function MemberDetails() {
           <CardContent>
             <div className="space-y-4">
               {loans.map((loan: any) => (
-                <div key={loan.id} className="flex justify-between items-center p-4 border rounded-lg">
-                  <div>
-                    <p className="font-medium">{loan.loanType}</p>
-                    <p className="text-sm text-muted-foreground">Applied: {loan.applicationDate ? (() => {
-                      try {
-                        return format(new Date(loan.applicationDate), 'PP');
-                      } catch {
-                        return 'Invalid date';
-                      }
-                    })() : 'Date not available'}</p>
+                <div key={loan.id} className="flex justify-between items-center p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <p className="font-medium">{loan.loanType}</p>
+                      <Badge className={`${
+                        loan.status === 'approved' || loan.status === 'active' ? 'bg-green-100 text-green-800' :
+                        loan.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                        'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {loan.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Loan #{loan.loanNumber} • Applied: {loan.applicationDate ? (() => {
+                        try {
+                          return format(new Date(loan.applicationDate), 'PP');
+                        } catch {
+                          return 'Invalid date';
+                        }
+                      })() : 'Date not available'}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLocation(`/loans?loanId=${loan.id}`)}
+                        className="text-xs"
+                      >
+                        <Eye className="mr-1 h-3 w-3" />
+                        View Details
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLocation(`/loans/${loan.id}/statement`)}
+                        className="text-xs"
+                      >
+                        <FileText className="mr-1 h-3 w-3" />
+                        Statement
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLocation(`/loans/${loan.id}/amortization`)}
+                        className="text-xs"
+                      >
+                        <Calculator className="mr-1 h-3 w-3" />
+                        Schedule
+                      </Button>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-medium">UGX {parseFloat(loan.principalAmount || loan.amount || 0).toLocaleString()}</p>
-                    <Badge className={`${
-                      loan.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      loan.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {loan.status}
-                    </Badge>
+                  <div className="text-right ml-4">
+                    <p className="font-semibold text-lg">UGX {parseFloat(loan.principalAmount || loan.amount || 0).toLocaleString()}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Outstanding: UGX {parseFloat(loan.outstandingBalance || 0).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               ))}

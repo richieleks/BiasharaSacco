@@ -942,6 +942,28 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
+  async getTransactionsByLoan(loanId: number): Promise<TransactionWithDetails[]> {
+    const results = await db
+      .select()
+      .from(transactions)
+      .leftJoin(members, eq(transactions.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .leftJoin(savingsAccounts, eq(transactions.savingsAccountId, savingsAccounts.id))
+      .leftJoin(loans, eq(transactions.loanId, loans.id))
+      .where(eq(transactions.loanId, loanId))
+      .orderBy(desc(transactions.transactionDate));
+
+    return results.map(result => ({
+      ...result.transactions,
+      member: result.members ? {
+        ...result.members,
+        user: result.users || undefined,
+      } : undefined,
+      savingsAccount: result.savings_accounts || undefined,
+      loan: result.loans || undefined,
+    }));
+  }
+
   async getRecentTransactions(limit = 10): Promise<TransactionWithDetails[]> {
     const results = await db
       .select()

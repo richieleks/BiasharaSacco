@@ -917,6 +917,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get specific loan by ID
+  app.get('/api/loans/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+
+      const loan = await storage.getLoan(loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      res.json(loan);
+    } catch (error) {
+      console.error("Error fetching loan:", error);
+      res.status(500).json({ message: "Failed to fetch loan" });
+    }
+  });
+
+  // Get loan transactions/statement
+  app.get('/api/loans/:id/transactions', isAuthenticated, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: "Invalid loan ID" });
+      }
+
+      const transactions = await storage.getTransactionsByLoan(loanId);
+      res.json(transactions);
+    } catch (error) {
+      console.error("Error fetching loan transactions:", error);
+      res.status(500).json({ message: "Failed to fetch loan transactions" });
+    }
+  });
+
   // Advanced loan approval endpoints
   app.get('/api/loans/approval/:stage', isAuthenticated, async (req: any, res) => {
     try {

@@ -34,6 +34,7 @@ import Settings from "@/pages/settings";
 import AdminSettings from "@/pages/admin-settings";
 import Profile from "@/pages/profile";
 import AccountStatement from "@/pages/account-statement";
+import LoanStatement from "@/pages/loan-statement";
 import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 
@@ -94,6 +95,11 @@ function Router() {
             <Route path="/savings/:id/statement">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'savings' }}>
                 <AccountStatement />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/loans/:id/statement">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'loans' }}>
+                <LoanStatement />
               </ProtectedRoute>
             </Route>
             <Route path="/loans">
