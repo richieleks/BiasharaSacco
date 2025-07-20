@@ -49,6 +49,7 @@ export default function Savings() {
 
   const { data: statementData, isLoading: statementLoading } = useQuery<{account: any, transactions: any[]}>({
     queryKey: ['/api/savings-accounts', selectedAccountId, 'statement'],
+    queryFn: () => fetch(`/api/savings-accounts/${selectedAccountId}/statement`).then(res => res.json()),
     enabled: !!selectedAccountId && isStatementModalOpen,
   });
 
