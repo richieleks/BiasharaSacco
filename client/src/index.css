@@ -108,22 +108,82 @@
   }
 }
 
-/* Fix modal transparency issues */
+/* Fix modal and overlay transparency issues */
 @layer components {
-  /* Ensure dialog overlay has solid background */
-  [data-radix-dialog-overlay] {
+  /* Ensure all dialog overlays have solid background */
+  [data-radix-dialog-overlay],
+  [data-radix-alert-dialog-overlay],
+  [data-radix-sheet-overlay] {
     background-color: rgba(0, 0, 0, 0.8) !important;
   }
   
-  /* Ensure dialog content has solid background */
-  [data-radix-dialog-content] {
+  /* Ensure dialog and sheet content have solid background */
+  [data-radix-dialog-content],
+  [data-radix-alert-dialog-content],
+  [data-radix-sheet-content] {
     background-color: white !important;
     border: 1px solid hsl(var(--border)) !important;
   }
   
-  /* Dark mode support for dialog content */
-  .dark [data-radix-dialog-content] {
+  /* Dark mode support for all dialog content */
+  .dark [data-radix-dialog-content],
+  .dark [data-radix-alert-dialog-content],
+  .dark [data-radix-sheet-content] {
     background-color: hsl(var(--background)) !important;
     color: hsl(var(--foreground)) !important;
+  }
+  
+  /* Fix any remaining transparency issues in cards and components */
+  .bg-transparent {
+    background-color: white !important;
+  }
+  
+  .dark .bg-transparent {
+    background-color: hsl(var(--background)) !important;
+  }
+  
+  /* Ensure dropdowns and popovers have solid backgrounds */
+  [data-radix-popper-content-wrapper],
+  [data-radix-select-content],
+  [data-radix-dropdown-menu-content],
+  [data-radix-popover-content],
+  [data-radix-context-menu-content],
+  [data-radix-menubar-content],
+  [data-radix-navigation-menu-content] {
+    background-color: white !important;
+    border: 1px solid hsl(var(--border)) !important;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1) !important;
+  }
+  
+  /* Dark mode support for dropdowns and popovers */
+  .dark [data-radix-popper-content-wrapper],
+  .dark [data-radix-select-content],
+  .dark [data-radix-dropdown-menu-content],
+  .dark [data-radix-popover-content],
+  .dark [data-radix-context-menu-content],
+  .dark [data-radix-menubar-content],
+  .dark [data-radix-navigation-menu-content] {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+  
+  /* Fix tooltip transparency */
+  [data-radix-tooltip-content] {
+    background-color: hsl(var(--primary)) !important;
+    color: hsl(var(--primary-foreground)) !important;
+    border: none !important;
+  }
+  
+  /* Ensure cards and panels have solid backgrounds */
+  .bg-card,
+  .bg-background,
+  .bg-popover {
+    background-color: white !important;
+  }
+  
+  .dark .bg-card,
+  .dark .bg-background,
+  .dark .bg-popover {
+    background-color: hsl(var(--background)) !important;
   }
 }
