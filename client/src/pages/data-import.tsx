@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Users, PiggyBank } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -25,12 +26,31 @@ interface ImportResult {
 
 export default function DataImport() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   const importMutation = useMutation({
     mutationFn: async (): Promise<ImportResult> => {
-      return await apiRequest('POST', '/api/import/savings');
+      if (!selectedFile) {
+        throw new Error('Please select a file to import');
+      }
+      
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      
+      const response = await fetch('/api/import/savings', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Import failed: ${response.statusText}`);
+      }
+      
+      return await response.json();
     },
     onSuccess: (data: ImportResult) => {
       setImportResult(data);
@@ -53,16 +73,41 @@ export default function DataImport() {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
     },
     onError: (error) => {
-      console.error('Import failed:', error);
+      console.error("Import failed:", error);
       toast({
         title: "Import Failed",
-        description: error instanceof Error ? error.message : "Failed to import data",
+        description: error instanceof Error ? error.message : "Unknown error occurred",
         variant: "destructive",
       });
     },
   });
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type
+      if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
+        toast({
+          title: "Invalid File Type",
+          description: "Please select an Excel file (.xlsx or .xls)",
+          variant: "destructive",
+        });
+        return;
+      }
+      setSelectedFile(file);
+      setImportResult(null); // Clear previous results
+    }
+  };
+
   const handleImport = () => {
+    if (!selectedFile) {
+      toast({
+        title: "No File Selected",
+        description: "Please select an Excel file to import",
+        variant: "destructive",
+      });
+      return;
+    }
     importMutation.mutate();
   };
 
@@ -77,32 +122,52 @@ export default function DataImport() {
         <p className="text-slate-600 mt-1">Import customer savings accounts from Excel files</p>
       </div>
 
-      {/* Import Card */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5" />
-            Import Savings Accounts
-          </CardTitle>
-          <CardDescription>
-            Import customer savings account data from the attached Excel file (savings_1753029560040.xlsx)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {/* File Info */}
-            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg">
-              <FileSpreadsheet className="h-8 w-8 text-green-600" />
-              <div>
-                <p className="font-medium">savings_1753029560040.xlsx</p>
-                <p className="text-sm text-slate-600">Excel file containing customer savings data</p>
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* File Upload Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Upload Excel File
+            </CardTitle>
+            <CardDescription>
+              Select an Excel file containing customer savings account data
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="file-upload">Select Excel File</Label>
+              <Input
+                id="file-upload"
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileSelect}
+                ref={fileInputRef}
+                className="cursor-pointer"
+              />
+              <p className="text-sm text-muted-foreground">
+                Supported formats: .xlsx, .xls
+              </p>
             </div>
+            
+            {selectedFile && (
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className="h-8 w-8 text-blue-600" />
+                  <div>
+                    <div className="font-medium text-blue-900">{selectedFile.name}</div>
+                    <div className="text-sm text-blue-600">
+                      {(selectedFile.size / 1024).toFixed(1)} KB • Ready for import
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Import Button */}
             <Button 
               onClick={handleImport}
-              disabled={importMutation.isPending}
+              disabled={importMutation.isPending || !selectedFile}
               className="w-full"
             >
               {importMutation.isPending ? (
@@ -117,22 +182,47 @@ export default function DataImport() {
                 </>
               )}
             </Button>
+          </CardContent>
+        </Card>
 
-            {/* Expected Data Format */}
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Expected columns:</strong> Full Name, National ID, Phone Number, Email, Department, Balance, Account Type.
-                The system will automatically map various column name formats and create member profiles with savings accounts.
-              </AlertDescription>
-            </Alert>
-          </div>
-        </CardContent>
-      </Card>
+        {/* Instructions Card */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5" />
+              Import Instructions
+            </CardTitle>
+            <CardDescription>
+              Follow these guidelines for successful data import
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <h4 className="font-medium mb-2">Expected Excel Format:</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• Column headers in the first row</li>
+                <li>• Full Name, ID Number, Phone Number</li>
+                <li>• Email, Department (optional)</li>
+                <li>• Account Balance, Account Type</li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-2">What happens during import:</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• New member profiles are created automatically</li>
+                <li>• Savings accounts are set up with imported balances</li>
+                <li>• Duplicate ID numbers are automatically handled</li>
+                <li>• Invalid data rows are reported for review</li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Import Results */}
       {importResult && (
-        <Card>
+        <Card className="mt-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               {importResult.success ? (
@@ -146,17 +236,20 @@ export default function DataImport() {
               Results from importing savings account data
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-4">
             {/* Progress Bar */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
                 <span>Progress</span>
                 <span>{progressPercentage}%</span>
               </div>
-              <Progress value={progressPercentage} className="h-2" />
+              <Progress value={progressPercentage} className="w-full" />
+              <span className="text-xs text-muted-foreground">
+                {importResult.successfulImports} of {importResult.totalRows} records processed successfully
+              </span>
             </div>
 
-            {/* Summary Stats */}
+            {/* Statistics Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-4 bg-blue-50 rounded-lg">
                 <div className="text-2xl font-bold text-blue-600">{importResult.totalRows}</div>
@@ -176,16 +269,6 @@ export default function DataImport() {
               </div>
             </div>
 
-            {/* Success/Error Status */}
-            <div className="flex items-center gap-2">
-              <Badge variant={importResult.success ? "default" : "destructive"}>
-                {importResult.success ? "Success" : "Completed with Errors"}
-              </Badge>
-              <span className="text-sm text-slate-600">
-                {importResult.successfulImports} of {importResult.totalRows} records processed successfully
-              </span>
-            </div>
-
             {/* Errors List */}
             {importResult.errors && importResult.errors.length > 0 && (
               <div className="space-y-2">
@@ -200,12 +283,9 @@ export default function DataImport() {
                       <AlertDescription>
                         <strong>Row {error.row}:</strong> {error.error}
                         {error.data && (
-                          <details className="mt-2">
-                            <summary className="cursor-pointer text-sm">Show data</summary>
-                            <pre className="text-xs mt-1 p-2 bg-red-50 rounded overflow-x-auto">
-                              {JSON.stringify(error.data, null, 2)}
-                            </pre>
-                          </details>
+                          <div className="mt-1 text-xs">
+                            Data: {JSON.stringify(error.data, null, 2)}
+                          </div>
                         )}
                       </AlertDescription>
                     </Alert>
@@ -213,54 +293,6 @@ export default function DataImport() {
                 </div>
               </div>
             )}
-
-            {/* Success Summary */}
-            {importResult.success && (
-              <Alert>
-                <CheckCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <strong>Import completed successfully!</strong> All customer savings accounts have been imported into the system. 
-                  You can now view the imported members and their savings accounts in the Members and Savings sections.
-                </AlertDescription>
-              </Alert>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Instructions */}
-      {!importResult && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Import Instructions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid md:grid-cols-2 gap-6">
-              <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  Member Creation
-                </h4>
-                <ul className="text-sm text-slate-600 space-y-1">
-                  <li>• Automatically creates new member profiles</li>
-                  <li>• Generates unique member numbers (IMP000001, etc.)</li>
-                  <li>• Maps Excel columns to member fields</li>
-                  <li>• Skips existing members (by National ID)</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-medium mb-2 flex items-center gap-2">
-                  <PiggyBank className="h-4 w-4" />
-                  Savings Accounts
-                </h4>
-                <ul className="text-sm text-slate-600 space-y-1">
-                  <li>• Creates savings accounts for positive balances</li>
-                  <li>• Generates unique account numbers</li>
-                  <li>• Sets account type (regular by default)</li>
-                  <li>• Links accounts to member profiles</li>
-                </ul>
-              </div>
-            </div>
           </CardContent>
         </Card>
       )}

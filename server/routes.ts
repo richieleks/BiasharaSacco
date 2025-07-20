@@ -2381,12 +2381,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Data Import API endpoints
-  app.post('/api/import/savings', isAuthenticated, async (req: any, res) => {
+  const multer = await import('multer');
+  const upload = multer.default({ dest: 'uploads/' });
+  
+  app.post('/api/import/savings', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       const { importSavingsFromExcel } = await import('./importUtils');
       
-      // For now, we'll use the attached file directly
-      const filePath = 'attached_assets/savings_1753029560040.xlsx';
+      // Use uploaded file or fallback to attached file
+      const filePath = req.file ? req.file.path : './attached_assets/savings_1753029560040.xlsx';
       
       console.log('Starting import from:', filePath);
       const result = await importSavingsFromExcel(filePath);
@@ -2404,6 +2407,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error importing savings data:', error);
       res.status(500).json({ message: 'Failed to import savings data', error: error instanceof Error ? error.message : 'Unknown error' });
+    } finally {
+      // Clean up uploaded file if it exists
+      if (req.file) {
+        const fs = await import('fs');
+        try {
+          await fs.promises.unlink(req.file.path);
+        } catch (unlinkError) {
+          console.error('Error cleaning up uploaded file:', unlinkError);
+        }
+      }
     }
   });
 
