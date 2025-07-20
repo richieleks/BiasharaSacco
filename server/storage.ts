@@ -72,6 +72,7 @@ export interface IStorage {
   getMemberByUserId(userId: string): Promise<MemberWithDetails | undefined>;
   updateMember(id: number, updates: Partial<InsertMember>): Promise<Member>;
   getAllMembers(): Promise<MemberWithDetails[]>;
+  getMembersCount(): Promise<number>;
   searchMembers(query: string): Promise<MemberWithDetails[]>;
   getPendingMembers(): Promise<MemberWithDetails[]>;
   approveMember(id: number, approvedBy: string, comments?: string): Promise<Member>;
