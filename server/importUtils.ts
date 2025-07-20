@@ -123,7 +123,7 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
       // Create member data from the bank statement
       const memberData = {
         fullName: accountName,
-        nationalId: `STMT${accountNumber}`, // Use account number as temporary ID
+        idNumber: `STMT${accountNumber}`, // Use correct field name
         phoneNumber: '0700000000',
         email: `${accountName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
         department: 'Import',
@@ -132,15 +132,15 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
         numberOfShares: 4,
         status: 'active' as const,
         membershipDate: new Date(),
-        gender: 'male' as const, // Set valid gender
-        averageNetPay: Math.round(closingBalance / 12).toString(), // Convert to string
+        gender: 'male' as const,
+        averageNetPay: Math.round(closingBalance / 12).toString(),
         staffAccountNumber: accountNumber,
         nextOfKinName: 'Next of Kin',
         nextOfKinPhone: '0700000000'
       };
 
       // Check if member already exists
-      const existingMember = await storage.getMemberByIdNumber(memberData.nationalId);
+      const existingMember = await storage.getMemberByIdNumber(memberData.idNumber);
       
       let member;
       if (existingMember) {
