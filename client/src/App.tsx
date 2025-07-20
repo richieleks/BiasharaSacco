@@ -33,6 +33,7 @@ import RoleManagement from "@/pages/role-management";
 import Settings from "@/pages/settings";
 import AdminSettings from "@/pages/admin-settings";
 import Profile from "@/pages/profile";
+import AccountStatement from "@/pages/account-statement";
 import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 
@@ -70,7 +71,7 @@ function Router() {
         <main className="flex-1 p-4 lg:p-6 xl:p-8 transition-all duration-300 ease-in-out">{/* Mobile padding offset for menu button */}
           <div className="lg:hidden h-16"></div>
           <Switch>
-            <Route path="/" exact>
+            <Route path="/">
               <ProtectedRoute>
                 <Dashboard />
               </ProtectedRoute>
@@ -88,6 +89,11 @@ function Router() {
             <Route path="/savings">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'savings' }}>
                 <Savings />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/savings/:id/statement">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'savings' }}>
+                <AccountStatement />
               </ProtectedRoute>
             </Route>
             <Route path="/loans">

@@ -11,10 +11,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Pagination } from "@/components/ui/pagination";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import DepositForm from "@/components/forms/deposit-form";
 import WithdrawalForm from "@/components/forms/withdrawal-form";
-import { Search, Plus, ArrowUp, ArrowDown, Wallet, PiggyBank, FileText, Download } from "lucide-react";
+import { Search, Plus, ArrowUp, ArrowDown, Wallet, PiggyBank, FileText } from "lucide-react";
 
 export default function Savings() {
   const [location] = useLocation();
@@ -22,8 +21,7 @@ export default function Savings() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
-  const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
-  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false);
+
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -47,11 +45,7 @@ export default function Savings() {
     enabled: isAuthenticated,
   });
 
-  const { data: statementData, isLoading: statementLoading } = useQuery<{account: any, transactions: any[]}>({
-    queryKey: ['/api/savings-accounts', selectedAccountId, 'statement'],
-    queryFn: () => fetch(`/api/savings-accounts/${selectedAccountId}/statement`).then(res => res.json()),
-    enabled: !!selectedAccountId && isStatementModalOpen,
-  });
+
 
   // Filter savings accounts based on search query
   const filteredSavingsAccounts = (allSavingsAccounts || []).filter((account: any) => {
@@ -102,34 +96,10 @@ export default function Savings() {
   };
 
   const handleViewStatement = (accountId: number) => {
-    setSelectedAccountId(accountId);
-    setIsStatementModalOpen(true);
+    window.location.href = `/savings/${accountId}/statement`;
   };
 
-  const handleDownloadStatement = () => {
-    if (!statementData) return;
-    
-    const { account, transactions } = statementData;
-    const csvContent = [
-      ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Balance'],
-      ...(transactions || []).map((txn: any) => [
-        new Date(txn.createdAt).toLocaleDateString(),
-        txn.description || txn.transactionType,
-        txn.referenceNumber || '',
-        txn.transactionType === 'withdrawal' ? `UGX ${parseFloat(txn.amount || '0').toLocaleString()}` : '',
-        txn.transactionType === 'deposit' ? `UGX ${parseFloat(txn.amount || '0').toLocaleString()}` : '',
-        '' // Balance would need to be calculated
-      ])
-    ].map(row => row.join(',')).join('\n');
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `statement-${account?.accountNumber || 'account'}-${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    window.URL.revokeObjectURL(url);
-  };
+
 
   if (error && isUnauthorizedError(error)) {
     return null; // Will redirect in useEffect
@@ -329,145 +299,7 @@ export default function Savings() {
         </Card>
       )}
 
-      {/* Account Statement Modal */}
-      <Dialog open={isStatementModalOpen} onOpenChange={setIsStatementModalOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
-          <DialogHeader>
-            <DialogTitle className="flex items-center space-x-2">
-              <FileText className="w-5 h-5" />
-              <span>Account Statement</span>
-            </DialogTitle>
-            <DialogDescription>
-              View complete account statement with transaction history
-            </DialogDescription>
-          </DialogHeader>
-          
-          {statementLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : statementData ? (
-            <div className="space-y-4">
-              {/* Account Info */}
-              <Card>
-                <CardContent className="pt-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div>
-                      <div className="text-sm text-slate-500">Account Number</div>
-                      <div className="font-medium">{statementData.account?.accountNumber || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-slate-500">Account Type</div>
-                      <div className="font-medium">{statementData.account?.accountType?.replace('_', ' ') || 'N/A'}</div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-slate-500">Current Balance</div>
-                      <div className="font-medium text-lg text-green-600">
-                        UGX {parseFloat(statementData.account?.balance || '0').toLocaleString()}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-sm text-slate-500">Status</div>
-                      <Badge className={getStatusColor(statementData.account?.status || 'active')}>
-                        {statementData.account?.status || 'active'}
-                      </Badge>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
 
-              {/* Actions */}
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-medium">Transaction History</h3>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleDownloadStatement}
-                  className="text-green-600 border-green-300 hover:bg-green-50"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Download CSV
-                </Button>
-              </div>
-
-              {/* Transactions Table */}
-              <div className="border rounded-lg overflow-hidden max-h-96 overflow-y-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Reference</TableHead>
-                      <TableHead className="text-right">Debit</TableHead>
-                      <TableHead className="text-right">Credit</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(!statementData.transactions || statementData.transactions.length === 0) ? (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                          No transactions found for this account
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      (statementData.transactions || []).map((transaction: any) => (
-                        <TableRow key={transaction.id}>
-                          <TableCell>
-                            {new Date(transaction.createdAt).toLocaleDateString()}
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">
-                                {transaction.description || transaction.transactionType}
-                              </div>
-                              {transaction.transactionType && (
-                                <div className="text-sm text-slate-500 capitalize">
-                                  {transaction.transactionType.replace('_', ' ')}
-                                </div>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-sm text-slate-600">
-                            {transaction.referenceNumber || '-'}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {transaction.transactionType === 'withdrawal' && (
-                              <span className="text-red-600 font-medium">
-                                UGX {parseFloat(transaction.amount || '0').toLocaleString()}
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {transaction.transactionType === 'deposit' && (
-                              <span className="text-green-600 font-medium">
-                                UGX {parseFloat(transaction.amount || '0').toLocaleString()}
-                              </span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={
-                              transaction.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-red-100 text-red-800'
-                            }>
-                              {transaction.status}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-8 text-slate-500">
-              Failed to load account statement
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
