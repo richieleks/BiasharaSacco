@@ -56,7 +56,7 @@ import {
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
-import { eq, desc, sql, like, or, and } from "drizzle-orm";
+import { eq, desc, sql, like, or, and, getTableColumns } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -517,8 +517,17 @@ export class DatabaseStorage implements IStorage {
 
   async getSavingsAccount(id: number): Promise<SavingsAccount | undefined> {
     const [account] = await db
-      .select()
+      .select({
+        ...getTableColumns(savingsAccounts),
+        member: {
+          id: members.id,
+          fullName: members.fullName,
+          memberNumber: members.memberNumber,
+          idNumber: members.idNumber,
+        }
+      })
       .from(savingsAccounts)
+      .leftJoin(members, eq(savingsAccounts.memberId, members.id))
       .where(eq(savingsAccounts.id, id));
     return account || undefined;
   }
