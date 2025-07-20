@@ -560,6 +560,18 @@ export class DatabaseStorage implements IStorage {
     return account;
   }
 
+  async updateSavingsAccountBalanceDirect(id: number, balance: string): Promise<SavingsAccount> {
+    const [account] = await db
+      .update(savingsAccounts)
+      .set({
+        balance: balance,
+        updatedAt: new Date(),
+      })
+      .where(eq(savingsAccounts.id, id))
+      .returning();
+    return account;
+  }
+
   async createLoan(loanData: InsertLoan): Promise<Loan> {
     const [loan] = await db
       .insert(loans)

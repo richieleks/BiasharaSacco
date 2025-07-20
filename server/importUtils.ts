@@ -1,5 +1,5 @@
 import { storage } from './storage';
-import { insertMemberSchema, insertSavingsAccountSchema } from '@shared/schema';
+import { insertMemberSchema, insertSavingsAccountSchema, insertTransactionSchema } from '@shared/schema';
 import { z } from 'zod';
 
 interface ImportedMember {
@@ -176,12 +176,13 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
         console.log(`Created new member: ${member.fullName} (${member.memberNumber})`);
       }
 
-      // Create savings account with the closing balance
+      // Update existing savings account or create if none exists
       if (closingBalance > 0) {
         const existingAccounts = await storage.getSavingsAccountsByMember(member.id);
-        const regularAccount = existingAccounts.find(acc => acc.accountType === 'regular');
+        let regularAccount = existingAccounts.find(acc => acc.accountType === 'regular');
 
         if (!regularAccount) {
+          // Create new savings account only if none exists
           const savingsData = {
             memberId: member.id,
             accountNumber: `SAV${accountNumber}`,
@@ -191,11 +192,54 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
           };
 
           const validatedSavingsData = insertSavingsAccountSchema.parse(savingsData);
-          await storage.createSavingsAccount(validatedSavingsData);
+          regularAccount = await storage.createSavingsAccount(validatedSavingsData);
           result.importedAccounts++;
           console.log(`Created savings account: UGX ${closingBalance.toLocaleString()}`);
         } else {
-          console.log(`Savings account already exists for member ${member.memberNumber}`);
+          // Update existing account balance directly
+          await storage.updateSavingsAccountBalanceDirect(regularAccount.id, closingBalance.toString());
+          console.log(`Updated savings account balance: UGX ${closingBalance.toLocaleString()}`);
+        }
+
+        // Process transaction entries from the bank statement
+        const transactionEntries = [];
+        for (let i = 0; i < transactionRows.length; i++) {
+          const row = transactionRows[i] as any[];
+          if (row.length >= 5 && row[0] && row[1]) {
+            const postingDate = parseExcelDate(row[0]);
+            const details = row[1]?.toString() || '';
+            const debitAmount = parseFloat(row[2]) || 0;
+            const creditAmount = parseFloat(row[3]) || 0;
+            const balance = parseFloat(row[4]) || 0;
+
+            if (creditAmount > 0 || debitAmount > 0) {
+              const transactionData = {
+                memberId: member.id,
+                savingsAccountId: regularAccount.id,
+                type: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
+                amount: (creditAmount > 0 ? creditAmount : debitAmount).toString(),
+                description: details,
+                date: postingDate,
+                referenceNumber: `STMT-${accountNumber}-${i + 1}`,
+                processedBy: 'system'
+              };
+
+              try {
+                const validatedTransactionData = insertTransactionSchema.parse(transactionData);
+                transactionEntries.push(validatedTransactionData);
+              } catch (error) {
+                console.log(`Skipping invalid transaction on row ${i + 1}:`, error);
+              }
+            }
+          }
+        }
+
+        // Bulk create transactions
+        if (transactionEntries.length > 0) {
+          for (const transaction of transactionEntries) {
+            await storage.createTransaction(transaction);
+          }
+          console.log(`Imported ${transactionEntries.length} transaction entries`);
         }
       }
 
@@ -318,4 +362,21 @@ function extractSavingsData(rowData: any, rowIndex: number): any | null {
     balance,
     status: 'active'
   };
+}
+
+// Helper function to parse Excel date values
+function parseExcelDate(excelDate: any): string {
+  if (typeof excelDate === 'number') {
+    // Excel date serial number to JavaScript Date
+    const date = new Date((excelDate - 25569) * 86400 * 1000);
+    return date.toISOString().split('T')[0];
+  } else if (typeof excelDate === 'string') {
+    // Try to parse as date string
+    const date = new Date(excelDate);
+    if (!isNaN(date.getTime())) {
+      return date.toISOString().split('T')[0];
+    }
+  }
+  // Default to today if parsing fails
+  return new Date().toISOString().split('T')[0];
 }
