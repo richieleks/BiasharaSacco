@@ -2526,5 +2526,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ===== INTEREST CALCULATIONS ROUTES =====
+
+  // Financial Years management
+  app.get('/api/financial-years', isAuthenticated, async (req, res) => {
+    try {
+      const financialYears = await storage.getAllFinancialYears();
+      res.json(financialYears);
+    } catch (error) {
+      console.error('Error fetching financial years:', error);
+      res.status(500).json({ message: 'Failed to fetch financial years' });
+    }
+  });
+
+  app.get('/api/financial-years/active', isAuthenticated, async (req, res) => {
+    try {
+      const activeYear = await storage.getActiveFinancialYear();
+      res.json(activeYear);
+    } catch (error) {
+      console.error('Error fetching active financial year:', error);
+      res.status(500).json({ message: 'Failed to fetch active financial year' });
+    }
+  });
+
+  app.post('/api/financial-years', isAuthenticated, async (req, res) => {
+    try {
+      const financialYear = await storage.createFinancialYear(req.body);
+      res.status(201).json(financialYear);
+    } catch (error) {
+      console.error('Error creating financial year:', error);
+      res.status(500).json({ message: 'Failed to create financial year' });
+    }
+  });
+
+  app.put('/api/financial-years/:id/activate', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const financialYear = await storage.setActiveFinancialYear(id);
+      res.json(financialYear);
+    } catch (error) {
+      console.error('Error activating financial year:', error);
+      res.status(500).json({ message: 'Failed to activate financial year' });
+    }
+  });
+
+  // Balance snapshots
+  app.post('/api/balance-snapshots/create-all', isAuthenticated, async (req, res) => {
+    try {
+      const { financialYearId, snapshotDate } = req.body;
+      const snapshots = await storage.createBalanceSnapshotsForAllAccounts(financialYearId, snapshotDate);
+      res.status(201).json(snapshots);
+    } catch (error) {
+      console.error('Error creating balance snapshots:', error);
+      res.status(500).json({ message: 'Failed to create balance snapshots' });
+    }
+  });
+
+  // Interest calculations
+  app.get('/api/interest-calculations', isAuthenticated, async (req, res) => {
+    try {
+      const financialYearId = req.query.financialYearId ? parseInt(req.query.financialYearId as string) : undefined;
+      const calculations = await storage.getInterestCalculations(financialYearId);
+      res.json(calculations);
+    } catch (error) {
+      console.error('Error fetching interest calculations:', error);
+      res.status(500).json({ message: 'Failed to fetch interest calculations' });
+    }
+  });
+
+  app.post('/api/interest-calculations/calculate-all', isAuthenticated, async (req, res) => {
+    try {
+      const { financialYearId } = req.body;
+      const calculations = await storage.calculateInterestForAllMembers(financialYearId);
+      res.status(201).json(calculations);
+    } catch (error) {
+      console.error('Error calculating interest for all members:', error);
+      res.status(500).json({ message: 'Failed to calculate interest' });
+    }
+  });
+
+  app.post('/api/interest-calculations/calculate-member', isAuthenticated, async (req, res) => {
+    try {
+      const { memberId, financialYearId } = req.body;
+      const calculation = await storage.calculateInterestForMember(memberId, financialYearId);
+      res.status(201).json(calculation);
+    } catch (error) {
+      console.error('Error calculating interest for member:', error);
+      res.status(500).json({ message: 'Failed to calculate interest for member' });
+    }
+  });
+
+  app.put('/api/interest-calculations/:id/approve', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const approvedBy = req.user?.claims?.sub;
+      const calculation = await storage.approveInterestCalculation(id, approvedBy);
+      res.json(calculation);
+    } catch (error) {
+      console.error('Error approving interest calculation:', error);
+      res.status(500).json({ message: 'Failed to approve interest calculation' });
+    }
+  });
+
+  app.put('/api/interest-calculations/:id/post', isAuthenticated, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const calculation = await storage.postInterestCalculation(id);
+      res.json(calculation);
+    } catch (error) {
+      console.error('Error posting interest calculation:', error);
+      res.status(500).json({ message: 'Failed to post interest calculation' });
+    }
+  });
+
+  // Interest payments
+  app.get('/api/interest-payments', isAuthenticated, async (req, res) => {
+    try {
+      const financialYearId = req.query.financialYearId ? parseInt(req.query.financialYearId as string) : undefined;
+      const payments = await storage.getInterestPayments(financialYearId);
+      res.json(payments);
+    } catch (error) {
+      console.error('Error fetching interest payments:', error);
+      res.status(500).json({ message: 'Failed to fetch interest payments' });
+    }
+  });
+
+  app.post('/api/interest-payments', isAuthenticated, async (req, res) => {
+    try {
+      const payment = await storage.createInterestPayment(req.body);
+      res.status(201).json(payment);
+    } catch (error) {
+      console.error('Error creating interest payment:', error);
+      res.status(500).json({ message: 'Failed to create interest payment' });
+    }
+  });
+
+  app.put('/api/interest-payments/:id/process', isAuthenticated, async (req: any, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const processedBy = req.user?.claims?.sub;
+      const payment = await storage.processInterestPayment(id, processedBy);
+      res.json(payment);
+    } catch (error) {
+      console.error('Error processing interest payment:', error);
+      res.status(500).json({ message: 'Failed to process interest payment' });
+    }
+  });
+
+  // Interest reports
+  app.get('/api/interest-reports/:financialYearId', isAuthenticated, async (req, res) => {
+    try {
+      const financialYearId = parseInt(req.params.financialYearId);
+      const report = await storage.generateInterestReport(financialYearId);
+      res.json(report);
+    } catch (error) {
+      console.error('Error generating interest report:', error);
+      res.status(500).json({ message: 'Failed to generate interest report' });
+    }
+  });
+
   return httpServer;
 }

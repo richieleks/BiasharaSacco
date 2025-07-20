@@ -10,6 +10,9 @@ import {
   interestRates,
   amortizationSchedules,
   interestCalculations,
+  financialYears,
+  interestPayments,
+  balanceSnapshots,
   notifications,
   loanTypes,
   loanTerms,
@@ -37,6 +40,12 @@ import {
   type InterestCalculation,
   type InsertInterestCalculation,
   type InterestCalculationWithDetails,
+  type FinancialYear,
+  type InsertFinancialYear,
+  type InterestPayment,
+  type InsertInterestPayment,
+  type BalanceSnapshot,
+  type InsertBalanceSnapshot,
   type Notification,
   type InsertNotification,
   type LoanType,
@@ -232,6 +241,32 @@ export interface IStorage {
   getLoanTermsByType(loanTypeId: number): Promise<LoanTerm[]>;
   updateLoanTerm(id: number, updates: Partial<InsertLoanTerm>): Promise<LoanTerm>;
   deleteLoanTerm(id: number): Promise<boolean>;
+
+  // Interest calculations operations
+  createFinancialYear(financialYear: InsertFinancialYear): Promise<FinancialYear>;
+  getFinancialYear(id: number): Promise<FinancialYear | undefined>;
+  getAllFinancialYears(): Promise<FinancialYear[]>;
+  getActiveFinancialYear(): Promise<FinancialYear | undefined>;
+  updateFinancialYear(id: number, updates: Partial<InsertFinancialYear>): Promise<FinancialYear>;
+  setActiveFinancialYear(id: number): Promise<FinancialYear>;
+
+  createBalanceSnapshot(snapshot: InsertBalanceSnapshot): Promise<BalanceSnapshot>;
+  getBalanceSnapshots(savingsAccountId: number, financialYearId?: number): Promise<BalanceSnapshot[]>;
+  createBalanceSnapshotsForAllAccounts(financialYearId: number, snapshotDate: string): Promise<BalanceSnapshot[]>;
+
+  calculateInterestForMember(memberId: number, financialYearId: number): Promise<InterestCalculation>;
+  calculateInterestForAllMembers(financialYearId: number): Promise<InterestCalculation[]>;
+  getInterestCalculations(financialYearId?: number): Promise<InterestCalculation[]>;
+  getInterestCalculationsByMember(memberId: number): Promise<InterestCalculation[]>;
+  approveInterestCalculation(id: number, approvedBy: string): Promise<InterestCalculation>;
+  postInterestCalculation(id: number): Promise<InterestCalculation>;
+
+  createInterestPayment(payment: InsertInterestPayment): Promise<InterestPayment>;
+  getInterestPayments(financialYearId?: number): Promise<InterestPayment[]>;
+  getInterestPaymentsByMember(memberId: number): Promise<InterestPayment[]>;
+  processInterestPayment(id: number, processedBy: string): Promise<InterestPayment>;
+
+  generateInterestReport(financialYearId: number): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2055,6 +2090,326 @@ export class DatabaseStorage implements IStorage {
       console.error('Error deleting loan term:', error);
       return false;
     }
+  }
+
+  // ===== INTEREST CALCULATIONS METHODS =====
+
+  async createFinancialYear(financialYear: InsertFinancialYear): Promise<FinancialYear> {
+    const [year] = await db
+      .insert(financialYears)
+      .values(financialYear)
+      .returning();
+    return year;
+  }
+
+  async getFinancialYear(id: number): Promise<FinancialYear | undefined> {
+    const [year] = await db
+      .select()
+      .from(financialYears)
+      .where(eq(financialYears.id, id));
+    return year;
+  }
+
+  async getAllFinancialYears(): Promise<FinancialYear[]> {
+    return await db
+      .select()
+      .from(financialYears)
+      .orderBy(desc(financialYears.startDate));
+  }
+
+  async getActiveFinancialYear(): Promise<FinancialYear | undefined> {
+    const [year] = await db
+      .select()
+      .from(financialYears)
+      .where(eq(financialYears.isActive, true));
+    return year;
+  }
+
+  async updateFinancialYear(id: number, updates: Partial<InsertFinancialYear>): Promise<FinancialYear> {
+    const [year] = await db
+      .update(financialYears)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(financialYears.id, id))
+      .returning();
+    return year;
+  }
+
+  async setActiveFinancialYear(id: number): Promise<FinancialYear> {
+    // First, deactivate all other financial years
+    await db
+      .update(financialYears)
+      .set({ isActive: false, updatedAt: new Date() });
+    
+    // Then activate the specified one
+    const [year] = await db
+      .update(financialYears)
+      .set({ isActive: true, status: 'active', updatedAt: new Date() })
+      .where(eq(financialYears.id, id))
+      .returning();
+    return year;
+  }
+
+  async createBalanceSnapshot(snapshot: InsertBalanceSnapshot): Promise<BalanceSnapshot> {
+    const [balanceSnapshot] = await db
+      .insert(balanceSnapshots)
+      .values(snapshot)
+      .returning();
+    return balanceSnapshot;
+  }
+
+  async getBalanceSnapshots(savingsAccountId: number, financialYearId?: number): Promise<BalanceSnapshot[]> {
+    const conditions = [eq(balanceSnapshots.savingsAccountId, savingsAccountId)];
+    if (financialYearId) {
+      conditions.push(eq(balanceSnapshots.financialYearId, financialYearId));
+    }
+    
+    return await db
+      .select()
+      .from(balanceSnapshots)
+      .where(and(...conditions))
+      .orderBy(balanceSnapshots.snapshotDate);
+  }
+
+  async createBalanceSnapshotsForAllAccounts(financialYearId: number, snapshotDate: string): Promise<BalanceSnapshot[]> {
+    // Get all active savings accounts
+    const accounts = await db
+      .select()
+      .from(savingsAccounts)
+      .where(eq(savingsAccounts.status, 'active'));
+
+    const snapshots = [];
+    for (const account of accounts) {
+      try {
+        const snapshot = await this.createBalanceSnapshot({
+          savingsAccountId: account.id,
+          memberId: account.memberId,
+          snapshotDate,
+          balance: account.balance,
+          financialYearId,
+        });
+        snapshots.push(snapshot);
+      } catch (error) {
+        console.error(`Error creating snapshot for account ${account.accountNumber}:`, error);
+      }
+    }
+    
+    return snapshots;
+  }
+
+  async calculateInterestForMember(memberId: number, financialYearId: number): Promise<InterestCalculation> {
+    const financialYear = await this.getFinancialYear(financialYearId);
+    if (!financialYear) {
+      throw new Error('Financial year not found');
+    }
+
+    // Get member's savings accounts
+    const accounts = await this.getSavingsAccountsByMember(memberId);
+    if (accounts.length === 0) {
+      throw new Error('No savings accounts found for member');
+    }
+
+    // Calculate for the first account (or combine multiple accounts)
+    const account = accounts[0];
+    
+    // Get balance snapshots for the financial year
+    const snapshots = await this.getBalanceSnapshots(account.id, financialYearId);
+    
+    // Calculate average balance
+    const totalBalance = snapshots.reduce((sum, snapshot) => 
+      sum + parseFloat(snapshot.balance), 0);
+    const averageBalance = snapshots.length > 0 ? totalBalance / snapshots.length : parseFloat(account.balance);
+
+    // Calculate interest
+    const interestRate = parseFloat(financialYear.interestRate);
+    const grossInterest = averageBalance * interestRate;
+    const taxRate = 0.15; // 15% withholding tax
+    const taxAmount = grossInterest * taxRate;
+    const netInterest = grossInterest - taxAmount;
+
+    const calculation = {
+      financialYearId,
+      savingsAccountId: account.id,
+      memberId,
+      calculationDate: new Date().toISOString().split('T')[0],
+      periodStartDate: financialYear.startDate,
+      periodEndDate: financialYear.endDate,
+      averageBalance: averageBalance.toString(),
+      interestRate: financialYear.interestRate,
+      grossInterest: grossInterest.toString(),
+      taxAmount: taxAmount.toString(),
+      netInterest: netInterest.toString(),
+      status: 'calculated' as const,
+      calculationMethod: 'simple' as const,
+      notes: `Interest calculated for financial year ${financialYear.yearLabel}`,
+    };
+
+    const [result] = await db
+      .insert(interestCalculations)
+      .values(calculation)
+      .returning();
+    
+    return result;
+  }
+
+  async calculateInterestForAllMembers(financialYearId: number): Promise<InterestCalculation[]> {
+    const members = await this.getAllMembers();
+    const calculations = [];
+
+    for (const member of members) {
+      if (member.status === 'active') {
+        try {
+          const calculation = await this.calculateInterestForMember(member.id, financialYearId);
+          calculations.push(calculation);
+        } catch (error) {
+          console.error(`Error calculating interest for member ${member.memberNumber}:`, error);
+        }
+      }
+    }
+
+    return calculations;
+  }
+
+  async getInterestCalculations(financialYearId?: number): Promise<InterestCalculation[]> {
+    const query = db.select().from(interestCalculations);
+    
+    if (financialYearId) {
+      return await query.where(eq(interestCalculations.financialYearId, financialYearId));
+    }
+    
+    return await query.orderBy(desc(interestCalculations.createdAt));
+  }
+
+  async getInterestCalculationsByMember(memberId: number): Promise<InterestCalculation[]> {
+    return await db
+      .select()
+      .from(interestCalculations)
+      .where(eq(interestCalculations.memberId, memberId))
+      .orderBy(desc(interestCalculations.createdAt));
+  }
+
+  async approveInterestCalculation(id: number, approvedBy: string): Promise<InterestCalculation> {
+    const [calculation] = await db
+      .update(interestCalculations)
+      .set({ 
+        status: 'approved',
+        approvedBy,
+        approvedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(interestCalculations.id, id))
+      .returning();
+    return calculation;
+  }
+
+  async postInterestCalculation(id: number): Promise<InterestCalculation> {
+    const [calculation] = await db
+      .update(interestCalculations)
+      .set({ 
+        status: 'posted',
+        postedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(interestCalculations.id, id))
+      .returning();
+    return calculation;
+  }
+
+  async createInterestPayment(payment: InsertInterestPayment): Promise<InterestPayment> {
+    const [result] = await db
+      .insert(interestPayments)
+      .values(payment)
+      .returning();
+    return result;
+  }
+
+  async getInterestPayments(financialYearId?: number): Promise<InterestPayment[]> {
+    if (financialYearId) {
+      return await db
+        .select()
+        .from(interestPayments)
+        .leftJoin(interestCalculations, eq(interestPayments.interestCalculationId, interestCalculations.id))
+        .where(eq(interestCalculations.financialYearId, financialYearId))
+        .orderBy(desc(interestPayments.createdAt));
+    }
+    
+    return await db
+      .select()
+      .from(interestPayments)
+      .orderBy(desc(interestPayments.createdAt));
+  }
+
+  async getInterestPaymentsByMember(memberId: number): Promise<InterestPayment[]> {
+    return await db
+      .select()
+      .from(interestPayments)
+      .where(eq(interestPayments.memberId, memberId))
+      .orderBy(desc(interestPayments.createdAt));
+  }
+
+  async processInterestPayment(id: number, processedBy: string): Promise<InterestPayment> {
+    const [payment] = await db
+      .update(interestPayments)
+      .set({ 
+        status: 'completed',
+        processedBy,
+        updatedAt: new Date()
+      })
+      .where(eq(interestPayments.id, id))
+      .returning();
+
+    // Credit the amount to the member's savings account
+    if (payment.paymentMethod === 'credit_to_account') {
+      await db
+        .update(savingsAccounts)
+        .set({
+          balance: sql`${savingsAccounts.balance} + ${payment.paymentAmount}`,
+          updatedAt: new Date()
+        })
+        .where(eq(savingsAccounts.id, payment.savingsAccountId));
+
+      // Create a transaction record
+      await this.createTransaction({
+        memberId: payment.memberId,
+        savingsAccountId: payment.savingsAccountId,
+        transactionType: 'interest_credit',
+        amount: payment.paymentAmount,
+        description: `Interest payment for Financial Year`,
+        status: 'completed',
+        processedBy,
+        transactionDate: new Date(),
+      });
+    }
+
+    return payment;
+  }
+
+  async generateInterestReport(financialYearId: number): Promise<any> {
+    const financialYear = await this.getFinancialYear(financialYearId);
+    const calculations = await this.getInterestCalculations(financialYearId);
+    const payments = await this.getInterestPayments(financialYearId);
+
+    const totalGrossInterest = calculations.reduce((sum, calc) => 
+      sum + parseFloat(calc.grossInterest), 0);
+    const totalTaxAmount = calculations.reduce((sum, calc) => 
+      sum + parseFloat(calc.taxAmount), 0);
+    const totalNetInterest = calculations.reduce((sum, calc) => 
+      sum + parseFloat(calc.netInterest), 0);
+    const totalPaid = payments.reduce((sum, payment) => 
+      sum + parseFloat(payment.paymentAmount), 0);
+
+    return {
+      financialYear,
+      summary: {
+        totalMembers: calculations.length,
+        totalGrossInterest,
+        totalTaxAmount,
+        totalNetInterest,
+        totalPaid,
+        pendingPayments: totalNetInterest - totalPaid,
+      },
+      calculations,
+      payments,
+    };
   }
 }
 

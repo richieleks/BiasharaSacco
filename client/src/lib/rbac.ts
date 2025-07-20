@@ -40,6 +40,9 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { action: 'create', resource: 'roles' },
     { action: 'update', resource: 'roles' },
     { action: 'delete', resource: 'roles' },
+    { action: 'read', resource: 'interest-calculations' },
+    { action: 'create', resource: 'interest-calculations' },
+    { action: 'update', resource: 'interest-calculations' },
   ],
   
   manager: [
@@ -159,6 +162,7 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Audit Logs', path: '/audit-logs', icon: 'Shield', permission: { action: 'read', resource: 'audit-logs' } },
   { name: 'Roles Matrix', path: '/roles-matrix', icon: 'Lock', permission: { action: 'read', resource: 'system-settings' } },
   { name: 'Interest Rates', path: '/interest-rates', icon: 'Percent', permission: { action: 'read', resource: 'interest-rates' } },
+  { name: 'Interest Calculations', path: '/interest-calculations', icon: 'Calculator', permission: { action: 'read', resource: 'interest-calculations' } },
   { name: 'Notifications', path: '/notifications', icon: 'Bell', permission: { action: 'read', resource: 'notifications' } },
   { name: 'Data Import', path: '/data-import', icon: 'Upload', permission: { action: 'update', resource: 'system-settings' } },
 ];

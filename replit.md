@@ -124,6 +124,16 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
 
 ## Recent Changes
 
+- July 20, 2025. Completed comprehensive interest calculations system implementation:
+  - Built complete frontend interface for interest calculations with financial year management
+  - Added Interest Calculations navigation item to RBAC system with proper permissions
+  - Created comprehensive UI with tabbed interface: Financial Years, Interest Calculations, Interest Payments, and Operations
+  - Implemented financial year creation, activation, and management functionality
+  - Added bulk operations for balance snapshots and interest calculations for all members
+  - Integrated multi-stage approval workflow for interest calculations (calculate → approve → post)
+  - Built interest payment tracking and status management interface
+  - System now fully supports end-to-end interest calculation workflow from database to UI
+  - Interest calculations properly integrated into navigation and permission system
 - January 20, 2025. Enhanced UI/UX and reporting capabilities:
   - Implemented comprehensive reporting system with tabbed interface for Overview, Members, Financial, and Custom Reports
   - Enhanced members page with improved UI including statistics cards, loading skeletons, and better visual hierarchy

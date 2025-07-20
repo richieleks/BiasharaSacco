@@ -35,6 +35,7 @@ import AdminSettings from "@/pages/admin-settings";
 import Profile from "@/pages/profile";
 import AccountStatement from "@/pages/account-statement";
 import LoanStatement from "@/pages/loan-statement";
+import InterestCalculations from "@/pages/interest-calculations";
 import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 
@@ -142,6 +143,11 @@ function Router() {
             <Route path="/interest-rates">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'interest-rates' }}>
                 <InterestRates />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/interest-calculations">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'interest-calculations' }}>
+                <InterestCalculations />
               </ProtectedRoute>
             </Route>
             <Route path="/amortization-demo">

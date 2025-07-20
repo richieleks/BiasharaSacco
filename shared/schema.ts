@@ -177,7 +177,7 @@ export const transactions = pgTable("transactions", {
 export const interestRates = pgTable("interest_rates", {
   id: serial("id").primaryKey(),
   productType: varchar("product_type", { 
-    enum: ["normal_loan", "emergency_loan", "development_loan", "group_loan", "asset_financing"] 
+    enum: ["normal_loan", "emergency_loan", "development_loan", "group_loan", "asset_financing", "savings_regular", "savings_fixed_deposit", "savings_group"] 
   }).notNull(),
   baseRate: decimal("base_rate", { precision: 5, scale: 2 }).notNull(), // Annual interest rate
   compoundingFrequency: varchar("compounding_frequency", { 
@@ -193,6 +193,74 @@ export const interestRates = pgTable("interest_rates", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
+
+// Financial years for interest calculations
+export const financialYears = pgTable("financial_years", {
+  id: serial("id").primaryKey(),
+  yearLabel: varchar("year_label").notNull().unique(), // e.g., "2024-2025"
+  startDate: date("start_date").notNull(),
+  endDate: date("end_date").notNull(),
+  isActive: boolean("is_active").default(false),
+  interestRate: decimal("interest_rate", { precision: 5, scale: 4 }).default("0.0500"), // 5% default
+  status: varchar("status", { enum: ["draft", "active", "closed"] }).default("draft"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Interest calculations and accruals
+export const interestCalculations = pgTable("interest_calculations", {
+  id: serial("id").primaryKey(),
+  financialYearId: integer("financial_year_id").references(() => financialYears.id).notNull(),
+  savingsAccountId: integer("savings_account_id").references(() => savingsAccounts.id).notNull(),
+  memberId: integer("member_id").references(() => members.id).notNull(),
+  calculationDate: date("calculation_date").notNull(),
+  periodStartDate: date("period_start_date").notNull(),
+  periodEndDate: date("period_end_date").notNull(),
+  averageBalance: decimal("average_balance", { precision: 15, scale: 2 }).notNull(),
+  interestRate: decimal("interest_rate", { precision: 5, scale: 4 }).notNull(),
+  grossInterest: decimal("gross_interest", { precision: 15, scale: 2 }).notNull(),
+  taxAmount: decimal("tax_amount", { precision: 15, scale: 2 }).default("0.00"),
+  netInterest: decimal("net_interest", { precision: 15, scale: 2 }).notNull(),
+  status: varchar("status", { enum: ["calculated", "approved", "posted", "paid"] }).default("calculated"),
+  calculationMethod: varchar("calculation_method", { enum: ["simple", "compound", "daily_balance"] }).default("simple"),
+  notes: text("notes"),
+  calculatedBy: varchar("calculated_by").references(() => users.id),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  postedAt: timestamp("posted_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Interest payment records
+export const interestPayments = pgTable("interest_payments", {
+  id: serial("id").primaryKey(),
+  interestCalculationId: integer("interest_calculation_id").references(() => interestCalculations.id).notNull(),
+  memberId: integer("member_id").references(() => members.id).notNull(),
+  savingsAccountId: integer("savings_account_id").references(() => savingsAccounts.id).notNull(),
+  paymentAmount: decimal("payment_amount", { precision: 15, scale: 2 }).notNull(),
+  paymentMethod: varchar("payment_method", { enum: ["cash", "bank_transfer", "credit_to_account"] }).default("credit_to_account"),
+  paymentDate: date("payment_date").notNull(),
+  transactionReference: varchar("transaction_reference"),
+  status: varchar("status", { enum: ["pending", "completed", "failed", "cancelled"] }).default("pending"),
+  processedBy: varchar("processed_by").references(() => users.id),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Balance snapshots for interest calculations
+export const balanceSnapshots = pgTable("balance_snapshots", {
+  id: serial("id").primaryKey(),
+  savingsAccountId: integer("savings_account_id").references(() => savingsAccounts.id).notNull(),
+  memberId: integer("member_id").references(() => members.id).notNull(),
+  snapshotDate: date("snapshot_date").notNull(),
+  balance: decimal("balance", { precision: 15, scale: 2 }).notNull(),
+  financialYearId: integer("financial_year_id").references(() => financialYears.id),
+  createdAt: timestamp("created_at").defaultNow(),
+}, (table) => [
+  unique().on(table.savingsAccountId, table.snapshotDate)
+]);
 
 // Amortization schedules for loans
 export const amortizationSchedules = pgTable("amortization_schedules", {
@@ -212,13 +280,12 @@ export const amortizationSchedules = pgTable("amortization_schedules", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Interest calculations history for transparency
-export const interestCalculations = pgTable("interest_calculations", {
+// Interest calculation history for loan calculations (separate from financial year savings interest)
+export const loanInterestCalculations = pgTable("loan_interest_calculations", {
   id: serial("id").primaryKey(),
   loanId: integer("loan_id").references(() => loans.id).notNull(),
-  savingsAccountId: integer("savings_account_id").references(() => savingsAccounts.id),
   calculationType: varchar("calculation_type", { 
-    enum: ["loan_interest", "savings_interest", "compound_interest", "simple_interest"] 
+    enum: ["loan_interest", "compound_interest", "simple_interest", "reducing_balance"] 
   }).notNull(),
   principal: decimal("principal", { precision: 15, scale: 2 }).notNull(),
   rate: decimal("rate", { precision: 5, scale: 2 }).notNull(),
@@ -322,14 +389,61 @@ export const amortizationSchedulesRelations = relations(amortizationSchedules, (
   }),
 }));
 
+// Relations for financial year interest calculations
 export const interestCalculationsRelations = relations(interestCalculations, ({ one }) => ({
-  loan: one(loans, {
-    fields: [interestCalculations.loanId],
-    references: [loans.id],
+  financialYear: one(financialYears, {
+    fields: [interestCalculations.financialYearId],
+    references: [financialYears.id],
   }),
   savingsAccount: one(savingsAccounts, {
     fields: [interestCalculations.savingsAccountId],
     references: [savingsAccounts.id],
+  }),
+  member: one(members, {
+    fields: [interestCalculations.memberId],
+    references: [members.id],
+  }),
+}));
+
+export const loanInterestCalculationsRelations = relations(loanInterestCalculations, ({ one }) => ({
+  loan: one(loans, {
+    fields: [loanInterestCalculations.loanId],
+    references: [loans.id],
+  }),
+}));
+
+export const financialYearsRelations = relations(financialYears, ({ many }) => ({
+  interestCalculations: many(interestCalculations),
+  balanceSnapshots: many(balanceSnapshots),
+}));
+
+export const interestPaymentsRelations = relations(interestPayments, ({ one }) => ({
+  interestCalculation: one(interestCalculations, {
+    fields: [interestPayments.interestCalculationId],
+    references: [interestCalculations.id],
+  }),
+  member: one(members, {
+    fields: [interestPayments.memberId],
+    references: [members.id],
+  }),
+  savingsAccount: one(savingsAccounts, {
+    fields: [interestPayments.savingsAccountId],
+    references: [savingsAccounts.id],
+  }),
+}));
+
+export const balanceSnapshotsRelations = relations(balanceSnapshots, ({ one }) => ({
+  savingsAccount: one(savingsAccounts, {
+    fields: [balanceSnapshots.savingsAccountId],
+    references: [savingsAccounts.id],
+  }),
+  member: one(members, {
+    fields: [balanceSnapshots.memberId],
+    references: [members.id],
+  }),
+  financialYear: one(financialYears, {
+    fields: [balanceSnapshots.financialYearId],
+    references: [financialYears.id],
   }),
 }));
 
@@ -424,7 +538,7 @@ export const insertAmortizationScheduleSchema = createInsertSchema(amortizationS
   updatedAt: true,
 });
 
-export const insertInterestCalculationSchema = createInsertSchema(interestCalculations).omit({
+export const insertLoanInterestCalculationSchema = createInsertSchema(loanInterestCalculations).omit({
   id: true,
 });
 
@@ -456,6 +570,43 @@ export const insertNotificationSchema = createInsertSchema(notifications).omit({
 // Types
 export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
+
+// Interest calculation types
+export type FinancialYear = typeof financialYears.$inferSelect;
+export type InsertFinancialYear = typeof financialYears.$inferInsert;
+
+export type InterestCalculation = typeof interestCalculations.$inferSelect;
+export type InsertInterestCalculation = typeof interestCalculations.$inferInsert;
+
+export type InterestPayment = typeof interestPayments.$inferSelect;
+export type InsertInterestPayment = typeof interestPayments.$inferInsert;
+
+export type BalanceSnapshot = typeof balanceSnapshots.$inferSelect;
+export type InsertBalanceSnapshot = typeof balanceSnapshots.$inferInsert;
+
+// Insert schemas for interest calculations
+export const insertFinancialYearSchema = createInsertSchema(financialYears).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSavingsInterestCalculationSchema = createInsertSchema(interestCalculations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertInterestPaymentSchema = createInsertSchema(interestPayments).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertBalanceSnapshotSchema = createInsertSchema(balanceSnapshots).omit({
+  id: true,
+  createdAt: true,
+});
 
 // RBAC Tables
 export const roles = pgTable("roles", {
