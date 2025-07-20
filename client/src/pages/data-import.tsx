@@ -1,15 +1,16 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Users, PiggyBank } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Users, PiggyBank, Shield } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { useRBAC } from "@/hooks/useRBAC";
 
 interface ImportResult {
   success: boolean;
@@ -30,6 +31,20 @@ export default function DataImport() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { hasPermission } = useRBAC();
+
+  // Check admin permission
+  const canImport = hasPermission('update', 'system-settings');
+
+  useEffect(() => {
+    if (!canImport) {
+      toast({
+        title: "Access Denied",
+        description: "Only administrators can access the data import functionality.",
+        variant: "destructive",
+      });
+    }
+  }, [canImport, toast]);
 
   const importMutation = useMutation({
     mutationFn: async (): Promise<ImportResult> => {
@@ -114,11 +129,29 @@ export default function DataImport() {
   const progressPercentage = importResult && importResult.totalRows > 0 ? 
     Math.round((importResult.successfulImports / importResult.totalRows) * 100) : 0;
 
+  // Show access denied message if not admin
+  if (!canImport) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+        <Shield className="h-16 w-16 text-red-500" />
+        <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
+        <p className="text-gray-600 text-center max-w-md">
+          Only administrators have permission to access the data import functionality. 
+          Contact your system administrator if you need access.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Page Header */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Data Import</h1>
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Shield className="h-7 w-7 text-blue-600" />
+          Data Import
+          <Badge variant="secondary" className="ml-2">Admin Only</Badge>
+        </h1>
         <p className="text-slate-600 mt-1">Import customer savings accounts from Excel files</p>
       </div>
 

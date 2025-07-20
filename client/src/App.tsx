@@ -178,7 +178,7 @@ function Router() {
               </ProtectedRoute>
             </Route>
             <Route path="/data-import">
-              <ProtectedRoute requiredPermission={{ action: 'create', resource: 'members' }}>
+              <ProtectedRoute requiredPermission={{ action: 'update', resource: 'system-settings' }}>
                 <DataImport />
               </ProtectedRoute>
             </Route>

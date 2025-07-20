@@ -491,6 +491,8 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Enhanced UI with detailed import instructions, progress tracking, and comprehensive error reporting
   - Users can now import their own customer savings account data instead of being limited to hardcoded files
   - System processes uploaded files through temporary storage with automatic cleanup for security
+  - Restricted data import functionality to administrators only with proper RBAC permission checks
+  - Added admin-only access control with system-settings permissions for enhanced security
 
 ## User Preferences
 

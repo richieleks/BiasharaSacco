@@ -160,7 +160,7 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Roles Matrix', path: '/roles-matrix', icon: 'Lock', permission: { action: 'read', resource: 'system-settings' } },
   { name: 'Interest Rates', path: '/interest-rates', icon: 'Percent', permission: { action: 'read', resource: 'interest-rates' } },
   { name: 'Notifications', path: '/notifications', icon: 'Bell', permission: { action: 'read', resource: 'notifications' } },
-  { name: 'Data Import', path: '/data-import', icon: 'Upload', permission: { action: 'create', resource: 'members' } },
+  { name: 'Data Import', path: '/data-import', icon: 'Upload', permission: { action: 'update', resource: 'system-settings' } },
 ];
 
 // Legacy navigation items by role (deprecated - use getNavigationItems function instead)
@@ -255,3 +255,4 @@ export function canApproveAtStage(userRole: UserRole, stage: string): boolean {
       return false;
   }
 }
+

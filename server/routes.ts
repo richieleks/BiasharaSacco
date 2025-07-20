@@ -2384,7 +2384,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const multer = await import('multer');
   const upload = multer.default({ dest: 'uploads/' });
   
-  app.post('/api/import/savings', isAuthenticated, upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/savings', isAuthenticated, requirePermission('update', 'system-settings'), upload.single('file'), async (req: any, res) => {
     try {
       const { importSavingsFromExcel } = await import('./importUtils');
       
