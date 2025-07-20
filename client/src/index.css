@@ -107,3 +107,23 @@
     transition: all 0.2s ease-in-out;
   }
 }
+
+/* Fix modal transparency issues */
+@layer components {
+  /* Ensure dialog overlay has solid background */
+  [data-radix-dialog-overlay] {
+    background-color: rgba(0, 0, 0, 0.8) !important;
+  }
+  
+  /* Ensure dialog content has solid background */
+  [data-radix-dialog-content] {
+    background-color: white !important;
+    border: 1px solid hsl(var(--border)) !important;
+  }
+  
+  /* Dark mode support for dialog content */
+  .dark [data-radix-dialog-content] {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+}
