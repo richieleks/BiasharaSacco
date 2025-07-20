@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Pagination } from "@/components/ui/pagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import DepositForm from "@/components/forms/deposit-form";
@@ -47,7 +47,7 @@ export default function Savings() {
     enabled: isAuthenticated,
   });
 
-  const { data: statementData, isLoading: statementLoading } = useQuery({
+  const { data: statementData, isLoading: statementLoading } = useQuery<{account: any, transactions: any[]}>({
     queryKey: ['/api/savings-accounts', selectedAccountId, 'statement'],
     enabled: !!selectedAccountId && isStatementModalOpen,
   });
@@ -162,6 +162,9 @@ export default function Savings() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Record Deposit</DialogTitle>
+                    <DialogDescription>
+                      Record a deposit transaction for a member's savings account
+                    </DialogDescription>
                   </DialogHeader>
                   <DepositForm onSuccess={() => setIsDepositModalOpen(false)} />
                 </DialogContent>
@@ -177,6 +180,9 @@ export default function Savings() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Process Withdrawal</DialogTitle>
+                    <DialogDescription>
+                      Process a withdrawal request from a member's savings account
+                    </DialogDescription>
                   </DialogHeader>
                   <WithdrawalForm onSuccess={() => setIsWithdrawModalOpen(false)} />
                 </DialogContent>
@@ -330,7 +336,9 @@ export default function Savings() {
               <FileText className="w-5 h-5" />
               <span>Account Statement</span>
             </DialogTitle>
-            <div className="sr-only">View complete account statement with transaction history</div>
+            <DialogDescription>
+              View complete account statement with transaction history
+            </DialogDescription>
           </DialogHeader>
           
           {statementLoading ? (

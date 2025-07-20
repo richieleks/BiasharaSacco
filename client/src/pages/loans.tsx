@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Pagination } from "@/components/ui/pagination";
 import LoanApplicationForm from "@/components/forms/loan-application-form";
 import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign } from "lucide-react";
@@ -226,6 +226,9 @@ export default function Loans() {
                 <DialogTitle>
                   {isPersonalView ? 'Apply for Loan' : 'New Loan Application'}
                 </DialogTitle>
+                <DialogDescription>
+                  {isPersonalView ? 'Submit a new loan application with your requirements' : 'Create a new loan application for a member'}
+                </DialogDescription>
               </DialogHeader>
               <LoanApplicationForm onSuccess={() => setIsApplicationModalOpen(false)} />
             </DialogContent>
