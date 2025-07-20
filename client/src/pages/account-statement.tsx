@@ -57,7 +57,7 @@ export default function AccountStatement() {
     const csvContent = [
       ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Status'],
       ...(transactions || []).map((txn: any) => [
-        new Date(txn.createdAt).toLocaleDateString(),
+        new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
         txn.description || txn.transactionType,
         txn.referenceNumber || '',
         txn.transactionType === 'withdrawal' ? `UGX ${parseFloat(txn.amount || '0').toLocaleString()}` : '',
@@ -222,7 +222,7 @@ export default function AccountStatement() {
                   {(statementData?.transactions || []).map((transaction: any) => (
                     <TableRow key={transaction.id}>
                       <TableCell>
-                        {new Date(transaction.createdAt).toLocaleDateString()}
+                        {new Date(transaction.transactionDate || transaction.createdAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell>
                         {transaction.description || transaction.transactionType}
