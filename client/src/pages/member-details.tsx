@@ -959,7 +959,7 @@ export default function MemberDetails() {
                     })() : 'Date not available'}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">UGX {parseFloat(loan.amount).toLocaleString()}</p>
+                    <p className="font-medium">UGX {parseFloat(loan.principalAmount || loan.amount || 0).toLocaleString()}</p>
                     <Badge className={`${
                       loan.status === 'approved' ? 'bg-green-100 text-green-800' :
                       loan.status === 'rejected' ? 'bg-red-100 text-red-800' :
