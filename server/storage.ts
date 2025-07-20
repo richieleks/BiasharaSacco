@@ -322,6 +322,11 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
+  async getMembersCount(): Promise<number> {
+    const result = await db.$count(members);
+    return result;
+  }
+
   async getMemberByIdNumber(idNumber: string): Promise<MemberWithDetails | undefined> {
     const [member] = await db
       .select()

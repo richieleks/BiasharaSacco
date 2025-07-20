@@ -2380,5 +2380,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Data Import API endpoints
+  app.post('/api/import/savings', isAuthenticated, requirePermission('create', 'members'), async (req: any, res) => {
+    try {
+      const { importSavingsFromExcel } = await import('./importUtils');
+      
+      // For now, we'll use the attached file directly
+      const filePath = 'attached_assets/savings_1753029560040.xlsx';
+      
+      console.log('Starting import from:', filePath);
+      const result = await importSavingsFromExcel(filePath);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub || '',
+        action: 'import',
+        resource: 'savings_accounts',
+        resourceId: 'bulk_import',
+        details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors.length} errors.`,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error importing savings data:', error);
+      res.status(500).json({ message: 'Failed to import savings data', error: error instanceof Error ? error.message : 'Unknown error' });
+    }
+  });
+
   return httpServer;
 }

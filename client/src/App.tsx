@@ -18,6 +18,7 @@ import Loans from "@/pages/loans";
 import Transactions from "@/pages/transactions";
 import Reports from "@/pages/reports";
 import Guarantors from "@/pages/guarantors";
+import DataImport from "@/pages/data-import";
 
 
 import AuditLogs from "@/pages/audit-logs";
@@ -174,6 +175,11 @@ function Router() {
             <Route path="/role-management">
               <ProtectedRoute requiredPermission={{ action: 'update', resource: 'members' }}>
                 <RoleManagement />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/data-import">
+              <ProtectedRoute requiredPermission={{ action: 'create', resource: 'members' }}>
+                <DataImport />
               </ProtectedRoute>
             </Route>
 
