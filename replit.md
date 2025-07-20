@@ -495,6 +495,14 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Restricted data import functionality to administrators only with proper RBAC permission checks
   - Added admin-only access control with system-settings permissions for enhanced security
   - System now processes bank statements by updating account balances and creating individual transaction records
+- July 20, 2025. Implemented comprehensive account statement functionality:
+  - Added "View Statement" button on each savings account card for easy access
+  - Created detailed account statement modal showing account information and transaction history
+  - Built professional transaction table with debits, credits, dates, references, and status
+  - Implemented CSV export functionality for downloading account statements
+  - Added API endpoint `/api/savings-accounts/:id/statement` for fetching account data with transactions
+  - Enhanced user experience with real-time statement viewing and download capabilities
+  - Proper error handling and null checks for robust statement display
 
 ## User Preferences
 

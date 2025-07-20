@@ -111,7 +111,7 @@ export default function Savings() {
     const { account, transactions } = statementData;
     const csvContent = [
       ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Balance'],
-      ...transactions.map((txn: any) => [
+      ...(transactions || []).map((txn: any) => [
         new Date(txn.createdAt).toLocaleDateString(),
         txn.description || txn.transactionType,
         txn.referenceNumber || '',
@@ -125,7 +125,7 @@ export default function Savings() {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `statement-${account.accountNumber}-${new Date().toISOString().split('T')[0]}.csv`;
+    link.download = `statement-${account?.accountNumber || 'account'}-${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
   };
@@ -330,6 +330,7 @@ export default function Savings() {
               <FileText className="w-5 h-5" />
               <span>Account Statement</span>
             </DialogTitle>
+            <div className="sr-only">View complete account statement with transaction history</div>
           </DialogHeader>
           
           {statementLoading ? (
@@ -344,22 +345,22 @@ export default function Savings() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div>
                       <div className="text-sm text-slate-500">Account Number</div>
-                      <div className="font-medium">{statementData.account.accountNumber}</div>
+                      <div className="font-medium">{statementData.account?.accountNumber || 'N/A'}</div>
                     </div>
                     <div>
                       <div className="text-sm text-slate-500">Account Type</div>
-                      <div className="font-medium">{statementData.account.accountType?.replace('_', ' ')}</div>
+                      <div className="font-medium">{statementData.account?.accountType?.replace('_', ' ') || 'N/A'}</div>
                     </div>
                     <div>
                       <div className="text-sm text-slate-500">Current Balance</div>
                       <div className="font-medium text-lg text-green-600">
-                        UGX {parseFloat(statementData.account.balance || '0').toLocaleString()}
+                        UGX {parseFloat(statementData.account?.balance || '0').toLocaleString()}
                       </div>
                     </div>
                     <div>
                       <div className="text-sm text-slate-500">Status</div>
-                      <Badge className={getStatusColor(statementData.account.status)}>
-                        {statementData.account.status}
+                      <Badge className={getStatusColor(statementData.account?.status || 'active')}>
+                        {statementData.account?.status || 'active'}
                       </Badge>
                     </div>
                   </div>
@@ -394,14 +395,14 @@ export default function Savings() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {statementData.transactions.length === 0 ? (
+                    {(!statementData.transactions || statementData.transactions.length === 0) ? (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-slate-500">
                           No transactions found for this account
                         </TableCell>
                       </TableRow>
                     ) : (
-                      statementData.transactions.map((transaction: any) => (
+                      (statementData.transactions || []).map((transaction: any) => (
                         <TableRow key={transaction.id}>
                           <TableCell>
                             {new Date(transaction.createdAt).toLocaleDateString()}
