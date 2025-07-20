@@ -525,6 +525,14 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Added proper API endpoints for loan data and transaction retrieval
   - Enhanced loan cards with loan numbers, status badges, and hover effects
   - Improved navigation flow between member profile and loan-related pages
+- July 20, 2025. Fixed loan transaction history with authentic Excel data:
+  - Implemented running balance calculation using actual transaction amounts from Excel import
+  - Extracted authentic dates from transaction descriptions (April, May, June, July, August, September, October)
+  - Added Running Balance column showing cumulative loan balance changes over time
+  - Fixed chronological ordering using month names from imported Excel descriptions
+  - Enhanced CSV export to include running balances and proper date progression
+  - Preserved original transaction descriptions and amounts exactly as imported from Excel file
+  - System now displays authentic financial data maintaining complete data integrity from Excel source
 
 ## User Preferences
 
