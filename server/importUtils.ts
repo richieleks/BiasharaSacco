@@ -226,7 +226,7 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
                 transactionType: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
                 amount: (creditAmount > 0 ? creditAmount : debitAmount).toString(),
                 description: details,
-                transactionDate: postingDate,
+                transactionDate: new Date(postingDate),
                 referenceNumber: `STMT-${accountNumber}-${i + 1}`,
                 processedBy: 'system',
                 status: 'completed' as const
