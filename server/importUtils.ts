@@ -44,25 +44,26 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
   };
 
   try {
-    // Use require for XLSX to avoid ES module issues
-    const XLSX = require('xlsx');
+    // Dynamic import for XLSX with proper ES module handling
+    const XLSX = await import('xlsx');
+    const fs = await import('fs');
     
     // Check if file exists
-    const fs = require('fs');
     if (!fs.existsSync(filePath)) {
       result.errors.push({ row: 0, error: `File not found: ${filePath}` });
       return result;
     }
     
-    // Read the Excel file
+    // Read the Excel file using default export
     console.log('Reading file from:', filePath);
-    const workbook = XLSX.readFile(filePath);
+    const workbook = XLSX.default ? XLSX.default.readFile(filePath) : XLSX.readFile(filePath);
     console.log('Workbook sheets:', workbook.SheetNames);
     const sheetName = workbook.SheetNames[0]; // Use first sheet
     const worksheet = workbook.Sheets[sheetName];
     
-    // Convert to JSON
-    const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+    // Convert to JSON using utils
+    const utils = XLSX.default ? XLSX.default.utils : XLSX.utils;
+    const rawData = utils.sheet_to_json(worksheet, { header: 1 });
     
     if (rawData.length === 0) {
       result.errors.push({ row: 0, error: "File is empty" });
