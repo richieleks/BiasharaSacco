@@ -73,6 +73,7 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
     console.log('Excel data analysis:');
     console.log('Total rows:', rawData.length);
     console.log('First few rows:', rawData.slice(0, 8));
+    console.log('Sample transaction rows (rows 10-15):', rawData.slice(10, 16));
 
     // This appears to be a bank statement format, not a member list
     // Extract account holder information from the first rows
@@ -203,8 +204,12 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
 
         // Process transaction entries from the bank statement
         const transactionEntries = [];
+        console.log(`Processing ${transactionRows.length} transaction rows starting from row ${headerRowIndex + 1}`);
+        
         for (let i = 0; i < transactionRows.length; i++) {
           const row = transactionRows[i] as any[];
+          console.log(`Row ${i + 1}:`, row);
+          
           if (row.length >= 5 && row[0] && row[1]) {
             const postingDate = parseExcelDate(row[0]);
             const details = row[1]?.toString() || '';
@@ -212,23 +217,30 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
             const creditAmount = parseFloat(row[3]) || 0;
             const balance = parseFloat(row[4]) || 0;
 
+            console.log(`Transaction ${i + 1}:`, { postingDate, details, debitAmount, creditAmount, balance });
+
             if (creditAmount > 0 || debitAmount > 0) {
               const transactionData = {
                 memberId: member.id,
                 savingsAccountId: regularAccount.id,
-                type: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
+                transactionType: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
                 amount: (creditAmount > 0 ? creditAmount : debitAmount).toString(),
                 description: details,
-                date: postingDate,
+                transactionDate: postingDate,
                 referenceNumber: `STMT-${accountNumber}-${i + 1}`,
-                processedBy: 'system'
+                processedBy: 'system',
+                status: 'completed' as const
               };
 
+              console.log(`Creating transaction ${i + 1}:`, transactionData);
+              
               try {
                 const validatedTransactionData = insertTransactionSchema.parse(transactionData);
                 transactionEntries.push(validatedTransactionData);
+                console.log(`✓ Valid transaction ${i + 1} added`);
               } catch (error) {
-                console.log(`Skipping invalid transaction on row ${i + 1}:`, error);
+                console.log(`✗ Invalid transaction on row ${i + 1}:`, error);
+                console.log('Transaction data that failed:', transactionData);
               }
             }
           }
