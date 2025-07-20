@@ -11,12 +11,12 @@ export default function LoanStatement() {
   const [, setLocation] = useLocation();
 
   const { data: loan, isLoading: loanLoading } = useQuery({
-    queryKey: ["/api/loans", params?.id],
+    queryKey: [`/api/loans/${params?.id}`],
     enabled: !!params?.id,
   });
 
   const { data: transactions, isLoading: transactionsLoading } = useQuery({
-    queryKey: ["/api/loans", params?.id, "transactions"],
+    queryKey: [`/api/loans/${params?.id}/transactions`],
     enabled: !!params?.id,
   });
 
@@ -41,15 +41,19 @@ export default function LoanStatement() {
   }
 
   const handleExportStatement = () => {
+    if (!transactions || !Array.isArray(transactions)) {
+      return;
+    }
+    
     // Create CSV data
     const csvData = [
-      ['Date', 'Description', 'Debit', 'Credit', 'Balance'],
+      ['Date', 'Description', 'Debit', 'Credit', 'Status'],
       ...transactions.map((txn: any) => [
-        format(new Date(txn.transactionDate), 'yyyy-MM-dd'),
-        txn.description || txn.transactionType,
-        txn.transactionType === 'loan_payment' ? txn.amount : '',
-        txn.transactionType === 'loan_disbursement' ? txn.amount : '',
-        txn.balance || ''
+        txn.transactionDate ? format(new Date(txn.transactionDate), 'yyyy-MM-dd') : 'N/A',
+        txn.description || txn.transactionType || 'N/A',
+        (txn.transactionType === 'loan_payment' || txn.transactionType === 'debit') ? txn.amount || 0 : '',
+        (txn.transactionType === 'loan_disbursement' || txn.transactionType === 'credit') ? txn.amount || 0 : '',
+        txn.status || 'pending'
       ])
     ];
 
@@ -58,7 +62,7 @@ export default function LoanStatement() {
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `loan-statement-${loan.loanNumber}.csv`;
+    link.download = `loan-statement-${loan?.loanNumber || 'unknown'}.csv`;
     link.click();
     window.URL.revokeObjectURL(url);
   };
@@ -129,7 +133,7 @@ export default function LoanStatement() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {transactions && transactions.length > 0 ? (
+            {transactions && Array.isArray(transactions) && transactions.length > 0 ? (
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
@@ -145,20 +149,20 @@ export default function LoanStatement() {
                     {transactions.map((transaction: any) => (
                       <tr key={transaction.id} className="border-b hover:bg-gray-50">
                         <td className="p-2">
-                          {format(new Date(transaction.transactionDate), 'MMM dd, yyyy')}
+                          {transaction.transactionDate ? format(new Date(transaction.transactionDate), 'MMM dd, yyyy') : 'N/A'}
                         </td>
-                        <td className="p-2">{transaction.description}</td>
+                        <td className="p-2">{transaction.description || transaction.transactionType || 'N/A'}</td>
                         <td className="p-2 text-right">
-                          {transaction.transactionType === 'loan_payment' ? 
-                            `UGX ${parseFloat(transaction.amount).toLocaleString()}` : ''}
+                          {(transaction.transactionType === 'loan_payment' || transaction.transactionType === 'debit') ? 
+                            `UGX ${parseFloat(transaction.amount || 0).toLocaleString()}` : ''}
                         </td>
                         <td className="p-2 text-right">
-                          {transaction.transactionType === 'loan_disbursement' ? 
-                            `UGX ${parseFloat(transaction.amount).toLocaleString()}` : ''}
+                          {(transaction.transactionType === 'loan_disbursement' || transaction.transactionType === 'credit') ? 
+                            `UGX ${parseFloat(transaction.amount || 0).toLocaleString()}` : ''}
                         </td>
                         <td className="p-2 text-center">
                           <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'} className="text-xs">
-                            {transaction.status}
+                            {transaction.status || 'pending'}
                           </Badge>
                         </td>
                       </tr>
@@ -168,7 +172,7 @@ export default function LoanStatement() {
               </div>
             ) : (
               <div className="text-center py-8 text-muted-foreground">
-                No transactions found for this loan
+                {transactionsLoading ? 'Loading transactions...' : 'No transactions found for this loan'}
               </div>
             )}
           </div>
