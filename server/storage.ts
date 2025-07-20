@@ -692,6 +692,23 @@ export class DatabaseStorage implements IStorage {
     return loan;
   }
 
+  async getAllLoans(): Promise<LoanWithDetails[]> {
+    const results = await db
+      .select()
+      .from(loans)
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .orderBy(desc(loans.createdAt));
+
+    return results.map(result => ({
+      ...result.loans,
+      member: result.members ? {
+        ...result.members,
+        user: result.users || undefined,
+      } : undefined,
+    }));
+  }
+
   async getAllPendingLoans(): Promise<LoanWithDetails[]> {
     const results = await db
       .select()

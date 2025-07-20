@@ -39,7 +39,7 @@ export default function Loans() {
   }, [isAuthenticated, isLoading, toast]);
 
   const { data: allLoans, isLoading: pendingLoading } = useQuery<any[]>({
-    queryKey: isPersonalView ? ['/api/loans/my-loans'] : ['/api/loans/pending'],
+    queryKey: isPersonalView ? ['/api/loans/my-loans'] : ['/api/loans'],
     enabled: isAuthenticated,
   });
 
@@ -70,6 +70,7 @@ export default function Loans() {
       await apiRequest('PATCH', `/api/loans/${loan.uuid}/approve`);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
       toast({
         title: "Success",
@@ -101,6 +102,7 @@ export default function Loans() {
       await apiRequest('PATCH', `/api/loans/${loan.uuid}/disburse`);
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
       toast({
         title: "Success",
