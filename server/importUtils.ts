@@ -123,20 +123,31 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
       // Create member data from the bank statement
       const memberData = {
         fullName: accountName,
-        idNumber: `STMT${accountNumber}`, // Use correct field name
+        idNumber: `STMT${accountNumber}`,
         phoneNumber: '0700000000',
         email: `${accountName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
         department: 'Import',
         monthlySavings: '100000',
-        shareContribution: '20000',
+        shareContribution: '20000', 
         numberOfShares: 4,
         status: 'active' as const,
-        membershipDate: new Date(),
         gender: 'male' as const,
         averageNetPay: Math.round(closingBalance / 12).toString(),
         staffAccountNumber: accountNumber,
         nextOfKinName: 'Next of Kin',
-        nextOfKinPhone: '0700000000'
+        nextOfKinPhone: '0700000000',
+        // Add missing required fields
+        dateOfBirth: '1990-01-01',
+        address: '123 Main Street',
+        maritalStatus: 'single' as const,
+        section: 'General',
+        termsOfService: 'permanent' as const,
+        accountNumber: accountNumber,
+        branch: 'Main Branch',
+        beneficiaryName: accountName,
+        beneficiaryRelationship: 'Self',
+        beneficiaryContact: '0700000000',
+        role: 'member' as const
       };
 
       // Check if member already exists
@@ -151,10 +162,14 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
         const memberCount = await storage.getMembersCount();
         const memberNumber = `IMP${String(memberCount + 1).padStart(6, '0')}`;
         
+        console.log('Member data before validation:', { ...memberData, memberNumber });
+        
         const validatedMemberData = insertMemberSchema.parse({
           ...memberData,
           memberNumber
         });
+        
+        console.log('Member data after validation:', validatedMemberData);
         
         member = await storage.createMember(validatedMemberData);
         result.importedMembers++;
