@@ -2440,5 +2440,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import loans from Excel
+  app.post('/api/import/loans', isAuthenticated, requirePermission('update', 'system-settings'), upload.single('file'), async (req: any, res) => {
+    try {
+      const { importLoansFromExcel } = await import('./importUtils');
+      
+      // Use uploaded file or fallback to attached file
+      const filePath = req.file ? req.file.path : './attached_assets/loans_1753038438279.xlsx';
+      
+      console.log('Starting loan import from:', filePath);
+      const result = await importLoansFromExcel(filePath);
+      
+      // Create audit log
+      await storage.createAuditLog({
+        userId: req.user?.claims?.sub || '',
+        action: 'import',
+        resource: 'loans',
+        resourceId: 'bulk_import',
+        details: `Imported ${result.importedLoans || 0} loans, ${result.importedMembers} members, and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error importing loan data:', error);
+      res.status(500).json({ message: 'Failed to import loan data', error: error instanceof Error ? error.message : 'Unknown error' });
+    } finally {
+      // Clean up uploaded file if it exists
+      if (req.file) {
+        const fs = await import('fs');
+        try {
+          await fs.promises.unlink(req.file.path);
+        } catch (unlinkError) {
+          console.error('Error cleaning up uploaded file:', unlinkError);
+        }
+      }
+    }
+  });
+
   return httpServer;
 }

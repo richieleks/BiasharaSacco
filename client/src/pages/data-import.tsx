@@ -23,11 +23,13 @@ interface ImportResult {
   }>;
   importedMembers: number;
   importedAccounts: number;
+  importedLoans?: number;
 }
 
 export default function DataImport() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [importType, setImportType] = useState<'savings' | 'loans'>('savings');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -55,7 +57,8 @@ export default function DataImport() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       
-      const response = await fetch('/api/import/savings', {
+      const endpoint = importType === 'savings' ? '/api/import/savings' : '/api/import/loans';
+      const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
         credentials: 'include',
@@ -70,9 +73,13 @@ export default function DataImport() {
     onSuccess: (data: ImportResult) => {
       setImportResult(data);
       if (data && data.success) {
+        const successMessage = importType === 'savings' 
+          ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
+          : `Successfully imported ${data.importedLoans || 0} loans, ${data.importedMembers} members, and ${data.importedAccounts} savings accounts.`;
+        
         toast({
           title: "Import Successful",
-          description: `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`,
+          description: successMessage,
         });
       } else if (data) {
         toast({
@@ -85,6 +92,7 @@ export default function DataImport() {
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
       queryClient.invalidateQueries({ queryKey: ['/api/savings-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
     },
     onError: (error) => {
@@ -126,6 +134,19 @@ export default function DataImport() {
     importMutation.mutate();
   };
 
+  const handleReset = () => {
+    setImportResult(null);
+    setSelectedFile(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleImportTypeChange = (type: 'savings' | 'loans') => {
+    setImportType(type);
+    handleReset();
+  };
+
   const progressPercentage = importResult && importResult.totalRows > 0 ? 
     Math.round((importResult.successfulImports / importResult.totalRows) * 100) : 0;
 
@@ -152,7 +173,56 @@ export default function DataImport() {
           Data Import
           <Badge variant="secondary" className="ml-2">Admin Only</Badge>
         </h1>
-        <p className="text-slate-600 mt-1">Import customer savings accounts from Excel files</p>
+        <p className="text-slate-600 mt-1">Import customer data from Excel files</p>
+      </div>
+
+      {/* Import Type Selection */}
+      <div className="mb-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Import Type</CardTitle>
+            <CardDescription>
+              Choose the type of data you want to import
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <button
+                onClick={() => handleImportTypeChange('savings')}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  importType === 'savings'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <PiggyBank className={`h-6 w-6 ${importType === 'savings' ? 'text-blue-600' : 'text-gray-500'}`} />
+                  <div className="text-left">
+                    <div className="font-semibold">Savings Accounts</div>
+                    <div className="text-sm text-muted-foreground">Import member savings data and transactions</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => handleImportTypeChange('loans')}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  importType === 'loans'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                    : 'border-gray-200 hover:border-gray-300'
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className={`h-6 w-6 ${importType === 'loans' ? 'text-blue-600' : 'text-gray-500'}`} />
+                  <div className="text-left">
+                    <div className="font-semibold">Loan Statements</div>
+                    <div className="text-sm text-muted-foreground">Import loan data and member information</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -164,7 +234,10 @@ export default function DataImport() {
               Upload Excel File
             </CardTitle>
             <CardDescription>
-              Select an Excel file containing customer savings account data
+              {importType === 'savings' 
+                ? 'Select an Excel file containing customer savings account data'
+                : 'Select an Excel file containing loan statement data'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
