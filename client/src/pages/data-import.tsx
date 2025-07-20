@@ -34,15 +34,15 @@ export default function DataImport() {
     },
     onSuccess: (data: ImportResult) => {
       setImportResult(data);
-      if (data.success) {
+      if (data && data.success) {
         toast({
           title: "Import Successful",
           description: `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`,
         });
-      } else {
+      } else if (data) {
         toast({
           title: "Import Completed with Errors",
-          description: `Imported ${data.successfulImports} records with ${data.errors.length} errors.`,
+          description: `Imported ${data.successfulImports} records with ${data.errors?.length || 0} errors.`,
           variant: "destructive",
         });
       }
@@ -66,7 +66,7 @@ export default function DataImport() {
     importMutation.mutate();
   };
 
-  const progressPercentage = importResult ? 
+  const progressPercentage = importResult && importResult.totalRows > 0 ? 
     Math.round((importResult.successfulImports / importResult.totalRows) * 100) : 0;
 
   return (
@@ -171,7 +171,7 @@ export default function DataImport() {
                 <div className="text-sm text-purple-600">Savings Accounts</div>
               </div>
               <div className="text-center p-4 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{importResult.errors.length}</div>
+                <div className="text-2xl font-bold text-red-600">{importResult.errors?.length || 0}</div>
                 <div className="text-sm text-red-600">Errors</div>
               </div>
             </div>
@@ -187,15 +187,15 @@ export default function DataImport() {
             </div>
 
             {/* Errors List */}
-            {importResult.errors.length > 0 && (
+            {importResult.errors && importResult.errors.length > 0 && (
               <div className="space-y-2">
                 <Separator />
                 <h4 className="font-medium text-red-600 flex items-center gap-2">
                   <XCircle className="h-4 w-4" />
-                  Import Errors ({importResult.errors.length})
+                  Import Errors ({importResult.errors?.length || 0})
                 </h4>
                 <div className="max-h-60 overflow-y-auto space-y-2">
-                  {importResult.errors.map((error, index) => (
+                  {(importResult.errors || []).map((error, index) => (
                     <Alert key={index} variant="destructive">
                       <AlertDescription>
                         <strong>Row {error.row}:</strong> {error.error}

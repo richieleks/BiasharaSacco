@@ -2397,7 +2397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'import',
         resource: 'savings_accounts',
         resourceId: 'bulk_import',
-        details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors.length} errors.`,
+        details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
       });
 
       res.json(result);

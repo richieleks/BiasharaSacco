@@ -1,4 +1,3 @@
-import * as XLSX from 'xlsx';
 import { storage } from './storage';
 import { insertMemberSchema, insertSavingsAccountSchema } from '@shared/schema';
 import { z } from 'zod';
@@ -45,8 +44,12 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
   };
 
   try {
+    // Dynamic import of XLSX to handle ES module issues
+    const XLSX = require('xlsx');
+    
     // Read the Excel file
     const workbook = XLSX.readFile(filePath);
+    console.log('Workbook sheets:', workbook.SheetNames);
     const sheetName = workbook.SheetNames[0]; // Use first sheet
     const worksheet = workbook.Sheets[sheetName];
     
