@@ -1230,6 +1230,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/savings-accounts/:id/statement', isAuthenticated, async (req, res) => {
+    try {
+      const savingsAccountId = parseInt(req.params.id);
+      const transactions = await storage.getTransactionsBySavingsAccount(savingsAccountId);
+      const account = await storage.getSavingsAccount(savingsAccountId);
+      
+      if (!account) {
+        return res.status(404).json({ message: "Savings account not found" });
+      }
+
+      res.json({
+        account,
+        transactions,
+      });
+    } catch (error) {
+      console.error("Error fetching account statement:", error);
+      res.status(500).json({ message: "Failed to fetch account statement" });
+    }
+  });
+
   app.patch('/api/transactions/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const transactionId = parseInt(req.params.id);
