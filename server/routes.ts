@@ -2286,5 +2286,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reports API endpoints
+  app.get('/api/reports/:reportType', isAuthenticated, async (req: any, res) => {
+    try {
+      const { reportType } = req.params;
+      const { startDate, endDate, memberNumber, status } = req.query;
+      const userId = req.user?.claims?.sub;
+      const permissions = await storage.getUserPermissions(userId);
+      
+      // Check if user has reports permission
+      const canViewReports = permissions.some(p => p.resource === 'reports' && p.action === 'read');
+      if (!canViewReports) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // Get report data based on type
+      let reportData;
+      switch (reportType) {
+        case 'members':
+          const filters: any = {};
+          if (status && status !== 'all') filters.status = status;
+          if (startDate) filters.startDate = new Date(startDate);
+          if (endDate) filters.endDate = new Date(endDate);
+          
+          // For now, return empty data
+          reportData = [];
+          break;
+          
+        case 'savings':
+          reportData = [];
+          break;
+          
+        case 'loans':
+          reportData = [];
+          break;
+          
+        case 'transactions':
+          reportData = [];
+          break;
+          
+        case 'financial':
+          reportData = {
+            revenue: 0,
+            expenses: 0,
+            netIncome: 0,
+            loanPortfolio: 0,
+            savingsTotal: 0
+          };
+          break;
+          
+        case 'audit':
+          const member = await storage.getMemberByUserId(userId);
+          const canViewAuditLogs = permissions.some(p => p.resource === 'audit-logs' && p.action === 'read');
+          if (!canViewAuditLogs) {
+            return res.status(403).json({ message: "Access denied to audit logs" });
+          }
+          reportData = [];
+          break;
+          
+        default:
+          return res.status(400).json({ message: "Invalid report type" });
+      }
+
+      res.json(reportData);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      res.status(500).json({ message: "Failed to generate report" });
+    }
+  });
+
+  // Generate and export reports
+  app.post('/api/reports/generate', isAuthenticated, async (req: any, res) => {
+    try {
+      const { reportType, filters, format } = req.body;
+      const userId = req.user?.claims?.sub;
+      const permissions = await storage.getUserPermissions(userId);
+      
+      // Check if user has reports permission
+      const canViewReports = permissions.some(p => p.resource === 'reports' && p.action === 'read');
+      if (!canViewReports) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      // For now, return a placeholder response
+      // In a real implementation, this would generate the actual report file
+      res.json({
+        message: `${reportType} report generated in ${format} format`,
+        downloadUrl: `/api/reports/download/${reportType}.${format}`
+      });
+    } catch (error) {
+      console.error("Error generating report:", error);
+      res.status(500).json({ message: "Failed to generate report" });
+    }
+  });
+
   return httpServer;
 }
