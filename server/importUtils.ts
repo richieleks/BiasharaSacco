@@ -212,7 +212,7 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
           console.log(`Row ${i + 1}:`, row);
           
           if (row.length >= 5 && row[0] && row[1]) {
-            const postingDate = parseExcelDate(row[0]);
+            const postingDate = excelDateToDate(row[0]);
             const details = row[1]?.toString() || '';
             const debitAmount = parseFloat(row[2]) || 0;
             const creditAmount = parseFloat(row[3]) || 0;
@@ -321,17 +321,44 @@ export async function importLoansFromExcel(filePath: string): Promise<ImportResu
 
     console.log('Loan Excel data analysis:');
     console.log('Total rows:', rawData.length);
-    console.log('First few rows:', rawData.slice(0, 5));
+    console.log('First few rows:', rawData.slice(0, 8));
 
-    // Find header row (look for common loan-related columns)
+    // Extract account information from the first few rows
+    let accountName = '';
+    let accountNumber = '';
+    let closingBalance = 0;
+    let interestEarned = 0;
+    let tenure = 0;
+
+    // Look for account info in first few rows
+    for (let i = 0; i < Math.min(5, rawData.length); i++) {
+      const row = rawData[i] as any[];
+      if (row && row.length > 1) {
+        const firstCell = row[0]?.toString().toUpperCase() || '';
+        
+        if (firstCell.includes('ACCOUNT NAME')) {
+          accountName = row[1]?.toString() || '';
+        } else if (firstCell.includes('ACCOUNT NUMBER')) {
+          accountNumber = row[1]?.toString() || '';
+        } else if (firstCell.includes('CLOSING BALANCE')) {
+          closingBalance = parseFloat(row[4]) || 0;
+        } else if (firstCell.includes('INTEREST EARNED')) {
+          interestEarned = parseFloat(row[4]) || 0;
+        } else if (firstCell.includes('TENURE')) {
+          tenure = parseInt(row[1]) || 12;
+        }
+      }
+    }
+
+    console.log('Account Info:', { accountName, accountNumber, closingBalance, interestEarned, tenure });
+
+    // Find transaction header row (POSTING DATE, DETAILS, etc.)
     let headerRowIndex = -1;
-    const expectedHeaders = ['loan', 'member', 'amount', 'balance', 'name'];
-    
     for (let i = 0; i < Math.min(10, rawData.length); i++) {
       const row = rawData[i] as any[];
-      if (row && row.length > 3) {
+      if (row && row.length >= 4) {
         const rowText = row.join(' ').toLowerCase();
-        if (expectedHeaders.some(header => rowText.includes(header))) {
+        if (rowText.includes('posting') && (rowText.includes('details') || rowText.includes('balance'))) {
           headerRowIndex = i;
           break;
         }
@@ -339,181 +366,193 @@ export async function importLoansFromExcel(filePath: string): Promise<ImportResu
     }
 
     if (headerRowIndex === -1) {
-      result.errors.push({ row: 0, error: "No valid header row found. Expected columns related to loans, members, amounts." });
+      result.errors.push({ row: 0, error: "No valid transaction header row found. Expected columns like POSTING DATE, DETAILS, BALANCE." });
       return result;
     }
 
-    console.log('Found header row at index:', headerRowIndex);
+    console.log('Found transaction header row at index:', headerRowIndex);
     const headerRow = rawData[headerRowIndex] as any[];
     console.log('Header row:', headerRow);
 
-    // Process loan data rows
-    let successCount = 0;
-    for (let i = headerRowIndex + 1; i < rawData.length; i++) {
-      const row = rawData[i] as any[];
-      
-      if (!row || row.length < 3 || !row[0]) {
-        continue; // Skip empty rows
-      }
-
-      try {
-        console.log(`Processing loan row ${i + 1}:`, row);
-        
-        // Extract loan data (adjust indices based on your Excel structure)
-        let memberName = '';
-        let loanAmount = 0;
-        let outstandingBalance = 0;
-        let memberNumber = '';
-        let loanType = 'personal';
-        let interestRate = 12; // Default rate
-        let termMonths = 12; // Default term
-
-        // Try to identify columns dynamically
-        for (let j = 0; j < row.length && j < headerRow.length; j++) {
-          const cellValue = row[j];
-          const headerName = headerRow[j]?.toString().toLowerCase() || '';
-
-          if (headerName.includes('name') || headerName.includes('member')) {
-            memberName = cellValue?.toString() || '';
-          } else if (headerName.includes('number') || headerName.includes('id')) {
-            memberNumber = cellValue?.toString() || '';
-          } else if (headerName.includes('amount') || headerName.includes('principal')) {
-            loanAmount = parseFloat(cellValue) || 0;
-          } else if (headerName.includes('balance') || headerName.includes('outstanding')) {
-            outstandingBalance = parseFloat(cellValue) || 0;
-          } else if (headerName.includes('rate') || headerName.includes('interest')) {
-            interestRate = parseFloat(cellValue) || 12;
-          } else if (headerName.includes('term') || headerName.includes('period')) {
-            termMonths = parseInt(cellValue) || 12;
-          } else if (headerName.includes('type') || headerName.includes('category')) {
-            loanType = cellValue?.toString().toLowerCase() || 'personal';
-          }
-        }
-
-        // If we couldn't identify columns, use positional approach
-        if (!memberName && row.length >= 2) {
-          memberName = row[1]?.toString() || '';
-          loanAmount = parseFloat(row[2]) || 0;
-          outstandingBalance = parseFloat(row[3]) || loanAmount;
-          memberNumber = row[0]?.toString() || '';
-        }
-
-        if (!memberName || loanAmount <= 0) {
-          console.log(`Skipping row ${i + 1}: insufficient data`);
-          continue;
-        }
-
-        console.log(`Loan data extracted:`, { memberName, memberNumber, loanAmount, outstandingBalance });
-
-        // Find or create member
-        let member;
-        if (memberNumber) {
-          member = await storage.getMemberByNumber(memberNumber);
-        }
-        
-        if (!member && memberName) {
-          // Try to find by name (fuzzy match)
-          const allMembers = await storage.getAllMembers();
-          member = allMembers.find(m => 
-            m.fullName?.toLowerCase().includes(memberName.toLowerCase()) ||
-            memberName.toLowerCase().includes(m.fullName?.toLowerCase() || '')
-          );
-        }
-
-        if (!member) {
-          // Create new member for this loan
-          const memberCount = await storage.getMembersCount();
-          const newMemberNumber = `BCS${String(memberCount + 1).padStart(6, '0')}`;
-          
-          const memberData = {
-            fullName: memberName,
-            idNumber: `LOAN${memberNumber || Date.now()}`,
-            phoneNumber: '0700000000',
-            email: `${memberName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
-            department: 'Loan Import',
-            monthlySavings: '50000',
-            shareContribution: '20000',
-            numberOfShares: 4,
-            status: 'active' as const,
-            gender: 'male' as const,
-            averageNetPay: Math.round(loanAmount / 10).toString(),
-            staffAccountNumber: memberNumber || `STAFF${Date.now()}`,
-            nextOfKinName: 'Next of Kin',
-            nextOfKinPhone: '0700000000',
-            dateOfBirth: '1990-01-01',
-            address: '123 Main Street',
-            maritalStatus: 'single' as const,
-            section: 'General',
-            termsOfService: 'permanent' as const,
-            accountNumber: memberNumber || `ACC${Date.now()}`,
-            branch: 'Main Branch',
-            beneficiaryName: memberName,
-            beneficiaryRelationship: 'Self',
-            beneficiaryContact: '0700000000',
-            role: 'member' as const,
-            memberNumber: newMemberNumber
-          };
-
-          const validatedMemberData = insertMemberSchema.parse(memberData);
-          member = await storage.createMember(validatedMemberData);
-          result.importedMembers++;
-          console.log(`Created new member: ${member.fullName} (${member.memberNumber})`);
-        }
-
-        // Create savings account if none exists (required for loans)
-        const existingAccounts = await storage.getSavingsAccountsByMember(member.id);
-        if (existingAccounts.length === 0) {
-          const savingsData = {
-            memberId: member.id,
-            accountNumber: `SAV${member.memberNumber}`,
-            accountType: 'regular' as const,
-            balance: Math.max(loanAmount * 0.4, 100000).toString(), // Ensure sufficient savings for loan
-            status: 'active' as const
-          };
-          const validatedSavingsData = insertSavingsAccountSchema.parse(savingsData);
-          await storage.createSavingsAccount(validatedSavingsData);
-          result.importedAccounts++;
-        }
-
-        // Create loan
-        const monthlyPayment = calculateMonthlyPayment(loanAmount, interestRate, termMonths);
-        const loanData = {
-          memberId: member.id,
-          loanNumber: `LOAN${String(successCount + 1).padStart(6, '0')}`,
-          loanType: loanType,
-          principalAmount: loanAmount.toString(),
-          interestRate: interestRate.toString(),
-          termMonths: termMonths,
-          monthlyPayment: monthlyPayment.toString(),
-          outstandingBalance: outstandingBalance.toString(),
-          status: 'active' as const,
-          purpose: 'Imported from Excel statement',
-          applicationDate: new Date(),
-          approvalDate: new Date(),
-          disbursementDate: new Date(),
-          currentSavings: Math.max(loanAmount * 0.4, 100000).toString()
-        };
-
-        const validatedLoanData = insertLoanSchema.parse(loanData);
-        await storage.createLoan(validatedLoanData);
-        
-        successCount++;
-        result.importedLoans = (result.importedLoans || 0) + 1;
-        console.log(`✓ Created loan: ${loanData.loanNumber} for ${member.fullName} - UGX ${loanAmount.toLocaleString()}`);
-
-      } catch (error) {
-        console.error(`Error processing loan row ${i + 1}:`, error);
-        result.errors.push({
-          row: i + 1,
-          error: `Failed to process loan: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          data: row
-        });
-      }
+    // Process the loan statement and create loan record
+    if (!accountName) {
+      result.errors.push({ row: 1, error: "Account name not found in the statement" });
+      return result;
     }
 
-    result.totalRows = rawData.length - headerRowIndex - 1;
-    result.successfulImports = successCount;
-    result.success = result.errors.length < result.totalRows;
+    try {
+      console.log('Processing loan statement for:', accountName);
+
+      // Find the initial loan disbursement and calculate loan amount
+      let initialLoanAmount = 0;
+      let currentBalance = closingBalance;
+      let interestRate = 12; // Default rate
+      
+      // Analyze transactions to get loan details
+      for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+        const row = rawData[i] as any[];
+        if (!row || row.length < 4) continue;
+        
+        const details = row[1]?.toString().toLowerCase() || '';
+        const amountDebited = parseFloat(row[2]) || 0;
+        
+        // Look for loan disbursement
+        if (details.includes('disbursed') || details.includes('loan amount')) {
+          initialLoanAmount += Math.abs(amountDebited);
+        }
+        // Look for top-ups (negative amounts in debited column)
+        else if (details.includes('top') && amountDebited < 0) {
+          initialLoanAmount += Math.abs(amountDebited);
+        }
+      }
+
+      // If no initial amount found, estimate from balance and transactions
+      if (initialLoanAmount === 0) {
+        initialLoanAmount = Math.max(currentBalance, 1000000); // Reasonable minimum
+      }
+
+      console.log(`Loan details: Amount=${initialLoanAmount}, Balance=${currentBalance}, Interest=${interestEarned}`);
+
+      // Find or create member
+      let member;
+      
+      // Try to find existing member by name
+      const allMembers = await storage.getAllMembers();
+      member = allMembers.find(m => 
+        m.fullName?.toLowerCase().includes(accountName.toLowerCase()) ||
+        accountName.toLowerCase().includes(m.fullName?.toLowerCase() || '')
+      );
+
+      if (!member) {
+        // Create new member for this loan
+        const memberCount = await storage.getMembersCount();
+        const newMemberNumber = `BCS${String(memberCount + 1).padStart(6, '0')}`;
+        
+        const memberData = {
+          fullName: accountName,
+          idNumber: `LOAN${accountNumber || Date.now()}`,
+          phoneNumber: '0700000000',
+          email: `${accountName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
+          department: 'Loan Import',
+          monthlySavings: '50000',
+          shareContribution: '20000',
+          numberOfShares: 4,
+          status: 'active' as const,
+          gender: 'male' as const,
+          averageNetPay: Math.round(initialLoanAmount / 10).toString(),
+          staffAccountNumber: accountNumber || `STAFF${Date.now()}`,
+          nextOfKinName: 'Next of Kin',
+          nextOfKinPhone: '0700000000',
+          dateOfBirth: '1990-01-01',
+          address: '123 Main Street',
+          maritalStatus: 'single' as const,
+          section: 'General',
+          termsOfService: 'permanent' as const,
+          accountNumber: accountNumber || `ACC${Date.now()}`,
+          branch: 'Main Branch',
+          beneficiaryName: accountName,
+          beneficiaryRelationship: 'Self',
+          beneficiaryContact: '0700000000',
+          role: 'member' as const,
+          memberNumber: newMemberNumber
+        };
+
+        const validatedMemberData = insertMemberSchema.parse(memberData);
+        member = await storage.createMember(validatedMemberData);
+        result.importedMembers++;
+        console.log(`Created new member: ${member.fullName} (${member.memberNumber})`);
+      }
+
+      // Create savings account if none exists (required for loans)
+      const existingAccounts = await storage.getSavingsAccountsByMember(member.id);
+      if (existingAccounts.length === 0) {
+        const savingsData = {
+          memberId: member.id,
+          accountNumber: `SAV${member.memberNumber}`,
+          accountType: 'regular' as const,
+          balance: Math.max(initialLoanAmount * 0.4, 100000).toString(), // Ensure sufficient savings for loan
+          status: 'active' as const
+        };
+        const validatedSavingsData = insertSavingsAccountSchema.parse(savingsData);
+        await storage.createSavingsAccount(validatedSavingsData);
+        result.importedAccounts++;
+      }
+
+      // Create loan
+      const monthlyPayment = calculateMonthlyPayment(initialLoanAmount, interestRate, tenure || 12);
+      const loanData = {
+        memberId: member.id,
+        loanNumber: `LOAN${String(Date.now()).slice(-6)}`,
+        loanType: 'personal' as const,
+        principalAmount: initialLoanAmount.toString(),
+        interestRate: interestRate.toString(),
+        termMonths: tenure || 12,
+        monthlyPayment: monthlyPayment.toString(),
+        outstandingBalance: currentBalance.toString(),
+        status: 'active' as const,
+        purpose: 'Imported from loan statement',
+        applicationDate: new Date(),
+        approvalDate: new Date(),
+        disbursementDate: new Date(),
+        currentSavings: Math.max(initialLoanAmount * 0.4, 100000).toString()
+      };
+
+      const validatedLoanData = insertLoanSchema.parse(loanData);
+      const createdLoan = await storage.createLoan(validatedLoanData);
+      
+      result.importedLoans = (result.importedLoans || 0) + 1;
+      console.log(`✓ Created loan: ${loanData.loanNumber} for ${member.fullName} - UGX ${initialLoanAmount.toLocaleString()}`);
+
+      // Process transactions and create transaction records
+      const transactionEntries = [];
+      for (let i = headerRowIndex + 1; i < rawData.length; i++) {
+        const row = rawData[i] as any[];
+        if (!row || row.length < 4 || !row[0]) continue;
+        
+        const postingDate = row[0];
+        const details = row[1]?.toString() || '';
+        const amountDebited = parseFloat(row[2]) || 0;
+        const principalRepayment = parseFloat(row[3]) || 0;
+        const interest = parseFloat(row[4]) || 0;
+        
+        if (amountDebited !== 0 || principalRepayment !== 0) {
+          const transactionData = {
+            memberId: member.id,
+            loanId: createdLoan.id,
+            transactionType: amountDebited > 0 ? 'loan_payment' as const : 'loan_disbursement' as const,
+            amount: Math.abs(amountDebited || principalRepayment).toString(),
+            description: details,
+            referenceNumber: `LTX${Date.now()}_${i}`,
+            status: 'completed' as const,
+            processedBy: '43104392', // Admin user ID
+            transactionDate: new Date()
+          };
+          
+          transactionEntries.push(transactionData);
+        }
+      }
+
+      // Create transactions
+      if (transactionEntries.length > 0) {
+        for (const transaction of transactionEntries) {
+          const validatedTransactionData = insertTransactionSchema.parse(transaction);
+          await storage.createTransaction(validatedTransactionData);
+        }
+        console.log(`Imported ${transactionEntries.length} loan transactions`);
+      }
+
+      result.totalRows = 1; // One loan statement
+      result.successfulImports = 1;
+
+    } catch (error) {
+      console.error('Error processing loan statement:', error);
+      result.errors.push({
+        row: 1,
+        error: `Failed to process loan: ${error instanceof Error ? error.message : 'Unknown error'}`
+      });
+    }
+
+    result.success = result.errors.length === 0;
     
     console.log('Loan import completed:', result);
     return result;
