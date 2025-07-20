@@ -304,22 +304,46 @@ export default function DataImport() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <h4 className="font-medium mb-2">Expected Excel Format:</h4>
+              <h4 className="font-medium mb-2">
+                {importType === 'savings' ? 'Savings Import Format:' : 'Loan Import Format:'}
+              </h4>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Column headers in the first row</li>
-                <li>• Full Name, ID Number, Phone Number</li>
-                <li>• Email, Department (optional)</li>
-                <li>• Account Balance, Account Type</li>
+                {importType === 'savings' ? (
+                  <>
+                    <li>• Column headers in the first row</li>
+                    <li>• Full Name, ID Number, Phone Number</li>
+                    <li>• Email, Department (optional)</li>
+                    <li>• Account Balance, Account Type</li>
+                  </>
+                ) : (
+                  <>
+                    <li>• Account Name and Number in header rows</li>
+                    <li>• Transaction history with posting dates</li>
+                    <li>• Details, amounts, principal, interest columns</li>
+                    <li>• Balance tracking throughout statement</li>
+                  </>
+                )}
               </ul>
             </div>
             
             <div>
               <h4 className="font-medium mb-2">What happens during import:</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• New member profiles are created automatically</li>
-                <li>• Savings accounts are set up with imported balances</li>
-                <li>• Duplicate ID numbers are automatically handled</li>
-                <li>• Invalid data rows are reported for review</li>
+                {importType === 'savings' ? (
+                  <>
+                    <li>• New member profiles are created automatically</li>
+                    <li>• Savings accounts are set up with imported balances</li>
+                    <li>• Duplicate ID numbers are automatically handled</li>
+                    <li>• Invalid data rows are reported for review</li>
+                  </>
+                ) : (
+                  <>
+                    <li>• Member profiles created from loan account names</li>
+                    <li>• Loan records generated from statement data</li>
+                    <li>• Savings accounts created automatically for loans</li>
+                    <li>• Transaction history imported and processed</li>
+                  </>
+                )}
               </ul>
             </div>
           </CardContent>
