@@ -2,6 +2,22 @@ import { storage } from './storage';
 import { insertMemberSchema, insertSavingsAccountSchema, insertTransactionSchema, insertLoanSchema } from '@shared/schema';
 import { z } from 'zod';
 
+function excelDateToDate(excelDate: any): Date {
+  if (typeof excelDate === 'number') {
+    // Excel dates start from 1900-01-01 (but Excel considers 1900 a leap year, which it isn't)
+    const excelEpoch = new Date(1900, 0, 1);
+    const millisecondsPerDay = 24 * 60 * 60 * 1000;
+    return new Date(excelEpoch.getTime() + (excelDate - 2) * millisecondsPerDay);
+  }
+  if (excelDate instanceof Date) {
+    return excelDate;
+  }
+  if (typeof excelDate === 'string') {
+    return new Date(excelDate);
+  }
+  return new Date();
+}
+
 interface ImportedMember {
   memberNumber?: string;
   fullName: string;
@@ -485,7 +501,7 @@ export async function importLoansFromExcel(filePath: string): Promise<ImportResu
         loanNumber: `LOAN${String(Date.now()).slice(-6)}`,
         loanType: 'personal' as const,
         principalAmount: initialLoanAmount.toString(),
-        interestRate: interestRate.toString(),
+        interestRate: Math.min(interestRate / 100, 0.9999).toString(), // Convert percentage to decimal and ensure within precision limits
         termMonths: tenure || 12,
         monthlyPayment: monthlyPayment.toString(),
         outstandingBalance: currentBalance.toString(),
