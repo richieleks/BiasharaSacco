@@ -124,6 +124,12 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
 
 ## Recent Changes
 
+- January 27, 2025. Redesigned Settings page for improved user experience:
+  - Converted horizontal tabbed interface to clean vertical sections layout
+  - Removed sidebar navigation for simplified single-page view
+  - Organized settings into three clear sections: Notifications, Appearance, and Security
+  - Streamlined user flow with all settings visible in one scrollable page
+  - Fixed database schema issues for interest calculations system (added missing columns)
 - July 20, 2025. Completed comprehensive interest calculations system implementation:
   - Built complete frontend interface for interest calculations with financial year management
   - Added Interest Calculations navigation item to RBAC system with proper permissions
