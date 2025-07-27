@@ -130,16 +130,16 @@ export default function SettingsPage() {
   });
 
   // Fetch members for role management
-  const { data: members, isLoading: membersLoading } = useQuery({
+  const { data: members = [], isLoading: membersLoading } = useQuery({
     queryKey: ['/api/members'],
   });
 
   // Filter members based on search term
-  const filteredMembers = members?.filter((member: any) =>
+  const filteredMembers = (members as any[]).filter((member: any) =>
     member.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.memberNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     member.roles?.some((role: string) => role.toLowerCase().includes(searchTerm.toLowerCase()))
-  ) || [];
+  );
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: UserSettingsData) => {
@@ -228,21 +228,38 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto p-6">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Settings className="h-6 w-6" />
-          User Settings
+          Settings
         </h1>
         <p className="text-muted-foreground">
-          Customize your SACCO experience and notification preferences
+          Manage your account preferences and system settings
         </p>
       </div>
 
-      {/* Settings Content */}
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
+      <Tabs defaultValue="user" className="space-y-6">
+        <TabsList className="w-full justify-start bg-slate-100/50 p-1 rounded-lg">
+          <TabsTrigger value="user" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            User Settings
+          </TabsTrigger>
+          {hasPermission('read', 'roles') && (
+            <TabsTrigger value="rbac" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              RBAC Management
+            </TabsTrigger>
+          )}
+          {hasPermission('update', 'members') && (
+            <TabsTrigger value="roles" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              Role Management
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="user" className="space-y-6">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
           
           {/* Notifications Section */}
           <div className="space-y-6">
@@ -575,29 +592,30 @@ export default function SettingsPage() {
             </Card>
           </div>
 
-          <div className="flex justify-end gap-4 pt-4 border-t">
-            <Button 
-              type="submit" 
-              disabled={updateSettingsMutation.isPending}
-            >
-              {updateSettingsMutation.isPending ? "Saving..." : "Save Settings"}
-            </Button>
-          </div>
-        </form>
-      </Form>
+              <div className="flex justify-end gap-4 pt-4 border-t">
+                <Button 
+                  type="submit" 
+                  disabled={updateSettingsMutation.isPending}
+                >
+                  {updateSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </TabsContent>
 
-      {/* RBAC Management Section */}
-      {hasPermission('read', 'roles') && (
-        <div className="space-y-6 mt-8">
-          <div>
-            <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-              <ShieldCheck className="h-5 w-5" />
-              RBAC Management
-            </h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              Manage roles and permissions for system access control
-            </p>
-          </div>
+        {/* RBAC Management Tab */}
+        {hasPermission('read', 'roles') && (
+          <TabsContent value="rbac" className="space-y-6">
+            <div>
+              <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
+                <ShieldCheck className="h-5 w-5" />
+                RBAC Management
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Manage roles and permissions for system access control
+              </p>
+            </div>
 
           <Card>
             <CardHeader>
@@ -667,7 +685,7 @@ export default function SettingsPage() {
                 {rolesLoading ? (
                   <div className="text-sm text-muted-foreground">Loading roles...</div>
                 ) : (
-                  roles.map((role: any) => (
+                  (roles as any[]).map((role: any) => (
                     <div key={role.id} className="flex items-center justify-between p-3 border rounded-lg">
                       <div>
                         <p className="font-medium">{role.displayName}</p>
@@ -683,12 +701,12 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
+          </TabsContent>
+        )}
 
-      {/* Role Management Section */}
-      {hasPermission('update', 'members') && (
-        <div className="space-y-6 mt-8">
+        {/* Role Management Tab */}
+        {hasPermission('update', 'members') && (
+          <TabsContent value="roles" className="space-y-6">
           <div>
             <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
               <Users className="h-5 w-5" />
@@ -777,7 +795,7 @@ export default function SettingsPage() {
                                   </DialogHeader>
                                   <div className="space-y-4">
                                     <div className="space-y-2">
-                                      {roles.map((role: any) => {
+                                      {(roles as any[]).map((role: any) => {
                                         const isChecked = member.roles?.includes(role.name) || false;
                                         return (
                                           <div key={role.id} className="flex items-center space-x-2">
@@ -840,8 +858,9 @@ export default function SettingsPage() {
               </div>
             </CardContent>
           </Card>
-        </div>
-      )}
+          </TabsContent>
+        )}
+      </Tabs>
     </div>
   );
 }
