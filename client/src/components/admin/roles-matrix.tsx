@@ -38,42 +38,42 @@ const rolesData = [
     restrictions: 'None - Full system access'
   },
   {
-    role: 'committee',
-    title: 'Committee',
-    icon: Users,
-    color: 'bg-blue-500',
-    description: 'Policy enforcement and mid-level approvals',
-    permissions: [
-      'All Treasurer permissions',
-      'Loan approval (UGX 100K - UGX 500K)',
-      'Member application final approval',
-      'Large withdrawal approvals (> UGX 200K)',
-      'Interest rate recommendations',
-      'Policy compliance monitoring',
-      'Guarantor verification',
-      'Loan restructuring requests'
-    ],
-    dataAccess: 'All member profiles, loan applications, transaction reports',
-    restrictions: 'Cannot approve high-value loans or modify policies'
-  },
-  {
     role: 'treasurer',
     title: 'Treasurer',
     icon: Store,
     color: 'bg-green-500',
-    description: 'Financial operations and cash management',
+    description: 'Financial operations and high-level approvals',
+    permissions: [
+      'All Committee permissions',
+      'Final loan approval (UGX 100K - UGX 500K)',
+      'Override committee recommendations',
+      'Access to all financial reports',
+      'Set operational policies',
+      'Emergency fund management',
+      'Staff supervision',
+      'Financial analytics access'
+    ],
+    dataAccess: 'All member profiles, complete financial data, loan portfolio',
+    restrictions: 'Cannot approve loans > UGX 500K or modify system configuration'
+  },
+  {
+    role: 'committee',
+    title: 'Committee',
+    icon: Users,
+    color: 'bg-blue-500',
+    description: 'Policy enforcement and initial approvals',
     permissions: [
       'Member registration and onboarding',
-      'Initial loan application processing',
-      'Deposits and small withdrawals (< UGX 200K)',
+      'Initial loan review and recommendations',
+      'Deposits and withdrawals processing',
       'Account balance inquiries',
       'Transaction processing',
-      'Basic customer support',
+      'Customer support',
       'Document verification',
-      'Daily cash reconciliation'
+      'Policy compliance monitoring'
     ],
-    dataAccess: 'Member information, transaction processing, loan applications (initial review)',
-    restrictions: 'Cannot approve loans > UGX 100K, access sensitive data, or override limits'
+    dataAccess: 'Member profiles, loan applications for review, basic reports',
+    restrictions: 'Cannot give final loan approvals, access sensitive analytics'
   },
   {
     role: 'member',
@@ -109,8 +109,8 @@ const loanApprovalWorkflow = [
     amount: 'UGX 100K - 500K',
     type: 'Standard Loans',
     workflow: [
-      { stage: 'Treasurer Review', color: 'bg-green-500' },
-      { stage: 'Committee Approval', color: 'bg-blue-500' },
+      { stage: 'Committee Review', color: 'bg-blue-500' },
+      { stage: 'Treasurer Approval', color: 'bg-green-500' },
       { stage: 'Disbursement', color: 'bg-green-500' }
     ]
   },
@@ -118,8 +118,8 @@ const loanApprovalWorkflow = [
     amount: '> UGX 500,000',
     type: 'High-Value Loans',
     workflow: [
-      { stage: 'Treasurer Review', color: 'bg-green-500' },
-      { stage: 'Committee Assessment', color: 'bg-blue-500' },
+      { stage: 'Committee Review', color: 'bg-blue-500' },
+      { stage: 'Treasurer Assessment', color: 'bg-green-500' },
       { stage: 'Admin Approval', color: 'bg-red-500' },
       { stage: 'Disbursement', color: 'bg-green-500' }
     ]

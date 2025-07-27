@@ -3,8 +3,8 @@
 ## Role Hierarchy
 From highest to lowest authority:
 1. **Admin** - Full system access
-2. **Committee** - Policy decisions and mid-level approvals
-3. **Treasurer** - Financial operations and cash management
+2. **Treasurer** - Financial operations and high-level approvals
+3. **Committee** - Policy decisions and mid-level approvals
 4. **Member** - Self-service access only
 
 ## Detailed Permissions Matrix
@@ -28,50 +28,55 @@ From highest to lowest authority:
 
 ---
 
-### 🏛️ COMMITTEE
-**Purpose**: Policy enforcement and mid-level approvals
+### 💰 TREASURER
+**Purpose**: Financial operations and high-level approvals
 
 **Permissions**:
-- ✅ **All Treasurer permissions PLUS:**
-- ✅ Loan approval (UGX 100,000 - UGX 500,000)
-- ✅ Member application final approval
-- ✅ Large withdrawal approvals (> UGX 200,000)
-- ✅ Interest rate recommendations
-- ✅ Policy compliance monitoring
-- ✅ Guarantor verification
-- ✅ Loan restructuring requests
+- ✅ **All Committee permissions PLUS:**
+- ✅ Final approval for loans (UGX 100,000 - UGX 500,000)
+- ✅ Override committee decisions when necessary
+- ✅ Access to all financial reports and analytics
+- ✅ Authority to set operational policies
+- ✅ Emergency fund management
+- ✅ Staff supervision and performance review
 
 **Data Access**:
-- All member profiles and histories
-- Loan applications requiring committee review
-- Transaction patterns and reports
-- Financial performance metrics
+- All member profiles and financial data
+- Complete transaction history and reports
+- Loan portfolio management
+- Financial performance metrics and analytics
+
+**Restrictions**:
+- ❌ Cannot approve loans over UGX 500,000 (requires Admin)
+- ❌ Cannot modify system configuration
+- ❌ Cannot manage user roles
 
 ---
 
-### 💰 TREASURER
-**Purpose**: Financial operations and cash management
+### 🏛️ COMMITTEE
+**Purpose**: Policy enforcement and initial approvals
 
 **Permissions**:
 - ✅ Member registration and onboarding
-- ✅ Initial loan application processing
-- ✅ Deposits and small withdrawals (< UGX 200,000)
+- ✅ Initial loan application review and recommendations
+- ✅ Deposits and withdrawals processing
 - ✅ Account balance inquiries
 - ✅ Transaction processing
-- ✅ Basic customer support
+- ✅ Customer support
 - ✅ Document verification
-- ✅ Daily cash reconciliation
+- ✅ Policy compliance monitoring
+- ✅ Guarantor verification
 
 **Data Access**:
-- Member information (view and edit basic details)
-- Transaction processing for assigned members
-- Loan applications (initial review only)
-- Savings account operations
+- Member profiles and basic financial information
+- Loan applications for review
+- Transaction processing capabilities
+- Basic reports and summaries
 
 **Restrictions**:
-- ❌ Cannot approve loans over UGX 100,000
-- ❌ Cannot access sensitive member data
-- ❌ Cannot override system limits
+- ❌ Cannot give final approval for loans (only recommendations)
+- ❌ Cannot access sensitive financial analytics
+- ❌ Cannot override treasurer decisions
 
 ---
 
@@ -110,13 +115,13 @@ From highest to lowest authority:
 - **If Approved**: Immediate disbursement
 
 ### Standard Loans (UGX 100,000 - UGX 500,000)
-1. **Treasurer**: Initial review and documentation
-2. **Committee**: Credit assessment and approval decision
+1. **Committee**: Initial review and documentation
+2. **Treasurer**: Final approval decision
 3. **If Approved**: Disbursement authorization
 
 ### High-Value Loans (> UGX 500,000)
-1. **Treasurer**: Initial review and documentation
-2. **Committee**: Credit assessment and recommendation
+1. **Committee**: Initial review and documentation
+2. **Treasurer**: Credit assessment and recommendation
 3. **Admin**: Final approval authority
 4. **If Approved**: Disbursement authorization
 
@@ -128,16 +133,18 @@ From highest to lowest authority:
 - **Sees**: Everything in the system
 - **Filters**: None
 
-### Committee
-- **Sees**: All data relevant to oversight
-- **Filters**: Can access all member and transaction data
-
 ### Treasurer
-- **Sees**: Operational data only
+- **Sees**: All financial and operational data
+- **Filters**: Can access all member and transaction data
+  - Cannot access system configuration
+  - Cannot manage user roles
+
+### Committee
+- **Sees**: Operational data for review
 - **Filters**: 
-  - Cannot see other staff's approval decisions
-  - Cannot access audit logs
-  - Cannot see system configuration
+  - Cannot see final approval decisions
+  - Cannot access sensitive financial analytics
+  - Cannot override treasurer decisions
 
 ### Member
 - **Sees**: Personal data only
@@ -178,17 +185,17 @@ From highest to lowest authority:
 - System Settings
 - All Reports
 
+### Treasurer Dashboard
+- Pending Final Approvals
+- Financial Analytics
+- Loan Portfolio Management
+- Strategic Reports
+
 ### Committee Dashboard
-- Pending Approvals
+- Initial Loan Reviews
 - Member Applications
 - Policy Compliance
-- Financial Reports
-
-### Treasurer Dashboard
-- Daily Operations
-- Member Services
-- Transaction Processing
-- Basic Reports
+- Operational Reports
 
 ### Member Dashboard
 - Account Summary

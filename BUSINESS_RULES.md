@@ -74,14 +74,14 @@
 ## 3. Approval Workflow Rules
 
 ### 3.1 Multi-Stage Approval
-- **BR-A001**: Loans under UGX 100,000 (emergency) bypass treasurer stage
-- **BR-A002**: Standard loans: Treasurer → Committee → Disbursement
-- **BR-A003**: High-value loans (>UGX 500,000): Treasurer → Committee → Admin
+- **BR-A001**: Loans under UGX 100,000 (emergency) bypass committee stage
+- **BR-A002**: Standard loans: Committee → Treasurer → Disbursement
+- **BR-A003**: High-value loans (>UGX 500,000): Committee → Treasurer → Admin
 - **BR-A004**: Each stage can approve, reject, or escalate
 
 ### 3.2 Role-Based Permissions
-- **BR-A005**: Treasurers can process deposits/withdrawals and initial loan review
-- **BR-A006**: Committee members can approve standard loans
+- **BR-A005**: Committee members can process initial loan reviews and recommendations
+- **BR-A006**: Treasurers can give final approval for standard loans
 - **BR-A007**: Admins can approve high-value loans and override decisions
 - **BR-A008**: Admins have full system access and can manage roles
 

@@ -127,8 +127,9 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
 - January 27, 2025. Major role system update:
   - Replaced "Teller" role with "Treasurer" throughout the entire system
   - Removed "Manager" role completely from all components
-  - Updated role hierarchy to: Admin → Committee → Treasurer → Member
-  - Modified loan approval workflow: high-value loans (>500K) now require Admin approval instead of Manager
+  - Updated role hierarchy to: Admin → Treasurer → Committee → Member
+  - Modified loan approval workflow: Committee reviews first, then Treasurer approves
+  - High-value loans (>500K) now require Admin approval instead of Manager
   - Updated all database references, RBAC permissions, and role assignments
   - Settings page successfully converted to tabbed interface with User Settings, RBAC Management, and Role Management tabs
   - Fixed Interest Calculations database schema by adding missing columns (calculated_by, transaction_id, processed_at)
