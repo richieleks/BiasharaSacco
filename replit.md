@@ -130,6 +130,11 @@ This is a comprehensive SACCO (Savings and Credit Cooperative Organization) mana
   - Organized settings into three clear sections: Notifications, Appearance, and Security
   - Streamlined user flow with all settings visible in one scrollable page
   - Fixed database schema issues for interest calculations system (added missing columns)
+  - Integrated RBAC Management and Role Management functionality into settings page
+  - Removed standalone RBAC and Role Management pages from navigation and routing
+  - RBAC Management section allows creating roles and managing permissions
+  - Role Management section enables assigning roles to members
+  - Both sections are permission-based and only visible to authorized users
 - July 20, 2025. Completed comprehensive interest calculations system implementation:
   - Built complete frontend interface for interest calculations with financial year management
   - Added Interest Calculations navigation item to RBAC system with proper permissions

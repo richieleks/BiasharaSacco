@@ -28,8 +28,6 @@ import AmortizationDemo from "@/pages/amortization-demo";
 import LoanWorkflow from "@/pages/loan-workflow";
 import MemberDetails from "@/pages/member-details";
 import NotificationsPage from "@/pages/notifications";
-import RBACManagement from "@/pages/rbac-management";
-import RoleManagement from "@/pages/role-management";
 import Settings from "@/pages/settings";
 import AdminSettings from "@/pages/admin-settings";
 import Profile from "@/pages/profile";
@@ -125,11 +123,6 @@ function Router() {
               </ProtectedRoute>
             </Route>
 
-            <Route path="/rbac-management">
-              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'roles' }}>
-                <RBACManagement />
-              </ProtectedRoute>
-            </Route>
             <Route path="/audit-logs">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'audit-logs' }}>
                 <AuditLogs />
@@ -183,16 +176,6 @@ function Router() {
             <Route path="/members/:id">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'members' }}>
                 <MemberDetails />
-              </ProtectedRoute>
-            </Route>
-            <Route path="/rbac-management">
-              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'roles' }}>
-                <RBACManagement />
-              </ProtectedRoute>
-            </Route>
-            <Route path="/role-management">
-              <ProtectedRoute requiredPermission={{ action: 'update', resource: 'members' }}>
-                <RoleManagement />
               </ProtectedRoute>
             </Route>
             <Route path="/data-import">
