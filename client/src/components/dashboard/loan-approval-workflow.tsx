@@ -25,37 +25,33 @@ export default function LoanApprovalWorkflow() {
   const [comments, setComments] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("teller");
+  const [activeTab, setActiveTab] = useState("treasurer");
   const { toast } = useToast();
   const { user } = useAuth();
 
   // Determine which stages the user can access using multi-role support
   const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : []);
-  const canAccessTeller = hasAnyRole(userRoles, ['teller', 'admin']);
-  const canAccessCommittee = hasAnyRole(userRoles, ['committee', 'admin']);
-  const canAccessManager = hasAnyRole(userRoles, ['manager', 'admin']);
+  // Handle legacy "teller" role by mapping to "treasurer"
+  const mappedRoles = userRoles.map((role: any) => role === 'teller' ? 'treasurer' : role);
+  const canAccessTreasurer = hasAnyRole(mappedRoles as any, ['treasurer', 'admin']);
+  const canAccessCommittee = hasAnyRole(mappedRoles as any, ['committee', 'admin']);
 
   // Set default tab based on user role
   useState(() => {
-    if (user?.role === 'teller') setActiveTab('teller');
-    else if (user?.role === 'committee') setActiveTab('committee');
-    else if (user?.role === 'manager') setActiveTab('manager');
+    const primaryRole = (user?.member?.role || user?.role) as string | undefined;
+    if (primaryRole && (primaryRole === 'treasurer' || primaryRole === 'teller')) setActiveTab('treasurer');
+    else if (primaryRole === 'committee') setActiveTab('committee');
   });
 
   // Fetch loans for each approval stage
-  const { data: tellerLoans, isLoading: tellerLoading } = useQuery<LoanWithDetails[]>({
-    queryKey: ['/api/loans/approval/teller'],
-    enabled: canAccessTeller,
+  const { data: treasurerLoans, isLoading: treasurerLoading } = useQuery<LoanWithDetails[]>({
+    queryKey: ['/api/loans/approval/treasurer'],
+    enabled: canAccessTreasurer,
   });
 
   const { data: committeeLoans, isLoading: committeeLoading } = useQuery<LoanWithDetails[]>({
     queryKey: ['/api/loans/approval/committee'],
     enabled: canAccessCommittee,
-  });
-
-  const { data: managerLoans, isLoading: managerLoading } = useQuery<LoanWithDetails[]>({
-    queryKey: ['/api/loans/approval/manager'],
-    enabled: canAccessManager,
   });
 
   const approveMutation = useMutation({
@@ -150,10 +146,9 @@ export default function LoanApprovalWorkflow() {
 
   const getStatusBadge = (status: string, stage: string) => {
     const badges: Record<string, { variant: any; text: string; icon: any }> = {
-      'pending': { variant: 'secondary', text: 'Pending Teller Review', icon: Clock },
-      'teller_approved': { variant: 'default', text: 'Teller Approved', icon: CheckCircle },
+      'pending': { variant: 'secondary', text: 'Pending Treasurer Review', icon: Clock },
+      'treasurer_approved': { variant: 'default', text: 'Treasurer Approved', icon: CheckCircle },
       'committee_approved': { variant: 'default', text: 'Committee Approved', icon: CheckCircle },
-      'manager_approved': { variant: 'default', text: 'Manager Approved', icon: CheckCircle },
       'approved': { variant: 'default', text: 'Fully Approved', icon: CheckCircle },
       'rejected': { variant: 'destructive', text: 'Rejected', icon: XCircle },
     };
@@ -251,13 +246,13 @@ export default function LoanApprovalWorkflow() {
       {parseFloat(loan.principalAmount) > 500000 && (
         <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
           <AlertTriangle className="h-4 w-4" />
-          <span className="text-sm">High-value loan requiring manager approval</span>
+          <span className="text-sm">High-value loan requiring committee approval</span>
         </div>
       )}
     </div>
   );
 
-  if (!canAccessTeller && !canAccessCommittee && !canAccessManager) {
+  if (!canAccessTreasurer && !canAccessCommittee) {
     return (
       <Card>
         <CardHeader>
@@ -265,7 +260,7 @@ export default function LoanApprovalWorkflow() {
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground">
-            Access denied. You need teller, committee, or manager role to view loan approvals.
+            Access denied. You need treasurer or committee role to view loan approvals.
           </p>
         </CardContent>
       </Card>
@@ -279,11 +274,11 @@ export default function LoanApprovalWorkflow() {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="teller" disabled={!canAccessTeller}>
-              Teller Review
-              {tellerLoans && tellerLoans.length > 0 && (
-                <Badge variant="secondary" className="ml-2">{tellerLoans.length}</Badge>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="treasurer" disabled={!canAccessTreasurer}>
+              Treasurer Review
+              {treasurerLoans && treasurerLoans.length > 0 && (
+                <Badge variant="secondary" className="ml-2">{treasurerLoans.length}</Badge>
               )}
             </TabsTrigger>
             <TabsTrigger value="committee" disabled={!canAccessCommittee}>
@@ -292,32 +287,26 @@ export default function LoanApprovalWorkflow() {
                 <Badge variant="secondary" className="ml-2">{committeeLoans.length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="manager" disabled={!canAccessManager}>
-              Manager Review
-              {managerLoans && managerLoans.length > 0 && (
-                <Badge variant="secondary" className="ml-2">{managerLoans.length}</Badge>
-              )}
-            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="teller" className="mt-4">
+          <TabsContent value="treasurer" className="mt-4">
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock className="h-4 w-4" />
                 Initial loan review and documentation verification
               </div>
-              {tellerLoading ? (
-                <p>Loading teller review queue...</p>
-              ) : !tellerLoans || tellerLoans.length === 0 ? (
-                <p className="text-muted-foreground">No loans pending teller review.</p>
+              {treasurerLoading ? (
+                <p>Loading treasurer review queue...</p>
+              ) : !treasurerLoans || treasurerLoans.length === 0 ? (
+                <p className="text-muted-foreground">No loans pending treasurer review.</p>
               ) : (
                 <div className="space-y-4">
-                  {tellerLoans.map(loan => (
+                  {treasurerLoans.map(loan => (
                     <LoanCard 
                       key={loan.id} 
                       loan={loan} 
-                      stage="teller" 
-                      canApprove={canAccessTeller} 
+                      stage="treasurer" 
+                      canApprove={canAccessTreasurer} 
                     />
                   ))}
                 </div>
@@ -343,31 +332,6 @@ export default function LoanApprovalWorkflow() {
                       loan={loan} 
                       stage="committee" 
                       canApprove={canAccessCommittee} 
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="manager" className="mt-4">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <User className="h-4 w-4" />
-                Final approval for high-value loans (over UGX 500,000)
-              </div>
-              {managerLoading ? (
-                <p>Loading manager review queue...</p>
-              ) : !managerLoans || managerLoans.length === 0 ? (
-                <p className="text-muted-foreground">No loans pending manager review.</p>
-              ) : (
-                <div className="space-y-4">
-                  {managerLoans.map(loan => (
-                    <LoanCard 
-                      key={loan.id} 
-                      loan={loan} 
-                      stage="manager" 
-                      canApprove={canAccessManager} 
                     />
                   ))}
                 </div>

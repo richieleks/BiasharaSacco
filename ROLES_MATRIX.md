@@ -3,10 +3,9 @@
 ## Role Hierarchy
 From highest to lowest authority:
 1. **Admin** - Full system access
-2. **Manager** - Strategic oversight and final approvals
-3. **Committee** - Policy decisions and mid-level approvals
-4. **Teller** - Daily operations and customer service
-5. **Member** - Self-service access only
+2. **Committee** - Policy decisions and mid-level approvals
+3. **Treasurer** - Financial operations and cash management
+4. **Member** - Self-service access only
 
 ## Detailed Permissions Matrix
 
@@ -29,32 +28,11 @@ From highest to lowest authority:
 
 ---
 
-### 🏢 MANAGER
-**Purpose**: Senior management oversight and high-value approvals
-
-**Permissions**:
-- ✅ **All Committee permissions PLUS:**
-- ✅ Final approval for loans > UGX 500,000
-- ✅ Member suspension/reactivation
-- ✅ Financial policy adjustments
-- ✅ Staff performance monitoring
-- ✅ Strategic reports and dashboards
-- ✅ Emergency fund access
-- ✅ Loan write-offs and restructuring
-
-**Data Access**:
-- All member information
-- All financial transactions
-- All loan applications and history
-- Performance metrics and analytics
-
----
-
 ### 🏛️ COMMITTEE
 **Purpose**: Policy enforcement and mid-level approvals
 
 **Permissions**:
-- ✅ **All Teller permissions PLUS:**
+- ✅ **All Treasurer permissions PLUS:**
 - ✅ Loan approval (UGX 100,000 - UGX 500,000)
 - ✅ Member application final approval
 - ✅ Large withdrawal approvals (> UGX 200,000)
@@ -71,8 +49,8 @@ From highest to lowest authority:
 
 ---
 
-### 🏪 TELLER
-**Purpose**: Front-line customer service and daily operations
+### 💰 TREASURER
+**Purpose**: Financial operations and cash management
 
 **Permissions**:
 - ✅ Member registration and onboarding
@@ -127,26 +105,26 @@ From highest to lowest authority:
 ## Loan Approval Workflow by Amount
 
 ### Emergency Loans (< UGX 100,000)
-- **Direct to Committee** (bypasses Teller for speed)
+- **Direct to Committee** (bypasses Treasurer for speed)
 - **Committee Decision**: Approve/Reject
 - **If Approved**: Immediate disbursement
 
 ### Standard Loans (UGX 100,000 - UGX 500,000)
-1. **Teller**: Initial review and documentation
+1. **Treasurer**: Initial review and documentation
 2. **Committee**: Credit assessment and approval decision
 3. **If Approved**: Disbursement authorization
 
 ### High-Value Loans (> UGX 500,000)
-1. **Teller**: Initial review and documentation
+1. **Treasurer**: Initial review and documentation
 2. **Committee**: Credit assessment and recommendation
-3. **Manager**: Final approval authority
+3. **Admin**: Final approval authority
 4. **If Approved**: Disbursement authorization
 
 ---
 
 ## Data Filtering Rules
 
-### Admin/Manager
+### Admin
 - **Sees**: Everything in the system
 - **Filters**: None
 
@@ -154,7 +132,7 @@ From highest to lowest authority:
 - **Sees**: All data relevant to oversight
 - **Filters**: Can access all member and transaction data
 
-### Teller
+### Treasurer
 - **Sees**: Operational data only
 - **Filters**: 
   - Cannot see other staff's approval decisions
@@ -200,19 +178,13 @@ From highest to lowest authority:
 - System Settings
 - All Reports
 
-### Manager Dashboard
-- Performance Metrics
-- High-Value Approvals
-- Staff Monitoring
-- Strategic Reports
-
 ### Committee Dashboard
 - Pending Approvals
 - Member Applications
 - Policy Compliance
 - Financial Reports
 
-### Teller Dashboard
+### Treasurer Dashboard
 - Daily Operations
 - Member Services
 - Transaction Processing

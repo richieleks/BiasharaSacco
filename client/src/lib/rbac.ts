@@ -1,6 +1,6 @@
 // Role-Based Access Control (RBAC) Configuration
 
-export type UserRole = 'admin' | 'manager' | 'committee' | 'teller' | 'member';
+export type UserRole = 'admin' | 'committee' | 'treasurer' | 'member';
 
 export interface Permission {
   action: string;
@@ -45,23 +45,6 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { action: 'update', resource: 'interest-calculations' },
   ],
   
-  manager: [
-    // High-level oversight and final approvals
-    { action: 'read', resource: 'dashboard' },
-    { action: 'read', resource: 'members' },
-    { action: 'approve', resource: 'members' },
-    { action: 'read', resource: 'loans' },
-    { action: 'approve', resource: 'loans' }, // Final approval for high-value loans
-    { action: 'reject', resource: 'loans' },
-    { action: 'read', resource: 'transactions' },
-    { action: 'read', resource: 'savings' },
-    { action: 'read', resource: 'reports' },
-    { action: 'read', resource: 'guarantors' },
-    { action: 'read', resource: 'interest-calculations' },
-    { action: 'create', resource: 'interest-calculations' },
-    { action: 'update', resource: 'interest-calculations' },
-  ],
-  
   committee: [
     // Mid-level approvals and review
     { action: 'read', resource: 'dashboard' },
@@ -76,8 +59,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { action: 'approve', resource: 'guarantors' },
   ],
   
-  teller: [
-    // Front-line operations
+  treasurer: [
+    // Financial operations and cash management
     { action: 'read', resource: 'dashboard' },
     { action: 'read', resource: 'members' },
     { action: 'create', resource: 'members' },
@@ -117,14 +100,6 @@ export const DASHBOARD_COMPONENTS: Record<UserRole, string[]> = {
     'system-overview',
     'audit-logs'
   ],
-  manager: [
-    'metrics-grid',
-    'recent-transactions',
-    'pending-approvals',
-    'loan-approval-workflow',
-    'member-approvals',
-    'management-reports'
-  ],
   committee: [
     'metrics-grid',
     'pending-approvals',
@@ -132,11 +107,11 @@ export const DASHBOARD_COMPONENTS: Record<UserRole, string[]> = {
     'member-approvals',
     'committee-queue'
   ],
-  teller: [
+  treasurer: [
     'metrics-grid',
     'recent-transactions',
     'quick-actions',
-    'teller-queue',
+    'treasurer-queue',
     'daily-summary'
   ],
   member: [

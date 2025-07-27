@@ -25,35 +25,17 @@ const rolesData = [
     color: 'bg-red-500',
     description: 'Complete system administration and oversight',
     permissions: [
-      'All Manager permissions',
+      'All system permissions',
       'System configuration and settings',
       'User role management',
       'Audit log access',
       'Database maintenance',
       'Emergency override capabilities',
-      'Backup and recovery operations'
+      'Backup and recovery operations',
+      'Final approval for high-value loans'
     ],
     dataAccess: 'ALL data across the system',
     restrictions: 'None - Full system access'
-  },
-  {
-    role: 'manager',
-    title: 'Manager',
-    icon: Building2,
-    color: 'bg-purple-500',
-    description: 'Senior management oversight and high-value approvals',
-    permissions: [
-      'All Committee permissions',
-      'Final approval for loans > UGX 500,000',
-      'Member suspension/reactivation',
-      'Financial policy adjustments',
-      'Staff performance monitoring',
-      'Strategic reports and dashboards',
-      'Emergency fund access',
-      'Loan write-offs and restructuring'
-    ],
-    dataAccess: 'All member information, financial transactions, loan applications',
-    restrictions: 'Cannot modify system configuration'
   },
   {
     role: 'committee',
@@ -62,7 +44,7 @@ const rolesData = [
     color: 'bg-blue-500',
     description: 'Policy enforcement and mid-level approvals',
     permissions: [
-      'All Teller permissions',
+      'All Treasurer permissions',
       'Loan approval (UGX 100K - UGX 500K)',
       'Member application final approval',
       'Large withdrawal approvals (> UGX 200K)',
@@ -75,11 +57,11 @@ const rolesData = [
     restrictions: 'Cannot approve high-value loans or modify policies'
   },
   {
-    role: 'teller',
-    title: 'Teller',
+    role: 'treasurer',
+    title: 'Treasurer',
     icon: Store,
     color: 'bg-green-500',
-    description: 'Front-line customer service and daily operations',
+    description: 'Financial operations and cash management',
     permissions: [
       'Member registration and onboarding',
       'Initial loan application processing',
@@ -127,7 +109,7 @@ const loanApprovalWorkflow = [
     amount: 'UGX 100K - 500K',
     type: 'Standard Loans',
     workflow: [
-      { stage: 'Teller Review', color: 'bg-green-500' },
+      { stage: 'Treasurer Review', color: 'bg-green-500' },
       { stage: 'Committee Approval', color: 'bg-blue-500' },
       { stage: 'Disbursement', color: 'bg-green-500' }
     ]
@@ -136,9 +118,9 @@ const loanApprovalWorkflow = [
     amount: '> UGX 500,000',
     type: 'High-Value Loans',
     workflow: [
-      { stage: 'Teller Review', color: 'bg-green-500' },
+      { stage: 'Treasurer Review', color: 'bg-green-500' },
       { stage: 'Committee Assessment', color: 'bg-blue-500' },
-      { stage: 'Manager Approval', color: 'bg-purple-500' },
+      { stage: 'Admin Approval', color: 'bg-red-500' },
       { stage: 'Disbursement', color: 'bg-green-500' }
     ]
   }

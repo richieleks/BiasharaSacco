@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
 
-export type UserRole = 'admin' | 'manager' | 'committee' | 'teller' | 'member';
+export type UserRole = 'admin' | 'committee' | 'treasurer' | 'member';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -161,19 +161,6 @@ function hasPermission(userRole: UserRole, action: string, resource: string): bo
       { action: 'delete', resource: 'roles' },
     ],
     
-    manager: [
-      { action: 'read', resource: 'dashboard' },
-      { action: 'read', resource: 'members' },
-      { action: 'approve', resource: 'members' },
-      { action: 'read', resource: 'loans' },
-      { action: 'approve', resource: 'loans' },
-      { action: 'reject', resource: 'loans' },
-      { action: 'read', resource: 'transactions' },
-      { action: 'read', resource: 'savings' },
-      { action: 'read', resource: 'reports' },
-      { action: 'read', resource: 'guarantors' },
-    ],
-    
     committee: [
       { action: 'read', resource: 'dashboard' },
       { action: 'read', resource: 'members' },
@@ -187,7 +174,7 @@ function hasPermission(userRole: UserRole, action: string, resource: string): bo
       { action: 'approve', resource: 'guarantors' },
     ],
     
-    teller: [
+    treasurer: [
       { action: 'read', resource: 'dashboard' },
       { action: 'read', resource: 'members' },
       { action: 'create', resource: 'members' },

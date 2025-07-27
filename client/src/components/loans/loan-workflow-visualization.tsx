@@ -291,9 +291,9 @@ export default function LoanWorkflowVisualization({
   const getRoleColor = (role: string) => {
     switch (role.toLowerCase()) {
       case 'member': return 'bg-slate-500';
-      case 'teller': return 'bg-green-500';
+      case 'treasurer': return 'bg-green-500';
       case 'committee': return 'bg-blue-500';
-      case 'manager': return 'bg-purple-500';
+      case 'admin': return 'bg-red-500';
       case 'system': return 'bg-gray-500';
       default: return 'bg-gray-400';
     }

@@ -214,11 +214,9 @@ export default function SettingsPage() {
     switch (role) {
       case 'admin':
         return 'destructive';
-      case 'manager':
-        return 'default';
       case 'committee':
         return 'secondary';
-      case 'teller':
+      case 'treasurer':
         return 'outline';
       case 'member':
         return 'secondary';
