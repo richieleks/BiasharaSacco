@@ -4,10 +4,11 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, LogIn } from "lucide-react";
+import { Loader2, LogIn, Building2, Shield, Users, PiggyBank } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { motion } from "framer-motion";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
@@ -56,68 +57,186 @@ export function LoginPage() {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Biashara SACCO
-          </CardTitle>
-          <p className="text-center text-muted-foreground">
-            Sign in to your account
-          </p>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                placeholder="Enter your username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoComplete="username"
-                autoFocus
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="current-password"
-              />
-            </div>
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+      {/* Animated gradient background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-indigo-600 to-purple-700">
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            backgroundSize: '60px 60px'
+          }}></div>
+        </div>
+      </div>
 
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
+      {/* Floating icons animation */}
+      <motion.div
+        className="absolute top-20 left-20 text-white/20"
+        animate={{
+          y: [0, -20, 0],
+          rotate: [0, 10, 0],
+        }}
+        transition={{
+          duration: 6,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      >
+        <PiggyBank size={60} />
+      </motion.div>
+      <motion.div
+        className="absolute bottom-20 right-20 text-white/20"
+        animate={{
+          y: [0, 20, 0],
+          rotate: [0, -10, 0],
+        }}
+        transition={{
+          duration: 8,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      >
+        <Users size={50} />
+      </motion.div>
+      <motion.div
+        className="absolute top-40 right-40 text-white/20"
+        animate={{
+          y: [0, -15, 0],
+          x: [0, 15, 0],
+        }}
+        transition={{
+          duration: 7,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      >
+        <Shield size={40} />
+      </motion.div>
 
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={loginMutation.isPending}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10"
+      >
+        <Card className="w-full max-w-md shadow-2xl border-0 backdrop-blur-sm bg-white/95">
+          <CardHeader className="space-y-1 pb-6">
+            <motion.div
+              initial={{ y: -20, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
+              className="flex justify-center mb-6"
             >
-              {loginMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                <>
-                  <LogIn className="mr-2 h-4 w-4" />
-                  Sign in
-                </>
+              <div className="relative">
+                <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur-lg opacity-75"></div>
+                <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full p-4">
+                  <Building2 className="h-10 w-10 text-white" />
+                </div>
+              </div>
+            </motion.div>
+            <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Biashara SACCO
+            </CardTitle>
+            <p className="text-center text-muted-foreground text-sm">
+              Your trusted financial partner
+            </p>
+          </CardHeader>
+          <CardContent className="pb-8">
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+                className="space-y-2"
+              >
+                <Label htmlFor="username" className="text-sm font-medium">
+                  Username
+                </Label>
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Enter your username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  autoComplete="username"
+                  autoFocus
+                  className="h-11 px-4 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                />
+              </motion.div>
+              <motion.div
+                initial={{ x: -20, opacity: 0 }}
+                animate={{ x: 0, opacity: 1 }}
+                transition={{ delay: 0.4, duration: 0.5 }}
+                className="space-y-2"
+              >
+                <Label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  className="h-11 px-4 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                />
+              </motion.div>
+
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <Alert variant="destructive">
+                    <AlertDescription>{error}</AlertDescription>
+                  </Alert>
+                </motion.div>
               )}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
+
+              <motion.div
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+              >
+                <Button
+                  type="submit"
+                  className="w-full h-12 text-base font-medium bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                  disabled={loginMutation.isPending}
+                >
+                  {loginMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    <>
+                      <LogIn className="mr-2 h-5 w-5" />
+                      Sign in to your account
+                    </>
+                  )}
+                </Button>
+              </motion.div>
+            </form>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+              className="mt-6 text-center text-xs text-muted-foreground"
+            >
+              <p>Secure banking for a better tomorrow</p>
+            </motion.div>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Bottom wave decoration */}
+      <div className="absolute bottom-0 left-0 right-0">
+        <svg viewBox="0 0 1440 120" className="w-full h-24 fill-white/10">
+          <path d="M0,48L48,53.3C96,59,192,69,288,80C384,91,480,101,576,96C672,91,768,69,864,58.7C960,48,1056,48,1152,58.7C1248,69,1344,91,1392,101.3L1440,112L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"></path>
+        </svg>
+      </div>
     </div>
   );
 }
