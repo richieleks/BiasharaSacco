@@ -39,7 +39,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Handle both Replit and local auth users
+      const userId = req.user.authMethod === 'local' ? req.user.id : req.user.claims.sub;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -48,20 +49,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if user has a member profile
       const member = await storage.getMemberByUserId(userId);
       
+      // Remove password from user object
+      const { password, ...userWithoutPassword } = user;
+      
       if (member) {
         // Get roles for the member
         const roles = await storage.getMemberRoles(member.id);
         
+        // Remove password from member.user if it exists
+        if (member.user && member.user.password) {
+          const { password: _, ...memberUserWithoutPassword } = member.user;
+          member.user = memberUserWithoutPassword;
+        }
+        
         // Return user with member data including roles array
         res.json({
-          ...user,
+          ...userWithoutPassword,
           member: {
             ...member,
             roles: roles.length > 0 ? roles : ['member'] // Default to member role if no roles
           }
         });
       } else {
-        res.json({ ...user, member });
+        res.json({ ...userWithoutPassword, member });
       }
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -72,7 +82,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user's permissions
   app.get('/api/auth/permissions', isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user!.claims!.sub!;
+      // Handle both Replit and local auth users
+      const userId = req.user?.authMethod === 'local' ? req.user.id : req.user!.claims!.sub!;
       const member = await storage.getMemberByUserId(userId);
       
       if (!member) {
@@ -109,7 +120,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user profile
   app.patch('/api/auth/profile', isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      // Handle both Replit and local auth users
+      const userId = req.user?.authMethod === 'local' ? req.user.id : req.user?.claims?.sub;
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
