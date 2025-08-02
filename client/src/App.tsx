@@ -10,6 +10,7 @@ import NotFound from "@/pages/not-found";
 import Forbidden from "@/pages/forbidden";
 
 import Landing from "@/pages/landing";
+import { LoginPage } from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Members from "@/pages/members";
 import Savings from "@/pages/savings";
@@ -54,10 +55,19 @@ function Router() {
   // Initialize WebSocket connection for real-time notifications
   useWebSocket();
 
-  if (isLoading || !isAuthenticated) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
     return (
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/login" component={LoginPage} />
         <Route component={NotFound} />
       </Switch>
     );

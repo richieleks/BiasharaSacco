@@ -19,12 +19,20 @@ export default function Landing() {
               </div>
             </div>
             
-            <Button 
-              onClick={() => window.location.href = '/api/login'}
-              className="sacco-gradient text-white hover:opacity-90"
-            >
-              Sign In
-            </Button>
+            <div className="flex gap-4">
+              <Button 
+                onClick={() => window.location.href = '/login'}
+                className="sacco-gradient text-white hover:opacity-90"
+              >
+                Sign In
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={() => window.location.href = '/api/login'}
+              >
+                Sign In with Replit
+              </Button>
+            </div>
           </div>
         </div>
       </header>

@@ -3,6 +3,8 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupLocalAuth, hashPassword } from "./localAuth";
+import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole } from "./rbac-middleware";
 import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
@@ -32,6 +34,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
   // Auth middleware
   await setupAuth(app);
+  await setupLocalAuth();
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -131,6 +134,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating user profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
+    }
+  });
+
+  // Local auth login endpoint
+  app.post('/api/auth/login', 
+    (req, res, next) => {
+      passport.authenticate('local', (err: any, user: any, info: any) => {
+        if (err) {
+          return res.status(500).json({ message: "Authentication error" });
+        }
+        if (!user) {
+          return res.status(401).json({ message: info?.message || "Invalid username or password" });
+        }
+        req.logIn(user, (err) => {
+          if (err) {
+            return res.status(500).json({ message: "Login error" });
+          }
+          return res.json({ message: "Login successful", user });
+        });
+      })(req, res, next);
+    }
+  );
+
+  // Create admin user endpoint (protected - only existing admins can create new users)
+  app.post('/api/auth/create-user', isAuthenticated, requirePermission('create', 'users'), async (req: AuthRequest, res) => {
+    try {
+      const { username, password, email, firstName, lastName, role } = req.body;
+      
+      // Validate input
+      if (!username || !password || !email) {
+        return res.status(400).json({ message: "Username, password, and email are required" });
+      }
+
+      // Check if username already exists
+      const existingUser = await storage.getUserByUsername(username);
+      if (existingUser) {
+        return res.status(409).json({ message: "Username already exists" });
+      }
+
+      // Hash the password
+      const hashedPassword = await hashPassword(password);
+      
+      // Generate a unique user ID
+      const userId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Create the user
+      const newUser = await storage.upsertUser({
+        id: userId,
+        username,
+        password: hashedPassword,
+        email,
+        firstName,
+        lastName,
+        authMethod: 'local',
+        role: role || 'member'
+      });
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = newUser;
+      
+      res.status(201).json({ 
+        message: "User created successfully", 
+        user: userWithoutPassword 
+      });
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
     }
   });
 

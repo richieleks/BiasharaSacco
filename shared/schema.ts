@@ -28,14 +28,17 @@ export const sessions = pgTable(
   (table) => [index("IDX_session_expire").on(table.expire)],
 );
 
-// User storage table - mandatory for Replit Auth
+// User storage table - supports both Replit Auth and username/password auth
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().notNull(),
+  username: varchar("username").unique(),
+  password: varchar("password"), // Hashed password
   email: varchar("email").unique(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role", { enum: ["admin", "manager", "committee", "teller", "member"] }).default("member"),
+  authMethod: varchar("auth_method", { enum: ["replit", "local"] }).default("local"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -684,8 +687,7 @@ export type InsertInterestRate = z.infer<typeof insertInterestRateSchema>;
 export type InterestRate = typeof interestRates.$inferSelect;
 export type InsertAmortizationSchedule = z.infer<typeof insertAmortizationScheduleSchema>;
 export type AmortizationSchedule = typeof amortizationSchedules.$inferSelect;
-export type InsertInterestCalculation = z.infer<typeof insertInterestCalculationSchema>;
-export type InterestCalculation = typeof interestCalculations.$inferSelect;
+
 export type InsertNotification = z.infer<typeof insertNotificationSchema>;
 export type Notification = typeof notifications.$inferSelect;
 
