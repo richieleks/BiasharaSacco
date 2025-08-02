@@ -14,7 +14,7 @@ The frontend utilizes React 18 with TypeScript, built on Radix UI components and
 ### Technical Implementations
 The system is divided into a `client/` (React frontend) and `server/` (Express.js backend) architecture, with `shared/` for common TypeScript types and database schema.
 - **Frontend**: Wouter for routing, TanStack Query for server state management, and Vite for building.
-- **Backend**: Node.js with Express.js, TypeScript, and ES modules. Drizzle ORM is used for type-safe database operations with PostgreSQL (Neon serverless). Authentication is handled via Replit Auth with OpenID Connect, and sessions are managed using Express sessions with PostgreSQL storage.
+- **Backend**: Node.js with Express.js, TypeScript, and ES modules. Drizzle ORM is used for type-safe database operations with PostgreSQL (Neon serverless). Authentication is handled via local username/password authentication with bcrypt for password hashing, and sessions are managed using Express sessions with PostgreSQL storage.
 - **Authentication**: Role-based access control (Admin, Treasurer, Committee, Member) is enforced system-wide, with dynamic role and permission management capabilities.
 - **Financial Operations**: Includes comprehensive management of savings accounts, loans (with multi-stage approval workflows, dynamic repayment calculations, and conditional guarantor workflows), and transactions. An advanced interest calculation system supports various methods (simple, compound, reducing balance) and manages financial years.
 - **Business Logic**: A robust business rules validation system ensures compliance with SACCO regulations, providing real-time eligibility checks for loan applications based on membership duration, active saver status, and savings-to-loan ratios.
@@ -31,8 +31,8 @@ The system is divided into a `client/` (React frontend) and `server/` (Express.j
 
 ## External Dependencies
 - **Database**: Neon PostgreSQL (serverless)
-- **Authentication**: Replit Auth (OpenID Connect provider)
+- **Authentication**: Local username/password authentication with bcrypt
 - **Hosting**: Replit deployment platform
 - **Frontend Libraries**: React, React Query, React Hook Form, Radix UI, Lucide icons, Tailwind CSS, Recharts
-- **Backend Libraries**: Express, Passport, OpenID Client, Drizzle ORM
+- **Backend Libraries**: Express, Passport, bcryptjs, Drizzle ORM
 - **Utilities**: Zod (validation), date-fns, memoizee, Multer (file uploads)
