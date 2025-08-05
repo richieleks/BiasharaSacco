@@ -118,37 +118,37 @@ export function LoginPage() {
         transition={{ duration: 0.5 }}
         className="relative z-10"
       >
-        <Card className="w-full max-w-md shadow-2xl border-0 backdrop-blur-sm bg-white/95">
-          <CardHeader className="space-y-1 pb-6">
+        <Card className="w-full max-w-lg shadow-2xl border-0 backdrop-blur-sm bg-white/95">
+          <CardHeader className="space-y-2 pb-8 pt-10">
             <motion.div
               initial={{ y: -20, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
               transition={{ delay: 0.2, duration: 0.5 }}
-              className="flex justify-center mb-6"
+              className="flex justify-center mb-8"
             >
               <div className="relative">
                 <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur-lg opacity-75"></div>
-                <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full p-4">
-                  <Building2 className="h-10 w-10 text-white" />
+                <div className="relative bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full p-5">
+                  <Building2 className="h-12 w-12 text-white" />
                 </div>
               </div>
             </motion.div>
             <CardTitle className="text-3xl font-bold text-center bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
               Biashara SACCO
             </CardTitle>
-            <p className="text-center text-muted-foreground text-sm">
+            <p className="text-center text-muted-foreground text-base pt-2">
               Your trusted financial partner
             </p>
           </CardHeader>
-          <CardContent className="pb-8">
-            <form onSubmit={handleSubmit} className="space-y-5">
+          <CardContent className="pb-10 px-8">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.3, duration: 0.5 }}
-                className="space-y-2"
+                className="space-y-3"
               >
-                <Label htmlFor="username" className="text-sm font-medium">
+                <Label htmlFor="username" className="text-base font-medium">
                   Username
                 </Label>
                 <Input
@@ -159,16 +159,16 @@ export function LoginPage() {
                   onChange={(e) => setUsername(e.target.value)}
                   autoComplete="username"
                   autoFocus
-                  className="h-11 px-4 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                  className="h-12 px-5 text-base bg-gray-50 border-gray-200 focus:bg-white transition-colors"
                 />
               </motion.div>
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
                 transition={{ delay: 0.4, duration: 0.5 }}
-                className="space-y-2"
+                className="space-y-3"
               >
-                <Label htmlFor="password" className="text-sm font-medium">
+                <Label htmlFor="password" className="text-base font-medium">
                   Password
                 </Label>
                 <Input
@@ -178,7 +178,7 @@ export function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
-                  className="h-11 px-4 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
+                  className="h-12 px-5 text-base bg-gray-50 border-gray-200 focus:bg-white transition-colors"
                 />
               </motion.div>
 
@@ -198,20 +198,21 @@ export function LoginPage() {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.5, duration: 0.5 }}
+                className="pt-2"
               >
                 <Button
                   type="submit"
-                  className="w-full h-12 text-base font-medium bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                  className="w-full h-14 text-lg font-medium bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                   disabled={loginMutation.isPending}
                 >
                   {loginMutation.isPending ? (
                     <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      <Loader2 className="mr-3 h-6 w-6 animate-spin" />
                       Signing in...
                     </>
                   ) : (
                     <>
-                      <LogIn className="mr-2 h-5 w-5" />
+                      <LogIn className="mr-3 h-6 w-6" />
                       Sign in to your account
                     </>
                   )}
@@ -223,7 +224,7 @@ export function LoginPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.6, duration: 0.5 }}
-              className="mt-6 text-center text-xs text-muted-foreground"
+              className="mt-8 text-center text-sm text-muted-foreground"
             >
               <p>Secure banking for a better tomorrow</p>
             </motion.div>
