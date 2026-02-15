@@ -2330,26 +2330,44 @@ export class DatabaseStorage implements IStorage {
 
   async getInterestPayments(financialYearId?: number): Promise<InterestPayment[]> {
     if (financialYearId) {
-      return await db
-        .select()
+      const results = await db
+        .select({
+          payment: interestPayments,
+          calculation: interestCalculations,
+        })
         .from(interestPayments)
         .leftJoin(interestCalculations, eq(interestPayments.interestCalculationId, interestCalculations.id))
         .where(eq(interestCalculations.financialYearId, financialYearId))
         .orderBy(desc(interestPayments.createdAt));
+      
+      return results.map(r => ({
+        ...r.payment,
+        transactionReference: r.payment.transactionReference
+      }));
     }
     
-    return await db
+    const results = await db
       .select()
       .from(interestPayments)
       .orderBy(desc(interestPayments.createdAt));
+
+    return results.map(r => ({
+      ...r,
+      transactionReference: r.transactionReference
+    }));
   }
 
   async getInterestPaymentsByMember(memberId: number): Promise<InterestPayment[]> {
-    return await db
+    const results = await db
       .select()
       .from(interestPayments)
       .where(eq(interestPayments.memberId, memberId))
       .orderBy(desc(interestPayments.createdAt));
+
+    return results.map(r => ({
+      ...r,
+      transactionReference: r.transactionReference
+    }));
   }
 
   async processInterestPayment(id: number, processedBy: string): Promise<InterestPayment> {
@@ -2380,6 +2398,7 @@ export class DatabaseStorage implements IStorage {
         transactionType: 'interest_credit',
         amount: payment.paymentAmount,
         description: `Interest payment for Financial Year`,
+        referenceNumber: payment.transactionReference || `INT-${Date.now()}`,
         status: 'completed',
         processedBy,
         transactionDate: new Date(),

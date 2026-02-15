@@ -2034,7 +2034,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Notification API routes
   app.get('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const user = req.user as any;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const userId = user.id;
       const { isRead, type, priority, limit } = req.query;
       
       const filters: any = {};
@@ -2053,7 +2057,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/notifications/count', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const user = req.user as any;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const userId = user.id;
       const count = await storage.getUnreadNotificationCount(userId);
       res.json({ count });
     } catch (error) {
@@ -2065,7 +2073,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test notification endpoint for demonstration
   app.post('/api/notifications/test', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const user = req.user as any;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const userId = user.id;
       const member = await storage.getMemberByUserId(userId);
       
       if (!member) {
@@ -2095,7 +2107,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/notifications', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const user = req.user as any;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const userId = user.id;
       const validatedData = insertNotificationSchema.parse({
         ...req.body,
         userId
@@ -2115,7 +2131,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/notifications/:id/read', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const user = req.user as any;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const userId = user.id;
       const notificationId = parseInt(req.params.id);
       
       const notification = await storage.markNotificationAsRead(notificationId, userId);
@@ -2143,7 +2163,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/notifications/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const user = req.user as any;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const userId = user.id;
       const notificationId = parseInt(req.params.id);
       
       const deleted = await storage.deleteNotification(notificationId, userId);
