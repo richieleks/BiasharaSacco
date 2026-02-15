@@ -1,4 +1,5 @@
 import { useRBAC } from "@/hooks/useRBAC";
+import { useQuery } from "@tanstack/react-query";
 import MetricsGrid from "./metrics-grid";
 import RecentTransactions from "./recent-transactions";
 import PendingApprovals from "./pending-approvals";
@@ -6,8 +7,11 @@ import MemberApprovals from "./member-approvals";
 import LoanApprovalWorkflow from "./loan-approval-workflow";
 import AnalyticsCharts from "./analytics-charts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
+import { PiggyBank, HandCoins, ArrowUp, ArrowDown, CreditCard } from "lucide-react";
 
 // Role-specific dashboard components
 function AdminDashboard() {
@@ -89,7 +93,29 @@ function TellerDashboard() {
 
 function MemberDashboard() {
   const { user } = useAuth();
-  
+  const memberId = user?.member?.id;
+
+  const { data: savingsAccounts } = useQuery<any[]>({
+    queryKey: ['/api/members', memberId, 'savings'],
+    enabled: !!memberId,
+    refetchInterval: 30000,
+  });
+
+  const { data: memberLoans } = useQuery<any[]>({
+    queryKey: ['/api/members', memberId, 'loans'],
+    enabled: !!memberId,
+    refetchInterval: 30000,
+  });
+
+  const { data: memberTransactions } = useQuery<any[]>({
+    queryKey: ['/api/transactions'],
+    refetchInterval: 30000,
+  });
+
+  const totalSavings = savingsAccounts?.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0) || 0;
+  const activeLoansCount = memberLoans?.filter((l: any) => l.status === 'approved').length || 0;
+  const totalOutstanding = memberLoans?.filter((l: any) => l.status === 'approved').reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0) || 0;
+
   return (
     <div className="space-y-6">
       <Card>
@@ -98,18 +124,24 @@ function MemberDashboard() {
           <CardDescription>Your personal SACCO dashboard</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold">Member Number</h3>
-              <p className="text-2xl font-bold text-primary">{user?.member?.memberNumber}</p>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="text-center p-3 bg-slate-50 rounded-lg">
+              <h3 className="text-sm font-medium text-slate-500">Member Number</h3>
+              <p className="text-xl font-bold text-primary mt-1">{user?.member?.memberNumber}</p>
             </div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold">Status</h3>
-              <p className="text-2xl font-bold capitalize">{user?.member?.status}</p>
+            <div className="text-center p-3 bg-green-50 rounded-lg">
+              <h3 className="text-sm font-medium text-slate-500">Total Savings</h3>
+              <p className="text-xl font-bold text-green-600 mt-1">UGX {totalSavings.toLocaleString()}</p>
             </div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold">Join Date</h3>
-              <p className="text-sm">{user?.member?.joinDate ? new Date(user.member.joinDate).toLocaleDateString() : 'N/A'}</p>
+            <div className="text-center p-3 bg-yellow-50 rounded-lg">
+              <h3 className="text-sm font-medium text-slate-500">Active Loans</h3>
+              <p className="text-xl font-bold text-yellow-600 mt-1">{activeLoansCount}</p>
+              {totalOutstanding > 0 && <p className="text-xs text-slate-400">UGX {totalOutstanding.toLocaleString()} outstanding</p>}
+            </div>
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
+              <h3 className="text-sm font-medium text-slate-500">Status</h3>
+              <p className="text-xl font-bold capitalize text-blue-600 mt-1">{user?.member?.status}</p>
+              <p className="text-xs text-slate-400">{user?.member?.joinDate ? `Since ${new Date(user.member.joinDate).toLocaleDateString()}` : ''}</p>
             </div>
           </div>
         </CardContent>
@@ -124,30 +156,138 @@ function MemberDashboard() {
         <TabsContent value="savings">
           <Card>
             <CardHeader>
-              <CardTitle>Savings Summary</CardTitle>
+              <div className="flex items-center gap-2">
+                <PiggyBank className="h-5 w-5 text-green-600" />
+                <CardTitle>Savings Accounts</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">View your savings account balance and history.</p>
+              {savingsAccounts && savingsAccounts.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Account Number</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Balance</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {savingsAccounts.map((acc: any) => (
+                      <TableRow key={acc.id}>
+                        <TableCell className="font-medium">{acc.accountNumber}</TableCell>
+                        <TableCell className="capitalize">{acc.accountType}</TableCell>
+                        <TableCell className="font-semibold text-green-600">UGX {parseFloat(acc.balance || '0').toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge className={acc.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
+                            {acc.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No savings accounts found.</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="loans">
           <Card>
             <CardHeader>
-              <CardTitle>Loan Summary</CardTitle>
+              <div className="flex items-center gap-2">
+                <HandCoins className="h-5 w-5 text-yellow-600" />
+                <CardTitle>My Loans</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">Track your loan applications and active loans.</p>
+              {memberLoans && memberLoans.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Loan Type</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Outstanding</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {memberLoans.map((loan: any) => (
+                      <TableRow key={loan.id}>
+                        <TableCell className="capitalize">{loan.loanType?.replace('_', ' ')}</TableCell>
+                        <TableCell>UGX {parseFloat(loan.principalAmount || '0').toLocaleString()}</TableCell>
+                        <TableCell className="font-semibold">UGX {parseFloat(loan.outstandingBalance || '0').toLocaleString()}</TableCell>
+                        <TableCell>
+                          <Badge className={
+                            loan.status === 'approved' ? 'bg-green-100 text-green-800' :
+                            loan.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            loan.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                            'bg-slate-100 text-slate-800'
+                          }>
+                            {loan.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No loan records found.</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
         <TabsContent value="transactions">
           <Card>
             <CardHeader>
-              <CardTitle>Transaction History</CardTitle>
+              <div className="flex items-center gap-2">
+                <CreditCard className="h-5 w-5 text-blue-600" />
+                <CardTitle>Recent Transactions</CardTitle>
+              </div>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">Review your recent transactions and activities.</p>
+              {memberTransactions && memberTransactions.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {memberTransactions.slice(0, 10).map((txn: any) => (
+                      <TableRow key={txn.id}>
+                        <TableCell>{new Date(txn.transactionDate).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {txn.transactionType === 'deposit' && <ArrowUp className="h-4 w-4 text-green-600" />}
+                            {txn.transactionType === 'withdrawal' && <ArrowDown className="h-4 w-4 text-red-600" />}
+                            {txn.transactionType === 'loan_payment' && <CreditCard className="h-4 w-4 text-blue-600" />}
+                            <span className="capitalize">{txn.transactionType?.replace('_', ' ')}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className={`font-semibold ${txn.transactionType === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
+                          {txn.transactionType === 'deposit' ? '+' : '-'}UGX {parseFloat(txn.amount || '0').toLocaleString()}
+                        </TableCell>
+                        <TableCell>
+                          <Badge className={
+                            txn.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            txn.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-slate-100 text-slate-800'
+                          }>
+                            {txn.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">No transactions found.</p>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

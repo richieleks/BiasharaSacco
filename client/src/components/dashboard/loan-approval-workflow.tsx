@@ -47,11 +47,13 @@ export default function LoanApprovalWorkflow() {
   const { data: committeeLoans, isLoading: committeeLoading } = useQuery<LoanWithDetails[]>({
     queryKey: ['/api/loans/approval/committee'],
     enabled: canAccessCommittee,
+    refetchInterval: 30000,
   });
 
   const { data: treasurerLoans, isLoading: treasurerLoading } = useQuery<LoanWithDetails[]>({
     queryKey: ['/api/loans/approval/treasurer'],
     enabled: canAccessTreasurer,
+    refetchInterval: 30000,
   });
 
   const approveMutation = useMutation({

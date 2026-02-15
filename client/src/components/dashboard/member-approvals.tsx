@@ -28,6 +28,7 @@ export default function MemberApprovals() {
   const { data: pendingMembers, isLoading } = useQuery<MemberWithDetails[]>({
     queryKey: ['/api/members/pending'],
     enabled: hasApprovalAccess,
+    refetchInterval: 30000,
   });
 
   const approveMutation = useMutation({
