@@ -886,7 +886,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Access denied - insufficient permissions" });
       }
 
-      // Update member
+      if (updates.joinDate && typeof updates.joinDate === 'string') {
+        updates.joinDate = new Date(updates.joinDate);
+      }
+
       const updatedMember = await storage.updateMember(memberId, updates);
       
       // Log the action
