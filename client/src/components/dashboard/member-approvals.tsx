@@ -32,8 +32,8 @@ export default function MemberApprovals() {
   });
 
   const approveMutation = useMutation({
-    mutationFn: async ({ id, comments }: { id: number; comments?: string }) => {
-      await apiRequest('POST', `/api/members/${id}/approve`, { comments });
+    mutationFn: async ({ uuid, comments }: { uuid: string; comments?: string }) => {
+      await apiRequest('POST', `/api/members/${uuid}/approve`, { comments });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/members/pending'] });
@@ -67,8 +67,8 @@ export default function MemberApprovals() {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: async ({ id, comments }: { id: number; comments?: string }) => {
-      await apiRequest('POST', `/api/members/${id}/reject`, { comments });
+    mutationFn: async ({ uuid, comments }: { uuid: string; comments?: string }) => {
+      await apiRequest('POST', `/api/members/${uuid}/reject`, { comments });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/members/pending'] });
@@ -110,9 +110,9 @@ export default function MemberApprovals() {
     if (!selectedMember || !actionType) return;
 
     if (actionType === 'approve') {
-      approveMutation.mutate({ id: selectedMember.id, comments });
+      approveMutation.mutate({ uuid: selectedMember.uuid, comments });
     } else {
-      rejectMutation.mutate({ id: selectedMember.id, comments });
+      rejectMutation.mutate({ uuid: selectedMember.uuid, comments });
     }
   };
 

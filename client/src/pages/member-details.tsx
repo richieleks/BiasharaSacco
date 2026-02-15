@@ -988,7 +988,7 @@ export default function MemberDetails() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setLocation(`/loans?loanId=${loan.id}`)}
+                        onClick={() => setLocation(`/loans?loanId=${loan.uuid}`)}
                         className="text-xs"
                       >
                         <Eye className="mr-1 h-3 w-3" />
@@ -997,7 +997,7 @@ export default function MemberDetails() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setLocation(`/loans/${loan.id}/statement`)}
+                        onClick={() => setLocation(`/loans/${loan.uuid}/statement`)}
                         className="text-xs"
                       >
                         <FileText className="mr-1 h-3 w-3" />
@@ -1006,7 +1006,7 @@ export default function MemberDetails() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setLocation(`/loans/${loan.id}/amortization`)}
+                        onClick={() => setLocation(`/loans/${loan.uuid}/amortization`)}
                         className="text-xs"
                       >
                         <Calculator className="mr-1 h-3 w-3" />

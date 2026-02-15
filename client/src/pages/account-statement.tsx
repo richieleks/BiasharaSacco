@@ -25,7 +25,7 @@ import { Link } from 'wouter';
 
 export default function AccountStatement() {
   const [, params] = useRoute('/savings/:id/statement');
-  const accountId = params?.id ? parseInt(params.id) : null;
+  const accountId = params?.id || null;
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 

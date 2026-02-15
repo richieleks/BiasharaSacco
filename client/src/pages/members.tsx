@@ -247,7 +247,7 @@ export default function Members() {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => setLocation(`/members/${member.id}`)}
+                      onClick={() => setLocation(`/members/${member.uuid}`)}
                       className="h-8 w-8 p-0"
                     >
                       <Eye className="h-4 w-4" />

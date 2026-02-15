@@ -33,11 +33,11 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
   const queryClient = useQueryClient();
 
   const { data: schedule = [], isLoading } = useQuery({
-    queryKey: ['/api/loans', loan.id, 'amortization'],
+    queryKey: ['/api/loans', loan.uuid, 'amortization'],
   });
 
   const { data: interestCalculations = [] } = useQuery({
-    queryKey: ['/api/loans', loan.id, 'interest-calculations'],
+    queryKey: ['/api/loans', loan.uuid, 'interest-calculations'],
   });
 
   const form = useForm<PaymentFormData>({
@@ -55,7 +55,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loans', loan.id, 'amortization'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loan.uuid, 'amortization'] });
       toast({
         title: "Success",
         description: "Amortization schedule generated successfully",
@@ -77,7 +77,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
       });
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loans', loan.id, 'interest-calculations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loan.uuid, 'interest-calculations'] });
       toast({
         title: "Interest Calculated",
         description: `Monthly payment: UGX ${data.monthlyPayment.toFixed(2)}`,
@@ -100,7 +100,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/loans', loan.id, 'amortization'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans', loan.uuid, 'amortization'] });
       setIsPaymentDialogOpen(false);
       setSelectedPayment(null);
       form.reset();

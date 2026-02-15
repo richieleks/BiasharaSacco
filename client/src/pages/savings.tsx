@@ -95,8 +95,8 @@ export default function Savings() {
     }
   };
 
-  const handleViewStatement = (accountId: number) => {
-    window.location.href = `/savings/${accountId}/statement`;
+  const handleViewStatement = (accountUuid: string) => {
+    window.location.href = `/savings/${accountUuid}/statement`;
   };
 
 
@@ -262,7 +262,7 @@ export default function Savings() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleViewStatement(account.id)}
+                      onClick={() => handleViewStatement(account.uuid)}
                       className="text-primary border-primary/30 hover:bg-primary/5 rounded-lg"
                     >
                       <FileText className="w-4 h-4 mr-2" />

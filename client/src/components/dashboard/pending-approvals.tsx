@@ -18,8 +18,8 @@ export default function PendingApprovals() {
   });
 
   const approveTransactionMutation = useMutation({
-    mutationFn: async (transactionId: number) => {
-      await apiRequest('PATCH', `/api/transactions/${transactionId}/approve`);
+    mutationFn: async (transactionUuid: string) => {
+      await apiRequest('PATCH', `/api/transactions/${transactionUuid}/approve`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/pending-approvals'] });
@@ -150,7 +150,7 @@ export default function PendingApprovals() {
                 </div>
                 <Button
                   size="sm"
-                  onClick={() => approveTransactionMutation.mutate(withdrawal.id)}
+                  onClick={() => approveTransactionMutation.mutate(withdrawal.uuid)}
                   disabled={approveTransactionMutation.isPending}
                   className="w-full sacco-success text-white hover:opacity-90"
                 >
