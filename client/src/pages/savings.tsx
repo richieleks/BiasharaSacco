@@ -130,7 +130,7 @@ export default function Savings() {
                     Record Deposit
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Record Deposit</DialogTitle>
                     <DialogDescription>
@@ -148,7 +148,7 @@ export default function Savings() {
                     Withdrawal Request
                   </Button>
                 </DialogTrigger>
-                <DialogContent>
+                <DialogContent className="max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Process Withdrawal</DialogTitle>
                     <DialogDescription>
