@@ -13,6 +13,13 @@ interface CollapsibleSidebarProps {
 
 const GROUP_ORDER = ['Main', 'Finance', 'Reports', 'Administration'];
 
+const GROUP_COLORS: Record<string, string> = {
+  Main: 'text-blue-500',
+  Finance: 'text-emerald-500',
+  Reports: 'text-amber-500',
+  Administration: 'text-purple-500',
+};
+
 export default function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
   const { getNavigationItems, userRole } = useRBAC();
   const [location] = useLocation();
@@ -47,30 +54,40 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
   })).filter(g => g.items.length > 0);
 
   const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
-    <nav className={cn("space-y-1", mobile ? "p-6" : "")}>
+    <nav className={cn("space-y-1", mobile ? "p-5" : "")}>
       {!mobile && (
-        <div className={cn("mb-6 px-3", isCollapsed && "px-2")}>
+        <div className={cn("mb-5 px-3", isCollapsed && "px-2")}>
           {!isCollapsed ? (
-            <>
-              <h2 className="text-lg font-semibold text-slate-900">Biashara SACCO</h2>
-              <p className="text-sm text-slate-600 capitalize mt-1">
-                {userRole} Dashboard
-              </p>
-            </>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 sacco-gradient rounded-lg flex items-center justify-center shadow-sm">
+                <span className="text-white font-bold text-xs">BS</span>
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 leading-none">Biashara SACCO</h2>
+                <p className="text-[11px] text-slate-400 capitalize mt-0.5 font-medium">
+                  {userRole} Portal
+                </p>
+              </div>
+            </div>
           ) : (
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">BS</span>
+            <div className="w-8 h-8 sacco-gradient rounded-lg flex items-center justify-center shadow-sm mx-auto">
+              <span className="text-white font-bold text-xs">BS</span>
             </div>
           )}
         </div>
       )}
 
       {mobile && (
-        <div className="mb-6">
-          <h2 className="text-lg font-semibold text-slate-900">Biashara SACCO</h2>
-          <p className="text-sm text-slate-600 capitalize mt-1">
-            {userRole} Dashboard
-          </p>
+        <div className="mb-5 flex items-center gap-2.5">
+          <div className="w-8 h-8 sacco-gradient rounded-lg flex items-center justify-center shadow-sm">
+            <span className="text-white font-bold text-xs">BS</span>
+          </div>
+          <div>
+            <h2 className="text-sm font-bold text-slate-900 leading-none">Biashara SACCO</h2>
+            <p className="text-[11px] text-slate-400 capitalize mt-0.5 font-medium">
+              {userRole} Portal
+            </p>
+          </div>
         </div>
       )}
       
@@ -79,17 +96,19 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
           {group !== 'Main' && (
             <>
               {(!isCollapsed || mobile) ? (
-                <div className={cn("px-3 pt-4 pb-1", groupIndex > 0 && "border-t border-slate-100 mt-2")}>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                <div className={cn("px-3 pt-5 pb-1.5", groupIndex > 0 && "mt-1")}>
+                  <span className={cn("text-[10px] font-bold uppercase tracking-[0.08em]", GROUP_COLORS[group] || 'text-slate-400')}>
                     {group}
                   </span>
                 </div>
               ) : (
-                <div className={cn("my-2 mx-2 border-t border-slate-200")} />
+                <div className="my-3 mx-3">
+                  <div className="border-t border-slate-100" />
+                </div>
               )}
             </>
           )}
-          <div className="space-y-0.5">
+          <div className="space-y-0.5 px-2">
             {items.map((item: any) => {
               const Icon = getIcon(item.icon || 'Circle');
               const isActive = location === item.path;
@@ -99,21 +118,22 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
                   <Button
                     variant="ghost"
                     className={cn(
-                      "w-full justify-start transition-all duration-200 h-9",
+                      "w-full justify-start transition-all duration-150 h-9 rounded-lg text-[13px] font-medium",
                       isActive 
-                        ? "bg-primary text-primary-foreground hover:bg-primary/90" 
-                        : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+                        ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
+                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
                       isCollapsed && !mobile && "px-2 justify-center",
                       mobile && "justify-start"
                     )}
                     size="sm"
                   >
                     <Icon className={cn(
-                      "h-4 w-4 shrink-0 transition-all duration-200",
-                      isCollapsed && !mobile ? "mr-0" : "mr-3"
+                      "h-4 w-4 shrink-0 transition-all duration-150",
+                      isCollapsed && !mobile ? "mr-0" : "mr-2.5",
+                      isActive ? "" : "text-slate-400"
                     )} />
                     {(!isCollapsed || mobile) && (
-                      <span className="transition-all duration-200 text-sm">{item.name}</span>
+                      <span>{item.name}</span>
                     )}
                   </Button>
                 </Link>
@@ -133,30 +153,33 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
             <Button 
               variant="ghost" 
               size="sm" 
-              className="fixed top-4 left-4 z-50 lg:hidden bg-white shadow-md"
+              className="fixed top-4 left-4 z-50 lg:hidden bg-white/90 glass shadow-md rounded-xl border border-slate-200/60"
             >
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h2 className="text-lg font-semibold">Navigation</h2>
+          <SheetContent side="left" className="w-72 p-0 border-r border-slate-200/60">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <h2 className="text-sm font-bold text-slate-900">Navigation</h2>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsMobileOpen(false)}
+                className="rounded-lg"
               >
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            <SidebarContent mobile />
+            <div className="overflow-y-auto h-[calc(100vh-65px)]">
+              <SidebarContent mobile />
+            </div>
           </SheetContent>
         </Sheet>
       </div>
 
       <aside className={cn(
-        "hidden lg:block bg-white border-r border-slate-200 transition-all duration-300 ease-in-out relative",
-        isCollapsed ? "w-16" : "w-64",
+        "hidden lg:block bg-white/50 glass border-r border-slate-200/60 transition-all duration-300 ease-in-out relative",
+        isCollapsed ? "w-[68px]" : "w-60",
         className
       )}>
         <Button
@@ -164,19 +187,19 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
           className={cn(
-            "absolute -right-3 top-6 z-10 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-sm hover:bg-slate-50",
-            "flex items-center justify-center"
+            "absolute -right-3 top-6 z-10 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:shadow",
+            "flex items-center justify-center p-0"
           )}
         >
           {isCollapsed ? (
-            <ChevronRight className="h-3 w-3" />
+            <ChevronRight className="h-3 w-3 text-slate-500" />
           ) : (
-            <ChevronLeft className="h-3 w-3" />
+            <ChevronLeft className="h-3 w-3 text-slate-500" />
           )}
         </Button>
 
-        <div className="h-full sticky top-16 overflow-y-auto">
-          <div className={cn("p-4", isCollapsed && "p-2")}>
+        <div className="h-[calc(100vh-4rem)] sticky top-16 overflow-y-auto">
+          <div className={cn("py-4", isCollapsed ? "px-1" : "px-2")}>
             <SidebarContent />
           </div>
         </div>

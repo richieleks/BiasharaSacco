@@ -25,85 +25,85 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-50 bg-white/80 glass border-b border-slate-200/60 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-4">
-            <Link href="/dashboard" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-              <div className="w-10 h-10 sacco-gradient rounded-lg flex items-center justify-center">
-                <PiggyBank className="text-white text-lg" />
+          <div className="flex items-center gap-3">
+            <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
+              <div className="w-9 h-9 sacco-gradient rounded-xl flex items-center justify-center shadow-sm">
+                <PiggyBank className="text-white h-5 w-5" />
               </div>
-              <div>
-                <h1 className="text-xl font-semibold text-slate-900">Biashara SACCO</h1>
-                <p className="text-xs text-slate-500">Savings & Loans Management</p>
+              <div className="hidden sm:block">
+                <h1 className="text-base font-bold tracking-tight text-slate-900 leading-none">Biashara SACCO</h1>
+                <p className="text-[11px] text-slate-400 font-medium mt-0.5">Savings & Loans Management</p>
               </div>
             </Link>
           </div>
           
-          <div className="flex items-center space-x-4">
-            <div className="hidden md:flex items-center space-x-6">
+          <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center">
               <NotificationBell />
             </div>
             
+            <div className="w-px h-8 bg-slate-200/80 mx-1 hidden md:block" />
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center space-x-3 hover:bg-gray-50">
-                  <div className="w-8 h-8 sacco-success rounded-full flex items-center justify-center">
-                    <span className="text-white text-sm font-medium">
+                <Button variant="ghost" className="flex items-center gap-2.5 hover:bg-slate-100/80 rounded-xl px-2.5 py-1.5 h-auto">
+                  <div className="w-8 h-8 rounded-lg sacco-gradient flex items-center justify-center shadow-sm">
+                    <span className="text-white text-xs font-semibold">
                       {getInitials(user?.firstName, user?.lastName)}
                     </span>
                   </div>
                   <div className="hidden sm:block text-left">
-                    <p className="text-sm font-medium">
+                    <p className="text-sm font-semibold text-slate-800 leading-none">
                       {user?.firstName} {user?.lastName}
                     </p>
-                    <p className="text-xs text-slate-500">{user?.role || "Member"}</p>
+                    <p className="text-[11px] text-slate-400 font-medium capitalize mt-0.5">{user?.role || "Member"}</p>
                   </div>
-                  <ChevronDown className="h-4 w-4 text-slate-400" />
+                  <ChevronDown className="h-3.5 w-3.5 text-slate-400 hidden sm:block" />
                 </Button>
               </DropdownMenuTrigger>
               
-              <DropdownMenuContent align="end" className="w-64">
-                <DropdownMenuLabel>
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
+              <DropdownMenuContent align="end" className="w-56 rounded-xl p-1.5">
+                <DropdownMenuLabel className="px-3 py-2">
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-sm font-semibold leading-none text-slate-900">
                       {user?.firstName} {user?.lastName}
                     </p>
-                    <p className="text-xs leading-none text-muted-foreground">
+                    <p className="text-xs text-slate-400">
                       {user?.email}
                     </p>
                   </div>
                 </DropdownMenuLabel>
                 
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="my-1" />
                 
-                <DropdownMenuItem onClick={() => navigate('/profile')}>
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
+                <DropdownMenuItem onClick={() => navigate('/profile')} className="rounded-lg cursor-pointer px-3 py-2">
+                  <User className="mr-2.5 h-4 w-4 text-slate-500" />
+                  <span className="text-sm">Profile</span>
                 </DropdownMenuItem>
                 
-                <DropdownMenuItem onClick={() => navigate('/settings')}>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
+                <DropdownMenuItem onClick={() => navigate('/settings')} className="rounded-lg cursor-pointer px-3 py-2">
+                  <Settings className="mr-2.5 h-4 w-4 text-slate-500" />
+                  <span className="text-sm">Settings</span>
                 </DropdownMenuItem>
                 
                 {hasPermission('read', 'system-settings') && (
-                  <DropdownMenuItem onClick={() => navigate('/admin-settings')}>
-                    <Shield className="mr-2 h-4 w-4" />
-                    <span>Admin Settings</span>
+                  <DropdownMenuItem onClick={() => navigate('/admin-settings')} className="rounded-lg cursor-pointer px-3 py-2">
+                    <Shield className="mr-2.5 h-4 w-4 text-slate-500" />
+                    <span className="text-sm">Admin Settings</span>
                   </DropdownMenuItem>
                 )}
                 
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="my-1" />
                 
-                <DropdownMenuItem onClick={() => window.location.href = '/api/logout'}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Log out</span>
+                <DropdownMenuItem onClick={() => window.location.href = '/api/logout'} className="rounded-lg cursor-pointer px-3 py-2 text-red-600 focus:text-red-600 focus:bg-red-50">
+                  <LogOut className="mr-2.5 h-4 w-4" />
+                  <span className="text-sm">Log out</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            
-
           </div>
         </div>
       </div>
