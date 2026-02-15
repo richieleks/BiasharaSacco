@@ -385,11 +385,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get admin settings
+  // Get admin settings (persisted in system_settings table)
   app.get('/api/admin/settings', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
     try {
-      // In a real application, you'd fetch these from a system_settings table
-      const settings = {
+      const allSettings = await storage.getAllSystemSettings();
+      const settingsMap: Record<string, any> = {};
+
+      const defaults: Record<string, any> = {
         maintenanceMode: false,
         systemAnnouncement: "",
         maxLoanAmount: 5000000,
@@ -412,29 +414,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
         autoBackupEnabled: true,
         backupFrequency: "daily",
         logRetentionDays: 90,
+        entranceFee: 15000,
+        sharePrice: 5000,
       };
-      
-      res.json(settings);
+
+      for (const setting of allSettings) {
+        const type = setting.settingType;
+        if (type === 'number') {
+          settingsMap[setting.settingKey] = parseFloat(setting.settingValue);
+        } else if (type === 'boolean') {
+          settingsMap[setting.settingKey] = setting.settingValue === 'true';
+        } else {
+          settingsMap[setting.settingKey] = setting.settingValue;
+        }
+      }
+
+      res.json({ ...defaults, ...settingsMap });
     } catch (error) {
       console.error("Error fetching admin settings:", error);
       res.status(500).json({ message: "Failed to fetch admin settings" });
     }
   });
 
-  // Update admin settings
+  // Update admin settings (persisted in system_settings table)
   app.patch('/api/admin/settings', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
     try {
       const settings = req.body;
-      
-      // In a real application, you'd update these in a system_settings table
-      // For now, we'll just return success
-      res.json({ 
-        message: "Admin settings updated successfully", 
-        settings 
-      });
+      const userId = getUserId(req);
+
+      const numberFields = ['maxLoanAmount', 'maxLoanTerm', 'defaultInterestRate', 'sessionTimeout', 'maxLoginAttempts', 'smtpPort', 'minimumSavingsBalance', 'loanToSavingsRatio', 'membershipDurationMonths', 'logRetentionDays', 'entranceFee', 'sharePrice'];
+      const booleanFields = ['maintenanceMode', 'twoFactorRequired', 'emailEnabled', 'systemNotifications', 'memberNotifications', 'loanNotifications', 'autoBackupEnabled'];
+
+      for (const [key, value] of Object.entries(settings)) {
+        let type = 'string';
+        if (numberFields.includes(key)) type = 'number';
+        else if (booleanFields.includes(key)) type = 'boolean';
+
+        await storage.upsertSystemSetting(key, String(value), type, undefined, userId);
+      }
+
+      res.json({ message: "Admin settings updated successfully", settings });
     } catch (error) {
       console.error("Error updating admin settings:", error);
       res.status(500).json({ message: "Failed to update admin settings" });
+    }
+  });
+
+  // Public endpoint to fetch specific system settings (for member form)
+  app.get('/api/system/settings/public', isAuthenticated, async (req, res) => {
+    try {
+      const entranceFeeSetting = await storage.getSystemSetting('entranceFee');
+      const sharePriceSetting = await storage.getSystemSetting('sharePrice');
+
+      res.json({
+        entranceFee: entranceFeeSetting ? parseFloat(entranceFeeSetting.settingValue) : 15000,
+        sharePrice: sharePriceSetting ? parseFloat(sharePriceSetting.settingValue) : 5000,
+      });
+    } catch (error) {
+      console.error("Error fetching public settings:", error);
+      res.status(500).json({ message: "Failed to fetch settings" });
     }
   });
 
