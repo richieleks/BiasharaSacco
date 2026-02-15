@@ -223,6 +223,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/auth/users', isAuthenticated, requirePermission('read', 'users'), async (req: AuthRequest, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const usersWithoutPasswords = allUsers.map(({ password, ...u }: any) => u);
+      res.json(usersWithoutPasswords);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.patch('/api/auth/users/:id', isAuthenticated, requirePermission('update', 'users'), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const { username, email, firstName, lastName, role, password } = req.body;
+
+      const updateData: any = {};
+      if (username) updateData.username = username;
+      if (email) updateData.email = email;
+      if (firstName) updateData.firstName = firstName;
+      if (lastName) updateData.lastName = lastName;
+      if (role) updateData.role = role;
+      if (password) {
+        updateData.password = await hashPassword(password);
+      }
+
+      const updatedUser = await storage.updateUser(id, updateData);
+      const { password: _, ...userWithoutPassword } = updatedUser as any;
+      res.json(userWithoutPassword);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.delete('/api/auth/users/:id', isAuthenticated, requirePermission('delete', 'users'), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const requestingUserId = getUserId(req);
+      
+      if (id === requestingUserId) {
+        return res.status(400).json({ message: "Cannot delete your own account" });
+      }
+
+      await storage.deleteUser(id);
+      res.json({ message: "User deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
   // Update user settings
   app.patch('/api/auth/settings', isAuthenticated, async (req: AuthRequest, res) => {
     try {
