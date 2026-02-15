@@ -104,12 +104,23 @@ export function filterDataByRole() {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      const user = await storage.getUser(userId);
       const member = await storage.getMemberByUserId(userId);
+      
       if (!member) {
+        if (user?.role === 'admin') {
+          req.member = {
+            id: 0,
+            roles: ['admin' as UserRole],
+            userId: userId,
+            memberNumber: 'ADMIN',
+            status: 'active',
+          };
+          return next();
+        }
         return res.status(403).json({ message: "Member profile not found" });
       }
 
-      // Get all roles for this member
       const memberRoles = await storage.getMemberRoles(member.id);
       const roles = memberRoles.length > 0 ? memberRoles as UserRole[] : ['member' as UserRole];
 

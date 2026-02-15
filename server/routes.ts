@@ -1375,16 +1375,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get user's member record to check their roles
+      const savingsUser = await storage.getUser(userId);
       const requestingMember = await storage.getMemberByUserId(userId);
-      if (!requestingMember) {
-        return res.status(403).json({ message: "Access denied - no member record found" });
-      }
+      const isSavingsAdmin = savingsUser?.role === 'admin';
 
       // Get user's roles for permission checking
-      const roleNames = await storage.getMemberRoles(requestingMember.id);
+      const roleNames = requestingMember ? await storage.getMemberRoles(requestingMember.id) : [];
 
       // Access control: staff can see all accounts, members see only their own
-      const isStaff = roleNames.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      const isStaff = isSavingsAdmin || roleNames.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
 
       let savingsAccounts;
       if (isStaff) {
@@ -1653,9 +1652,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/guarantors/pending', isAuthenticated, async (req: any, res) => {
     try {
       const userId = getUserId(req);
-      const member = await storage.getMemberByUserId(userId);
+      const guarantorUser = await storage.getUser(userId!);
+      const member = await storage.getMemberByUserId(userId!);
       
       if (!member) {
+        if (guarantorUser?.role === 'admin') {
+          return res.json([]);
+        }
         return res.status(404).json({ message: "Member not found" });
       }
 
