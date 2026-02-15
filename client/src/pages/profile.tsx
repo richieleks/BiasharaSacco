@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
   Form,
@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { User, Mail, Phone, Building, Calendar, Shield, ArrowLeft } from "lucide-react";
+import { User, Mail, Phone, Building, Calendar, Shield, ArrowLeft, Lock, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 
@@ -25,9 +25,24 @@ const profileUpdateSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email("Invalid email address"),
+  phoneNumber: z.string().optional(),
+  address: z.string().optional(),
+  department: z.string().optional(),
+  section: z.string().optional(),
 });
 
 type ProfileUpdateData = z.infer<typeof profileUpdateSchema>;
+
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your new password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+type ChangePasswordData = z.infer<typeof changePasswordSchema>;
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -35,12 +50,9 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
-  // Fetch member details for additional profile information
-  const { data: memberData } = useQuery({
-    queryKey: ['/api/members/by-user', user?.id],
-    enabled: !!user?.id,
-  });
+  const memberData = user?.member;
 
   const form = useForm<ProfileUpdateData>({
     resolver: zodResolver(profileUpdateSchema),
@@ -48,6 +60,19 @@ export default function ProfilePage() {
       firstName: user?.firstName || "",
       lastName: user?.lastName || "",
       email: user?.email || "",
+      phoneNumber: memberData?.phoneNumber || "",
+      address: memberData?.address || "",
+      department: memberData?.department || "",
+      section: memberData?.section || "",
+    },
+  });
+
+  const passwordForm = useForm<ChangePasswordData>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
     },
   });
 
@@ -72,8 +97,36 @@ export default function ProfilePage() {
     },
   });
 
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: ChangePasswordData) => {
+      return await apiRequest('POST', `/api/auth/change-password`, {
+        currentPassword: data.currentPassword,
+        newPassword: data.newPassword,
+      });
+    },
+    onSuccess: () => {
+      toast({
+        title: "Password Changed",
+        description: "Your password has been changed successfully.",
+      });
+      setIsChangingPassword(false);
+      passwordForm.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Password Change Failed",
+        description: error.message || "Failed to change password. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: ProfileUpdateData) => {
     updateProfileMutation.mutate(data);
+  };
+
+  const handlePasswordSubmit = (data: ChangePasswordData) => {
+    changePasswordMutation.mutate(data);
   };
 
   return (
@@ -108,7 +161,18 @@ export default function ProfilePage() {
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => setIsEditing(true)}
+              onClick={() => {
+                form.reset({
+                  firstName: user?.firstName || "",
+                  lastName: user?.lastName || "",
+                  email: user?.email || "",
+                  phoneNumber: memberData?.phoneNumber || "",
+                  address: memberData?.address || "",
+                  department: memberData?.department || "",
+                  section: memberData?.section || "",
+                });
+                setIsEditing(true);
+              }}
             >
               Edit Profile
             </Button>
@@ -173,6 +237,66 @@ export default function ProfilePage() {
                       </FormItem>
                     )}
                   />
+
+                  {memberData && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="phoneNumber"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Phone Number</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="address"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Address</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="department"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Department</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="section"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Section</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </>
+                  )}
                 </div>
                 
                 <div className="flex justify-end">
@@ -204,6 +328,26 @@ export default function ProfilePage() {
                   <p className="text-muted-foreground">{user?.email}</p>
                 </div>
               </div>
+
+              {memberData?.phoneNumber && (
+                <div className="flex items-center gap-3">
+                  <Phone className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Phone Number</p>
+                    <p className="text-muted-foreground">{memberData.phoneNumber}</p>
+                  </div>
+                </div>
+              )}
+
+              {memberData?.address && (
+                <div className="flex items-center gap-3">
+                  <MapPin className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="font-medium">Address</p>
+                    <p className="text-muted-foreground">{memberData.address}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
@@ -229,7 +373,7 @@ export default function ProfilePage() {
                 <div>
                   <p className="font-medium">Status</p>
                   <Badge variant={memberData.status === 'active' ? 'default' : 'secondary'}>
-                    {memberData.status?.charAt(0).toUpperCase() + memberData.status?.slice(1)}
+                    {(memberData.status || 'pending').charAt(0).toUpperCase() + (memberData.status || 'pending').slice(1)}
                   </Badge>
                 </div>
               </div>
@@ -243,13 +387,13 @@ export default function ProfilePage() {
                   </div>
                 </div>
               )}
-              
-              {memberData.phoneNumber && (
+
+              {memberData.section && (
                 <div className="flex items-center gap-3">
-                  <Phone className="h-5 w-5 text-muted-foreground" />
+                  <Building className="h-5 w-5 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">Phone Number</p>
-                    <p className="text-muted-foreground">{memberData.phoneNumber}</p>
+                    <p className="font-medium">Section</p>
+                    <p className="text-muted-foreground">{memberData.section}</p>
                   </div>
                 </div>
               )}
@@ -272,35 +416,98 @@ export default function ProfilePage() {
 
       {/* Account Security */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-lg">Account Security</CardTitle>
+          {!isChangingPassword && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsChangingPassword(true)}
+            >
+              <Lock className="h-4 w-4 mr-2" />
+              Change Password
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div>
-                <p className="font-medium">Password</p>
-                <p className="text-sm text-muted-foreground">
-                  Your password is managed through your authentication provider
-                </p>
+          {isChangingPassword ? (
+            <Form {...passwordForm}>
+              <form onSubmit={passwordForm.handleSubmit(handlePasswordSubmit)} className="space-y-4 max-w-md">
+                <FormField
+                  control={passwordForm.control}
+                  name="currentPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Current Password</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={passwordForm.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={passwordForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm New Password</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="flex gap-2">
+                  <Button
+                    type="submit"
+                    disabled={changePasswordMutation.isPending}
+                  >
+                    {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setIsChangingPassword(false);
+                      passwordForm.reset();
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <p className="font-medium">Password</p>
+                  <p className="text-sm text-muted-foreground">
+                    Change your account password
+                  </p>
+                </div>
+                <Badge variant="outline">Local Authentication</Badge>
               </div>
-              <Button variant="outline" size="sm" disabled>
-                Managed Externally
-              </Button>
             </div>
-            
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div>
-                <p className="font-medium">Two-Factor Authentication</p>
-                <p className="text-sm text-muted-foreground">
-                  Enhanced security through your authentication provider
-                </p>
-              </div>
-              <Button variant="outline" size="sm" disabled>
-                Provider Managed
-              </Button>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

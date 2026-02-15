@@ -127,21 +127,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user profile
   app.patch('/api/auth/profile', isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      // Handle both Replit and local auth users
       const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      const { firstName, lastName, email } = req.body;
-      
-      // Validate required fields
+      const { firstName, lastName, email, phoneNumber, address, department, section } = req.body;
+
       if (!firstName || !lastName || !email) {
         return res.status(400).json({ message: "First name, last name, and email are required" });
       }
 
-      // Update user profile
-      const updatedUser = await storage.upsertUser({
+      await storage.upsertUser({
         id: userId,
         email,
         firstName,
@@ -149,7 +146,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profileImageUrl: (req.user as any)?.claims?.profile_image_url || (req.user as any)?.profileImageUrl || null,
       });
 
-      res.json(updatedUser);
+      const member = await storage.getMemberByUserId(userId);
+      if (member) {
+        const memberUpdates: any = {};
+        if (phoneNumber !== undefined) memberUpdates.phoneNumber = phoneNumber;
+        if (address !== undefined) memberUpdates.address = address;
+        if (department !== undefined) memberUpdates.department = department;
+        if (section !== undefined) memberUpdates.section = section;
+        if (Object.keys(memberUpdates).length > 0) {
+          await storage.updateMember(member.id, memberUpdates);
+        }
+      }
+
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      const { password, ...userWithoutPassword } = user as typeof user & { password?: string };
+      const updatedMember = await storage.getMemberByUserId(userId);
+      if (updatedMember) {
+        const roles = await storage.getMemberRoles(updatedMember.id);
+        if (updatedMember.user && (updatedMember.user as any).password) {
+          const { password: _, ...memberUserWithoutPassword } = updatedMember.user as any;
+          updatedMember.user = memberUserWithoutPassword as typeof updatedMember.user;
+        }
+        res.json({
+          ...userWithoutPassword,
+          member: {
+            ...updatedMember,
+            roles: roles.length > 0 ? roles : [updatedMember.role || 'member']
+          }
+        });
+      } else {
+        res.json({ ...userWithoutPassword, member: null });
+      }
     } catch (error) {
       console.error("Error updating user profile:", error);
       res.status(500).json({ message: "Failed to update profile" });
