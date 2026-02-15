@@ -345,7 +345,7 @@ export default function InterestCalculations() {
                 <Input
                   id="interestRate"
                   type="number"
-                  step="0.01"
+                  step="0.001"
                   placeholder="e.g., 8.5"
                   value={newFinancialYearData.interestRate}
                   onChange={(e) => setNewFinancialYearData(prev => ({ ...prev, interestRate: e.target.value }))}
