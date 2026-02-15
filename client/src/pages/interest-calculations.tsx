@@ -74,25 +74,31 @@ export default function InterestCalculations() {
   const queryClient = useQueryClient();
 
   // Fetch financial years
-  const { data: financialYears = [], isLoading: financialYearsLoading } = useQuery({
+  const { data: financialYears = [], isLoading: financialYearsLoading } = useQuery<FinancialYear[]>({
     queryKey: ['/api/financial-years'],
   });
 
   // Fetch active financial year
-  const { data: activeFinancialYear } = useQuery({
+  const { data: activeFinancialYear } = useQuery<FinancialYear>({
     queryKey: ['/api/financial-years/active'],
   });
 
   // Fetch interest calculations
-  const { data: calculations = [], isLoading: calculationsLoading } = useQuery({
+  const { data: calculations = [], isLoading: calculationsLoading } = useQuery<InterestCalculation[]>({
     queryKey: ['/api/interest-calculations', selectedFinancialYear],
-    queryFn: () => apiRequest('GET', `/api/interest-calculations${selectedFinancialYear ? `?financialYearId=${selectedFinancialYear}` : ''}`),
+    queryFn: async () => {
+      const res = await apiRequest('GET', `/api/interest-calculations${selectedFinancialYear ? `?financialYearId=${selectedFinancialYear}` : ''}`);
+      return res.json();
+    },
   });
 
   // Fetch interest payments
-  const { data: payments = [], isLoading: paymentsLoading } = useQuery({
+  const { data: payments = [], isLoading: paymentsLoading } = useQuery<InterestPayment[]>({
     queryKey: ['/api/interest-payments', selectedFinancialYear],
-    queryFn: () => apiRequest('GET', `/api/interest-payments${selectedFinancialYear ? `?financialYearId=${selectedFinancialYear}` : ''}`),
+    queryFn: async () => {
+      const res = await apiRequest('GET', `/api/interest-payments${selectedFinancialYear ? `?financialYearId=${selectedFinancialYear}` : ''}`);
+      return res.json();
+    },
   });
 
   // Create financial year mutation
