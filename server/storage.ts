@@ -72,6 +72,9 @@ export interface IStorage {
   // User operations - mandatory for Replit Auth
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
+  updateUser(id: string, data: Partial<{ username: string; email: string; firstName: string; lastName: string; role: string }>): Promise<User>;
+  deleteUser(id: string): Promise<void>;
   upsertUser(user: UpsertUser): Promise<User>;
 
   // Member operations
@@ -285,6 +288,23 @@ export class DatabaseStorage implements IStorage {
   async getUserByUsername(username: string): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user || undefined;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users).orderBy(users.createdAt);
+  }
+
+  async updateUser(id: string, data: Partial<{ username: string; email: string; firstName: string; lastName: string; role: string }>): Promise<User> {
+    const [user] = await db
+      .update(users)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    await db.delete(users).where(eq(users.id, id));
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
