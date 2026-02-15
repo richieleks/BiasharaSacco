@@ -56,14 +56,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const member = await storage.getMemberByUserId(userId);
       
       // Remove password from user object
-      const { password, ...userWithoutPassword } = user;
+      const { password, ...userWithoutPassword } = user as typeof user & { password?: string };
       
       if (member) {
         const roles = await storage.getMemberRoles(member.id);
         
-        if (member.user && member.user.password) {
-          const { password: _, ...memberUserWithoutPassword } = member.user;
-          member.user = memberUserWithoutPassword;
+        if (member.user && (member.user as any).password) {
+          const { password: _, ...memberUserWithoutPassword } = member.user as any;
+          member.user = memberUserWithoutPassword as typeof member.user;
         }
         
         res.json({
@@ -515,7 +515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get pending members for committee approval
   app.get('/api/members/pending', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
       if (!await isCommitteeOrAdmin(userId)) {
         return res.status(403).json({ message: "Access denied. Committee or admin role required." });
       }
@@ -531,7 +531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Approve member application
   app.post('/api/members/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
       if (!await isCommitteeOrAdmin(userId)) {
         return res.status(403).json({ message: "Access denied. Committee or admin role required." });
       }
@@ -572,7 +572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Reject member application
   app.post('/api/members/:id/reject', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
       if (!await isCommitteeOrAdmin(userId)) {
         return res.status(403).json({ message: "Access denied. Committee or admin role required." });
       }
@@ -629,7 +629,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const memberId = parseInt(req.params.id);
       const { roles } = req.body;
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
       
       if (!Array.isArray(roles)) {
         return res.status(400).json({ message: "Roles must be an array" });
@@ -722,7 +722,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isStaff && !isOwnRecord) {
         await storage.createAuditLog({
           userId,
-          memberId: requestingMember.id,
+          memberId: requestingMember!.id,
           action: 'view',
           resource: 'member',
           resourceId: memberId.toString(),
@@ -1115,7 +1115,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/loans/approval/:stage', isAuthenticated, async (req: any, res) => {
     try {
       const { stage } = req.params;
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -1141,7 +1141,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { uuid, stage } = req.params;
       const { comments } = req.body;
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
 
       if (!await hasApprovalRole(userId, stage)) {
         return res.status(403).json({ message: `Access denied. ${stage} role required.` });
@@ -1181,7 +1181,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { uuid } = req.params;
       const { reason } = req.body;
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
 
       if (!reason?.trim()) {
         return res.status(400).json({ message: "Rejection reason is required" });
@@ -1323,7 +1323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Personal data endpoints for member dashboard
   app.get('/api/loans/my-loans', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
       const member = await storage.getMemberByUserId(userId);
       if (!member) {
         return res.status(404).json({ message: "Member record not found" });
@@ -1338,7 +1338,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/savings/my-savings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
       const member = await storage.getMemberByUserId(userId);
       if (!member) {
         return res.status(404).json({ message: "Member record not found" });
@@ -1353,7 +1353,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/transactions/my-transactions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
       const member = await storage.getMemberByUserId(userId);
       if (!member) {
         return res.status(404).json({ message: "Member record not found" });
@@ -1391,7 +1391,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         savingsAccounts = await storage.getAllSavingsAccounts();
       } else {
         // Members can only see their own accounts
-        savingsAccounts = await storage.getSavingsAccountsByMember(requestingMember.id);
+        savingsAccounts = await storage.getSavingsAccountsByMember(requestingMember!.id);
       }
 
       res.json(savingsAccounts);
@@ -1566,7 +1566,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const guarantorId = parseInt(req.params.id);
       const { comments } = req.body;
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
 
       // Get the guarantor and verify the current user is the guarantor
       const guarantor = await storage.getGuarantor(guarantorId);
@@ -1607,7 +1607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const guarantorId = parseInt(req.params.id);
       const { comments } = req.body;
-      const userId = getUserId(req);
+      const userId = getUserId(req)!;
 
       if (!comments?.trim()) {
         return res.status(400).json({ message: "Comments are required for rejection" });
@@ -1620,7 +1620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify the current user is the guarantor member
-      const guarantorMember = await storage.getMemberByUserId(userId);
+      const guarantorMember = await storage.getMemberByUserId(userId!);
       if (!guarantorMember || guarantorMember.id !== guarantor.guarantorMemberId) {
         return res.status(403).json({ message: "You can only reject your own guarantor requests" });
       }
@@ -2780,7 +2780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/interest-calculations/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const approvedBy = getUserId(req);
+      const approvedBy = getUserId(req)!;
       const calculation = await storage.approveInterestCalculation(id, approvedBy);
       res.json(calculation);
     } catch (error) {
@@ -2825,7 +2825,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/interest-payments/:id/process', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const processedBy = getUserId(req);
+      const processedBy = getUserId(req)!;
       const payment = await storage.processInterestPayment(id, processedBy);
       res.json(payment);
     } catch (error) {

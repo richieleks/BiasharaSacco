@@ -183,7 +183,6 @@ export interface IStorage {
 
   // Interest calculation operations
   createInterestCalculation(calculation: InsertInterestCalculation): Promise<InterestCalculation>;
-  getInterestCalculations(loanId: number): Promise<InterestCalculationWithDetails[]>;
   calculateAndSaveInterest(loanId: number): Promise<InterestCalculationResult>;
 
   // Advanced loan calculations
@@ -384,20 +383,6 @@ export class DatabaseStorage implements IStorage {
     return member;
   }
 
-  async getMemberPendingLoans(memberId: number): Promise<Loan[]> {
-    return await db
-      .select()
-      .from(loans)
-      .where(and(
-        eq(loans.memberId, memberId),
-        or(
-          eq(loans.status, 'pending'),
-          eq(loans.status, 'teller_approved'),
-          eq(loans.status, 'committee_approved')
-        )
-      ));
-  }
-
   async getSavingsAccountsByMember(memberId: number): Promise<SavingsAccount[]> {
     return await db
       .select()
@@ -547,13 +532,6 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(members, eq(savingsAccounts.memberId, members.id))
       .where(eq(savingsAccounts.id, id));
     return account || undefined;
-  }
-
-  async getSavingsAccountsByMember(memberId: number): Promise<SavingsAccount[]> {
-    return await db
-      .select()
-      .from(savingsAccounts)
-      .where(eq(savingsAccounts.memberId, memberId));
   }
 
   async getAllSavingsAccounts(): Promise<any[]> {
@@ -1710,35 +1688,20 @@ export class DatabaseStorage implements IStorage {
     return calc;
   }
 
-  async getInterestCalculations(loanId: number): Promise<InterestCalculationWithDetails[]> {
-    const results = await db
-      .select()
-      .from(interestCalculations)
-      .leftJoin(loans, eq(interestCalculations.loanId, loans.id))
-      .leftJoin(savingsAccounts, eq(interestCalculations.savingsAccountId, savingsAccounts.id))
-      .where(eq(interestCalculations.loanId, loanId))
-      .orderBy(desc(interestCalculations.calculationDate));
-
-    return results.map(result => ({
-      ...result.interest_calculations,
-      loan: result.loans || undefined,
-      savingsAccount: result.savings_accounts || undefined,
-    }));
-  }
-
   async calculateAndSaveInterest(loanId: number): Promise<InterestCalculationResult> {
     const loan = await this.getLoan(loanId);
     if (!loan) {
       throw new Error('Loan not found');
     }
 
-    const interestRate = await this.getInterestRateByProduct(loan.loanType);
-    const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loan.loanType, Number(loan.amount));
+    const loanType = loan.loanType ?? 'personal';
+    const interestRate = await this.getInterestRateByProduct(loanType);
+    const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loanType, Number(loan.principalAmount));
 
     const result = InterestCalculator.calculateReducingBalancePayment(
-      Number(loan.amount),
+      Number(loan.principalAmount),
       rate,
-      loan.termInMonths
+      loan.termMonths
     );
 
     // Save calculation record
@@ -1746,19 +1709,19 @@ export class DatabaseStorage implements IStorage {
       InterestCalculator.createCalculationRecord(
         loanId,
         'reducing_balance',
-        Number(loan.amount),
+        Number(loan.principalAmount),
         rate,
-        loan.termInMonths / 12,
+        loan.termMonths / 12,
         result,
         'PMT = P * [r(1+r)^n] / [(1+r)^n - 1]',
-        `Calculated for ${loan.loanType} loan`
+        `Calculated for ${loanType} loan`
       )
     );
 
     return {
-      totalInterest: result * loan.termInMonths - Number(loan.amount),
+      totalInterest: result * loan.termMonths - Number(loan.principalAmount),
       monthlyPayment: result,
-      totalAmount: result * loan.termInMonths,
+      totalAmount: result * loan.termMonths,
       effectiveRate: rate
     };
   }
@@ -1770,14 +1733,15 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Loan not found');
     }
 
-    const interestRate = await this.getInterestRateByProduct(loan.loanType);
-    const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loan.loanType, Number(loan.amount));
+    const loanType = loan.loanType ?? 'personal';
+    const interestRate = await this.getInterestRateByProduct(loanType);
+    const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loanType, Number(loan.principalAmount));
 
     const scheduleData = InterestCalculator.generateAmortizationSchedule(
       loanId,
-      Number(loan.amount),
+      Number(loan.principalAmount),
       rate,
-      loan.termInMonths,
+      loan.termMonths,
       loan.disbursementDate || new Date()
     );
 
@@ -1793,13 +1757,14 @@ export class DatabaseStorage implements IStorage {
     // Delete existing schedule
     await db.delete(amortizationSchedules).where(eq(amortizationSchedules.loanId, loanId));
 
-    const rate = newRate || InterestCalculator.getRecommendedRate(loan.loanType, Number(loan.amount));
+    const loanType = loan.loanType ?? 'personal';
+    const rate = newRate || InterestCalculator.getRecommendedRate(loanType, Number(loan.principalAmount));
 
     const scheduleData = InterestCalculator.generateAmortizationSchedule(
       loanId,
-      Number(loan.amount),
+      Number(loan.principalAmount),
       rate,
-      loan.termInMonths,
+      loan.termMonths,
       loan.disbursementDate || new Date()
     );
 
@@ -1836,7 +1801,7 @@ export class DatabaseStorage implements IStorage {
     let revisedSchedule: AmortizationSchedule[] = [];
     if (newBalance > 0) {
       const remainingTerm = remainingSchedule.length;
-      const interestRate = await this.getInterestRateByProduct(loan.loanType);
+      const interestRate = await this.getInterestRateByProduct(loan.loanType ?? 'personal');
       const rate = interestRate ? Number(interestRate.baseRate) : 12;
 
       const newScheduleData = InterestCalculator.generateAmortizationSchedule(
@@ -1878,20 +1843,21 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(notifications.isRead, filters.isRead));
     }
     if (filters?.type) {
-      conditions.push(eq(notifications.type, filters.type));
+      conditions.push(eq(notifications.type, filters.type as any));
     }
     if (filters?.priority) {
-      conditions.push(eq(notifications.priority, filters.priority));
+      conditions.push(eq(notifications.priority, filters.priority as any));
     }
 
-    let query = db
+    const query = db
       .select()
       .from(notifications)
       .where(and(...conditions))
-      .orderBy(desc(notifications.createdAt));
+      .orderBy(desc(notifications.createdAt))
+      .$dynamic();
 
     if (filters?.limit) {
-      query = query.limit(filters.limit);
+      return await query.limit(filters.limit);
     }
 
     return await query;
@@ -1932,7 +1898,7 @@ export class DatabaseStorage implements IStorage {
         eq(notifications.id, id),
         eq(notifications.userId, userId)
       ));
-    return result.rowCount > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async getUnreadNotificationCount(userId: string): Promise<number> {
@@ -2166,7 +2132,7 @@ export class DatabaseStorage implements IStorage {
           savingsAccountId: account.id,
           memberId: account.memberId,
           snapshotDate,
-          balance: account.balance,
+          balance: account.balance ?? '0.00',
           financialYearId,
         });
         snapshots.push(snapshot);
@@ -2199,10 +2165,10 @@ export class DatabaseStorage implements IStorage {
     // Calculate average balance
     const totalBalance = snapshots.reduce((sum, snapshot) => 
       sum + parseFloat(snapshot.balance), 0);
-    const averageBalance = snapshots.length > 0 ? totalBalance / snapshots.length : parseFloat(account.balance);
+    const averageBalance = snapshots.length > 0 ? totalBalance / snapshots.length : parseFloat(account.balance ?? '0');
 
     // Calculate interest
-    const interestRate = parseFloat(financialYear.interestRate);
+    const interestRate = parseFloat(financialYear.interestRate ?? '0.0500');
     const grossInterest = averageBalance * interestRate;
     const taxRate = 0.15; // 15% withholding tax
     const taxAmount = grossInterest * taxRate;
@@ -2216,7 +2182,7 @@ export class DatabaseStorage implements IStorage {
       periodStartDate: financialYear.startDate,
       periodEndDate: financialYear.endDate,
       averageBalance: averageBalance.toString(),
-      interestRate: financialYear.interestRate,
+      interestRate: financialYear.interestRate ?? '0.0500',
       grossInterest: grossInterest.toString(),
       taxAmount: taxAmount.toString(),
       netInterest: netInterest.toString(),
@@ -2392,7 +2358,7 @@ export class DatabaseStorage implements IStorage {
     const totalGrossInterest = calculations.reduce((sum, calc) => 
       sum + parseFloat(calc.grossInterest), 0);
     const totalTaxAmount = calculations.reduce((sum, calc) => 
-      sum + parseFloat(calc.taxAmount), 0);
+      sum + parseFloat(calc.taxAmount ?? '0'), 0);
     const totalNetInterest = calculations.reduce((sum, calc) => 
       sum + parseFloat(calc.netInterest), 0);
     const totalPaid = payments.reduce((sum, payment) => 
