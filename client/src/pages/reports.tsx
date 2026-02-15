@@ -4,7 +4,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
@@ -175,11 +174,11 @@ export default function Reports() {
   };
 
   return (
-    <>
+    <div className="space-y-6 page-container animate-fade-in">
       {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Reports & Analytics</h1>
-        <p className="text-slate-600 mt-1">Generate comprehensive reports and analyze SACCO performance</p>
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Reports & Analytics</h1>
+        <p className="text-sm text-slate-500 mt-0.5">Generate comprehensive reports and analyze SACCO performance</p>
       </div>
 
       {/* Tabs for different report sections */}
@@ -197,18 +196,18 @@ export default function Reports() {
           {metricsLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
-                <Card key={i}>
-                  <CardContent className="p-6">
-                    <Skeleton className="h-4 w-24 mb-2" />
-                    <Skeleton className="h-8 w-32" />
-                  </CardContent>
-                </Card>
+                <div key={i} className="section-card">
+                  <div className="p-6">
+                    <Skeleton className="h-4 w-24 mb-2 bg-slate-100 rounded-lg" />
+                    <Skeleton className="h-8 w-32 bg-slate-100 rounded-lg" />
+                  </div>
+                </div>
               ))}
             </div>
           ) : metrics ? (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <Card className="border-l-4 border-l-blue-500">
-                <CardContent className="p-6">
+              <div className="section-card border-l-4 border-l-blue-500">
+                <div className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-slate-600">Total Members</p>
@@ -216,11 +215,11 @@ export default function Reports() {
                     </div>
                     <Users className="h-8 w-8 text-blue-500" />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              <Card className="border-l-4 border-l-green-500">
-                <CardContent className="p-6">
+              <div className="section-card border-l-4 border-l-green-500">
+                <div className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-slate-600">Total Savings</p>
@@ -230,11 +229,11 @@ export default function Reports() {
                     </div>
                     <PiggyBank className="h-8 w-8 text-green-500" />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              <Card className="border-l-4 border-l-purple-500">
-                <CardContent className="p-6">
+              <div className="section-card border-l-4 border-l-purple-500">
+                <div className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-slate-600">Active Loans</p>
@@ -244,11 +243,11 @@ export default function Reports() {
                     </div>
                     <HandCoins className="h-8 w-8 text-purple-500" />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              <Card className="border-l-4 border-l-yellow-500">
-                <CardContent className="p-6">
+              <div className="section-card border-l-4 border-l-yellow-500">
+                <div className="p-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-slate-600">Repayment Rate</p>
@@ -256,34 +255,34 @@ export default function Reports() {
                     </div>
                     <TrendingUp className="h-8 w-8 text-yellow-500" />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           ) : null}
 
           {/* Report Types Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {reportTypes.map((report) => (
-              <Card key={report.id} className="hover:shadow-lg transition-all hover:-translate-y-1">
-                <CardHeader>
+              <div key={report.id} className="section-card hover:shadow-lg transition-all hover:-translate-y-1">
+                <div className="px-6 py-4 border-b border-slate-100">
                   <div className="flex items-center space-x-3">
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${report.color}`}>
                       <report.icon className="w-6 h-6" />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{report.title}</CardTitle>
+                      <h3 className="text-sm font-semibold text-slate-900">{report.title}</h3>
                     </div>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="mb-4">{report.description}</CardDescription>
+                </div>
+                <div className="p-5">
+                  <p className="text-sm text-slate-500 mb-4">{report.description}</p>
                   <div className="flex gap-2">
                     <Button
                       onClick={() => {
                         setActiveTab(report.id === 'financial' ? 'financial' : 'custom');
                         setSelectedReport(report.id);
                       }}
-                      className="flex-1"
+                      className="flex-1 rounded-xl"
                       variant="default"
                     >
                       <FileText className="w-4 h-4 mr-2" />
@@ -297,20 +296,20 @@ export default function Reports() {
                       <Download className="w-4 h-4" />
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
         </TabsContent>
 
         {/* Members Reports Tab */}
         <TabsContent value="members" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Member Reports</CardTitle>
-              <CardDescription>Generate reports for member data and activities</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div className="section-card">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Member Reports</h3>
+              <p className="text-sm text-slate-500 mt-0.5">Generate reports for member data and activities</p>
+            </div>
+            <div className="p-6">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -348,7 +347,7 @@ export default function Reports() {
                 </div>
 
                 <div className="flex gap-2">
-                  <Button onClick={() => refetch()}>
+                  <Button onClick={() => refetch()} className="rounded-xl">
                     <Filter className="w-4 h-4 mr-2" />
                     Apply Filters
                   </Button>
@@ -357,25 +356,25 @@ export default function Reports() {
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
           {/* Report Results */}
           {reportLoading ? (
-            <Card>
-              <CardContent className="p-6">
+            <div className="section-card">
+              <div className="p-6">
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full" />
+                    <Skeleton key={i} className="h-12 w-full bg-slate-100 rounded-lg" />
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : reportData ? (
-            <Card>
-              <CardHeader>
+            <div className="section-card">
+              <div className="px-6 py-4 border-b border-slate-100">
                 <div className="flex justify-between items-center">
-                  <CardTitle>Report Results</CardTitle>
+                  <h3 className="text-sm font-semibold text-slate-900">Report Results</h3>
                   <div className="flex gap-2">
                     <Button variant="outline" size="sm">
                       <Printer className="w-4 h-4 mr-2" />
@@ -385,15 +384,15 @@ export default function Reports() {
                       <Mail className="w-4 h-4 mr-2" />
                       Email
                     </Button>
-                    <Button size="sm">
+                    <Button size="sm" className="rounded-xl">
                       <FileSpreadsheet className="w-4 h-4 mr-2" />
                       Export
                     </Button>
                   </div>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <Table>
+              </div>
+              <div className="p-6">
+                <Table className="table-modern">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Member Number</TableHead>
@@ -413,58 +412,58 @@ export default function Reports() {
                     </TableRow>
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : null}
         </TabsContent>
 
         {/* Financial Reports Tab */}
         <TabsContent value="financial" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Financial Reports</CardTitle>
-              <CardDescription>Comprehensive financial analysis and reporting</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <div className="section-card">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Financial Reports</h3>
+              <p className="text-sm text-slate-500 mt-0.5">Comprehensive financial analysis and reporting</p>
+            </div>
+            <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button variant="outline" className="h-24 flex flex-col items-center justify-center">
+                <Button variant="outline" className="h-24 flex flex-col items-center justify-center rounded-xl">
                   <BarChart3 className="w-8 h-8 mb-2" />
                   <span>Income Statement</span>
                 </Button>
-                <Button variant="outline" className="h-24 flex flex-col items-center justify-center">
+                <Button variant="outline" className="h-24 flex flex-col items-center justify-center rounded-xl">
                   <PiggyBank className="w-8 h-8 mb-2" />
                   <span>Balance Sheet</span>
                 </Button>
-                <Button variant="outline" className="h-24 flex flex-col items-center justify-center">
+                <Button variant="outline" className="h-24 flex flex-col items-center justify-center rounded-xl">
                   <TrendingUp className="w-8 h-8 mb-2" />
                   <span>Cash Flow</span>
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
 
         {/* Custom Reports Tab */}
         <TabsContent value="custom" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Custom Report Builder</CardTitle>
-              <CardDescription>Create custom reports based on your specific needs</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12">
+          <div className="section-card">
+            <div className="px-6 py-4 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Custom Report Builder</h3>
+              <p className="text-sm text-slate-500 mt-0.5">Create custom reports based on your specific needs</p>
+            </div>
+            <div className="p-6">
+              <div className="py-16 text-center">
                 <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium mb-2">Custom Report Builder</h3>
                 <p className="text-slate-600 mb-4">
                   Select data fields and filters to create your custom report
                 </p>
-                <Button>
+                <Button className="rounded-xl">
                   <Plus className="w-4 h-4 mr-2" />
                   Create New Report
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </TabsContent>
       </Tabs>
 
@@ -481,7 +480,7 @@ export default function Reports() {
             <Button
               variant="outline"
               onClick={() => handleExportReport('pdf')}
-              className="flex flex-col items-center py-4"
+              className="flex flex-col items-center py-4 rounded-xl"
             >
               <FileText className="w-8 h-8 mb-2" />
               <span>PDF</span>
@@ -489,7 +488,7 @@ export default function Reports() {
             <Button
               variant="outline"
               onClick={() => handleExportReport('excel')}
-              className="flex flex-col items-center py-4"
+              className="flex flex-col items-center py-4 rounded-xl"
             >
               <FileSpreadsheet className="w-8 h-8 mb-2" />
               <span>Excel</span>
@@ -497,7 +496,7 @@ export default function Reports() {
             <Button
               variant="outline"
               onClick={() => handleExportReport('csv')}
-              className="flex flex-col items-center py-4"
+              className="flex flex-col items-center py-4 rounded-xl"
             >
               <FileText className="w-8 h-8 mb-2" />
               <span>CSV</span>
@@ -505,6 +504,6 @@ export default function Reports() {
           </div>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 }

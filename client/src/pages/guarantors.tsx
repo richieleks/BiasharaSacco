@@ -1,5 +1,4 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,7 +25,6 @@ export default function Guarantors() {
   const [isGuarantorSelectionOpen, setIsGuarantorSelectionOpen] = useState(false);
   const [selectedGuarantors, setSelectedGuarantors] = useState<Array<{memberId: number, guaranteeAmount: string}>>([]);
 
-  // Get all eligible members for guarantor selection
   const { data: allMembers = [] } = useQuery<MemberWithDetails[]>({
     queryKey: ['/api/members'],
     enabled: !!user?.id,
@@ -37,13 +35,11 @@ export default function Guarantors() {
     enabled: !!user?.id,
   });
 
-  // Get user's own loan applications 
   const { data: myLoans = [], isLoading: loadingMyLoans } = useQuery<any[]>({
     queryKey: ['/api/loans/my-loans'],
     enabled: !!user?.id,
   });
 
-  // Get guarantors for each loan
   const loanGuarantors = useQuery({
     queryKey: ['/api/loans/guarantors', myLoans.map(loan => loan.id)],
     queryFn: async () => {
@@ -61,19 +57,16 @@ export default function Guarantors() {
     enabled: myLoans.length > 0,
   });
 
-  // Get pending guarantor requests for current user to approve/reject
   const { data: guarantorRequests = [], isLoading: loadingRequests } = useQuery<GuarantorWithDetails[]>({
     queryKey: ['/api/guarantors/pending'],
     enabled: !!user?.id,
   });
 
-  // Get guarantees provided by current user
   const { data: providedGuarantees = [], isLoading: loadingProvided } = useQuery<GuarantorWithDetails[]>({
     queryKey: ['/api/guarantors/member', currentMember?.id],
     enabled: !!currentMember?.id,
   });
 
-  // Filter loans that need guarantors
   const loansNeedingGuarantors = myLoans.filter(loan => 
     loan.status === 'pending' || (loan.status === 'approved' && !loan.guarantorsApproved)
   );
@@ -151,11 +144,24 @@ export default function Guarantors() {
       case 'approved':
       case 'active':
       case 'disbursed':
-        return 'default';
+        return 'outline';
       case 'rejected':
-        return 'destructive';
+        return 'outline';
       default:
-        return 'secondary';
+        return 'outline';
+    }
+  };
+
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'approved':
+      case 'active':
+      case 'disbursed':
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+      case 'rejected':
+        return 'bg-red-50 text-red-700 border-red-200/50';
+      default:
+        return 'bg-amber-50 text-amber-700 border-amber-200/50';
     }
   };
 
@@ -164,11 +170,11 @@ export default function Guarantors() {
       case 'approved':
       case 'active':
       case 'disbursed':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
+        return <CheckCircle className="h-4 w-4 text-emerald-600" />;
       case 'rejected':
         return <XCircle className="h-4 w-4 text-red-600" />;
       default:
-        return <Clock className="h-4 w-4 text-yellow-600" />;
+        return <Clock className="h-4 w-4 text-amber-600" />;
     }
   };
 
@@ -281,7 +287,6 @@ export default function Guarantors() {
     });
   };
 
-  // Filter eligible guarantors (active members excluding the loan applicant)
   const getEligibleGuarantors = (loan: any) => {
     return allMembers.filter(member => 
       member.status === 'active' && 
@@ -292,20 +297,22 @@ export default function Guarantors() {
 
   if (!currentMember) {
     return (
-      <div className="container mx-auto p-6">
-        <div className="text-center py-8">
-          <div className="text-muted-foreground">Loading member information...</div>
+      <div className="space-y-6 page-container animate-fade-in">
+        <div className="section-card">
+          <div className="py-16 text-center">
+            <div className="text-muted-foreground">Loading member information...</div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6 page-container animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Guarantor Management</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Guarantor Management</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
             Manage guarantor requests and view guarantees you've provided
           </p>
         </div>
@@ -317,7 +324,7 @@ export default function Guarantors() {
           variant={activeTab === 'my-loans' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setActiveTab('my-loans')}
-          className="flex-1"
+          className={`flex-1 ${activeTab === 'my-loans' ? 'rounded-xl' : ''}`}
         >
           <CreditCard className="h-4 w-4 mr-2" />
           My Loan Applications ({loansNeedingGuarantors.length})
@@ -326,7 +333,7 @@ export default function Guarantors() {
           variant={activeTab === 'requests' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setActiveTab('requests')}
-          className="flex-1"
+          className={`flex-1 ${activeTab === 'requests' ? 'rounded-xl' : ''}`}
         >
           <Clock className="h-4 w-4 mr-2" />
           Requests to Guarantee ({guarantorRequests.length})
@@ -335,7 +342,7 @@ export default function Guarantors() {
           variant={activeTab === 'provided' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setActiveTab('provided')}
-          className="flex-1"
+          className={`flex-1 ${activeTab === 'provided' ? 'rounded-xl' : ''}`}
         >
           <Users className="h-4 w-4 mr-2" />
           Guarantees Provided ({providedGuarantees.length})
@@ -344,20 +351,20 @@ export default function Guarantors() {
 
       {/* Tab Content */}
       {activeTab === 'my-loans' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <CreditCard className="h-5 w-5" />
+        <div className="section-card">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
               My Loan Applications Awaiting Guarantors ({loansNeedingGuarantors.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-6">
             {loadingMyLoans || loanGuarantors.isLoading ? (
-              <div className="text-center py-4">
+              <div className="py-16 text-center">
                 <div className="text-muted-foreground">Loading your loans...</div>
               </div>
             ) : loansNeedingGuarantors.length === 0 ? (
-              <div className="text-center py-8">
+              <div className="py-16 text-center">
                 <CreditCard className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <div className="text-lg font-medium">No Loans Awaiting Guarantors</div>
                 <div className="text-muted-foreground">
@@ -373,19 +380,19 @@ export default function Guarantors() {
                   const rejectedGuarantors = guarantors.filter(g => g.status === 'rejected').length;
                   
                   return (
-                    <Card key={loan.id} className="border-l-4 border-l-blue-400">
-                      <CardHeader>
-                        <CardTitle className="flex items-center justify-between">
+                    <div key={loan.id} className="section-card border-l-4 border-l-blue-400">
+                      <div className="px-6 py-4 border-b border-slate-100">
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <CreditCard className="h-5 w-5 text-blue-600" />
-                            <span>Loan Application #{loan.loanNumber}</span>
+                            <h3 className="text-sm font-semibold text-slate-900">Loan Application #{loan.loanNumber}</h3>
                           </div>
-                          <Badge variant={getStatusVariant(loan.status)}>
+                          <Badge variant={getStatusVariant(loan.status)} className={getStatusColor(loan.status)}>
                             {loan.status}
                           </Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
+                        </div>
+                      </div>
+                      <div className="p-6">
                         <div className="grid md:grid-cols-2 gap-6">
                           {/* Loan Details */}
                           <div className="space-y-3">
@@ -426,13 +433,13 @@ export default function Guarantors() {
                               </div>
                               <div className="w-full bg-slate-200 rounded-full h-2">
                                 <div 
-                                  className="bg-green-600 h-2 rounded-full transition-all duration-300"
+                                  className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
                                   style={{ width: `${guarantors.length ? (approvedGuarantors / guarantors.length) * 100 : 0}%` }}
                                 ></div>
                               </div>
                               <div className="flex gap-4 mt-2 text-xs">
-                                <span className="text-green-600">✓ {approvedGuarantors} Approved</span>
-                                <span className="text-yellow-600">⏳ {pendingGuarantors} Pending</span>
+                                <span className="text-emerald-600">✓ {approvedGuarantors} Approved</span>
+                                <span className="text-amber-600">⏳ {pendingGuarantors} Pending</span>
                                 <span className="text-red-600">✗ {rejectedGuarantors} Rejected</span>
                               </div>
                             </div>
@@ -467,7 +474,7 @@ export default function Guarantors() {
                                   </div>
                                   <div className="flex items-center gap-2">
                                     {getStatusIcon(guarantor.status)}
-                                    <Badge variant={getStatusVariant(guarantor.status)}>
+                                    <Badge variant={getStatusVariant(guarantor.status)} className={getStatusColor(guarantor.status)}>
                                       {guarantor.status}
                                     </Badge>
                                   </div>
@@ -479,12 +486,12 @@ export default function Guarantors() {
 
                         {guarantors.length === 0 && (
                           <div className="mt-6 pt-4 border-t">
-                            <div className="text-center py-4 text-slate-500">
+                            <div className="py-16 text-center text-slate-500">
                               <UserCheck className="h-8 w-8 mx-auto mb-2 text-slate-400" />
                               <p>No guarantors assigned yet</p>
                               <Button 
                                 onClick={() => openGuarantorSelection(loan)}
-                                className="mt-3"
+                                className="mt-3 rounded-xl"
                                 size="sm"
                               >
                                 <Plus className="h-4 w-4 mr-2" />
@@ -506,31 +513,31 @@ export default function Guarantors() {
                             </Button>
                           </div>
                         )}
-                      </CardContent>
-                    </Card>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {activeTab === 'requests' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
+        <div className="section-card">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <Clock className="h-4 w-4" />
               Requests for Me to Guarantee ({guarantorRequests.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-6">
             {loadingRequests ? (
-              <div className="text-center py-4">
+              <div className="py-16 text-center">
                 <div className="text-muted-foreground">Loading guarantor requests...</div>
               </div>
             ) : guarantorRequests.length === 0 ? (
-              <div className="text-center py-8">
+              <div className="py-16 text-center">
                 <UserCheck className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <div className="text-lg font-medium">No Pending Guarantor Requests</div>
                 <div className="text-muted-foreground">
@@ -540,20 +547,20 @@ export default function Guarantors() {
             ) : (
               <div className="space-y-6">
                 {guarantorRequests.map((request: any) => (
-                  <Card key={request.id} className="border-l-4 border-l-amber-400">
-                    <CardHeader>
-                      <CardTitle className="flex items-center justify-between">
+                  <div key={request.id} className="section-card border-l-4 border-l-amber-400">
+                    <div className="px-6 py-4 border-b border-slate-100">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <FileText className="h-5 w-5 text-amber-600" />
-                          <span>Loan Guarantee Request</span>
+                          <h3 className="text-sm font-semibold text-slate-900">Loan Guarantee Request</h3>
                         </div>
-                        <Badge variant="secondary">
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/50">
                           <Clock className="h-3 w-3 mr-1" />
                           Pending
                         </Badge>
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                      </div>
+                    </div>
+                    <div className="p-6">
                       <div className="grid md:grid-cols-2 gap-6">
                         {/* Loan Details */}
                         <div className="space-y-3">
@@ -614,7 +621,7 @@ export default function Guarantors() {
                       <div className="flex gap-3 mt-6 pt-4 border-t">
                         <Button
                           onClick={() => openApprovalDialog(request)}
-                          className="bg-green-600 hover:bg-green-700 text-white"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
                           Approve Guarantee
@@ -628,30 +635,30 @@ export default function Guarantors() {
                           Reject Request
                         </Button>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {activeTab === 'provided' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
+        <div className="section-card">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <Users className="h-4 w-4" />
               Guarantees I've Provided ({providedGuarantees.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="p-6">
             {loadingProvided ? (
-              <div className="text-center py-4">
+              <div className="py-16 text-center">
                 <div className="text-muted-foreground">Loading guarantees...</div>
               </div>
             ) : providedGuarantees.length === 0 ? (
-              <div className="text-center py-8">
+              <div className="py-16 text-center">
                 <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
                 <div className="text-lg font-medium">No Guarantees Provided</div>
                 <div className="text-muted-foreground">
@@ -684,7 +691,7 @@ export default function Guarantors() {
                       </div>
                       <div className="flex items-center gap-2">
                         {getStatusIcon(guarantee.status || 'pending')}
-                        <Badge variant={getStatusVariant(guarantee.status || 'pending')}>
+                        <Badge variant={getStatusVariant(guarantee.status || 'pending')} className={getStatusColor(guarantee.status || 'pending')}>
                           {guarantee.status || 'pending'}
                         </Badge>
                       </div>
@@ -709,8 +716,8 @@ export default function Guarantors() {
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Approval/Rejection Dialog */}
@@ -749,7 +756,7 @@ export default function Guarantors() {
                 <Button
                   onClick={handleApprove}
                   disabled={approveGuarantorMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 rounded-xl"
                 >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Approve Guarantee
@@ -867,7 +874,7 @@ export default function Guarantors() {
                 <Button
                   onClick={submitGuarantors}
                   disabled={addGuarantorMutation.isPending}
-                  className="bg-green-600 hover:bg-green-700 text-white flex-1"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 rounded-xl"
                 >
                   {addGuarantorMutation.isPending ? (
                     <>Sending Requests...</>

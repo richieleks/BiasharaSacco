@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRBAC } from "@/hooks/useRBAC";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,13 +10,13 @@ import { Shield, Search, Calendar, Activity, FileText, UserX } from "lucide-reac
 import { format } from "date-fns";
 
 const actionColors: Record<string, string> = {
-  create: "bg-green-100 text-green-800",
-  update: "bg-blue-100 text-blue-800",
-  delete: "bg-red-100 text-red-800",
-  approve: "bg-purple-100 text-purple-800",
-  reject: "bg-orange-100 text-orange-800",
-  login: "bg-gray-100 text-gray-800",
-  logout: "bg-gray-100 text-gray-800",
+  create: "bg-emerald-50 text-emerald-700 border-emerald-200/50",
+  update: "bg-blue-50 text-blue-700 border-blue-200/50",
+  delete: "bg-red-50 text-red-700 border-red-200/50",
+  approve: "bg-emerald-50 text-emerald-700 border-emerald-200/50",
+  reject: "bg-amber-50 text-amber-700 border-amber-200/50",
+  login: "bg-blue-50 text-blue-700 border-blue-200/50",
+  logout: "bg-blue-50 text-blue-700 border-blue-200/50",
 };
 
 const resourceIcons: Record<string, any> = {
@@ -36,24 +35,22 @@ export default function AuditLogs() {
   });
   const { hasPermission } = useRBAC();
 
-  // Check if user has permission to view audit logs
   if (!hasPermission('read', 'audit-logs')) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Card className="max-w-md">
-          <CardContent className="pt-6">
-            <div className="text-center">
+        <div className="section-card max-w-md">
+          <div className="p-6">
+            <div className="py-16 text-center">
               <Shield className="h-12 w-12 mx-auto text-gray-400 mb-4" />
               <h3 className="text-lg font-semibold">Access Denied</h3>
               <p className="text-gray-600 mt-2">You don't have permission to view audit logs.</p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
 
-  // Build query params, excluding "all" values
   const queryParams = new URLSearchParams();
   if (filters.resource !== 'all') queryParams.append('resource', filters.resource);
   if (filters.action !== 'all') queryParams.append('action', filters.action);
@@ -85,7 +82,7 @@ export default function AuditLogs() {
   };
 
   const getActionBadge = (action: string) => {
-    const colorClass = actionColors[action] || "bg-gray-100 text-gray-800";
+    const colorClass = actionColors[action] || "bg-blue-50 text-blue-700 border-blue-200/50";
     return (
       <Badge variant="outline" className={colorClass}>
         {action.charAt(0).toUpperCase() + action.slice(1)}
@@ -99,24 +96,24 @@ export default function AuditLogs() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-container animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Audit Logs</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Audit Logs</h1>
+        <p className="text-sm text-slate-500 mt-0.5">
           Track all system activities and user actions
         </p>
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Filters</CardTitle>
-          <CardDescription>
+      <div className="section-card">
+        <div className="px-6 py-4 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-900">Filters</h3>
+          <p className="text-sm text-slate-500 mt-0.5">
             Filter audit logs by resource, action, or search for specific entries
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Select
               value={filters.resource}
@@ -164,92 +161,90 @@ export default function AuditLogs() {
               />
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Logs Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Activity Log</CardTitle>
-          <CardDescription>
+      <div className="section-card">
+        <div className="px-6 py-4 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-900">Activity Log</h3>
+          <p className="text-sm text-slate-500 mt-0.5">
             Recent system activities and user actions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
+          </p>
+        </div>
+        <div className="p-6">
+          <Table className="table-modern">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Timestamp</TableHead>
+                <TableHead>User</TableHead>
+                <TableHead>Action</TableHead>
+                <TableHead>Resource</TableHead>
+                <TableHead>Details</TableHead>
+                <TableHead>IP Address</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
                 <TableRow>
-                  <TableHead>Timestamp</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Resource</TableHead>
-                  <TableHead>Details</TableHead>
-                  <TableHead>IP Address</TableHead>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    Loading audit logs...
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
-                      Loading audit logs...
+              ) : filteredLogs.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    No audit logs found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredLogs.map((log: any) => (
+                  <TableRow key={log.id}>
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-gray-400" />
+                        {formatTimestamp(log.timestamp)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{log.user?.email || 'System'}</div>
+                        {log.member && (
+                          <div className="text-sm text-muted-foreground">
+                            {log.member.fullName}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {getActionBadge(log.action)}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getResourceIcon(log.resource)}
+                        <span className="capitalize">{log.resource}</span>
+                        {log.resourceId && (
+                          <span className="text-sm text-muted-foreground">
+                            #{log.resourceId}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">
+                      {log.details || '-'}
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {log.ipAddress || '-'}
+                      </span>
                     </TableCell>
                   </TableRow>
-                ) : filteredLogs.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
-                      No audit logs found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredLogs.map((log: any) => (
-                    <TableRow key={log.id}>
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4 text-gray-400" />
-                          {formatTimestamp(log.timestamp)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div>
-                          <div className="font-medium">{log.user?.email || 'System'}</div>
-                          {log.member && (
-                            <div className="text-sm text-muted-foreground">
-                              {log.member.fullName}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getActionBadge(log.action)}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {getResourceIcon(log.resource)}
-                          <span className="capitalize">{log.resource}</span>
-                          {log.resourceId && (
-                            <span className="text-sm text-muted-foreground">
-                              #{log.resourceId}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell className="max-w-xs truncate">
-                        {log.details || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {log.ipAddress || '-'}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
     </div>
   );
 }

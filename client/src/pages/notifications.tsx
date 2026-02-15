@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Bell, Filter, Search, Trash2, Check, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,10 +11,10 @@ import { format } from "date-fns";
 import type { Notification } from "@shared/schema";
 
 const priorityColors = {
-  low: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-  medium: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  high: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-  urgent: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300",
+  low: "bg-blue-50 text-blue-700 border-blue-200/50",
+  medium: "bg-blue-50 text-blue-700 border-blue-200/50",
+  high: "bg-amber-50 text-amber-700 border-amber-200/50",
+  urgent: "bg-red-50 text-red-700 border-red-200/50",
 };
 
 const typeIcons = {
@@ -91,26 +90,26 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6 page-container animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Bell className="h-8 w-8" />
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <Bell className="h-7 w-7" />
             Notifications
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-slate-500 mt-0.5">
             Stay updated with your SACCO activities and important alerts
           </p>
         </div>
         
         <div className="flex items-center gap-2">
           {isConnected && (
-            <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200/50">
               ● Real-time updates enabled
             </Badge>
           )}
           {unreadNotifications.length > 0 && (
-            <Button onClick={handleMarkAllAsRead} disabled={markAllAsRead.isPending}>
+            <Button onClick={handleMarkAllAsRead} disabled={markAllAsRead.isPending} className="rounded-xl">
               <CheckCheck className="h-4 w-4 mr-2" />
               Mark all as read ({unreadNotifications.length})
             </Button>
@@ -118,17 +117,17 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
+      <div className="section-card">
+        <div className="px-6 py-4 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+            <Filter className="h-4 w-4" />
             Filter & Search
-          </CardTitle>
-          <CardDescription>
+          </h3>
+          <p className="text-sm text-slate-500 mt-0.5">
             Find specific notifications using filters and search
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+          </p>
+        </div>
+        <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -186,8 +185,8 @@ export default function NotificationsPage() {
               Clear filters
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-3">
@@ -204,17 +203,17 @@ export default function NotificationsPage() {
 
         <TabsContent value={activeTab} className="space-y-4">
           {isLoading ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-muted-foreground">
+            <div className="section-card">
+              <div className="p-6">
+                <div className="py-16 text-center text-muted-foreground">
                   Loading notifications...
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ) : filteredNotifications.length === 0 ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center text-muted-foreground">
+            <div className="section-card">
+              <div className="py-16 text-center">
+                <p className="text-muted-foreground">
                   {searchQuery || priorityFilter || typeFilter
                     ? "No notifications match your filters"
                     : activeTab === "unread"
@@ -223,20 +222,20 @@ export default function NotificationsPage() {
                     ? "No read notifications"
                     : "No notifications yet"
                   }
-                </div>
-              </CardContent>
-            </Card>
+                </p>
+              </div>
+            </div>
           ) : (
             <div className="space-y-3">
               {filteredNotifications.map((notification: Notification) => (
-                <Card
+                <div
                   key={notification.id}
-                  className={`cursor-pointer transition-colors hover:bg-muted/50 ${
+                  className={`section-card cursor-pointer transition-colors hover:bg-muted/50 ${
                     !notification.isRead ? "border-l-4 border-l-blue-500 bg-blue-50/50 dark:bg-blue-950/20" : ""
                   }`}
                   onClick={() => handleNotificationClick(notification)}
                 >
-                  <CardContent className="p-4">
+                  <div className="p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex items-start gap-4 flex-1">
                         <div className="text-2xl">
@@ -247,14 +246,14 @@ export default function NotificationsPage() {
                             <h3 className="font-semibold">{notification.title}</h3>
                             {notification.priority && notification.priority !== "medium" && (
                               <Badge 
-                                variant="secondary" 
+                                variant="outline" 
                                 className={priorityColors[notification.priority as keyof typeof priorityColors]}
                               >
                                 {notification.priority}
                               </Badge>
                             )}
                             {!notification.isRead && (
-                              <Badge variant="default" className="bg-blue-500">
+                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200/50">
                                 New
                               </Badge>
                             )}
@@ -295,8 +294,8 @@ export default function NotificationsPage() {
                         </Button>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ))}
             </div>
           )}

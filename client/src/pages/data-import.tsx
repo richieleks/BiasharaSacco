@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +34,6 @@ export default function DataImport() {
   const queryClient = useQueryClient();
   const { hasPermission } = useRBAC();
 
-  // Check admin permission
   const canImport = hasPermission('update', 'system-settings');
 
   useEffect(() => {
@@ -89,7 +87,6 @@ export default function DataImport() {
         });
       }
       
-      // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
       queryClient.invalidateQueries({ queryKey: ['/api/savings-accounts'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
@@ -108,7 +105,6 @@ export default function DataImport() {
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
         toast({
           title: "Invalid File Type",
@@ -118,7 +114,7 @@ export default function DataImport() {
         return;
       }
       setSelectedFile(file);
-      setImportResult(null); // Clear previous results
+      setImportResult(null);
     }
   };
 
@@ -150,13 +146,12 @@ export default function DataImport() {
   const progressPercentage = importResult && importResult.totalRows > 0 ? 
     Math.round((importResult.successfulImports / importResult.totalRows) * 100) : 0;
 
-  // Show access denied message if not admin
   if (!canImport) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <Shield className="h-16 w-16 text-red-500" />
-        <h1 className="text-2xl font-bold text-gray-900">Access Denied</h1>
-        <p className="text-gray-600 text-center max-w-md">
+        <h1 className="text-2xl font-bold text-slate-900">Access Denied</h1>
+        <p className="text-slate-500 text-center max-w-md">
           Only administrators have permission to access the data import functionality. 
           Contact your system administrator if you need access.
         </p>
@@ -165,82 +160,80 @@ export default function DataImport() {
   }
 
   return (
-    <>
+    <div className="space-y-6 page-container animate-fade-in">
       {/* Page Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Shield className="h-7 w-7 text-blue-600" />
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          <Shield className="h-6 w-6 text-blue-600" />
           Data Import
-          <Badge variant="secondary" className="ml-2">Admin Only</Badge>
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/50 ml-2">Admin Only</Badge>
         </h1>
-        <p className="text-slate-600 mt-1">Import customer data from Excel files</p>
+        <p className="text-sm text-slate-500 mt-0.5">Import customer data from Excel files</p>
       </div>
 
       {/* Import Type Selection */}
-      <div className="mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Import Type</CardTitle>
-            <CardDescription>
-              Choose the type of data you want to import
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                onClick={() => handleImportTypeChange('savings')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  importType === 'savings'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <PiggyBank className={`h-6 w-6 ${importType === 'savings' ? 'text-blue-600' : 'text-gray-500'}`} />
-                  <div className="text-left">
-                    <div className="font-semibold">Savings Accounts</div>
-                    <div className="text-sm text-muted-foreground">Import member savings data and transactions</div>
-                  </div>
+      <div className="section-card">
+        <div className="px-6 py-4 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-900">Import Type</h3>
+          <p className="text-sm text-slate-500 mt-0.5">
+            Choose the type of data you want to import
+          </p>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <button
+              onClick={() => handleImportTypeChange('savings')}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                importType === 'savings'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <PiggyBank className={`h-6 w-6 ${importType === 'savings' ? 'text-blue-600' : 'text-gray-500'}`} />
+                <div className="text-left">
+                  <div className="font-semibold">Savings Accounts</div>
+                  <div className="text-sm text-muted-foreground">Import member savings data and transactions</div>
                 </div>
-              </button>
-              
-              <button
-                onClick={() => handleImportTypeChange('loans')}
-                className={`p-4 rounded-lg border-2 transition-all ${
-                  importType === 'loans'
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <FileSpreadsheet className={`h-6 w-6 ${importType === 'loans' ? 'text-blue-600' : 'text-gray-500'}`} />
-                  <div className="text-left">
-                    <div className="font-semibold">Loan Statements</div>
-                    <div className="text-sm text-muted-foreground">Import loan data and member information</div>
-                  </div>
+              </div>
+            </button>
+            
+            <button
+              onClick={() => handleImportTypeChange('loans')}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                importType === 'loans'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <FileSpreadsheet className={`h-6 w-6 ${importType === 'loans' ? 'text-blue-600' : 'text-gray-500'}`} />
+                <div className="text-left">
+                  <div className="font-semibold">Loan Statements</div>
+                  <div className="text-sm text-muted-foreground">Import loan data and member information</div>
                 </div>
-              </button>
-            </div>
-          </CardContent>
-        </Card>
+              </div>
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* File Upload Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Upload className="h-5 w-5" />
+        <div className="section-card">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <Upload className="h-4 w-4" />
               Upload Excel File
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-sm text-slate-500 mt-0.5">
               {importType === 'savings' 
                 ? 'Select an Excel file containing customer savings account data'
                 : 'Select an Excel file containing loan statement data'
               }
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
             <div className="space-y-2">
               <Label htmlFor="file-upload">Select Excel File</Label>
               <Input
@@ -274,7 +267,7 @@ export default function DataImport() {
             <Button 
               onClick={handleImport}
               disabled={importMutation.isPending || !selectedFile}
-              className="w-full"
+              className="w-full rounded-xl"
             >
               {importMutation.isPending ? (
                 <>
@@ -288,21 +281,21 @@ export default function DataImport() {
                 </>
               )}
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Instructions Card */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" />
+        <div className="section-card">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4" />
               Import Instructions
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-sm text-slate-500 mt-0.5">
               Follow these guidelines for successful data import
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
             <div>
               <h4 className="font-medium mb-2">
                 {importType === 'savings' ? 'Savings Import Format:' : 'Loan Import Format:'}
@@ -346,27 +339,27 @@ export default function DataImport() {
                 )}
               </ul>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Import Results */}
       {importResult && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+        <div className="section-card">
+          <div className="px-6 py-4 border-b border-slate-100">
+            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
               {importResult.success ? (
-                <CheckCircle className="h-5 w-5 text-green-600" />
+                <CheckCircle className="h-4 w-4 text-green-600" />
               ) : (
-                <XCircle className="h-5 w-5 text-red-600" />
+                <XCircle className="h-4 w-4 text-red-600" />
               )}
               Import Results
-            </CardTitle>
-            <CardDescription>
+            </h3>
+            <p className="text-sm text-slate-500 mt-0.5">
               Results from importing savings account data
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
+            </p>
+          </div>
+          <div className="p-6 space-y-4">
             {/* Progress Bar */}
             <div className="space-y-2">
               <div className="flex justify-between text-sm">
@@ -423,9 +416,9 @@ export default function DataImport() {
                 </div>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
-    </>
+    </div>
   );
 }
