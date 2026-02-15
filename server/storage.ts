@@ -2351,6 +2351,46 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(interestCalculations.id, id))
       .returning();
+
+    if (calculation && parseFloat(calculation.netInterest) > 0) {
+      const today = new Date().toISOString().split('T')[0];
+      const refNumber = `INT${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+      const [payment] = await db
+        .insert(interestPayments)
+        .values({
+          interestCalculationId: calculation.id,
+          memberId: calculation.memberId,
+          savingsAccountId: calculation.savingsAccountId,
+          paymentAmount: calculation.netInterest,
+          paymentMethod: 'credit_to_account',
+          paymentDate: today,
+          transactionReference: refNumber,
+          status: 'completed',
+          processedBy: calculation.calculatedBy,
+        })
+        .returning();
+
+      await db
+        .update(savingsAccounts)
+        .set({
+          balance: sql`${savingsAccounts.balance} + ${calculation.netInterest}`,
+          updatedAt: new Date()
+        })
+        .where(eq(savingsAccounts.id, calculation.savingsAccountId));
+
+      await this.createTransaction({
+        memberId: calculation.memberId,
+        savingsAccountId: calculation.savingsAccountId,
+        transactionType: 'interest_credit',
+        amount: calculation.netInterest,
+        referenceNumber: refNumber,
+        description: `Interest credit - ${calculation.calculationMethod} method`,
+        status: 'completed',
+        processedBy: calculation.calculatedBy,
+      });
+    }
+
     return calculation;
   }
 
