@@ -185,7 +185,7 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
           <Button
             type="submit"
             disabled={depositMutation.isPending}
-            className="flex-1 sacco-success text-white hover:opacity-90"
+            className="flex-1 bg-blue-600 text-white hover:bg-blue-700"
           >
             {depositMutation.isPending ? "Recording..." : "Record Deposit"}
           </Button>
