@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
-import { PiggyBank, HandCoins, ArrowUp, ArrowDown, CreditCard } from "lucide-react";
+import { PiggyBank, HandCoins, ArrowUp, ArrowDown, CreditCard, TrendingUp } from "lucide-react";
 
 // Role-specific dashboard components
 function AdminDashboard() {
@@ -115,6 +115,9 @@ function MemberDashboard() {
   const totalSavings = savingsAccounts?.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0) || 0;
   const activeLoansCount = memberLoans?.filter((l: any) => l.status === 'approved').length || 0;
   const totalOutstanding = memberLoans?.filter((l: any) => l.status === 'approved').reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0) || 0;
+  const totalInterestEarned = memberTransactions
+    ?.filter((t: any) => t.transactionType === 'interest_credit' && t.status === 'completed')
+    .reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0) || 0;
 
   return (
     <div className="space-y-6">
@@ -124,7 +127,7 @@ function MemberDashboard() {
           <CardDescription>Your personal SACCO dashboard</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <div className="text-center p-3 bg-slate-50 rounded-lg">
               <h3 className="text-sm font-medium text-slate-500">Member Number</h3>
               <p className="text-xl font-bold text-primary mt-1">{user?.member?.memberNumber}</p>
@@ -132,6 +135,11 @@ function MemberDashboard() {
             <div className="text-center p-3 bg-green-50 rounded-lg">
               <h3 className="text-sm font-medium text-slate-500">Total Savings</h3>
               <p className="text-xl font-bold text-green-600 mt-1">UGX {totalSavings.toLocaleString()}</p>
+            </div>
+            <div className="text-center p-3 bg-emerald-50 rounded-lg">
+              <h3 className="text-sm font-medium text-slate-500">Interest Earned</h3>
+              <p className="text-xl font-bold text-emerald-600 mt-1">UGX {totalInterestEarned.toLocaleString()}</p>
+              <p className="text-xs text-slate-400">Total credited</p>
             </div>
             <div className="text-center p-3 bg-yellow-50 rounded-lg">
               <h3 className="text-sm font-medium text-slate-500">Active Loans</h3>
