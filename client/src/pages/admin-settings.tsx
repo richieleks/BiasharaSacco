@@ -2411,7 +2411,7 @@ function LoanTypeFormDialog({ editLoanType }: { editLoanType?: any }) {
                   <FormItem>
                     <FormLabel>Interest Rate (%)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.1" min="0" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value))} />
+                      <Input type="number" step="0.001" min="0" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value))} />
                     </FormControl>
                     <FormDescription>Annual interest rate</FormDescription>
                     <FormMessage />
