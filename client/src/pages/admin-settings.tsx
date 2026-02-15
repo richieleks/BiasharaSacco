@@ -2240,7 +2240,7 @@ function LoanTypeFormDialog({ editLoanType }: { editLoanType?: any }) {
   const loanTypeSchema = z.object({
     name: z.string().min(1, "Name is required"),
     displayName: z.string().min(1, "Display name is required"),
-    description: z.string().min(1, "Description is required"),
+    description: z.string().min(1, "Description is required").or(z.literal("")),
     interestRate: z.number().min(0, "Interest rate must be positive"),
     interestCalculationMethod: z.enum(["simple", "compound", "reducing_balance"]),
     compoundingFrequency: z.enum(["monthly", "quarterly", "annually"]).optional(),
@@ -2314,7 +2314,7 @@ function LoanTypeFormDialog({ editLoanType }: { editLoanType?: any }) {
     },
   });
 
-  const handleSubmit = (data: LoanTypeFormData) => {
+  const handleFormSubmit = (data: LoanTypeFormData) => {
     if (data.maxAmount < data.minAmount) {
       toast({ title: "Validation Error", description: "Maximum amount must be greater than minimum amount.", variant: "destructive" });
       return;
@@ -2324,6 +2324,12 @@ function LoanTypeFormDialog({ editLoanType }: { editLoanType?: any }) {
       return;
     }
     saveMutation.mutate(data);
+  };
+
+  const onFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    form.handleSubmit(handleFormSubmit)(e);
   };
 
   const handleOpen = (isOpen: boolean) => {
@@ -2356,7 +2362,7 @@ function LoanTypeFormDialog({ editLoanType }: { editLoanType?: any }) {
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={(e) => { e.stopPropagation(); form.handleSubmit(handleSubmit)(e); }} className="space-y-6">
+          <form onSubmit={onFormSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}

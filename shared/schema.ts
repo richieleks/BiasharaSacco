@@ -744,7 +744,7 @@ export const loanTypes = pgTable("loan_types", {
   name: varchar("name", { length: 100 }).notNull().unique(),
   displayName: varchar("display_name", { length: 100 }).notNull(),
   description: text("description"),
-  interestRate: decimal("interest_rate", { precision: 5, scale: 2 }).notNull(), // e.g., 12.50 for 12.5%
+  interestRate: decimal("interest_rate", { precision: 6, scale: 3 }).notNull(), // e.g., 12.500 for 12.5%
   interestType: varchar("interest_type", { enum: ["simple", "compound", "reducing_balance"] }).default("reducing_balance"),
   compoundingFrequency: varchar("compounding_frequency", { enum: ["monthly", "quarterly", "annually"] }).default("monthly"),
   minAmount: decimal("min_amount", { precision: 12, scale: 2 }).default("0"),
