@@ -392,6 +392,19 @@ export default function AdminSettingsPage() {
     },
   });
 
+  const deleteLoanTypeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      return await apiRequest('DELETE', `/api/loan-types/${id}`);
+    },
+    onSuccess: () => {
+      toast({ title: "Loan Type Deleted", description: "Loan type has been removed." });
+      queryClient.invalidateQueries({ queryKey: ['/api/loan-types'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Deletion Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const TabButton = ({ tab, icon: Icon, label, isActive }: { 
     tab: typeof activeTab, 
     icon: React.ComponentType<any>, 
@@ -1177,14 +1190,22 @@ export default function AdminSettingsPage() {
                                 <TableCell>{loanType.interestRate}%</TableCell>
                                 <TableCell>UGX {loanType.minAmount?.toLocaleString()}</TableCell>
                                 <TableCell>UGX {loanType.maxAmount?.toLocaleString()}</TableCell>
-                                <TableCell>{loanType.minTermMonths} months</TableCell>
-                                <TableCell>{loanType.maxTermMonths} months</TableCell>
+                                <TableCell>{loanType.minTerm || loanType.minTermMonths} months</TableCell>
+                                <TableCell>{loanType.maxTerm || loanType.maxTermMonths} months</TableCell>
                                 <TableCell>
                                   <div className="flex items-center gap-2">
-                                    <Button variant="ghost" size="sm">
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="ghost" size="sm">
+                                    <LoanTypeFormDialog editLoanType={loanType} />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      type="button"
+                                      className="text-red-600 hover:text-red-700"
+                                      onClick={() => {
+                                        if (confirm(`Are you sure you want to delete "${loanType.displayName}"?`)) {
+                                          deleteLoanTypeMutation.mutate(loanType.id);
+                                        }
+                                      }}
+                                    >
                                       <Trash2 className="h-4 w-4" />
                                     </Button>
                                   </div>
@@ -2210,11 +2231,11 @@ function UserManagementTab() {
   );
 }
 
-// Loan Type Form Dialog Component
-function LoanTypeFormDialog() {
+function LoanTypeFormDialog({ editLoanType }: { editLoanType?: any }) {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isEditing = !!editLoanType;
 
   const loanTypeSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -2235,43 +2256,59 @@ function LoanTypeFormDialog() {
 
   type LoanTypeFormData = z.infer<typeof loanTypeSchema>;
 
+  const getDefaults = (): LoanTypeFormData => {
+    if (editLoanType) {
+      return {
+        name: editLoanType.name || "",
+        displayName: editLoanType.displayName || "",
+        description: editLoanType.description || "",
+        interestRate: parseFloat(editLoanType.interestRate) || 12,
+        interestCalculationMethod: editLoanType.interestType || editLoanType.interestCalculationMethod || "reducing_balance",
+        compoundingFrequency: editLoanType.compoundingFrequency || "monthly",
+        minAmount: parseFloat(editLoanType.minAmount) || 50000,
+        maxAmount: parseFloat(editLoanType.maxAmount) || 5000000,
+        minTermMonths: editLoanType.minTerm || editLoanType.minTermMonths || 1,
+        maxTermMonths: editLoanType.maxTerm || editLoanType.maxTermMonths || 24,
+        requiresGuarantors: editLoanType.requiresGuarantor ?? false,
+        maxGuarantors: 0,
+        processingFeePercentage: parseFloat(editLoanType.processingFee) || 0,
+        isActive: editLoanType.isActive ?? true,
+      };
+    }
+    return {
+      name: "", displayName: "", description: "",
+      interestRate: 12, interestCalculationMethod: "reducing_balance",
+      compoundingFrequency: "monthly", minAmount: 50000, maxAmount: 5000000,
+      minTermMonths: 1, maxTermMonths: 24, requiresGuarantors: false,
+      maxGuarantors: 0, processingFeePercentage: 0, isActive: true,
+    };
+  };
+
   const form = useForm<LoanTypeFormData>({
     resolver: zodResolver(loanTypeSchema),
-    defaultValues: {
-      name: "",
-      displayName: "",
-      description: "",
-      interestRate: 12,
-      interestCalculationMethod: "reducing_balance",
-      compoundingFrequency: "monthly",
-      minAmount: 50000,
-      maxAmount: 5000000,
-      minTermMonths: 1,
-      maxTermMonths: 24,
-      requiresGuarantors: false,
-      maxGuarantors: 0,
-      processingFeePercentage: 0,
-      isActive: true,
-    },
+    defaultValues: getDefaults(),
   });
 
-  const createLoanTypeMutation = useMutation({
+  const saveMutation = useMutation({
     mutationFn: async (data: LoanTypeFormData) => {
+      if (isEditing) {
+        return await apiRequest('PUT', `/api/loan-types/${editLoanType.id}`, data);
+      }
       return await apiRequest('POST', '/api/loan-types', data);
     },
     onSuccess: () => {
       toast({
-        title: "Loan Type Created",
-        description: "New loan type has been created successfully.",
+        title: isEditing ? "Loan Type Updated" : "Loan Type Created",
+        description: isEditing ? "Loan type has been updated successfully." : "New loan type has been created successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/loan-types'] });
       setOpen(false);
-      form.reset();
+      if (!isEditing) form.reset();
     },
     onError: (error: Error) => {
       toast({
-        title: "Creation Failed",
-        description: error.message || "Failed to create loan type. Please try again.",
+        title: isEditing ? "Update Failed" : "Creation Failed",
+        description: error.message || "Operation failed. Please try again.",
         variant: "destructive",
       });
     },
@@ -2279,45 +2316,47 @@ function LoanTypeFormDialog() {
 
   const handleSubmit = (data: LoanTypeFormData) => {
     if (data.maxAmount < data.minAmount) {
-      toast({
-        title: "Validation Error",
-        description: "Maximum amount must be greater than minimum amount.",
-        variant: "destructive",
-      });
+      toast({ title: "Validation Error", description: "Maximum amount must be greater than minimum amount.", variant: "destructive" });
       return;
     }
-
     if (data.maxTermMonths < data.minTermMonths) {
-      toast({
-        title: "Validation Error",
-        description: "Maximum term must be greater than minimum term.",
-        variant: "destructive",
-      });
+      toast({ title: "Validation Error", description: "Maximum term must be greater than minimum term.", variant: "destructive" });
       return;
     }
+    saveMutation.mutate(data);
+  };
 
-    createLoanTypeMutation.mutate(data);
+  const handleOpen = (isOpen: boolean) => {
+    setOpen(isOpen);
+    if (isOpen) {
+      form.reset(getDefaults());
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Loan Type
-        </Button>
+        {isEditing ? (
+          <Button variant="ghost" size="sm" type="button" title="Edit loan type">
+            <Edit className="h-4 w-4" />
+          </Button>
+        ) : (
+          <Button type="button">
+            <Plus className="h-4 w-4 mr-2" />
+            Create Loan Type
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Loan Type</DialogTitle>
+          <DialogTitle>{isEditing ? "Edit Loan Type" : "Create New Loan Type"}</DialogTitle>
           <DialogDescription>
-            Configure a new loan product with interest rates, terms, and requirements.
+            {isEditing ? "Update loan product configuration." : "Configure a new loan product with interest rates, terms, and requirements."}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={(e) => { e.stopPropagation(); form.handleSubmit(handleSubmit)(e); }} className="space-y-6">
-            {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -2328,14 +2367,11 @@ function LoanTypeFormDialog() {
                     <FormControl>
                       <Input placeholder="emergency_loan" {...field} />
                     </FormControl>
-                    <FormDescription>
-                      Internal identifier (lowercase, no spaces)
-                    </FormDescription>
+                    <FormDescription>Internal identifier (lowercase, no spaces)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="displayName"
@@ -2345,9 +2381,7 @@ function LoanTypeFormDialog() {
                     <FormControl>
                       <Input placeholder="Emergency Loan" {...field} />
                     </FormControl>
-                    <FormDescription>
-                      Name shown to users
-                    </FormDescription>
+                    <FormDescription>Name shown to users</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -2361,21 +2395,14 @@ function LoanTypeFormDialog() {
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      placeholder="Quick financial assistance for urgent needs..."
-                      className="resize-none"
-                      {...field}
-                    />
+                    <Textarea placeholder="Quick financial assistance for urgent needs..." className="resize-none" {...field} />
                   </FormControl>
-                  <FormDescription>
-                    Detailed description of the loan product
-                  </FormDescription>
+                  <FormDescription>Detailed description of the loan product</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Interest Configuration */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <FormField
                 control={form.control}
@@ -2384,31 +2411,22 @@ function LoanTypeFormDialog() {
                   <FormItem>
                     <FormLabel>Interest Rate (%)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.1" 
-                        min="0"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                      />
+                      <Input type="number" step="0.1" min="0" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value))} />
                     </FormControl>
                     <FormDescription>Annual interest rate</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="interestCalculationMethod"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Calculation Method</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="simple">Simple Interest</SelectItem>
@@ -2420,7 +2438,6 @@ function LoanTypeFormDialog() {
                   </FormItem>
                 )}
               />
-
               {form.watch('interestCalculationMethod') === 'compound' && (
                 <FormField
                   control={form.control}
@@ -2428,11 +2445,9 @@ function LoanTypeFormDialog() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Compounding</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           <SelectItem value="monthly">Monthly</SelectItem>
@@ -2447,7 +2462,6 @@ function LoanTypeFormDialog() {
               )}
             </div>
 
-            {/* Amount Limits */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -2456,18 +2470,12 @@ function LoanTypeFormDialog() {
                   <FormItem>
                     <FormLabel>Minimum Amount (UGX)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        min="1"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      />
+                      <Input type="number" min="1" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="maxAmount"
@@ -2475,12 +2483,7 @@ function LoanTypeFormDialog() {
                   <FormItem>
                     <FormLabel>Maximum Amount (UGX)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        min="1"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      />
+                      <Input type="number" min="1" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2488,7 +2491,6 @@ function LoanTypeFormDialog() {
               />
             </div>
 
-            {/* Term Limits */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -2497,18 +2499,12 @@ function LoanTypeFormDialog() {
                   <FormItem>
                     <FormLabel>Minimum Term (months)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        min="1"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      />
+                      <Input type="number" min="1" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="maxTermMonths"
@@ -2516,12 +2512,7 @@ function LoanTypeFormDialog() {
                   <FormItem>
                     <FormLabel>Maximum Term (months)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        min="1"
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value))}
-                      />
+                      <Input type="number" min="1" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -2529,7 +2520,6 @@ function LoanTypeFormDialog() {
               />
             </div>
 
-            {/* Guarantor Requirements */}
             <div className="space-y-4">
               <FormField
                 control={form.control}
@@ -2538,9 +2528,7 @@ function LoanTypeFormDialog() {
                   <FormItem className="flex items-center justify-between space-y-0">
                     <div className="space-y-1">
                       <FormLabel>Requires Guarantors</FormLabel>
-                      <FormDescription>
-                        Whether this loan type requires guarantors
-                      </FormDescription>
+                      <FormDescription>Whether this loan type requires guarantors</FormDescription>
                     </div>
                     <FormControl>
                       <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -2548,7 +2536,6 @@ function LoanTypeFormDialog() {
                   </FormItem>
                 )}
               />
-
               {form.watch('requiresGuarantors') && (
                 <FormField
                   control={form.control}
@@ -2557,17 +2544,9 @@ function LoanTypeFormDialog() {
                     <FormItem>
                       <FormLabel>Maximum Guarantors</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          min="1"
-                          max="10"
-                          {...field}
-                          onChange={(e) => field.onChange(parseInt(e.target.value))}
-                        />
+                        <Input type="number" min="1" max="10" {...field} onChange={(e) => field.onChange(parseInt(e.target.value))} />
                       </FormControl>
-                      <FormDescription>
-                        Maximum number of guarantors allowed
-                      </FormDescription>
+                      <FormDescription>Maximum number of guarantors allowed</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -2575,7 +2554,6 @@ function LoanTypeFormDialog() {
               )}
             </div>
 
-            {/* Additional Settings */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -2584,23 +2562,13 @@ function LoanTypeFormDialog() {
                   <FormItem>
                     <FormLabel>Processing Fee (%)</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.1"
-                        min="0"
-                        max="100"
-                        {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                      />
+                      <Input type="number" step="0.1" min="0" max="100" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value))} />
                     </FormControl>
-                    <FormDescription>
-                      Percentage of loan amount charged as processing fee
-                    </FormDescription>
+                    <FormDescription>Percentage of loan amount charged as processing fee</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
               <FormField
                 control={form.control}
                 name="isActive"
@@ -2608,9 +2576,7 @@ function LoanTypeFormDialog() {
                   <FormItem className="flex items-center justify-between space-y-0">
                     <div className="space-y-1">
                       <FormLabel>Active</FormLabel>
-                      <FormDescription>
-                        Whether this loan type is available for applications
-                      </FormDescription>
+                      <FormDescription>Whether this loan type is available for applications</FormDescription>
                     </div>
                     <FormControl>
                       <Switch checked={field.value} onCheckedChange={field.onChange} />
@@ -2621,14 +2587,9 @@ function LoanTypeFormDialog() {
             </div>
 
             <div className="flex justify-end gap-4 pt-4 border-t">
-              <Button variant="outline" type="button" onClick={() => setOpen(false)}>
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={createLoanTypeMutation.isPending}
-              >
-                {createLoanTypeMutation.isPending ? "Creating..." : "Create Loan Type"}
+              <Button variant="outline" type="button" onClick={() => setOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={saveMutation.isPending}>
+                {saveMutation.isPending ? (isEditing ? "Saving..." : "Creating...") : (isEditing ? "Save Changes" : "Create Loan Type")}
               </Button>
             </div>
           </form>
