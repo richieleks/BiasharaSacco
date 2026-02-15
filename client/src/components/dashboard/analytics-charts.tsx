@@ -24,11 +24,7 @@ const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 export default function AnalyticsCharts() {
   const { data: analytics, isLoading } = useQuery({
     queryKey: ['/api/dashboard/analytics'],
-    queryFn: async () => {
-      const response = await fetch('/api/dashboard/analytics');
-      if (!response.ok) throw new Error('Failed to fetch analytics');
-      return response.json();
-    },
+    refetchInterval: 60000,
   });
 
   if (isLoading || !analytics) {

@@ -14,6 +14,7 @@ export default function PendingApprovals() {
     withdrawalRequests: any[];
   }>({
     queryKey: ['/api/dashboard/pending-approvals'],
+    refetchInterval: 30000,
   });
 
   const approveTransactionMutation = useMutation({

@@ -123,6 +123,13 @@ export interface IStorage {
     totalSavings: string;
     activeLoans: string;
     repaymentRate: string;
+    memberChange: string;
+    savingsChange: string;
+    loansChange: string;
+    repaymentChange: string;
+    newMembersThisMonth: number;
+    pendingLoans: number;
+    totalTransactionsThisMonth: number;
   }>;
   
   getDashboardAnalytics(): Promise<{
@@ -1014,11 +1021,27 @@ export class DatabaseStorage implements IStorage {
     totalSavings: string;
     activeLoans: string;
     repaymentRate: string;
+    memberChange: string;
+    savingsChange: string;
+    loansChange: string;
+    repaymentChange: string;
+    newMembersThisMonth: number;
+    pendingLoans: number;
+    totalTransactionsThisMonth: number;
   }> {
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
     const [memberCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(members)
       .where(eq(members.status, 'active'));
+
+    const [lastMonthMembers] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(members)
+      .where(and(eq(members.status, 'active'), sql`${members.createdAt} < ${startOfMonth}`));
 
     const [savingsTotal] = await db
       .select({ total: sql<string>`COALESCE(sum(balance), '0')` })
@@ -1030,11 +1053,54 @@ export class DatabaseStorage implements IStorage {
       .from(loans)
       .where(eq(loans.status, 'approved'));
 
+    const [pendingLoansCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(loans)
+      .where(eq(loans.status, 'pending'));
+
+    const [newMembersCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(members)
+      .where(and(eq(members.status, 'active'), sql`${members.createdAt} >= ${startOfMonth}`));
+
+    const [txnCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(transactions)
+      .where(sql`${transactions.transactionDate} >= ${startOfMonth}`);
+
+    const [totalRepayments] = await db
+      .select({ total: sql<string>`COALESCE(sum(amount), '0')` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.transactionType, 'loan_payment'),
+        eq(transactions.status, 'completed')
+      ));
+
+    const [totalExpected] = await db
+      .select({ total: sql<string>`COALESCE(sum(principal_amount), '0')` })
+      .from(loans)
+      .where(sql`${loans.status} IN ('approved', 'completed')`);
+
+    const repaid = parseFloat(totalRepayments?.total || '0');
+    const expected = parseFloat(totalExpected?.total || '0');
+    const repaymentRate = expected > 0 ? ((repaid / expected) * 100).toFixed(1) : '0';
+
+    const currentMembers = memberCount?.count || 0;
+    const prevMembers = lastMonthMembers?.count || 0;
+    const memberChangeVal = prevMembers > 0 ? (((currentMembers - prevMembers) / prevMembers) * 100).toFixed(1) : (currentMembers > 0 ? '100' : '0');
+
     return {
-      totalMembers: memberCount?.count || 0,
+      totalMembers: currentMembers,
       totalSavings: savingsTotal?.total || '0',
       activeLoans: loansTotal?.total || '0',
-      repaymentRate: '95.2', // Calculated value
+      repaymentRate,
+      memberChange: memberChangeVal,
+      savingsChange: '0',
+      loansChange: '0',
+      repaymentChange: '0',
+      newMembersThisMonth: newMembersCount?.count || 0,
+      pendingLoans: pendingLoansCount?.count || 0,
+      totalTransactionsThisMonth: txnCount?.count || 0,
     };
   }
 

@@ -10,6 +10,7 @@ import type { TransactionWithDetails } from "@shared/schema";
 export default function RecentTransactions() {
   const { data: transactions, isLoading } = useQuery<any[]>({
     queryKey: ['/api/dashboard/recent-transactions'],
+    refetchInterval: 30000,
   });
 
   const getTransactionIcon = (type: string) => {
