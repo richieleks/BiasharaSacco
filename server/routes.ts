@@ -804,39 +804,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User ID not provided" });
       }
       
+      const user = await storage.getUser(userId);
+      if (user?.role === 'admin') {
+        return res.status(404).json({ message: "Admin users do not have member profiles" });
+      }
+
       const member = await storage.getMemberByUserId(userId);
       if (!member) {
-        // Create member for authenticated user if doesn't exist
-        if (userId === getUserId(req)) {
-          // First create/update the user
-          await storage.upsertUser({
-            id: userId,
-            email: req.user.claims?.email || req.user.email,
-            firstName: req.user.claims?.first_name || req.user.firstName,
-            lastName: req.user.claims?.last_name || req.user.lastName,
-            profileImageUrl: req.user.claims?.profile_image_url || req.user.profileImageUrl,
-          });
-          
-          const firstName = req.user.claims?.first_name || req.user.firstName || '';
-          const lastName = req.user.claims?.last_name || req.user.lastName || '';
-          const newMember = await storage.createMember({
-            userId: userId,
-            memberNumber: `M${Date.now()}`,
-            fullName: `${firstName} ${lastName}`.trim() || 'Unknown',
-            idNumber: '',
-            dateOfBirth: '2000-01-01',
-            phoneNumber: '',
-            department: '',
-            monthlySavings: '0',
-            shareContribution: '20000',
-            numberOfShares: 4,
-            beneficiaryName: '',
-            beneficiaryRelationship: '',
-            beneficiaryContact: '',
-            status: 'active',
-          });
-          return res.json(newMember);
-        }
         return res.status(404).json({ message: "Member not found" });
       }
       res.json(member);

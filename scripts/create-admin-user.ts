@@ -41,30 +41,7 @@ async function createAdminUser() {
     }).returning();
 
     console.log("Admin user created successfully");
-
-    // Create member profile for admin
-    const [adminMember] = await db.insert(members).values({
-      userId: adminUserId,
-      memberNumber: "ADMIN001",
-      fullName: "System Administrator",
-      idNumber: "ADMIN001",
-      phoneNumber: adminEmail,
-      status: "active",
-      role: "admin",
-      approvedBy: adminUserId,
-      approvedAt: new Date()
-    }).returning();
-
-    console.log("Admin member profile created");
-
-    // Assign admin role to the member
-    await db.insert(memberRoles).values({
-      memberId: adminMember.id,
-      role: adminRole.name,
-      assignedBy: adminUserId
-    });
-
-    console.log("Admin role assigned successfully");
+    console.log("Admin is a pure administrator - no member profile created.");
 
     console.log("\n========================================");
     console.log("Admin user created successfully!");
