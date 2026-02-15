@@ -882,9 +882,9 @@ export default function MemberDetails() {
               <p className="text-sm text-muted-foreground">Member Since</p>
               <p className="font-medium flex items-center gap-2">
                 <Calendar className="h-4 w-4" />
-                {member.createdAt ? (() => {
+                {(member.joinDate || member.createdAt) ? (() => {
                   try {
-                    return format(new Date(member.createdAt), 'PP');
+                    return format(new Date(member.joinDate || member.createdAt), 'PP');
                   } catch {
                     return 'Invalid date';
                   }
