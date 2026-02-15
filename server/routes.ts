@@ -403,6 +403,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Member routes
   app.post('/api/members', isAuthenticated, async (req: any, res) => {
     try {
+      const currentUserId = getUserId(req)!;
+
       // Check if ID number already exists
       const existingMemberByIdNumber = await storage.getMemberByIdNumber(req.body.idNumber);
       if (existingMemberByIdNumber) {
@@ -412,32 +414,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if user already has a member profile
-      const existingMemberByUserId = await storage.getMemberByUserId(getUserId(req));
-      if (existingMemberByUserId) {
-        return res.status(400).json({ 
-          message: "You already have a member profile",
-          field: "userId"
+      // Determine if this is an admin adding a new member or a user self-registering
+      const currentMember = await storage.getMemberByUserId(currentUserId);
+      const isAdmin = currentMember && (currentMember.role === 'admin' || currentMember.role === 'manager' || currentMember.role === 'committee');
+
+      let newUserId = currentUserId;
+
+      if (isAdmin) {
+        // Admin is adding a new member - create a user account for them
+        const username = req.body.username || req.body.idNumber.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const existingUser = await storage.getUserByUsername(username);
+        if (existingUser) {
+          return res.status(400).json({
+            message: `Username "${username}" already exists. Please provide a different username.`,
+            field: "username"
+          });
+        }
+        const defaultPassword = await hashPassword(req.body.password || 'member123');
+        const nameParts = (req.body.fullName || '').split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+        const newUser = await storage.upsertUser({
+          id: `member-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+          username,
+          password: defaultPassword,
+          email: req.body.email || `${username}@biasharasacco.com`,
+          firstName,
+          lastName,
+          role: 'member',
+          authMethod: 'local',
         });
+        newUserId = newUser.id;
+      } else {
+        // Self-registration: check if user already has a member profile
+        if (currentMember) {
+          return res.status(400).json({ 
+            message: "You already have a member profile",
+            field: "userId"
+          });
+        }
       }
       
       // Generate unique member number
-      const memberNumber = `BCS${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      const memberCount = (await storage.getAllMembers()).length;
+      const memberNumber = `BCS${String(memberCount + 1).padStart(6, '0')}`;
       
       // Add the auto-generated fields to the request body before validation
       const memberData = {
         ...req.body,
         memberNumber,
-        userId: getUserId(req),
-        status: 'pending', // Requires committee approval
+        userId: newUserId,
+        status: isAdmin ? 'active' : 'pending',
         joinDate: new Date(),
+        approvedBy: isAdmin ? currentUserId : undefined,
+        approvedAt: isAdmin ? new Date() : undefined,
+        membershipStartDate: isAdmin ? new Date() : undefined,
       };
+
+      // Remove fields that aren't part of the member schema
+      delete memberData.username;
+      delete memberData.password;
+      delete memberData.email;
+      delete memberData.initialDeposit;
       
       // Create member
       const member = await storage.createMember(memberData as any);
+
+      // Assign member role
+      await storage.addMemberRole(member.id, memberData.role || 'member', currentUserId);
       
       // Generate unique account number
-      const accountNumber = `SAV${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      const accountNumber = `SAV${String(member.id).padStart(8, '0')}`;
       
       // Create default savings account
       await storage.createSavingsAccount({
