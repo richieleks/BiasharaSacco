@@ -47,6 +47,7 @@ export const users = pgTable("users", {
 // Members table for SACCO member profiles
 export const members = pgTable("members", {
   id: serial("id").primaryKey(),
+  uuid: uuid("uuid").defaultRandom().unique(),
   userId: varchar("user_id").references(() => users.id),
   memberNumber: varchar("member_number").unique().notNull(),
   fullName: varchar("full_name").default(""),
@@ -96,6 +97,7 @@ export const members = pgTable("members", {
 // Savings accounts table
 export const savingsAccounts = pgTable("savings_accounts", {
   id: serial("id").primaryKey(),
+  uuid: uuid("uuid").defaultRandom().unique(),
   memberId: integer("member_id").references(() => members.id).notNull(),
   accountNumber: varchar("account_number").unique().notNull(),
   accountType: varchar("account_type", { enum: ["regular", "fixed_deposit", "group"] }).default("regular"),
@@ -162,6 +164,7 @@ export const loans = pgTable("loans", {
 // Transactions table
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
+  uuid: uuid("uuid").defaultRandom().unique(),
   memberId: integer("member_id").references(() => members.id).notNull(),
   savingsAccountId: integer("savings_account_id").references(() => savingsAccounts.id),
   loanId: integer("loan_id").references(() => loans.id),
@@ -304,6 +307,7 @@ export const loanInterestCalculations = pgTable("loan_interest_calculations", {
 // Guarantors table
 export const guarantors = pgTable("guarantors", {
   id: serial("id").primaryKey(),
+  uuid: uuid("uuid").defaultRandom().unique(),
   loanId: integer("loan_id").references(() => loans.id).notNull(),
   guarantorMemberId: integer("guarantor_member_id").references(() => members.id).notNull(),
   guaranteeAmount: decimal("guarantee_amount", { precision: 15, scale: 2 }).notNull(),
