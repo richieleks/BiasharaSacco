@@ -1145,6 +1145,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Personal loans endpoint - must be before :id route
+  app.get('/api/loans/my-loans', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req)!;
+      const member = await storage.getMemberByUserId(userId);
+      if (!member) {
+        return res.json([]);
+      }
+      const loans = await storage.getLoansByMember(member.id);
+      res.json(loans);
+    } catch (error) {
+      console.error("Error fetching personal loans:", error);
+      res.status(500).json({ message: "Failed to fetch personal loans" });
+    }
+  });
+
   // Get specific loan by ID
   app.get('/api/loans/:id', isAuthenticated, async (req: any, res) => {
     try {
@@ -1387,22 +1403,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching member loans:", error);
       res.status(500).json({ message: "Failed to fetch member loans" });
-    }
-  });
-
-  // Personal data endpoints for member dashboard
-  app.get('/api/loans/my-loans', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = getUserId(req)!;
-      const member = await storage.getMemberByUserId(userId);
-      if (!member) {
-        return res.status(404).json({ message: "Member record not found" });
-      }
-      const loans = await storage.getLoansByMember(member.id);
-      res.json(loans);
-    } catch (error) {
-      console.error("Error fetching personal loans:", error);
-      res.status(500).json({ message: "Failed to fetch personal loans" });
     }
   });
 

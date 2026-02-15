@@ -30,9 +30,11 @@ export default function Guarantors() {
     enabled: !!user?.id,
   });
 
-  const { data: currentMember } = useQuery<MemberWithDetails>({
+  const isAdmin = user?.role === 'admin';
+
+  const { data: currentMember, isLoading: loadingMember } = useQuery<MemberWithDetails>({
     queryKey: [`/api/members/by-user/${user?.id || 'undefined'}`],
-    enabled: !!user?.id,
+    enabled: !!user?.id && !isAdmin,
   });
 
   const { data: myLoans = [], isLoading: loadingMyLoans } = useQuery<any[]>({
@@ -295,7 +297,21 @@ export default function Guarantors() {
     );
   };
 
-  if (!currentMember) {
+  if (!isAdmin && !currentMember && !loadingMember) {
+    return (
+      <div className="space-y-6 page-container animate-fade-in">
+        <div className="section-card">
+          <div className="py-16 text-center">
+            <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+            <div className="text-lg font-medium">No Member Profile</div>
+            <div className="text-muted-foreground">You need a member profile to access guarantor management.</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin && loadingMember) {
     return (
       <div className="space-y-6 page-container animate-fade-in">
         <div className="section-card">
