@@ -48,7 +48,8 @@ export class BusinessRulesValidator {
       }
 
       // BR-L004: Must have been member for at least 3 months
-      const membershipDuration = differenceInMonths(new Date(), member.membershipStartDate || member.createdAt);
+      const memberJoinDate = member.joinDate || member.createdAt;
+      const membershipDuration = differenceInMonths(new Date(), new Date(memberJoinDate));
       if (membershipDuration < 3) {
         const remainingMonths = Math.ceil(3 - membershipDuration);
         violations.push(`❌ MEMBERSHIP DURATION: You need ${remainingMonths} more month(s) of active membership. SACCO requires 3 months minimum membership period.`);
@@ -61,7 +62,8 @@ export class BusinessRulesValidator {
       if (!activeSavingsAccount) {
         violations.push("❌ SAVINGS ACCOUNT: You must have an active savings account. Open a savings account with the SACCO before applying for loans.");
       } else {
-        const accountDuration = differenceInMonths(new Date(), activeSavingsAccount.createdAt);
+        const savingsStartDate = member.joinDate || activeSavingsAccount.createdAt;
+        const accountDuration = differenceInMonths(new Date(), new Date(savingsStartDate));
         if (accountDuration < 3) {
           const remainingMonths = Math.ceil(3 - accountDuration);
           violations.push(`❌ SAVINGS DURATION: Your savings account needs ${remainingMonths} more month(s) of operation. SACCO requires 3 months minimum savings history.`);
