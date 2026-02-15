@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { usePagination } from "@/hooks/usePagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -132,70 +131,68 @@ export default function Loans() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-amber-50 text-amber-700 border-amber-200/50';
       case 'approved':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
       case 'disbursed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
       case 'active':
-        return 'bg-green-100 text-green-800';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
       case 'completed':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
       case 'defaulted':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-50 text-red-700 border-red-200/50';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
     }
   };
 
   const getLoanTypeColor = (type: string) => {
     switch (type) {
       case 'personal':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-50 text-blue-700 border-blue-200/50';
       case 'business':
-        return 'bg-green-100 text-green-800';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
       case 'emergency':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-50 text-red-700 border-red-200/50';
       case 'asset':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-50 text-purple-700 border-purple-200/50';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
     }
   };
 
   if (pendingLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 page-container animate-fade-in">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-slate-200 rounded-full"></div>
-                  <div>
-                    <div className="h-4 bg-slate-200 rounded w-32 mb-2"></div>
-                    <div className="h-3 bg-slate-200 rounded w-24"></div>
-                  </div>
+          <div key={i} className="section-card p-6 animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg"></div>
+                <div>
+                  <div className="h-4 bg-slate-100 rounded-lg w-32 mb-2"></div>
+                  <div className="h-3 bg-slate-100 rounded-lg w-24"></div>
                 </div>
-                <div className="h-8 bg-slate-200 rounded w-24"></div>
               </div>
-            </CardContent>
-          </Card>
+              <div className="h-8 bg-slate-100 rounded-lg w-24"></div>
+            </div>
+          </div>
         ))}
       </div>
     );
   }
 
   return (
-    <>
+    <div className="space-y-6 page-container animate-fade-in">
       {/* Page Header */}
-      <div className="mb-8">
+      <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
               {isPersonalView ? 'My Loans' : 'Loan Management'}
             </h2>
-            <p className="text-slate-600 mt-1">
+            <p className="text-sm text-slate-500 mt-0.5">
               {isPersonalView 
                 ? 'View your loan applications and payment history' 
                 : 'Process loan applications and manage disbursements'
@@ -203,17 +200,17 @@ export default function Loans() {
             </p>
           </div>
           <div className="flex space-x-2 mt-4 sm:mt-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+            <div className="section-card p-4 relative flex items-center">
+              <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
               <Input
                 placeholder="Search loans..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-64"
+                className="pl-10 w-64 border-0 bg-transparent focus-visible:ring-0"
               />
             </div>
             <Button 
-              className="sacco-gradient text-white hover:opacity-90"
+              className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
               onClick={() => setIsApplicationModalOpen(true)}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -239,26 +236,26 @@ export default function Loans() {
       </div>
 
       {/* Pending Loans Section */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <Clock className="w-5 h-5 text-yellow-600" />
-            <span>Pending Loan Applications</span>
+      <div className="section-card">
+        <div className="p-6 border-b border-slate-200/60">
+          <div className="flex items-center space-x-2">
+            <Clock className="w-5 h-5 text-amber-600" />
+            <h3 className="text-lg font-semibold text-slate-900">Pending Loan Applications</h3>
             {pendingLoans && (
-              <Badge className="bg-yellow-100 text-yellow-800">
+              <Badge className="bg-amber-50 text-amber-700 border-amber-200/50">
                 {pendingLoans.length}
               </Badge>
             )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </div>
+        </div>
+        <div className="p-6">
           {pendingLoans && pendingLoans.length > 0 ? (
             <div className="space-y-4">
               {pendingLoans.map((loan: any) => (
-                <div key={loan.id} className="border border-slate-200 rounded-lg p-6">
+                <div key={loan.id} className="border border-slate-200/60 rounded-lg p-6 hover:shadow-sm transition-all">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
                         <span className="text-slate-600 text-sm font-medium">
                           {loan.member?.user?.firstName?.charAt(0)}{loan.member?.user?.lastName?.charAt(0)}
                         </span>
@@ -271,10 +268,10 @@ export default function Loans() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Badge className={getStatusColor(loan.status)}>
+                      <Badge variant="outline" className={getStatusColor(loan.status)}>
                         {loan.status}
                       </Badge>
-                      <Badge className={getLoanTypeColor(loan.loanType)}>
+                      <Badge variant="outline" className={getLoanTypeColor(loan.loanType)}>
                         {loan.loanType}
                       </Badge>
                     </div>
@@ -312,12 +309,12 @@ export default function Loans() {
                           size="sm"
                           onClick={() => approveLoanMutation.mutate(loan)}
                           disabled={approveLoanMutation.isPending}
-                          className="sacco-success text-white hover:opacity-90"
+                          className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
                         >
                           <CheckCircle className="w-4 h-4 mr-1" />
                           Approve
                         </Button>
-                        <Button size="sm" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
+                        <Button size="sm" variant="outline" className="border-red-200/50 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
                           <XCircle className="w-4 h-4 mr-1" />
                           Reject
                         </Button>
@@ -328,7 +325,7 @@ export default function Loans() {
                         size="sm"
                         onClick={() => disburseLoanMutation.mutate(loan)}
                         disabled={disburseLoanMutation.isPending}
-                        className="sacco-gradient text-white hover:opacity-90"
+                        className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
                       >
                         <DollarSign className="w-4 h-4 mr-1" />
                         Disburse
@@ -339,68 +336,64 @@ export default function Loans() {
               ))}
             </div>
           ) : (
-            <div className="text-center py-8">
+            <div className="py-16 text-center">
               <HandCoins className="w-12 h-12 text-slate-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-slate-900 mb-2">No pending applications</h3>
               <p className="text-slate-500">All loan applications have been processed.</p>
             </div>
           )}
-        </CardContent>
+        </div>
         {filteredLoans.length > 0 && (
-          <Pagination
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-            currentPage={currentPage}
-            onPageChange={handlePageChange}
-            onItemsPerPageChange={handleItemsPerPageChange}
-          />
+          <div className="p-6 border-t border-slate-200/60">
+            <Pagination
+              totalItems={totalItems}
+              itemsPerPage={itemsPerPage}
+              currentPage={currentPage}
+              onPageChange={handlePageChange}
+              onItemsPerPageChange={handleItemsPerPageChange}
+            />
+          </div>
         )}
-      </Card>
+      </div>
 
       {/* Active Loans Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-500 text-sm font-medium">Total Active Loans</p>
-                <p className="text-2xl font-semibold text-slate-900 mt-1">0</p>
-              </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <HandCoins className="text-blue-600 text-xl" />
-              </div>
+        <div className="section-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 text-sm font-medium">Total Active Loans</p>
+              <p className="text-2xl font-semibold text-slate-900 mt-1">0</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+              <HandCoins className="text-blue-600 text-xl" />
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-500 text-sm font-medium">Outstanding Amount</p>
-                <p className="text-2xl font-semibold text-slate-900 mt-1">UGX 0</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <DollarSign className="text-green-600 text-xl" />
-              </div>
+        <div className="section-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 text-sm font-medium">Outstanding Amount</p>
+              <p className="text-2xl font-semibold text-slate-900 mt-1">UGX 0</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <DollarSign className="text-emerald-600 text-xl" />
+            </div>
+          </div>
+        </div>
 
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-slate-500 text-sm font-medium">Default Rate</p>
-                <p className="text-2xl font-semibold text-slate-900 mt-1">0%</p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <XCircle className="text-red-600 text-xl" />
-              </div>
+        <div className="section-card p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-slate-500 text-sm font-medium">Default Rate</p>
+              <p className="text-2xl font-semibold text-slate-900 mt-1">0%</p>
             </div>
-          </CardContent>
-        </Card>
+            <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
+              <XCircle className="text-red-600 text-xl" />
+            </div>
+          </div>
+        </div>
       </div>
-    </>
+    </div>
   );
 }

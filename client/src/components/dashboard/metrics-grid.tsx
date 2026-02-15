@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent } from "@/components/ui/card";
 import { Users, PiggyBank, HandCoins, TrendingUp, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 
 export default function MetricsGrid() {
@@ -10,22 +9,20 @@ export default function MetricsGrid() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8">
         {Array.from({ length: 4 }).map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="h-4 bg-slate-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-8 bg-slate-200 rounded w-1/2"></div>
-                </div>
-                <div className="w-12 h-12 bg-slate-200 rounded-lg"></div>
+          <div key={i} className="metric-card animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="h-3 bg-slate-100 rounded-full w-3/4 mb-3"></div>
+                <div className="h-7 bg-slate-100 rounded-lg w-1/2"></div>
               </div>
-              <div className="mt-4">
-                <div className="h-3 bg-slate-200 rounded w-1/2"></div>
-              </div>
-            </CardContent>
-          </Card>
+              <div className="w-11 h-11 bg-slate-100 rounded-xl"></div>
+            </div>
+            <div className="mt-4">
+              <div className="h-2.5 bg-slate-100 rounded-full w-2/3"></div>
+            </div>
+          </div>
         ))}
       </div>
     );
@@ -42,9 +39,9 @@ export default function MetricsGrid() {
   };
 
   const getChangeColor = (change: number) => {
-    if (change > 0) return "text-green-600";
-    if (change < 0) return "text-red-600";
-    return "text-slate-500";
+    if (change > 0) return "text-emerald-600 bg-emerald-50";
+    if (change < 0) return "text-red-600 bg-red-50";
+    return "text-slate-500 bg-slate-50";
   };
 
   const formatChange = (change: string) => {
@@ -59,7 +56,9 @@ export default function MetricsGrid() {
       title: "Total Members",
       value: (metrics.totalMembers || 0).toLocaleString(),
       icon: Users,
-      color: "bg-primary-100 text-primary-600",
+      gradient: "from-blue-500 to-blue-600",
+      iconBg: "bg-blue-50 text-blue-600",
+      accentColor: "bg-blue-500",
       change: metrics.memberChange || '0',
       subtitle: `${metrics.newMembersThisMonth || 0} new this month`,
     },
@@ -67,7 +66,9 @@ export default function MetricsGrid() {
       title: "Total Savings",
       value: `UGX ${parseFloat(metrics.totalSavings || "0").toLocaleString()}`,
       icon: PiggyBank,
-      color: "bg-green-100 text-green-600",
+      gradient: "from-emerald-500 to-emerald-600",
+      iconBg: "bg-emerald-50 text-emerald-600",
+      accentColor: "bg-emerald-500",
       change: metrics.savingsChange || '0',
       subtitle: "Active accounts balance",
     },
@@ -75,7 +76,9 @@ export default function MetricsGrid() {
       title: "Active Loans",
       value: `UGX ${parseFloat(metrics.activeLoans || "0").toLocaleString()}`,
       icon: HandCoins,
-      color: "bg-yellow-100 text-yellow-600",
+      gradient: "from-amber-500 to-orange-500",
+      iconBg: "bg-amber-50 text-amber-600",
+      accentColor: "bg-amber-500",
       change: metrics.loansChange || '0',
       subtitle: `${metrics.pendingLoans || 0} pending approval`,
     },
@@ -83,38 +86,38 @@ export default function MetricsGrid() {
       title: "Repayment Rate",
       value: `${metrics.repaymentRate || "0"}%`,
       icon: TrendingUp,
-      color: "bg-green-100 text-green-600",
+      gradient: "from-violet-500 to-purple-600",
+      iconBg: "bg-violet-50 text-violet-600",
+      accentColor: "bg-violet-500",
       change: metrics.repaymentChange || '0',
       subtitle: `${metrics.totalTransactionsThisMonth || 0} transactions this month`,
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8">
       {metricCards.map((metric, index) => {
         const changeVal = parseFloat(metric.change || '0');
         return (
-          <Card key={index} className="border border-slate-200 shadow-sm">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-500 text-sm font-medium">{metric.title}</p>
-                  <p className="text-2xl font-semibold text-slate-900 mt-1">{metric.value}</p>
-                </div>
-                <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${metric.color}`}>
-                  <metric.icon className="h-6 w-6" />
-                </div>
+          <div key={index} className="metric-card group animate-fade-in" style={{ animationDelay: `${index * 80}ms` }}>
+            <div className={`absolute top-0 left-0 right-0 h-[3px] rounded-t-xl bg-gradient-to-r ${metric.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-200`} />
+            <div className="flex items-start justify-between">
+              <div className="space-y-1">
+                <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide">{metric.title}</p>
+                <p className="text-2xl font-bold text-slate-900 tracking-tight">{metric.value}</p>
               </div>
-              <div className="flex items-center justify-between mt-4">
-                <div className={`flex items-center gap-1 text-sm font-medium ${getChangeColor(changeVal)}`}>
-                  {getChangeIcon(changeVal)}
-                  <span>{formatChange(metric.change)}</span>
-                  <span className="text-slate-500 font-normal ml-1">vs last month</span>
-                </div>
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${metric.iconBg} transition-transform group-hover:scale-105`}>
+                <metric.icon className="h-5 w-5" />
               </div>
-              <p className="text-xs text-slate-400 mt-1">{metric.subtitle}</p>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
+              <div className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${getChangeColor(changeVal)}`}>
+                {getChangeIcon(changeVal)}
+                <span>{formatChange(metric.change)}</span>
+              </div>
+              <p className="text-[11px] text-slate-400 font-medium">{metric.subtitle}</p>
+            </div>
+          </div>
         );
       })}
     </div>

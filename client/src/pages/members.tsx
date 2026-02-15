@@ -7,14 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 import { usePagination } from "@/hooks/usePagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
-import { Skeleton } from "@/components/ui/skeleton";
 import MemberForm from "@/components/forms/member-form";
 import { Search, Plus, Eye, Users, UserCheck, UserX, AlertCircle } from "lucide-react";
 import type { MemberWithDetails } from "@shared/schema";
@@ -118,15 +116,15 @@ export default function Members() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-100 text-green-800 hover:bg-green-200';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
+        return 'bg-amber-50 text-amber-700 border-amber-200/50';
       case 'inactive':
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
       case 'suspended':
-        return 'bg-red-100 text-red-800 hover:bg-red-200';
+        return 'bg-red-50 text-red-700 border-red-200/50';
       default:
-        return 'bg-gray-100 text-gray-800 hover:bg-gray-200';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
     }
   };
 
@@ -135,17 +133,17 @@ export default function Members() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-container animate-fade-in">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
           <Users className="h-7 w-7" />
-          <h1 className="text-2xl font-bold">Members</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Members</h1>
         </div>
         {hasPermission('create', 'members') && (
           <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
             <DialogTrigger asChild>
-              <Button className="sacco-gradient text-white hover:opacity-90">
+              <Button className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Member
               </Button>
@@ -167,100 +165,98 @@ export default function Members() {
       </div>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
-        <Input
-          placeholder="Search members by name, ID, or phone number..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10"
-        />
+      <div className="section-card p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+          <Input
+            placeholder="Search members by name, ID, or phone number..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
       </div>
 
       {/* Members Table */}
       {membersLoading ? (
-        <Card>
-          <CardContent className="p-6">
-            <div className="animate-pulse space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center space-x-4">
-                  <div className="w-10 h-10 bg-slate-200 rounded-full"></div>
-                  <div className="flex-1">
-                    <div className="h-4 bg-slate-200 rounded w-1/4 mb-2"></div>
-                    <div className="h-3 bg-slate-200 rounded w-1/6"></div>
-                  </div>
-                  <div className="h-4 bg-slate-200 rounded w-1/8"></div>
-                  <div className="h-4 bg-slate-200 rounded w-1/8"></div>
-                  <div className="h-4 bg-slate-200 rounded w-1/8"></div>
+        <div className="section-card p-6">
+          <div className="animate-pulse space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4">
+                <div className="w-10 h-10 bg-slate-100 rounded-lg"></div>
+                <div className="flex-1">
+                  <div className="h-4 bg-slate-100 rounded-lg w-1/4 mb-2"></div>
+                  <div className="h-3 bg-slate-100 rounded-lg w-1/6"></div>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                <div className="h-4 bg-slate-100 rounded-lg w-1/8"></div>
+                <div className="h-4 bg-slate-100 rounded-lg w-1/8"></div>
+                <div className="h-4 bg-slate-100 rounded-lg w-1/8"></div>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : members && Array.isArray(members) && members.length > 0 ? (
-        <Card>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Member</TableHead>
-                  <TableHead>Phone</TableHead>
-                  <TableHead>Gender</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Avg Net Pay</TableHead>
-                  <TableHead>Next of Kin</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {members.map((member: MemberWithDetails) => (
-                  <TableRow key={member.id} className="hover:bg-slate-50">
-                    <TableCell>
-                      <div className="flex items-center space-x-3">
-                        <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center">
-                          <span className="text-slate-600 text-sm font-medium">
-                            {member.fullName ? getInitials(
-                              member.fullName.split(' ')[0] || '', 
-                              member.fullName.split(' ')[1] || ''
-                            ) : 'NA'}
-                          </span>
-                        </div>
-                        <div>
-                          <div className="font-medium text-slate-900">
-                            {member.fullName || 'No Name'}
-                          </div>
-                          <div className="text-sm text-slate-500">ID: {member.memberNumber}</div>
-                        </div>
+        <div className="section-card">
+          <Table className="table-modern">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Member</TableHead>
+                <TableHead>Phone</TableHead>
+                <TableHead>Gender</TableHead>
+                <TableHead>Department</TableHead>
+                <TableHead>Avg Net Pay</TableHead>
+                <TableHead>Next of Kin</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {members.map((member: MemberWithDetails) => (
+                <TableRow key={member.id} className="hover:bg-slate-50">
+                  <TableCell>
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
+                        <span className="text-slate-600 text-sm font-medium">
+                          {member.fullName ? getInitials(
+                            member.fullName.split(' ')[0] || '', 
+                            member.fullName.split(' ')[1] || ''
+                          ) : 'NA'}
+                        </span>
                       </div>
-                    </TableCell>
-                    <TableCell className="text-slate-900">{member.phoneNumber}</TableCell>
-                    <TableCell className="text-slate-900 capitalize">{member.gender || 'Not specified'}</TableCell>
-                    <TableCell className="text-slate-900">{member.department || 'Not specified'}</TableCell>
-                    <TableCell className="text-slate-900">
-                      {member.averageNetPay ? `UGX ${parseFloat(member.averageNetPay).toLocaleString()}` : 'Not specified'}
-                    </TableCell>
-                    <TableCell className="text-slate-900">{member.nextOfKinName || 'Not specified'}</TableCell>
-                    <TableCell>
-                      <Badge className={getStatusColor(member.status ?? 'pending')}>
-                        {member.status ?? 'pending'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setLocation(`/members/${member.id}`)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
+                      <div>
+                        <div className="font-medium text-slate-900">
+                          {member.fullName || 'No Name'}
+                        </div>
+                        <div className="text-sm text-slate-500">ID: {member.memberNumber}</div>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-slate-900">{member.phoneNumber}</TableCell>
+                  <TableCell className="text-slate-900 capitalize">{member.gender || 'Not specified'}</TableCell>
+                  <TableCell className="text-slate-900">{member.department || 'Not specified'}</TableCell>
+                  <TableCell className="text-slate-900">
+                    {member.averageNetPay ? `UGX ${parseFloat(member.averageNetPay).toLocaleString()}` : 'Not specified'}
+                  </TableCell>
+                  <TableCell className="text-slate-900">{member.nextOfKinName || 'Not specified'}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline" className={`border ${getStatusColor(member.status ?? 'pending')}`}>
+                      {member.status ?? 'pending'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setLocation(`/members/${member.id}`)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
           {filteredMembers.length > 0 && (
             <Pagination
               totalItems={totalItems}
@@ -270,23 +266,23 @@ export default function Members() {
               onItemsPerPageChange={handleItemsPerPageChange}
             />
           )}
-        </Card>
+        </div>
       ) : (
-        <Card>
-          <CardContent className="py-12 text-center">
+        <div className="section-card">
+          <div className="py-16 text-center">
             <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-900 mb-2">No members found</h3>
             <p className="text-slate-500 mb-4">
               {searchQuery ? "No members match your search criteria." : "Get started by adding your first member."}
             </p>
             {hasPermission('create', 'members') && (
-              <Button onClick={() => setIsAddModalOpen(true)} className="sacco-gradient text-white hover:opacity-90">
+              <Button onClick={() => setIsAddModalOpen(true)} className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm">
                 <Plus className="w-4 h-4 mr-2" />
                 Add First Member
               </Button>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

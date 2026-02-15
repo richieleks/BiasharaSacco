@@ -6,7 +6,6 @@ import { useToast } from "@/hooks/use-toast";
 import { usePagination } from "@/hooks/usePagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -113,34 +112,34 @@ export default function Transactions() {
   const getTransactionTypeColor = (type: string) => {
     switch (type) {
       case 'deposit':
-        return 'bg-green-100 text-green-800';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
       case 'withdrawal':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-50 text-red-700 border-red-200/50';
       case 'loan_payment':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-50 text-blue-700 border-blue-200/50';
       case 'loan_disbursement':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-50 text-purple-700 border-purple-200/50';
       case 'interest_credit':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-amber-50 text-amber-700 border-amber-200/50';
       case 'fee_charge':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-50 text-orange-700 border-orange-200/50';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
       case 'pending':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-amber-50 text-amber-700 border-amber-200/50';
       case 'failed':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-50 text-red-700 border-red-200/50';
       case 'cancelled':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
     }
   };
 
@@ -169,65 +168,56 @@ export default function Transactions() {
   }
 
   return (
-    <>
+    <div className="space-y-6 page-container animate-fade-in">
       {/* Page Header */}
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-2xl font-semibold text-slate-900">
-              {isPersonalView ? 'My Transactions' : 'Transactions'}
-            </h2>
-            <p className="text-slate-600 mt-1">
-              {isPersonalView 
-                ? 'View your transaction history and account activity' 
-                : 'View and manage all SACCO transactions'
-              }
-            </p>
-          </div>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+          {isPersonalView ? 'My Transactions' : 'Transactions'}
+        </h2>
+        <p className="text-sm text-slate-500 mt-0.5">
+          {isPersonalView 
+            ? 'View your transaction history and account activity' 
+            : 'View and manage all SACCO transactions'
+          }
+        </p>
       </div>
 
       {/* Search */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <Input
-              placeholder="Search by reference number, member name, or transaction type..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="section-card p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <Input
+            placeholder="Search by reference number, member name, or transaction type..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
 
       {/* Transactions Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="section-card">
+        <div className="p-6">
           {transactionsLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="animate-pulse">
-                  <div className="flex items-center justify-between p-4 border border-slate-200 rounded">
+                  <div className="flex items-center justify-between p-4 border border-slate-200 rounded-lg">
                     <div className="flex items-center space-x-4">
-                      <div className="w-8 h-8 bg-slate-200 rounded-full"></div>
+                      <div className="w-8 h-8 bg-slate-100 rounded-lg"></div>
                       <div>
-                        <div className="h-4 bg-slate-200 rounded w-32 mb-2"></div>
-                        <div className="h-3 bg-slate-200 rounded w-24"></div>
+                        <div className="h-4 bg-slate-100 rounded-lg w-32 mb-2"></div>
+                        <div className="h-3 bg-slate-100 rounded-lg w-24"></div>
                       </div>
                     </div>
-                    <div className="h-8 bg-slate-200 rounded w-24"></div>
+                    <div className="h-8 bg-slate-100 rounded-lg w-24"></div>
                   </div>
                 </div>
               ))}
             </div>
           ) : transactions && transactions.length > 0 ? (
             <div className="overflow-x-auto">
-              <Table>
+              <Table className="table-modern">
                 <TableHeader>
                   <TableRow>
                     {!isPersonalView && <TableHead>Member</TableHead>}
@@ -245,7 +235,7 @@ export default function Transactions() {
                       {!isPersonalView && (
                         <TableCell>
                           <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-slate-200 rounded-full flex items-center justify-center">
+                            <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
                               <span className="text-slate-600 text-sm font-medium">
                                 {transaction.member?.user?.firstName?.charAt(0)}
                                 {transaction.member?.user?.lastName?.charAt(0)}
@@ -263,7 +253,7 @@ export default function Transactions() {
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           {getTransactionIcon(transaction.transactionType)}
-                          <Badge className={getTransactionTypeColor(transaction.transactionType)}>
+                          <Badge variant="outline" className={getTransactionTypeColor(transaction.transactionType)}>
                             {formatTransactionType(transaction.transactionType)}
                           </Badge>
                         </div>
@@ -280,7 +270,7 @@ export default function Transactions() {
                       <TableCell>
                         <div className="flex items-center space-x-2">
                           {getStatusIcon(transaction.status || 'pending')}
-                          <Badge className={getStatusColor(transaction.status || 'pending')}>
+                          <Badge variant="outline" className={getStatusColor(transaction.status || 'pending')}>
                             {transaction.status || 'pending'}
                           </Badge>
                         </div>
@@ -292,7 +282,7 @@ export default function Transactions() {
                               size="sm"
                               onClick={() => approveTransactionMutation.mutate(transaction.id)}
                               disabled={approveTransactionMutation.isPending}
-                              className="sacco-success text-white hover:opacity-90"
+                              className="sacco-success text-white hover:opacity-90 rounded-xl shadow-sm"
                             >
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Approve
@@ -306,20 +296,22 @@ export default function Transactions() {
               </Table>
             </div>
           ) : (
-            <div className="text-center py-8">
-              <DollarSign className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No transactions found</h3>
-              <p className="text-slate-500">
-                {searchQuery 
-                  ? "No transactions match your search criteria." 
-                  : isPersonalView 
-                    ? "Your transaction history will appear here once you start making deposits, withdrawals, or loan payments."
-                    : "Transactions will appear here as they are processed."
-                }
-              </p>
+            <div className="section-card">
+              <div className="py-16 text-center">
+                <DollarSign className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-900 mb-2">No transactions found</h3>
+                <p className="text-slate-500">
+                  {searchQuery 
+                    ? "No transactions match your search criteria." 
+                    : isPersonalView 
+                      ? "Your transaction history will appear here once you start making deposits, withdrawals, or loan payments."
+                      : "Transactions will appear here as they are processed."
+                  }
+                </p>
+              </div>
             </div>
           )}
-        </CardContent>
+        </div>
         {filteredTransactions.length > 0 && (
           <Pagination
             totalItems={totalItems}
@@ -329,7 +321,7 @@ export default function Transactions() {
             onItemsPerPageChange={handleItemsPerPageChange}
           />
         )}
-      </Card>
-    </>
+      </div>
+    </div>
   );
 }

@@ -85,18 +85,16 @@ export default function PendingApprovals() {
   const totalPending = (approvals?.loanApplications?.length || 0) + (approvals?.withdrawalRequests?.length || 0);
 
   return (
-    <Card className="border border-slate-200 shadow-sm">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg font-semibold text-slate-900">Pending Approvals</CardTitle>
-          {totalPending > 0 && (
-            <Badge className="bg-red-100 text-red-800">
-              {totalPending}
-            </Badge>
-          )}
-        </div>
-      </CardHeader>
-      <CardContent>
+    <div className="section-card">
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+        <h3 className="text-sm font-semibold text-slate-900">Pending Approvals</h3>
+        {totalPending > 0 && (
+          <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200/50 text-xs font-semibold">
+            {totalPending}
+          </Badge>
+        )}
+      </div>
+      <div className="p-5">
         {isLoading ? (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
@@ -168,11 +166,11 @@ export default function PendingApprovals() {
         )}
 
         {totalPending > 3 && (
-          <Button variant="ghost" className="w-full mt-4 text-primary-600 hover:text-primary-700">
+          <Button variant="ghost" className="w-full mt-4 text-primary hover:text-primary/80 text-sm rounded-lg">
             View All Approvals
           </Button>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

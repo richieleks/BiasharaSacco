@@ -3,15 +3,12 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
 import RoleBasedDashboard from "@/components/dashboard/role-based-dashboard";
-import { Button } from "@/components/ui/button";
-import { Download, Plus } from "lucide-react";
 
 export default function Dashboard() {
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
-  const { userRole, hasPermission } = useRBAC();
+  const { userRole } = useRBAC();
 
-  // Redirect to home if not authenticated
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -27,7 +24,11 @@ export default function Dashboard() {
   }, [isAuthenticated, isLoading, toast]);
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent"></div>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
@@ -35,22 +36,19 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-6 page-container animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+          <p className="text-sm text-slate-500 mt-0.5">
             Welcome to Biashara SACCO Management System
-          </p>
-          <p className="text-sm text-muted-foreground capitalize mt-1">
-            {userRole} Portal
+            <span className="inline-flex items-center ml-2 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary/10 text-primary capitalize">
+              {userRole}
+            </span>
           </p>
         </div>
-
       </div>
 
-      {/* Role-Based Dashboard Content */}
       <RoleBasedDashboard />
     </div>
   );

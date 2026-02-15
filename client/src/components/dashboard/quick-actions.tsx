@@ -63,46 +63,44 @@ export default function QuickActions() {
 
   return (
     <>
-      <Card className="border border-slate-200 shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold text-slate-900">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <Button
-              onClick={() => setIsMemberModalOpen(true)}
-              className="w-full sacco-gradient text-white hover:opacity-90 flex items-center justify-center"
-            >
-              <UserPlus className="w-4 h-4 mr-2" />
-              Add New Member
-            </Button>
+      <div className="section-card">
+        <div className="px-6 py-4 border-b border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-900">Quick Actions</h3>
+        </div>
+        <div className="p-5 space-y-2.5">
+          <Button
+            onClick={() => setIsMemberModalOpen(true)}
+            className="w-full sacco-gradient text-white hover:opacity-90 flex items-center justify-center rounded-xl h-10 text-sm font-medium shadow-sm"
+          >
+            <UserPlus className="w-4 h-4 mr-2" />
+            Add New Member
+          </Button>
 
-            <Button
-              onClick={() => setIsDepositModalOpen(true)}
-              className="w-full sacco-success text-white hover:opacity-90 flex items-center justify-center"
-            >
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Record Deposit
-            </Button>
+          <Button
+            onClick={() => setIsDepositModalOpen(true)}
+            className="w-full bg-emerald-600 text-white hover:bg-emerald-700 flex items-center justify-center rounded-xl h-10 text-sm font-medium shadow-sm"
+          >
+            <PlusCircle className="w-4 h-4 mr-2" />
+            Record Deposit
+          </Button>
 
-            <Button
-              onClick={() => setIsLoanModalOpen(true)}
-              className="w-full bg-yellow-600 text-white hover:bg-yellow-700 flex items-center justify-center"
-            >
-              <FileText className="w-4 h-4 mr-2" />
-              Loan Application
-            </Button>
+          <Button
+            onClick={() => setIsLoanModalOpen(true)}
+            className="w-full bg-amber-500 text-white hover:bg-amber-600 flex items-center justify-center rounded-xl h-10 text-sm font-medium shadow-sm"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Loan Application
+          </Button>
 
-            <Button
-              onClick={handleGenerateReport}
-              className="w-full bg-slate-600 text-white hover:bg-slate-700 flex items-center justify-center"
-            >
-              <BarChart3 className="w-4 h-4 mr-2" />
-              Generate Report
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          <Button
+            onClick={handleGenerateReport}
+            className="w-full bg-slate-700 text-white hover:bg-slate-800 flex items-center justify-center rounded-xl h-10 text-sm font-medium shadow-sm"
+          >
+            <BarChart3 className="w-4 h-4 mr-2" />
+            Generate Report
+          </Button>
+        </div>
+      </div>
 
       {/* Modals */}
       <Dialog open={isMemberModalOpen} onOpenChange={setIsMemberModalOpen}>

@@ -72,26 +72,26 @@ export default function Savings() {
   const getAccountTypeColor = (type: string) => {
     switch (type) {
       case 'regular':
-        return 'bg-blue-100 text-blue-800';
+        return 'bg-blue-50 text-blue-700 border-blue-200/50';
       case 'fixed_deposit':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-50 text-green-700 border-green-200/50';
       case 'group':
-        return 'bg-purple-100 text-purple-800';
+        return 'bg-purple-50 text-purple-700 border-purple-200/50';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-50 text-green-700 border-green-200/50';
       case 'closed':
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
       case 'frozen':
-        return 'bg-red-100 text-red-800';
+        return 'bg-red-50 text-red-700 border-red-200/50';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-slate-50 text-slate-700 border-slate-200/50';
     }
   };
 
@@ -106,15 +106,15 @@ export default function Savings() {
   }
 
   return (
-    <>
+    <div className="space-y-6 page-container animate-fade-in">
       {/* Page Header */}
-      <div className="mb-8">
+      <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-semibold text-slate-900">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
               {isPersonalView ? 'My Savings' : 'Savings Accounts'}
             </h2>
-            <p className="text-slate-600 mt-1">
+            <p className="text-sm text-slate-500 mt-0.5">
               {isPersonalView 
                 ? 'View your savings accounts and balance history' 
                 : 'Manage member savings accounts and transactions'
@@ -125,7 +125,7 @@ export default function Savings() {
             <div className="mt-4 sm:mt-0 flex space-x-3">
               <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
                 <DialogTrigger asChild>
-                  <Button className="sacco-success text-white hover:opacity-90">
+                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm">
                     <ArrowUp className="w-4 h-4 mr-2" />
                     Record Deposit
                   </Button>
@@ -143,7 +143,7 @@ export default function Savings() {
 
               <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50">
+                  <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
                     <ArrowDown className="w-4 h-4 mr-2" />
                     Withdrawal Request
                   </Button>
@@ -164,49 +164,47 @@ export default function Savings() {
       </div>
 
       {/* Search */}
-      <Card className="mb-6">
-        <CardContent className="pt-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
-            <Input
-              placeholder="Search members or account numbers..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="section-card p-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <Input
+            placeholder="Search members or account numbers..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+      </div>
 
       {/* Savings Accounts */}
       {accountsLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="pt-6">
+            <div key={i} className="section-card animate-pulse">
+              <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-slate-200 rounded-full"></div>
+                    <div className="w-10 h-10 bg-slate-100 rounded-lg"></div>
                     <div>
-                      <div className="h-4 bg-slate-200 rounded w-32 mb-2"></div>
-                      <div className="h-3 bg-slate-200 rounded w-24"></div>
+                      <div className="h-4 bg-slate-100 rounded w-32 mb-2"></div>
+                      <div className="h-3 bg-slate-100 rounded w-24"></div>
                     </div>
                   </div>
-                  <div className="h-8 bg-slate-200 rounded w-24"></div>
+                  <div className="h-8 bg-slate-100 rounded w-24"></div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       ) : savingsAccounts && savingsAccounts.length > 0 ? (
         <>
           <div className="space-y-4">
             {savingsAccounts.map((account: any) => (
-              <Card key={account.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="pt-6">
+              <div key={account.id} className="section-card hover:shadow-md hover:border-slate-300/60 transition-all duration-200">
+                <div className="p-6">
                   <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
                         <span className="text-slate-600 text-sm font-medium">
                           {account.member?.user?.firstName?.charAt(0)}{account.member?.user?.lastName?.charAt(0)}
                         </span>
@@ -239,14 +237,14 @@ export default function Savings() {
                     
                     <div className="space-y-1">
                       <div className="text-sm text-slate-500">Account Type</div>
-                      <Badge className={getAccountTypeColor(account.accountType)}>
+                      <Badge variant="outline" className={`border ${getAccountTypeColor(account.accountType)}`}>
                         {account.accountType?.replace('_', ' ') || 'Regular'}
                       </Badge>
                     </div>
                     
                     <div className="space-y-1">
                       <div className="text-sm text-slate-500">Status</div>
-                      <Badge className={getStatusColor(account.status)}>
+                      <Badge variant="outline" className={`border ${getStatusColor(account.status)}`}>
                         {account.status || 'active'}
                       </Badge>
                     </div>
@@ -260,19 +258,19 @@ export default function Savings() {
                   </div>
 
                   {/* Account Actions */}
-                  <div className="mt-4 pt-4 border-t border-slate-200">
+                  <div className="mt-4 pt-4 border-t border-slate-100">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleViewStatement(account.id)}
-                      className="text-blue-600 border-blue-300 hover:bg-blue-50"
+                      className="text-primary border-primary/30 hover:bg-primary/5 rounded-lg"
                     >
                       <FileText className="w-4 h-4 mr-2" />
                       View Statement
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             ))}
           </div>
           {filteredSavingsAccounts.length > 0 && (
@@ -288,18 +286,16 @@ export default function Savings() {
           )}
         </>
       ) : (
-        <Card>
-          <CardContent className="py-12 text-center">
+        <div className="section-card">
+          <div className="py-16 text-center">
             <PiggyBank className="w-12 h-12 text-slate-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-900 mb-2">No savings accounts found</h3>
             <p className="text-slate-500 mb-4">
               {searchQuery ? "No accounts match your search criteria." : "Savings accounts will appear here once members are added."}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
-
-
-    </>
+    </div>
   );
 }
