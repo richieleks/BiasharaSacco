@@ -1,4 +1,5 @@
 import { useForm } from "react-hook-form";
+import { useQuery } from "@tanstack/react-query";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -42,6 +43,23 @@ interface MemberFormProps {
 }
 
 export default function MemberForm({ onSubmit, isLoading, member }: MemberFormProps) {
+  const { data: systemConfig } = useQuery<{ entranceFee: number; sharePrice: number }>({
+    queryKey: ['/api/system/settings/public'],
+    queryFn: async () => {
+      const response = await fetch('/api/system/settings/public');
+      if (!response.ok) return { entranceFee: 15000, sharePrice: 5000 };
+      return response.json();
+    },
+  });
+
+  const entranceFee = systemConfig?.entranceFee ?? 15000;
+  const sharePrice = systemConfig?.sharePrice ?? 5000;
+
+  const calculateShareContribution = (numberOfShares: string) => {
+    const shares = parseInt(numberOfShares) || 0;
+    return (shares * sharePrice).toString();
+  };
+
   const form = useForm<MemberFormData>({
     resolver: zodResolver(memberFormSchema),
     defaultValues: {
@@ -60,7 +78,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
       monthlySavings: member?.monthlySavings || "",
       accountNumber: member?.accountNumber || "",
       branch: member?.branch || "",
-      shareContribution: member?.shareContribution || "20000", // minimum 4 shares at 5000 each
+      shareContribution: member?.shareContribution || (4 * sharePrice).toString(),
       numberOfShares: member?.numberOfShares?.toString() || "4",
       beneficiaryName: member?.beneficiaryName || "",
       beneficiaryRelationship: member?.beneficiaryRelationship || "",
@@ -71,17 +89,11 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
   });
 
   const handleSubmit = (data: MemberFormData) => {
-    // Convert numberOfShares to number before submitting
     const submissionData = {
       ...data,
       numberOfShares: parseInt(data.numberOfShares)
     };
     onSubmit(submissionData as any);
-  };
-
-  const calculateShareContribution = (numberOfShares: string) => {
-    const shares = parseInt(numberOfShares) || 0;
-    return (shares * 5000).toString();
   };
 
   return (
@@ -423,7 +435,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
           <CardContent className="space-y-4">
             <div className="bg-muted p-4 rounded-lg">
               <p className="text-sm">
-                If my application is accepted, I agree to pay an Entrance Fee of <strong>Shs. 15,000</strong> 
+                If my application is accepted, I agree to pay an Entrance Fee of <strong>Shs. {entranceFee.toLocaleString()}</strong> 
                 and a share capital contribution as indicated below.
               </p>
             </div>
@@ -448,7 +460,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                       />
                     </FormControl>
                     <FormDescription>
-                      Minimum 4 shares at Shs. 5,000 each
+                      Minimum 4 shares at Shs. {sharePrice.toLocaleString()} each
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

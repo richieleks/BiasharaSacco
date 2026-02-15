@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -187,6 +187,12 @@ export default function AdminSettingsPage() {
     resolver: zodResolver(adminSettingsSchema),
     defaultValues: systemSettings || settingsDefaults,
   });
+
+  useEffect(() => {
+    if (systemSettings) {
+      form.reset(systemSettings);
+    }
+  }, [systemSettings]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: AdminSettingsData) => {
