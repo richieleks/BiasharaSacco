@@ -12,6 +12,12 @@ import { z } from "zod";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
+function getUserId(req: any): string | undefined {
+  if (!req.user) return undefined;
+  if (req.user.authMethod === 'local') return req.user.id;
+  return req.user.claims?.sub;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Extend AuthRequest type to include member data
   interface ExtendedAuthRequest extends Request {
@@ -40,7 +46,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       // Handle both Replit and local auth users
-      const userId = req.user.authMethod === 'local' ? req.user.id : req.user.claims.sub;
+      const userId = getUserId(req)!;
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
@@ -83,7 +89,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/permissions', isAuthenticated, async (req: AuthRequest, res) => {
     try {
       // Handle both Replit and local auth users
-      const userId = req.user?.authMethod === 'local' ? req.user.id : req.user!.claims!.sub!;
+      const userId = getUserId(req)!;
       const member = await storage.getMemberByUserId(userId);
       
       if (!member) {
@@ -121,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/auth/profile', isAuthenticated, async (req: AuthRequest, res) => {
     try {
       // Handle both Replit and local auth users
-      const userId = req.user?.authMethod === 'local' ? req.user.id : req.user?.claims?.sub;
+      const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
@@ -139,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email,
         firstName,
         lastName,
-        profileImageUrl: req.user?.claims?.profile_image_url || null,
+        profileImageUrl: (req.user as any)?.claims?.profile_image_url || (req.user as any)?.profileImageUrl || null,
       });
 
       res.json(updatedUser);
@@ -219,7 +225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update user settings
   app.patch('/api/auth/settings', isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "User not authenticated" });
       }
@@ -407,7 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if user already has a member profile
-      const existingMemberByUserId = await storage.getMemberByUserId(req.user?.claims?.sub);
+      const existingMemberByUserId = await storage.getMemberByUserId(getUserId(req));
       if (existingMemberByUserId) {
         return res.status(400).json({ 
           message: "You already have a member profile",
@@ -422,7 +428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const memberData = {
         ...req.body,
         memberNumber,
-        userId: req.user?.claims?.sub,
+        userId: getUserId(req),
         status: 'pending', // Requires committee approval
         joinDate: new Date(),
       };
@@ -454,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get pending members for committee approval
   app.get('/api/members/pending', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       if (!await isCommitteeOrAdmin(userId)) {
         return res.status(403).json({ message: "Access denied. Committee or admin role required." });
       }
@@ -470,7 +476,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Approve member application
   app.post('/api/members/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       if (!await isCommitteeOrAdmin(userId)) {
         return res.status(403).json({ message: "Access denied. Committee or admin role required." });
       }
@@ -511,7 +517,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Reject member application
   app.post('/api/members/:id/reject', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       if (!await isCommitteeOrAdmin(userId)) {
         return res.status(403).json({ message: "Access denied. Committee or admin role required." });
       }
@@ -568,7 +574,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const memberId = parseInt(req.params.id);
       const { roles } = req.body;
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       
       if (!Array.isArray(roles)) {
         return res.status(400).json({ message: "Roles must be an array" });
@@ -626,7 +632,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid member ID" });
       }
 
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "User ID not found" });
       }
@@ -683,7 +689,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Handle "undefined" string from client
       if (userId === 'undefined' || !userId) {
-        userId = req.user?.claims?.sub;
+        userId = getUserId(req);
       }
       
       if (!userId) {
@@ -693,20 +699,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const member = await storage.getMemberByUserId(userId);
       if (!member) {
         // Create member for authenticated user if doesn't exist
-        if (userId === req.user?.claims?.sub) {
+        if (userId === getUserId(req)) {
           // First create/update the user
           await storage.upsertUser({
             id: userId,
-            email: req.user.claims.email,
-            firstName: req.user.claims.first_name,
-            lastName: req.user.claims.last_name,
-            profileImageUrl: req.user.claims.profile_image_url,
+            email: req.user.claims?.email || req.user.email,
+            firstName: req.user.claims?.first_name || req.user.firstName,
+            lastName: req.user.claims?.last_name || req.user.lastName,
+            profileImageUrl: req.user.claims?.profile_image_url || req.user.profileImageUrl,
           });
           
+          const firstName = req.user.claims?.first_name || req.user.firstName || '';
+          const lastName = req.user.claims?.last_name || req.user.lastName || '';
           const newMember = await storage.createMember({
             userId: userId,
             memberNumber: `M${Date.now()}`,
-            fullName: `${req.user.claims.first_name || ''} ${req.user.claims.last_name || ''}`.trim() || 'Unknown',
+            fullName: `${firstName} ${lastName}`.trim() || 'Unknown',
             idNumber: '',
             dateOfBirth: '2000-01-01',
             phoneNumber: '',
@@ -737,7 +745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const updates = req.body;
       
       // Get requesting member for permission check
-      const requestingMember = await storage.getMemberByUserId(req.user?.claims?.sub);
+      const requestingMember = await storage.getMemberByUserId(getUserId(req));
       if (!requestingMember) {
         return res.status(403).json({ message: "Access denied - no member record found" });
       }
@@ -759,7 +767,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Log the action
       if (requestingMember) {
         await storage.createAuditLog({
-          userId: req.user.claims.sub,
+          userId: getUserId(req)!,
           action: 'update',
           resource: 'member',
           resourceId: memberId.toString(),
@@ -810,7 +818,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referenceNumber,
         description: description || 'Savings deposit',
         status: 'completed',
-        processedBy: (req as any).user?.claims?.sub,
+        processedBy: getUserId(req),
       });
 
       res.status(201).json(transaction);
@@ -834,7 +842,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referenceNumber,
         description: description || 'Savings withdrawal',
         status: 'pending', // Requires approval
-        processedBy: (req as any).user?.claims?.sub,
+        processedBy: getUserId(req),
       });
 
       res.status(201).json(transaction);
@@ -1052,7 +1060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/loans/approval/:stage', isAuthenticated, async (req: any, res) => {
     try {
       const { stage } = req.params;
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       const user = await storage.getUser(userId);
       
       if (!user) {
@@ -1078,7 +1086,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { uuid, stage } = req.params;
       const { comments } = req.body;
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
 
       if (!await hasApprovalRole(userId, stage)) {
         return res.status(403).json({ message: `Access denied. ${stage} role required.` });
@@ -1118,7 +1126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { uuid } = req.params;
       const { reason } = req.body;
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
 
       if (!reason?.trim()) {
         return res.status(400).json({ message: "Rejection reason is required" });
@@ -1203,7 +1211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referenceNumber,
         description: `Loan disbursement - ${loan.loanNumber}`,
         status: 'completed',
-        processedBy: (req as any).user?.claims?.sub,
+        processedBy: getUserId(req),
       });
 
       res.json(loan);
@@ -1237,7 +1245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         referenceNumber,
         description: description || `Loan payment - ${loan.loanNumber}`,
         status: 'completed',
-        processedBy: (req as any).user?.claims?.sub,
+        processedBy: getUserId(req),
       });
 
       res.status(201).json(transaction);
@@ -1260,7 +1268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Personal data endpoints for member dashboard
   app.get('/api/loans/my-loans', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       const member = await storage.getMemberByUserId(userId);
       if (!member) {
         return res.status(404).json({ message: "Member record not found" });
@@ -1275,7 +1283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/savings/my-savings', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       const member = await storage.getMemberByUserId(userId);
       if (!member) {
         return res.status(404).json({ message: "Member record not found" });
@@ -1290,7 +1298,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/transactions/my-transactions', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       const member = await storage.getMemberByUserId(userId);
       if (!member) {
         return res.status(404).json({ message: "Member record not found" });
@@ -1306,7 +1314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Savings account routes
   app.get('/api/savings-accounts', isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       if (!userId) {
         return res.status(401).json({ message: "User ID not found" });
       }
@@ -1504,7 +1512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const guarantorId = parseInt(req.params.id);
       const { comments } = req.body;
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
 
       // Get the guarantor and verify the current user is the guarantor
       const guarantor = await storage.getGuarantor(guarantorId);
@@ -1545,7 +1553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const guarantorId = parseInt(req.params.id);
       const { comments } = req.body;
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
 
       if (!comments?.trim()) {
         return res.status(400).json({ message: "Comments are required for rejection" });
@@ -1589,7 +1597,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get pending guarantor requests for the current user
   app.get('/api/guarantors/pending', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user?.claims?.sub;
+      const userId = getUserId(req);
       const member = await storage.getMemberByUserId(userId);
       
       if (!member) {
@@ -1700,7 +1708,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub!,
+        userId: getUserId(req)!,
         action: 'create',
         resource: 'role',
         resourceId: role.id.toString(),
@@ -1724,7 +1732,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub!,
+        userId: getUserId(req)!,
         action: 'update',
         resource: 'role',
         resourceId: role.id.toString(),
@@ -1757,7 +1765,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub!,
+        userId: getUserId(req)!,
         action: 'delete',
         resource: 'role',
         resourceId: roleId.toString(),
@@ -1805,7 +1813,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub!,
+        userId: getUserId(req)!,
         action: 'update',
         resource: 'role-permissions',
         resourceId: roleId.toString(),
@@ -1828,7 +1836,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const [member] = await db
         .select({
-          roles: members.roles
+          role: members.role
         })
         .from(members)
         .where(eq(members.id, memberId));
@@ -1838,7 +1846,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      res.json(member.roles || []);
+      const memberRolesList = await storage.getMemberRoles(memberId);
+      res.json(memberRolesList);
     } catch (error) {
       console.error('Error fetching member roles:', error);
       res.status(500).json({ message: 'Failed to fetch member roles' });
@@ -1864,7 +1873,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req)!,
         action: 'create',
         resource: 'interest_rate',
         resourceId: rate.id.toString(),
@@ -1931,11 +1940,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const schedule = await storage.generateLoanAmortization(loan.id);
 
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req)!,
         action: 'create',
         resource: 'amortization_schedule',
         resourceId: uuid,
-        details: `Generated amortization schedule for loan ${id}`,
+        details: `Generated amortization schedule for loan ${req.params.id}`,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')
       });
@@ -1959,7 +1968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const result = await storage.calculateAndSaveInterest(loan.id);
 
       await storage.createAuditLog({
-        userId: req.user.claims.sub,
+        userId: getUserId(req)!,
         action: 'create',
         resource: 'interest_calculation',
         resourceId: uuid,
@@ -2152,7 +2161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/notifications/read-all', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = getUserId(req)!;
       await storage.markAllNotificationsAsRead(userId);
       res.json({ message: "All notifications marked as read" });
     } catch (error) {
@@ -2297,7 +2306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub || '',
+        userId: getUserId(req) || '',
         action: 'create',
         resource: 'loan_type',
         resourceId: loanType.id.toString(),
@@ -2318,7 +2327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub || '',
+        userId: getUserId(req) || '',
         action: 'update',
         resource: 'loan_type',
         resourceId: id.toString(),
@@ -2347,7 +2356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub || '',
+        userId: getUserId(req) || '',
         action: 'delete',
         resource: 'loan_type',
         resourceId: id.toString(),
@@ -2397,7 +2406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub || '',
+        userId: getUserId(req) || '',
         action: 'create',
         resource: 'loan_term',
         resourceId: loanTerm.id.toString(),
@@ -2418,7 +2427,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub || '',
+        userId: getUserId(req) || '',
         action: 'update',
         resource: 'loan_term',
         resourceId: id.toString(),
@@ -2447,7 +2456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub || '',
+        userId: getUserId(req) || '',
         action: 'delete',
         resource: 'loan_term',
         resourceId: id.toString(),
@@ -2466,25 +2475,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { reportType } = req.params;
       const { startDate, endDate, memberNumber, status } = req.query;
-      const userId = req.user?.claims?.sub;
-      const permissions = await storage.getUserPermissions(userId);
-      
-      // Check if user has reports permission
-      const canViewReports = permissions.some(p => p.resource === 'reports' && p.action === 'read');
-      if (!canViewReports) {
+      const userId = getUserId(req);
+      const member = await storage.getMemberByUserId(userId!);
+      if (!member) {
+        return res.status(403).json({ message: "Member profile not found" });
+      }
+      const memberRolesList = await storage.getMemberRoles(member.id);
+      const isStaff = memberRolesList.some((r: string) => ['admin', 'manager', 'committee', 'teller'].includes(r));
+      if (!isStaff) {
         return res.status(403).json({ message: "Access denied" });
       }
 
-      // Get report data based on type
       let reportData;
       switch (reportType) {
         case 'members':
-          const filters: any = {};
-          if (status && status !== 'all') filters.status = status;
-          if (startDate) filters.startDate = new Date(startDate);
-          if (endDate) filters.endDate = new Date(endDate);
-          
-          // For now, return empty data
           reportData = [];
           break;
           
@@ -2511,11 +2515,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
           
         case 'audit':
-          const member = await storage.getMemberByUserId(userId);
-          const canViewAuditLogs = permissions.some(p => p.resource === 'audit-logs' && p.action === 'read');
-          if (!canViewAuditLogs) {
-            return res.status(403).json({ message: "Access denied to audit logs" });
-          }
           reportData = [];
           break;
           
@@ -2534,12 +2533,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/reports/generate', isAuthenticated, async (req: any, res) => {
     try {
       const { reportType, filters, format } = req.body;
-      const userId = req.user?.claims?.sub;
-      const permissions = await storage.getUserPermissions(userId);
-      
-      // Check if user has reports permission
-      const canViewReports = permissions.some(p => p.resource === 'reports' && p.action === 'read');
-      if (!canViewReports) {
+      const userId = getUserId(req);
+      const member = await storage.getMemberByUserId(userId!);
+      if (!member) {
+        return res.status(403).json({ message: "Member profile not found" });
+      }
+      const memberRolesList = await storage.getMemberRoles(member.id);
+      const isStaff = memberRolesList.some((r: string) => ['admin', 'manager', 'committee', 'teller'].includes(r));
+      if (!isStaff) {
         return res.status(403).json({ message: "Access denied" });
       }
 
@@ -2571,7 +2572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub || '',
+        userId: getUserId(req) || '',
         action: 'import',
         resource: 'savings_accounts',
         resourceId: 'bulk_import',
@@ -2608,7 +2609,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Create audit log
       await storage.createAuditLog({
-        userId: req.user?.claims?.sub || '',
+        userId: getUserId(req) || '',
         action: 'import',
         resource: 'loans',
         resourceId: 'bulk_import',
@@ -2725,7 +2726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/interest-calculations/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const approvedBy = req.user?.claims?.sub;
+      const approvedBy = getUserId(req);
       const calculation = await storage.approveInterestCalculation(id, approvedBy);
       res.json(calculation);
     } catch (error) {
@@ -2770,7 +2771,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/interest-payments/:id/process', isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
-      const processedBy = req.user?.claims?.sub;
+      const processedBy = getUserId(req);
       const payment = await storage.processInterestPayment(id, processedBy);
       res.json(payment);
     } catch (error) {

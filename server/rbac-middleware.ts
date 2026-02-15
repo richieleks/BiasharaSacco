@@ -5,6 +5,8 @@ export type UserRole = 'admin' | 'committee' | 'treasurer' | 'member';
 
 export interface AuthRequest extends Request {
   user?: {
+    id?: string;
+    authMethod?: string;
     claims?: {
       sub?: string;
       email?: string;
@@ -15,23 +17,30 @@ export interface AuthRequest extends Request {
   };
   member?: {
     id: number;
-    roles: UserRole[]; // Changed to array of roles
+    roles: UserRole[];
     userId: string;
     memberNumber: string;
     status: string;
   };
 }
 
+function getAuthUserId(req: AuthRequest): string | undefined {
+  if (!req.user) return undefined;
+  if ((req.user as any).authMethod === 'local') return (req.user as any).id;
+  return req.user.claims?.sub;
+}
+
 // RBAC middleware to check permissions
 export function requirePermission(action: string, resource: string) {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      if (!req.user?.claims?.sub) {
+      const userId = getAuthUserId(req);
+      if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
       // Get member data to check role
-      const member = await storage.getMemberByUserId(req.user.claims.sub);
+      const member = await storage.getMemberByUserId(userId);
       if (!member) {
         return res.status(403).json({ message: "Member profile not found" });
       }
@@ -90,11 +99,12 @@ export function requirePermission(action: string, resource: string) {
 export function filterDataByRole() {
   return async (req: AuthRequest, res: Response, next: NextFunction) => {
     try {
-      if (!req.user?.claims?.sub) {
+      const userId = getAuthUserId(req);
+      if (!userId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const member = await storage.getMemberByUserId(req.user.claims.sub);
+      const member = await storage.getMemberByUserId(userId);
       if (!member) {
         return res.status(403).json({ message: "Member profile not found" });
       }

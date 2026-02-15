@@ -13,7 +13,6 @@ import { sql } from "drizzle-orm";
 async function main() {
   console.log("Truncating all tables...");
   
-  // Disable foreign key checks for truncation (Postgres way is to use CASCADE)
   const tables = [
     sessions,
     auditLogs,
@@ -61,7 +60,44 @@ async function main() {
     authMethod: "local",
   }).returning();
 
-  console.log("Admin user created: admin / admin123");
+  console.log("Admin user created:", admin.id);
+
+  console.log("Creating member profile for admin...");
+  const [adminMember] = await db.insert(members).values({
+    userId: admin.id,
+    memberNumber: "BCS000001",
+    fullName: "System Admin",
+    idNumber: "ADMIN001",
+    phoneNumber: "0700000000",
+    role: "admin",
+    status: "active",
+    monthlySavings: "0",
+    shareContribution: "20000",
+    numberOfShares: 4,
+    approvedBy: admin.id,
+    approvedAt: new Date(),
+    membershipStartDate: new Date(),
+  }).returning();
+
+  console.log("Member profile created:", adminMember.memberNumber);
+
+  console.log("Assigning admin role...");
+  await db.insert(memberRoles).values({
+    memberId: adminMember.id,
+    role: "admin",
+    assignedBy: admin.id,
+  });
+
+  console.log("Creating savings account...");
+  await db.insert(savingsAccounts).values({
+    memberId: adminMember.id,
+    accountNumber: "SAV00000001",
+    accountType: "regular",
+    balance: "0",
+  });
+
+  console.log("Done! Admin user created with full admin rights.");
+  console.log("Login: admin / admin123");
 }
 
 main().catch(console.error).finally(() => process.exit());
