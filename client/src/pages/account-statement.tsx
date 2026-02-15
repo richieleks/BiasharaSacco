@@ -60,8 +60,8 @@ export default function AccountStatement() {
         new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
         txn.description || txn.transactionType,
         txn.referenceNumber || '',
-        txn.transactionType === 'withdrawal' ? `UGX ${parseFloat(txn.amount || '0').toLocaleString()}` : '',
-        txn.transactionType === 'deposit' ? `UGX ${parseFloat(txn.amount || '0').toLocaleString()}` : '',
+        (txn.transactionType === 'withdrawal' || txn.transactionType === 'fee_charge') ? `UGX ${parseFloat(txn.amount || '0').toLocaleString()}` : '',
+        (txn.transactionType === 'deposit' || txn.transactionType === 'interest_credit') ? `UGX ${parseFloat(txn.amount || '0').toLocaleString()}` : '',
         txn.status || 'completed'
       ])
     ].map(row => row.join(',')).join('\n');
@@ -143,7 +143,7 @@ export default function AccountStatement() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
               <div>
                 <p className="text-sm font-medium text-slate-600">Account Number</p>
                 <p className="text-lg font-semibold text-slate-900">{statementData.account.accountNumber}</p>
@@ -163,12 +163,41 @@ export default function AccountStatement() {
                 </Badge>
               </div>
               <div>
+                <p className="text-sm font-medium text-slate-600">Interest Rate</p>
+                <p className="text-lg font-semibold text-blue-600">
+                  {(parseFloat(statementData.account.interestRate || '0') * 100).toFixed(2)}% p.a.
+                </p>
+              </div>
+              <div>
                 <p className="text-sm font-medium text-slate-600">Current Balance</p>
                 <p className="text-lg font-semibold text-green-600">
                   UGX {parseFloat(statementData.account.balance || '0').toLocaleString()}
                 </p>
               </div>
             </div>
+
+            {(() => {
+              const txns = statementData.transactions || [];
+              const totalDeposits = txns.filter((t: any) => t.transactionType === 'deposit' && t.status === 'completed').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
+              const totalWithdrawals = txns.filter((t: any) => t.transactionType === 'withdrawal' && t.status === 'completed').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
+              const totalInterest = txns.filter((t: any) => t.transactionType === 'interest_credit' && t.status === 'completed').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
+              return (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4 pt-4 border-t">
+                  <div className="bg-green-50 rounded-lg p-3">
+                    <p className="text-sm font-medium text-green-700">Total Deposits</p>
+                    <p className="text-lg font-semibold text-green-800">UGX {totalDeposits.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-red-50 rounded-lg p-3">
+                    <p className="text-sm font-medium text-red-700">Total Withdrawals</p>
+                    <p className="text-lg font-semibold text-red-800">UGX {totalWithdrawals.toLocaleString()}</p>
+                  </div>
+                  <div className="bg-blue-50 rounded-lg p-3">
+                    <p className="text-sm font-medium text-blue-700">Total Interest Earned</p>
+                    <p className="text-lg font-semibold text-blue-800">UGX {totalInterest.toLocaleString()}</p>
+                  </div>
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
       ) : (
@@ -231,15 +260,15 @@ export default function AccountStatement() {
                         {transaction.referenceNumber || '-'}
                       </TableCell>
                       <TableCell className="text-right">
-                        {transaction.transactionType === 'withdrawal' && (
+                        {(transaction.transactionType === 'withdrawal' || transaction.transactionType === 'fee_charge') && (
                           <span className="text-red-600 font-medium">
                             UGX {parseFloat(transaction.amount || '0').toLocaleString()}
                           </span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {transaction.transactionType === 'deposit' && (
-                          <span className="text-green-600 font-medium">
+                        {(transaction.transactionType === 'deposit' || transaction.transactionType === 'interest_credit') && (
+                          <span className={transaction.transactionType === 'interest_credit' ? "text-blue-600 font-medium" : "text-green-600 font-medium"}>
                             UGX {parseFloat(transaction.amount || '0').toLocaleString()}
                           </span>
                         )}
