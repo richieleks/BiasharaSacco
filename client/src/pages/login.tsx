@@ -4,17 +4,50 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, LogIn, Building2, Shield, Users, PiggyBank } from "lucide-react";
+import { Loader2, LogIn, Building2, Shield, Users, PiggyBank, KeyRound } from "lucide-react";
 import { useLocation, useRoute } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [, navigate] = useLocation();
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changePasswordError, setChangePasswordError] = useState("");
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (data: { newPassword: string }) => {
+      const response = await fetch("/api/auth/change-password", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Failed to change password");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      setShowChangePassword(false);
+      window.location.href = "/";
+    },
+    onError: (error: Error) => {
+      setChangePasswordError(error.message);
+    },
+  });
 
   const loginMutation = useMutation({
     mutationFn: async (credentials: { username: string; password: string }) => {
@@ -33,9 +66,12 @@ export function LoginPage() {
       
       return response.json();
     },
-    onSuccess: () => {
-      // Redirect to dashboard after successful login
-      window.location.href = "/";
+    onSuccess: (data) => {
+      if (data.mustChangePassword) {
+        setShowChangePassword(true);
+      } else {
+        window.location.href = "/";
+      }
     },
     onError: (error: Error) => {
       setError(error.message || "Invalid username or password");
@@ -52,6 +88,20 @@ export function LoginPage() {
     }
 
     loginMutation.mutate({ username, password });
+  };
+
+  const handleChangePassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangePasswordError("");
+    if (newPassword.length < 6) {
+      setChangePasswordError("Password must be at least 6 characters");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setChangePasswordError("Passwords do not match");
+      return;
+    }
+    changePasswordMutation.mutate({ newPassword });
   };
 
 
@@ -238,6 +288,65 @@ export function LoginPage() {
           <path d="M0,48L48,53.3C96,59,192,69,288,80C384,91,480,101,576,96C672,91,768,69,864,58.7C960,48,1056,48,1152,58.7C1248,69,1344,91,1392,101.3L1440,112L1440,120L1392,120C1344,120,1248,120,1152,120C1056,120,960,120,864,120C768,120,672,120,576,120C480,120,384,120,288,120C192,120,96,120,48,120L0,120Z"></path>
         </svg>
       </div>
+
+      <Dialog open={showChangePassword} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="bg-amber-100 rounded-full p-3">
+                <KeyRound className="h-8 w-8 text-amber-600" />
+              </div>
+            </div>
+            <DialogTitle className="text-center">Change Your Password</DialogTitle>
+            <DialogDescription className="text-center">
+              Your password has been reset by an administrator. Please set a new password to continue.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleChangePassword} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
+                id="newPassword"
+                type="password"
+                placeholder="Enter new password (min 6 characters)"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
+              <Input
+                id="confirmPassword"
+                type="password"
+                placeholder="Confirm new password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="h-11"
+              />
+            </div>
+            {changePasswordError && (
+              <Alert variant="destructive">
+                <AlertDescription>{changePasswordError}</AlertDescription>
+              </Alert>
+            )}
+            <Button
+              type="submit"
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700"
+              disabled={changePasswordMutation.isPending}
+            >
+              {changePasswordMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Changing Password...
+                </>
+              ) : (
+                "Set New Password"
+              )}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

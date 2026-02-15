@@ -170,7 +170,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (err) {
             return res.status(500).json({ message: "Login error" });
           }
-          return res.json({ message: "Login successful", user });
+          const { password: _, ...safeUser } = user;
+          return res.json({ message: "Login successful", user: safeUser, mustChangePassword: user.mustChangePassword || false });
         });
       })(req, res, next);
     }
@@ -255,6 +256,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.post('/api/auth/users/:id/reset-password', isAuthenticated, requirePermission('update', 'users'), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      const tempPassword = 'changeme123';
+      const hashedPassword = await hashPassword(tempPassword);
+      await storage.updateUser(id, { password: hashedPassword, mustChangePassword: true });
+      res.json({ message: "Password reset successfully. User must change password on next login.", tempPassword });
+    } catch (error) {
+      console.error("Error resetting password:", error);
+      res.status(500).json({ message: "Failed to reset password" });
+    }
+  });
+
+  app.post('/api/auth/change-password', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+      const { currentPassword, newPassword } = req.body;
+      if (!newPassword || newPassword.length < 6) {
+        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      }
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      if (!user.mustChangePassword && currentPassword) {
+        const bcrypt = await import('bcryptjs');
+        const isValid = await bcrypt.compare(currentPassword, user.password || '');
+        if (!isValid) {
+          return res.status(400).json({ message: "Current password is incorrect" });
+        }
+      }
+      const hashedPassword = await hashPassword(newPassword);
+      await storage.updateUser(userId, { password: hashedPassword, mustChangePassword: false });
+      res.json({ message: "Password changed successfully" });
+    } catch (error) {
+      console.error("Error changing password:", error);
+      res.status(500).json({ message: "Failed to change password" });
     }
   });
 

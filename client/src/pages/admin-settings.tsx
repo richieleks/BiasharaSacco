@@ -52,7 +52,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, KeyRound } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -1928,6 +1928,23 @@ function UserManagementTab() {
     },
   });
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('POST', `/api/auth/users/${id}/reset-password`);
+      return res;
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Password Reset",
+        description: `Password has been reset to "changeme123". User will be prompted to change it on next login.`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/users'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Reset Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleEditUser = (u: any) => {
     setEditingUser(u);
     editForm.reset({
@@ -2074,14 +2091,28 @@ function UserManagementTab() {
                     </TableCell>
                     <TableCell>{new Date(u.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEditUser(u)}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="sm" onClick={() => handleEditUser(u)} title="Edit user">
                           <Edit className="h-4 w-4" />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="text-amber-600 hover:text-amber-700"
+                          title="Reset password"
+                          onClick={() => {
+                            if (confirm(`Reset password for "${u.username}"? Their password will be set to "changeme123" and they will be required to change it on next login.`)) {
+                              resetPasswordMutation.mutate(u.id);
+                            }
+                          }}
+                        >
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="text-red-600 hover:text-red-700"
+                          title="Delete user"
                           onClick={() => {
                             if (confirm(`Are you sure you want to delete user "${u.username}"?`)) {
                               deleteUserMutation.mutate(u.id);
