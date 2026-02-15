@@ -1,6 +1,6 @@
 // Role-Based Access Control (RBAC) Configuration
 
-export type UserRole = 'admin' | 'committee' | 'treasurer' | 'member';
+export type UserRole = 'admin' | 'manager' | 'committee' | 'teller' | 'treasurer' | 'member';
 
 export interface Permission {
   action: string;
@@ -45,46 +45,91 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { action: 'update', resource: 'interest-calculations' },
   ],
   
+  manager: [
+    { action: 'read', resource: 'dashboard' },
+    { action: 'read', resource: 'members' },
+    { action: 'create', resource: 'members' },
+    { action: 'update', resource: 'members' },
+    { action: 'approve', resource: 'members' },
+    { action: 'reject', resource: 'members' },
+    { action: 'read', resource: 'loans' },
+    { action: 'create', resource: 'loans' },
+    { action: 'approve', resource: 'loans' },
+    { action: 'reject', resource: 'loans' },
+    { action: 'read', resource: 'transactions' },
+    { action: 'create', resource: 'transactions' },
+    { action: 'read', resource: 'savings' },
+    { action: 'create', resource: 'savings' },
+    { action: 'read', resource: 'reports' },
+    { action: 'read', resource: 'guarantors' },
+    { action: 'create', resource: 'guarantors' },
+    { action: 'approve', resource: 'guarantors' },
+    { action: 'read', resource: 'interest-calculations' },
+    { action: 'create', resource: 'interest-calculations' },
+    { action: 'read', resource: 'notifications' },
+  ],
+
   committee: [
-    // Mid-level approvals and review
     { action: 'read', resource: 'dashboard' },
     { action: 'read', resource: 'members' },
     { action: 'approve', resource: 'members' },
     { action: 'read', resource: 'loans' },
-    { action: 'approve', resource: 'loans' }, // Committee-stage approvals
+    { action: 'approve', resource: 'loans' },
     { action: 'reject', resource: 'loans' },
     { action: 'read', resource: 'transactions' },
     { action: 'read', resource: 'savings' },
     { action: 'read', resource: 'guarantors' },
     { action: 'approve', resource: 'guarantors' },
+    { action: 'read', resource: 'notifications' },
   ],
-  
-  treasurer: [
-    // Financial operations and cash management
+
+  teller: [
     { action: 'read', resource: 'dashboard' },
     { action: 'read', resource: 'members' },
     { action: 'create', resource: 'members' },
     { action: 'update', resource: 'members' },
     { action: 'read', resource: 'loans' },
     { action: 'create', resource: 'loans' },
-    { action: 'approve', resource: 'loans' }, // Initial loan processing
+    { action: 'approve', resource: 'loans' },
     { action: 'read', resource: 'transactions' },
     { action: 'create', resource: 'transactions' },
     { action: 'read', resource: 'savings' },
     { action: 'create', resource: 'savings' },
     { action: 'read', resource: 'guarantors' },
     { action: 'create', resource: 'guarantors' },
+    { action: 'read', resource: 'notifications' },
+  ],
+  
+  treasurer: [
+    { action: 'read', resource: 'dashboard' },
+    { action: 'read', resource: 'members' },
+    { action: 'create', resource: 'members' },
+    { action: 'update', resource: 'members' },
+    { action: 'read', resource: 'loans' },
+    { action: 'create', resource: 'loans' },
+    { action: 'approve', resource: 'loans' },
+    { action: 'read', resource: 'transactions' },
+    { action: 'create', resource: 'transactions' },
+    { action: 'read', resource: 'savings' },
+    { action: 'create', resource: 'savings' },
+    { action: 'read', resource: 'guarantors' },
+    { action: 'create', resource: 'guarantors' },
+    { action: 'read', resource: 'notifications' },
   ],
   
   member: [
-    // Limited member access
+    { action: 'read', resource: 'dashboard' },
     { action: 'read', resource: 'personal-dashboard' },
+    { action: 'read', resource: 'savings' },
+    { action: 'read', resource: 'personal-savings' },
+    { action: 'read', resource: 'loans' },
     { action: 'read', resource: 'personal-loans' },
     { action: 'create', resource: 'loan-application' },
-    { action: 'read', resource: 'personal-savings' },
+    { action: 'read', resource: 'transactions' },
     { action: 'read', resource: 'personal-transactions' },
     { action: 'read', resource: 'guarantors' },
     { action: 'create', resource: 'guarantors' },
+    { action: 'read', resource: 'notifications' },
   ],
 };
 
@@ -100,12 +145,28 @@ export const DASHBOARD_COMPONENTS: Record<UserRole, string[]> = {
     'system-overview',
     'audit-logs'
   ],
+  manager: [
+    'metrics-grid',
+    'recent-transactions',
+    'quick-actions',
+    'pending-approvals',
+    'member-approvals',
+    'loan-approval-workflow',
+    'system-overview'
+  ],
   committee: [
     'metrics-grid',
     'pending-approvals',
     'loan-approval-workflow',
     'member-approvals',
     'committee-queue'
+  ],
+  teller: [
+    'metrics-grid',
+    'recent-transactions',
+    'quick-actions',
+    'teller-queue',
+    'daily-summary'
   ],
   treasurer: [
     'metrics-grid',
@@ -147,6 +208,7 @@ export const NAVIGATION_ITEMS: Record<UserRole, Array<{name: string, path: strin
   manager: ALL_NAVIGATION_ITEMS,
   committee: ALL_NAVIGATION_ITEMS,
   teller: ALL_NAVIGATION_ITEMS,
+  treasurer: ALL_NAVIGATION_ITEMS,
   member: ALL_NAVIGATION_ITEMS,
 };
 
@@ -212,6 +274,7 @@ export function getHighestRole(userRoles: UserRole[]): UserRole {
 export const ROLE_HIERARCHY: Record<UserRole, number> = {
   member: 1,
   teller: 2,
+  treasurer: 2,
   committee: 3,
   manager: 4,
   admin: 5,

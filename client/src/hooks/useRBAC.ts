@@ -12,8 +12,7 @@ import {
 export function useRBAC() {
   const { user, isLoading } = useAuth();
   
-  // Fetch dynamic permissions from the server
-  const { data: dynamicPermissions = [] } = useQuery({
+  const { data: dynamicPermissions = [] } = useQuery<any[]>({
     queryKey: ["/api/auth/permissions"],
     enabled: !!user && !!user.member,
   });
@@ -29,11 +28,12 @@ export function useRBAC() {
     }
   } else if (user?.role === 'admin' || (user as any)?.isAdmin) {
     userRoles = ['admin'];
+  } else if (user?.role) {
+    userRoles = [user.role as UserRole];
   }
   
-  // Get highest role for backward compatibility
   const getHighestRole = (roles: UserRole[]): UserRole => {
-    const hierarchy = { member: 1, teller: 2, committee: 3, manager: 4, admin: 5 };
+    const hierarchy: Record<UserRole, number> = { member: 1, teller: 2, treasurer: 2, committee: 3, manager: 4, admin: 5 };
     return roles.reduce((highest, current) => 
       hierarchy[current] > hierarchy[highest] ? current : highest
     , 'member' as UserRole);
@@ -87,7 +87,7 @@ export function useRBAC() {
     
     // Get user's highest role level for comparison
     isHigherThan: (role: UserRole) => {
-      const hierarchy = { member: 1, teller: 2, committee: 3, manager: 4, admin: 5 };
+      const hierarchy: Record<UserRole, number> = { member: 1, teller: 2, treasurer: 2, committee: 3, manager: 4, admin: 5 };
       return hierarchy[userRole] > hierarchy[role];
     }
   };
