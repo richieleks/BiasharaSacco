@@ -11,6 +11,8 @@ interface CollapsibleSidebarProps {
   className?: string;
 }
 
+const GROUP_ORDER = ['Main', 'Finance', 'Reports', 'Administration'];
+
 export default function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
   const { getNavigationItems, userRole } = useRBAC();
   const [location] = useLocation();
@@ -19,18 +21,15 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
   
   const navItems = getNavigationItems();
 
-  // Dynamically get icon component
   const getIcon = (iconName: string) => {
     const IconComponent = Icons[iconName as keyof typeof Icons] as any;
     return IconComponent || Icons.Circle;
   };
 
-  // Close mobile sidebar on route change
   useEffect(() => {
     setIsMobileOpen(false);
   }, [location]);
 
-  // Persist sidebar collapse state
   useEffect(() => {
     const saved = localStorage.getItem('sidebar-collapsed');
     if (saved) {
@@ -42,8 +41,13 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
     localStorage.setItem('sidebar-collapsed', JSON.stringify(isCollapsed));
   }, [isCollapsed]);
 
+  const groupedItems = GROUP_ORDER.map(group => ({
+    group,
+    items: navItems.filter((item: any) => (item.group || 'Main') === group),
+  })).filter(g => g.items.length > 0);
+
   const SidebarContent = ({ mobile = false }: { mobile?: boolean }) => (
-    <nav className={cn("space-y-2", mobile ? "p-6" : "")}>
+    <nav className={cn("space-y-1", mobile ? "p-6" : "")}>
       {!mobile && (
         <div className={cn("mb-6 px-3", isCollapsed && "px-2")}>
           {!isCollapsed ? (
@@ -70,43 +74,59 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
         </div>
       )}
       
-      <div className="space-y-1">
-        {navItems.map((item) => {
-          const Icon = getIcon(item.icon || 'Circle');
-          const isActive = location === item.path;
-          
-          return (
-            <Link key={item.path} href={item.path}>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-start transition-all duration-200",
-                  isActive 
-                    ? "bg-primary text-primary-foreground hover:bg-primary/90" 
-                    : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
-                  isCollapsed && !mobile && "px-2 justify-center",
-                  mobile && "justify-start"
-                )}
-                size={isCollapsed && !mobile ? "sm" : "default"}
-              >
-                <Icon className={cn(
-                  "h-4 w-4 transition-all duration-200",
-                  isCollapsed && !mobile ? "mr-0" : "mr-3"
-                )} />
-                {(!isCollapsed || mobile) && (
-                  <span className="transition-all duration-200">{item.name}</span>
-                )}
-              </Button>
-            </Link>
-          );
-        })}
-      </div>
+      {groupedItems.map(({ group, items }, groupIndex) => (
+        <div key={group}>
+          {group !== 'Main' && (
+            <>
+              {(!isCollapsed || mobile) ? (
+                <div className={cn("px-3 pt-4 pb-1", groupIndex > 0 && "border-t border-slate-100 mt-2")}>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    {group}
+                  </span>
+                </div>
+              ) : (
+                <div className={cn("my-2 mx-2 border-t border-slate-200")} />
+              )}
+            </>
+          )}
+          <div className="space-y-0.5">
+            {items.map((item: any) => {
+              const Icon = getIcon(item.icon || 'Circle');
+              const isActive = location === item.path;
+              
+              return (
+                <Link key={item.path} href={item.path}>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "w-full justify-start transition-all duration-200 h-9",
+                      isActive 
+                        ? "bg-primary text-primary-foreground hover:bg-primary/90" 
+                        : "text-slate-700 hover:bg-slate-100 hover:text-slate-900",
+                      isCollapsed && !mobile && "px-2 justify-center",
+                      mobile && "justify-start"
+                    )}
+                    size="sm"
+                  >
+                    <Icon className={cn(
+                      "h-4 w-4 shrink-0 transition-all duration-200",
+                      isCollapsed && !mobile ? "mr-0" : "mr-3"
+                    )} />
+                    {(!isCollapsed || mobile) && (
+                      <span className="transition-all duration-200 text-sm">{item.name}</span>
+                    )}
+                  </Button>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      ))}
     </nav>
   );
 
   return (
     <>
-      {/* Mobile Sidebar */}
       <div className="lg:hidden">
         <Sheet open={isMobileOpen} onOpenChange={setIsMobileOpen}>
           <SheetTrigger asChild>
@@ -134,13 +154,11 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
         </Sheet>
       </div>
 
-      {/* Desktop Sidebar */}
       <aside className={cn(
         "hidden lg:block bg-white border-r border-slate-200 transition-all duration-300 ease-in-out relative",
         isCollapsed ? "w-16" : "w-64",
         className
       )}>
-        {/* Collapse Toggle Button */}
         <Button
           variant="ghost"
           size="sm"

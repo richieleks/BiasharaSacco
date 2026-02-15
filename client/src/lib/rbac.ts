@@ -124,24 +124,22 @@ export const DASHBOARD_COMPONENTS: Record<UserRole, string[]> = {
 
 // All available navigation items with permission requirements
 export const ALL_NAVIGATION_ITEMS = [
-  { name: 'Dashboard', path: '/', icon: 'LayoutDashboard', permission: { action: 'read', resource: 'dashboard' } },
-  { name: 'Members', path: '/members', icon: 'Users', permission: { action: 'read', resource: 'members' } },
-  { name: 'Loans', path: '/loans', icon: 'CreditCard', permission: { action: 'read', resource: 'loans' } },
-  { name: 'Loan Workflow', path: '/loan-workflow', icon: 'GitBranch', permission: { action: 'approve', resource: 'loans' } },
-
-  { name: 'Savings', path: '/savings', icon: 'PiggyBank', permission: { action: 'read', resource: 'savings' } },
-  { name: 'Transactions', path: '/transactions', icon: 'Receipt', permission: { action: 'read', resource: 'transactions' } },
-  { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck', permission: { action: 'read', resource: 'guarantors' } },
-
-  { name: 'Reports', path: '/reports', icon: 'BarChart3', permission: { action: 'read', resource: 'reports' } },
-  { name: 'Settings', path: '/settings', icon: 'Settings', permission: { action: 'read', resource: 'system-settings' } },
-  { name: 'Audit Logs', path: '/audit-logs', icon: 'Shield', permission: { action: 'read', resource: 'audit-logs' } },
-  { name: 'Roles Matrix', path: '/roles-matrix', icon: 'Lock', permission: { action: 'read', resource: 'system-settings' } },
-  { name: 'Interest Rates', path: '/interest-rates', icon: 'Percent', permission: { action: 'read', resource: 'interest-rates' } },
-  { name: 'Interest Calculations', path: '/interest-calculations', icon: 'Calculator', permission: { action: 'read', resource: 'interest-calculations' } },
-  { name: 'Notifications', path: '/notifications', icon: 'Bell', permission: { action: 'read', resource: 'notifications' } },
-  { name: 'Data Import', path: '/data-import', icon: 'Upload', permission: { action: 'update', resource: 'system-settings' } },
-  { name: 'Admin Settings', path: '/admin-settings', icon: 'Shield', permission: { action: 'update', resource: 'system-settings' } },
+  { name: 'Dashboard', path: '/', icon: 'LayoutDashboard', group: 'Main', permission: { action: 'read', resource: 'dashboard' } },
+  { name: 'Members', path: '/members', icon: 'Users', group: 'Main', permission: { action: 'read', resource: 'members' } },
+  { name: 'Savings', path: '/savings', icon: 'PiggyBank', group: 'Finance', permission: { action: 'read', resource: 'savings' } },
+  { name: 'Loans', path: '/loans', icon: 'CreditCard', group: 'Finance', permission: { action: 'read', resource: 'loans' } },
+  { name: 'Loan Workflow', path: '/loan-workflow', icon: 'GitBranch', group: 'Finance', permission: { action: 'approve', resource: 'loans' } },
+  { name: 'Transactions', path: '/transactions', icon: 'Receipt', group: 'Finance', permission: { action: 'read', resource: 'transactions' } },
+  { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck', group: 'Finance', permission: { action: 'read', resource: 'guarantors' } },
+  { name: 'Interest Rates', path: '/interest-rates', icon: 'Percent', group: 'Finance', permission: { action: 'read', resource: 'interest-rates' } },
+  { name: 'Interest Calculations', path: '/interest-calculations', icon: 'Calculator', group: 'Finance', permission: { action: 'read', resource: 'interest-calculations' } },
+  { name: 'Reports', path: '/reports', icon: 'BarChart3', group: 'Reports', permission: { action: 'read', resource: 'reports' } },
+  { name: 'Notifications', path: '/notifications', icon: 'Bell', group: 'Reports', permission: { action: 'read', resource: 'notifications' } },
+  { name: 'Settings', path: '/settings', icon: 'Settings', group: 'Administration', permission: { action: 'read', resource: 'system-settings' } },
+  { name: 'Admin Settings', path: '/admin-settings', icon: 'Shield', group: 'Administration', permission: { action: 'update', resource: 'system-settings' } },
+  { name: 'Roles Matrix', path: '/roles-matrix', icon: 'Lock', group: 'Administration', permission: { action: 'read', resource: 'system-settings' } },
+  { name: 'Audit Logs', path: '/audit-logs', icon: 'FileText', group: 'Administration', permission: { action: 'read', resource: 'audit-logs' } },
+  { name: 'Data Import', path: '/data-import', icon: 'Upload', group: 'Administration', permission: { action: 'update', resource: 'system-settings' } },
 ];
 
 // Legacy navigation items by role (deprecated - use getNavigationItems function instead)
