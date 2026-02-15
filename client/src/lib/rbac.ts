@@ -141,6 +141,7 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Interest Calculations', path: '/interest-calculations', icon: 'Calculator', permission: { action: 'read', resource: 'interest-calculations' } },
   { name: 'Notifications', path: '/notifications', icon: 'Bell', permission: { action: 'read', resource: 'notifications' } },
   { name: 'Data Import', path: '/data-import', icon: 'Upload', permission: { action: 'update', resource: 'system-settings' } },
+  { name: 'Admin Settings', path: '/admin-settings', icon: 'Shield', permission: { action: 'update', resource: 'system-settings' } },
 ];
 
 // Legacy navigation items by role (deprecated - use getNavigationItems function instead)
