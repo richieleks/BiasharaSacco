@@ -97,12 +97,22 @@ function MemberDashboard() {
 
   const { data: savingsAccounts } = useQuery<any[]>({
     queryKey: ['/api/members', memberId, 'savings'],
+    queryFn: async () => {
+      const res = await fetch(`/api/members/${memberId}/savings`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch savings');
+      return res.json();
+    },
     enabled: !!memberId,
     refetchInterval: 30000,
   });
 
   const { data: memberLoans } = useQuery<any[]>({
     queryKey: ['/api/members', memberId, 'loans'],
+    queryFn: async () => {
+      const res = await fetch(`/api/members/${memberId}/loans`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch loans');
+      return res.json();
+    },
     enabled: !!memberId,
     refetchInterval: 30000,
   });
