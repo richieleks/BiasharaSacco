@@ -29,7 +29,6 @@ import AmortizationDemo from "@/pages/amortization-demo";
 import LoanWorkflow from "@/pages/loan-workflow";
 import MemberDetails from "@/pages/member-details";
 import NotificationsPage from "@/pages/notifications";
-import Settings from "@/pages/settings";
 import AdminSettings from "@/pages/admin-settings";
 import Profile from "@/pages/profile";
 import AccountStatement from "@/pages/account-statement";
@@ -171,11 +170,6 @@ function Router() {
             <Route path="/profile">
               <ProtectedRoute>
                 <Profile />
-              </ProtectedRoute>
-            </Route>
-            <Route path="/settings">
-              <ProtectedRoute>
-                <Settings />
               </ProtectedRoute>
             </Route>
             <Route path="/admin-settings">
