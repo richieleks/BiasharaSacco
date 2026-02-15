@@ -635,7 +635,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { comments } = req.body;
       
-      const member = await storage.approveMember(parseInt(id), userId, comments);
+      const member = await storage.approveMember(await storage.resolveMemberId(id), userId, comments);
       
       // Create default savings account after approval
       const accountNumber = `SAV${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
@@ -676,7 +676,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { comments } = req.body;
       
-      const member = await storage.rejectMember(parseInt(id), userId, comments);
+      const member = await storage.rejectMember(await storage.resolveMemberId(id), userId, comments);
       res.json({ message: "Member application rejected", member });
     } catch (error) {
       console.error("Error rejecting member:", error);
@@ -687,10 +687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get specific member by ID
   app.get('/api/members/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const memberId = parseInt(req.params.id);
-      if (isNaN(memberId)) {
-        return res.status(400).json({ message: "Invalid member ID" });
-      }
+      const memberId = await storage.resolveMemberId(req.params.id);
 
       const member = await storage.getMember(memberId);
       if (!member) {
@@ -723,7 +720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update member roles (admin only) - now supports multiple roles
   app.patch('/api/members/:id/roles', isAuthenticated, requirePermission('update', 'system-settings'), async (req: any, res) => {
     try {
-      const memberId = parseInt(req.params.id);
+      const memberId = await storage.resolveMemberId(req.params.id);
       const { roles } = req.body;
       const userId = getUserId(req)!;
       
@@ -761,7 +758,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get member roles
   app.get('/api/members/:id/roles', isAuthenticated, async (req: any, res) => {
     try {
-      const memberId = parseInt(req.params.id);
+      const memberId = await storage.resolveMemberId(req.params.id);
       const roles = await storage.getMemberRoles(memberId);
       res.json(roles);
     } catch (error) {
@@ -772,16 +769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/members/:id', isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      // Input validation - ensure ID is a valid positive integer
-      const memberId = parseInt(req.params.id);
-      if (!req.params.id || isNaN(memberId) || memberId <= 0) {
-        return res.status(400).json({ message: "Invalid member ID" });
-      }
-
-      // Additional security check - prevent large integers that could cause issues
-      if (memberId > Number.MAX_SAFE_INTEGER) {
-        return res.status(400).json({ message: "Invalid member ID" });
-      }
+      const memberId = await storage.resolveMemberId(req.params.id);
 
       const userId = getUserId(req);
       if (!userId) {
@@ -867,7 +855,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update member details
   app.patch('/api/members/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const memberId = parseInt(req.params.id);
+      const memberId = await storage.resolveMemberId(req.params.id);
       const updates = req.body;
       
       // Get requesting member for permission check
@@ -915,7 +903,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Savings account routes
   app.get('/api/members/:id/savings', isAuthenticated, async (req, res) => {
     try {
-      const accounts = await storage.getSavingsAccountsByMember(parseInt(req.params.id));
+      const accounts = await storage.getSavingsAccountsByMember(await storage.resolveMemberId(req.params.id));
       res.json(accounts);
     } catch (error) {
       console.error("Error fetching savings accounts:", error);
@@ -1139,7 +1127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/loans/member/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const memberId = parseInt(req.params.id);
+      const memberId = await storage.resolveMemberId(req.params.id);
       const loans = await storage.getLoansByMember(memberId);
       res.json(loans);
     } catch (error) {
@@ -1167,10 +1155,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get specific loan by ID
   app.get('/api/loans/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const loanId = parseInt(req.params.id);
-      if (isNaN(loanId)) {
-        return res.status(400).json({ message: "Invalid loan ID" });
-      }
+      const loanId = await storage.resolveLoanId(req.params.id);
 
       const loan = await storage.getLoan(loanId);
       if (!loan) {
@@ -1187,10 +1172,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get loan transactions/statement
   app.get('/api/loans/:id/transactions', isAuthenticated, async (req: any, res) => {
     try {
-      const loanId = parseInt(req.params.id);
-      if (isNaN(loanId)) {
-        return res.status(400).json({ message: "Invalid loan ID" });
-      }
+      const loanId = await storage.resolveLoanId(req.params.id);
 
       const transactions = await storage.getTransactionsByLoan(loanId);
       res.json(transactions);
@@ -1309,7 +1291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/loans/:id/approve', isAuthenticated, async (req, res) => {
     try {
-      const loanId = parseInt(req.params.id);
+      const loanId = await storage.resolveLoanId(req.params.id);
       
       // Check if all guarantors have approved before allowing formal approval
       const guarantors = await storage.getGuarantorsByLoan(loanId);
@@ -1342,7 +1324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/loans/:id/disburse', isAuthenticated, async (req, res) => {
     try {
-      const loan = await storage.updateLoanStatus(parseInt(req.params.id), 'disbursed');
+      const loan = await storage.updateLoanStatus(await storage.resolveLoanId(req.params.id), 'disbursed');
       
       const referenceNumber = `DIS${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
@@ -1368,7 +1350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/loans/:id/payment', isAuthenticated, async (req, res) => {
     try {
       const { amount, description } = req.body;
-      const loanId = parseInt(req.params.id);
+      const loanId = await storage.resolveLoanId(req.params.id);
       
       // Update loan balance
       await storage.updateLoanBalance(loanId, amount);
@@ -1401,7 +1383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/members/:id/loans', isAuthenticated, async (req, res) => {
     try {
-      const loans = await storage.getLoansByMember(parseInt(req.params.id));
+      const loans = await storage.getLoansByMember(await storage.resolveMemberId(req.params.id));
       res.json(loans);
     } catch (error) {
       console.error("Error fetching member loans:", error);
@@ -1488,7 +1470,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/members/:id/transactions', isAuthenticated, async (req, res) => {
     try {
-      const transactions = await storage.getTransactionsByMember(parseInt(req.params.id));
+      const transactions = await storage.getTransactionsByMember(await storage.resolveMemberId(req.params.id));
       res.json(transactions);
     } catch (error) {
       console.error("Error fetching member transactions:", error);
@@ -1498,7 +1480,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/savings-accounts/:id/statement', isAuthenticated, async (req, res) => {
     try {
-      const savingsAccountId = parseInt(req.params.id);
+      const savingsAccountId = await storage.resolveSavingsAccountId(req.params.id);
       const transactions = await storage.getTransactionsBySavingsAccount(savingsAccountId);
       const account = await storage.getSavingsAccount(savingsAccountId);
       
@@ -1518,7 +1500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/transactions/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
-      const transactionId = parseInt(req.params.id);
+      const transactionId = await storage.resolveTransactionId(req.params.id);
       const transaction = await storage.getTransaction(transactionId);
       
       if (!transaction) {
@@ -1574,7 +1556,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Bulk add guarantors to a loan
   app.post('/api/loans/:loanId/guarantors', isAuthenticated, async (req: any, res) => {
     try {
-      const loanId = parseInt(req.params.loanId);
+      const loanId = await storage.resolveLoanId(req.params.loanId);
       const { guarantors: guarantorList } = req.body;
 
       if (!Array.isArray(guarantorList) || guarantorList.length === 0) {
@@ -1625,7 +1607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/guarantors/loan/:loanId', isAuthenticated, async (req, res) => {
     try {
-      const loanId = parseInt(req.params.loanId);
+      const loanId = await storage.resolveLoanId(req.params.loanId);
       const guarantors = await storage.getGuarantorsByLoan(loanId);
       res.json(guarantors);
     } catch (error) {
@@ -1637,7 +1619,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Guarantor approval endpoints
   app.patch('/api/guarantors/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
-      const guarantorId = parseInt(req.params.id);
+      const guarantorId = await storage.resolveGuarantorId(req.params.id);
       const { comments } = req.body;
       const userId = getUserId(req)!;
 
@@ -1678,7 +1660,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/guarantors/:id/reject', isAuthenticated, async (req: any, res) => {
     try {
-      const guarantorId = parseInt(req.params.id);
+      const guarantorId = await storage.resolveGuarantorId(req.params.id);
       const { comments } = req.body;
       const userId = getUserId(req)!;
 
@@ -1745,7 +1727,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/guarantors/member/:memberId', isAuthenticated, async (req, res) => {
     try {
-      const memberId = parseInt(req.params.memberId);
+      const memberId = await storage.resolveMemberId(req.params.memberId);
       const guarantors = await storage.getGuarantorsByMember(memberId);
       res.json(guarantors);
     } catch (error) {
@@ -1756,7 +1738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/guarantors/pending/:memberId', isAuthenticated, async (req, res) => {
     try {
-      const memberId = parseInt(req.params.memberId);
+      const memberId = await storage.resolveMemberId(req.params.memberId);
       const pendingRequests = await storage.getPendingGuarantorRequests(memberId);
       res.json(pendingRequests);
     } catch (error) {
@@ -1767,7 +1749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/guarantors/:id/approve', isAuthenticated, async (req, res) => {
     try {
-      const guarantorId = parseInt(req.params.id);
+      const guarantorId = await storage.resolveGuarantorId(req.params.id);
       const { comments } = req.body;
       const guarantor = await storage.updateGuarantorStatus(guarantorId, 'approved', comments);
       res.json(guarantor);
@@ -1779,7 +1761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/guarantors/:id/reject', isAuthenticated, async (req, res) => {
     try {
-      const guarantorId = parseInt(req.params.id);
+      const guarantorId = await storage.resolveGuarantorId(req.params.id);
       const { comments } = req.body;
       const guarantor = await storage.updateGuarantorStatus(guarantorId, 'rejected', comments);
       res.json(guarantor);
@@ -1963,7 +1945,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Member Role Management API routes
   app.get('/api/members/:id/roles', isAuthenticated, requirePermission('read', 'members'), async (req: AuthRequest, res) => {
     try {
-      const memberId = parseInt(req.params.id);
+      const memberId = await storage.resolveMemberId(req.params.id);
       
       const [member] = await db
         .select({
@@ -2138,7 +2120,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { paymentDate, amount } = req.body;
       
       const result = await storage.calculateEarlyPaymentSavings(
-        parseInt(id), 
+        await storage.resolveLoanId(id), 
         new Date(paymentDate), 
         parseFloat(amount)
       );

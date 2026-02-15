@@ -277,6 +277,12 @@ export interface IStorage {
   processInterestPayment(id: number, processedBy: string): Promise<InterestPayment>;
 
   generateInterestReport(financialYearId: number): Promise<any>;
+
+  resolveMemberId(idOrUuid: string): Promise<number>;
+  resolveLoanId(idOrUuid: string): Promise<number>;
+  resolveSavingsAccountId(idOrUuid: string): Promise<number>;
+  resolveTransactionId(idOrUuid: string): Promise<number>;
+  resolveGuarantorId(idOrUuid: string): Promise<number>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2463,6 +2469,50 @@ export class DatabaseStorage implements IStorage {
       calculations,
       payments,
     };
+  }
+  async resolveMemberId(idOrUuid: string): Promise<number> {
+    if (idOrUuid.includes('-')) {
+      const [member] = await db.select({ id: members.id }).from(members).where(eq(members.uuid, idOrUuid));
+      if (!member) throw new Error('Member not found');
+      return member.id;
+    }
+    return parseInt(idOrUuid);
+  }
+
+  async resolveLoanId(idOrUuid: string): Promise<number> {
+    if (idOrUuid.includes('-')) {
+      const [loan] = await db.select({ id: loans.id }).from(loans).where(eq(loans.uuid, idOrUuid));
+      if (!loan) throw new Error('Loan not found');
+      return loan.id;
+    }
+    return parseInt(idOrUuid);
+  }
+
+  async resolveSavingsAccountId(idOrUuid: string): Promise<number> {
+    if (idOrUuid.includes('-')) {
+      const [account] = await db.select({ id: savingsAccounts.id }).from(savingsAccounts).where(eq(savingsAccounts.uuid, idOrUuid));
+      if (!account) throw new Error('Savings account not found');
+      return account.id;
+    }
+    return parseInt(idOrUuid);
+  }
+
+  async resolveTransactionId(idOrUuid: string): Promise<number> {
+    if (idOrUuid.includes('-')) {
+      const [txn] = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.uuid, idOrUuid));
+      if (!txn) throw new Error('Transaction not found');
+      return txn.id;
+    }
+    return parseInt(idOrUuid);
+  }
+
+  async resolveGuarantorId(idOrUuid: string): Promise<number> {
+    if (idOrUuid.includes('-')) {
+      const [g] = await db.select({ id: guarantors.id }).from(guarantors).where(eq(guarantors.uuid, idOrUuid));
+      if (!g) throw new Error('Guarantor not found');
+      return g.id;
+    }
+    return parseInt(idOrUuid);
   }
 }
 
