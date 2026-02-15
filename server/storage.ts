@@ -294,30 +294,6 @@ export class DatabaseStorage implements IStorage {
       })
       .returning();
     
-    // Auto-create member profile if it doesn't exist
-    try {
-      const existingMember = await this.getMemberByUserId(user.id);
-      if (!existingMember) {
-        // Generate member number
-        const memberCount = await db.$count(members);
-        const memberNumber = `BCS${String(memberCount + 1).padStart(6, '0')}`;
-        
-        await this.createMember({
-          userId: user.id,
-          memberNumber,
-          fullName: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || 'New Member',
-          idNumber: `ID${Date.now()}`, // Temporary ID until member completes registration
-          phoneNumber: userData.email || '',
-          monthlySavings: '0',
-          shareContribution: '20000',
-          numberOfShares: 4,
-          role: 'member', // Default role
-        });
-      }
-    } catch (error) {
-      console.error('Error auto-creating member profile:', error);
-    }
-    
     return user;
   }
 
