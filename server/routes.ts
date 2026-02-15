@@ -2430,7 +2430,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/loan-types', isAuthenticated, requirePermission('create', 'system-settings'), async (req: AuthRequest, res) => {
     try {
-      const loanType = await storage.createLoanType(req.body);
+      const body = { ...req.body };
+      if (body.interestCalculationMethod && !body.interestType) {
+        body.interestType = body.interestCalculationMethod;
+        delete body.interestCalculationMethod;
+      }
+      if (body.minTermMonths !== undefined && body.minTerm === undefined) {
+        body.minTerm = body.minTermMonths;
+        delete body.minTermMonths;
+      }
+      if (body.maxTermMonths !== undefined && body.maxTerm === undefined) {
+        body.maxTerm = body.maxTermMonths;
+        delete body.maxTermMonths;
+      }
+      if (body.requiresGuarantors !== undefined && body.requiresGuarantor === undefined) {
+        body.requiresGuarantor = body.requiresGuarantors;
+        delete body.requiresGuarantors;
+      }
+      if (body.maxGuarantors !== undefined) {
+        delete body.maxGuarantors;
+      }
+      if (body.processingFeePercentage !== undefined && body.processingFee === undefined) {
+        body.processingFee = body.processingFeePercentage;
+        delete body.processingFeePercentage;
+      }
+      const loanType = await storage.createLoanType(body);
       
       // Create audit log
       await storage.createAuditLog({
@@ -2451,7 +2475,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/loan-types/:id', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
     try {
       const id = parseInt(req.params.id);
-      const loanType = await storage.updateLoanType(id, req.body);
+      const body = { ...req.body };
+      if (body.interestCalculationMethod && !body.interestType) {
+        body.interestType = body.interestCalculationMethod;
+        delete body.interestCalculationMethod;
+      }
+      if (body.minTermMonths !== undefined && body.minTerm === undefined) {
+        body.minTerm = body.minTermMonths;
+        delete body.minTermMonths;
+      }
+      if (body.maxTermMonths !== undefined && body.maxTerm === undefined) {
+        body.maxTerm = body.maxTermMonths;
+        delete body.maxTermMonths;
+      }
+      if (body.requiresGuarantors !== undefined && body.requiresGuarantor === undefined) {
+        body.requiresGuarantor = body.requiresGuarantors;
+        delete body.requiresGuarantors;
+      }
+      if (body.maxGuarantors !== undefined) {
+        delete body.maxGuarantors;
+      }
+      if (body.processingFeePercentage !== undefined && body.processingFee === undefined) {
+        body.processingFee = body.processingFeePercentage;
+        delete body.processingFeePercentage;
+      }
+      const loanType = await storage.updateLoanType(id, body);
       
       // Create audit log
       await storage.createAuditLog({
