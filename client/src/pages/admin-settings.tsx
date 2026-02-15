@@ -99,6 +99,10 @@ const adminSettingsSchema = z.object({
   memberNotifications: z.boolean().default(true),
   loanNotifications: z.boolean().default(true),
   
+  // Membership Configuration
+  entranceFee: z.number().min(0).default(15000),
+  sharePrice: z.number().min(0).default(5000),
+
   // Business Rules
   minimumSavingsBalance: z.number().min(0).default(10000),
   loanToSavingsRatio: z.number().min(1).max(10).default(2.5),
@@ -141,65 +145,47 @@ export default function AdminSettingsPage() {
   const { hasPermission } = useRBAC();
   const [activeTab, setActiveTab] = useState<'system' | 'security' | 'email' | 'notifications' | 'business' | 'maintenance' | 'loantypes' | 'users' | 'preferences' | 'rbac' | 'roleassign'>('system');
 
-  // Load system settings
-  const { data: systemSettings, isLoading } = useQuery({
+  const settingsDefaults: AdminSettingsData = {
+    maintenanceMode: false,
+    systemAnnouncement: "",
+    maxLoanAmount: 5000000,
+    maxLoanTerm: 24,
+    defaultInterestRate: 12,
+    sessionTimeout: 240,
+    maxLoginAttempts: 5,
+    passwordComplexity: "medium",
+    twoFactorRequired: false,
+    emailEnabled: true,
+    smtpServer: "",
+    smtpPort: 587,
+    emailFromAddress: "",
+    systemNotifications: true,
+    memberNotifications: true,
+    loanNotifications: true,
+    entranceFee: 15000,
+    sharePrice: 5000,
+    minimumSavingsBalance: 10000,
+    loanToSavingsRatio: 2.5,
+    membershipDurationMonths: 3,
+    autoBackupEnabled: true,
+    backupFrequency: "daily",
+    logRetentionDays: 90,
+  };
+
+  // Load system settings from API
+  const { data: systemSettings, isLoading } = useQuery<AdminSettingsData>({
     queryKey: ['/api/admin/settings'],
-    // In a real app, you'd fetch from API
     queryFn: async () => {
-      // Mock data for demonstration
-      return {
-        maintenanceMode: false,
-        systemAnnouncement: "",
-        maxLoanAmount: 5000000,
-        maxLoanTerm: 24,
-        defaultInterestRate: 12,
-        sessionTimeout: 240,
-        maxLoginAttempts: 5,
-        passwordComplexity: "medium",
-        twoFactorRequired: false,
-        emailEnabled: true,
-        smtpServer: "smtp.gmail.com",
-        smtpPort: 587,
-        emailFromAddress: "noreply@biasharasacco.com",
-        systemNotifications: true,
-        memberNotifications: true,
-        loanNotifications: true,
-        minimumSavingsBalance: 10000,
-        loanToSavingsRatio: 2.5,
-        membershipDurationMonths: 3,
-        autoBackupEnabled: true,
-        backupFrequency: "daily",
-        logRetentionDays: 90,
-      };
+      const response = await fetch('/api/admin/settings');
+      if (!response.ok) return settingsDefaults;
+      const data = await response.json();
+      return { ...settingsDefaults, ...data };
     },
   });
 
   const form = useForm<AdminSettingsData>({
     resolver: zodResolver(adminSettingsSchema),
-    defaultValues: systemSettings || {
-      maintenanceMode: false,
-      systemAnnouncement: "",
-      maxLoanAmount: 5000000,
-      maxLoanTerm: 24,
-      defaultInterestRate: 12,
-      sessionTimeout: 240,
-      maxLoginAttempts: 5,
-      passwordComplexity: "medium",
-      twoFactorRequired: false,
-      emailEnabled: true,
-      smtpServer: "",
-      smtpPort: 587,
-      emailFromAddress: "",
-      systemNotifications: true,
-      memberNotifications: true,
-      loanNotifications: true,
-      minimumSavingsBalance: 10000,
-      loanToSavingsRatio: 2.5,
-      membershipDurationMonths: 3,
-      autoBackupEnabled: true,
-      backupFrequency: "daily",
-      logRetentionDays: 90,
-    },
+    defaultValues: systemSettings || settingsDefaults,
   });
 
   const updateSettingsMutation = useMutation({
@@ -586,6 +572,62 @@ export default function AdminSettingsPage() {
                           </FormItem>
                         )}
                       />
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Membership Configuration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="entranceFee"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Entrance Fee (UGX)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                One-time fee charged when a new member joins the SACCO
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="sharePrice"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Share Price (UGX)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Price per share for share capital contribution
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </CardContent>
                   </Card>
 
