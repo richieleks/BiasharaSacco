@@ -16,6 +16,7 @@ import {
   notifications,
   loanTypes,
   loanTerms,
+  systemSettings,
   type User,
   type UpsertUser,
   type Member,
@@ -62,6 +63,7 @@ import {
   type InsertPermission,
   type RolePermission,
   type InsertRolePermission,
+  type SystemSetting,
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
@@ -283,6 +285,11 @@ export interface IStorage {
   resolveSavingsAccountId(idOrUuid: string): Promise<number>;
   resolveTransactionId(idOrUuid: string): Promise<number>;
   resolveGuarantorId(idOrUuid: string): Promise<number>;
+
+  // System Settings operations
+  getSystemSetting(key: string): Promise<SystemSetting | undefined>;
+  getAllSystemSettings(): Promise<SystemSetting[]>;
+  upsertSystemSetting(key: string, value: string, type?: string, description?: string, updatedBy?: string): Promise<SystemSetting>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -2553,6 +2560,31 @@ export class DatabaseStorage implements IStorage {
       return g.id;
     }
     return parseInt(idOrUuid);
+  }
+
+  async getSystemSetting(key: string): Promise<SystemSetting | undefined> {
+    const [setting] = await db.select().from(systemSettings).where(eq(systemSettings.settingKey, key));
+    return setting || undefined;
+  }
+
+  async getAllSystemSettings(): Promise<SystemSetting[]> {
+    return await db.select().from(systemSettings);
+  }
+
+  async upsertSystemSetting(key: string, value: string, type?: string, description?: string, updatedBy?: string): Promise<SystemSetting> {
+    const existing = await this.getSystemSetting(key);
+    if (existing) {
+      const [updated] = await db.update(systemSettings)
+        .set({ settingValue: value, settingType: type || existing.settingType, description: description || existing.description, updatedBy: updatedBy || existing.updatedBy, updatedAt: new Date() })
+        .where(eq(systemSettings.settingKey, key))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(systemSettings)
+        .values({ settingKey: key, settingValue: value, settingType: type || 'string', description, updatedBy })
+        .returning();
+      return created;
+    }
   }
 }
 

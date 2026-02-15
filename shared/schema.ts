@@ -793,6 +793,25 @@ export const loanTermsRelations = relations(loanTerms, ({ one }) => ({
   }),
 }));
 
+// System Settings table for persisting configuration
+export const systemSettings = pgTable("system_settings", {
+  id: serial("id").primaryKey(),
+  settingKey: varchar("setting_key").unique().notNull(),
+  settingValue: text("setting_value").notNull(),
+  settingType: varchar("setting_type", { enum: ["string", "number", "boolean", "json"] }).default("string"),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  updatedBy: varchar("updated_by").references(() => users.id),
+});
+
+export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type SystemSetting = typeof systemSettings.$inferSelect;
+export type InsertSystemSetting = typeof systemSettings.$inferInsert;
+
 // Insert schemas for loan types and terms
 export const insertLoanTypeSchema = createInsertSchema(loanTypes).omit({
   id: true,
