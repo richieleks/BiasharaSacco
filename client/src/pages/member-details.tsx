@@ -44,6 +44,7 @@ const updateMemberSchema = z.object({
   nextOfKinName: z.string().optional(),
   nextOfKinPhone: z.string().optional(),
   status: z.enum(["pending", "active", "inactive", "suspended", "rejected"]).optional(),
+  joinDate: z.string().optional(),
 });
 
 type UpdateMemberData = z.infer<typeof updateMemberSchema>;
@@ -127,6 +128,7 @@ export default function MemberDetails() {
       nextOfKinName: member.nextOfKinName || "",
       nextOfKinPhone: member.nextOfKinPhone || "",
       status: member.status || "active",
+      joinDate: member.joinDate ? new Date(member.joinDate).toISOString().split('T')[0] : "",
     });
   }
 
@@ -364,6 +366,20 @@ export default function MemberDetails() {
                           <FormLabel>Address</FormLabel>
                           <FormControl>
                             <Input {...field} value={field.value || ""} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="joinDate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Join Date</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} value={field.value || ""} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
