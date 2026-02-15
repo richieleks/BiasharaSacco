@@ -11,10 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { Textarea } from "@/components/ui/textarea";
 import { type Member, type MemberWithDetails } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, Edit, User, Phone, Mail, MapPin, Calendar, CreditCard, Building, Users, Eye, FileText, Calculator } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { ArrowLeft, Edit, User, Phone, Mail, MapPin, Calendar, CreditCard, Building, Users, Eye, FileText, Calculator, DollarSign, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import { z } from "zod";
 
@@ -49,12 +51,22 @@ const updateMemberSchema = z.object({
 
 type UpdateMemberData = z.infer<typeof updateMemberSchema>;
 
+const shareCapitalSchema = z.object({
+  amount: z.string().min(1, "Amount is required").refine(val => parseFloat(val) > 0, "Amount must be greater than zero"),
+  description: z.string().optional(),
+});
+
+type ShareCapitalData = z.infer<typeof shareCapitalSchema>;
+
 export default function MemberDetails() {
   const [match, params] = useRoute("/members/:id");
   const [, setLocation] = useLocation();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isShareCapitalDialogOpen, setIsShareCapitalDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
 
   const memberId = params?.id;
 
@@ -158,6 +170,36 @@ export default function MemberDetails() {
   const handleUpdateMember = (data: UpdateMemberData) => {
     updateMemberMutation.mutate(data);
   };
+
+  const shareCapitalForm = useForm<ShareCapitalData>({
+    resolver: zodResolver(shareCapitalSchema),
+    defaultValues: { amount: "", description: "" },
+  });
+
+  const shareCapitalMutation = useMutation({
+    mutationFn: async (data: ShareCapitalData) => {
+      const response = await apiRequest("POST", `/api/members/${memberId}/share-capital`, data);
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({
+        title: "Share Capital Posted",
+        description: data.message,
+      });
+      setIsShareCapitalDialogOpen(false);
+      shareCapitalForm.reset({ amount: "", description: "" });
+      queryClient.invalidateQueries({ queryKey: ['/api/members', memberId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/transactions"] });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to post share capital",
+        variant: "destructive",
+      });
+    },
+  });
 
   if (!match || !memberId) {
     setLocation("/members");
@@ -772,22 +814,70 @@ export default function MemberDetails() {
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Share Contribution</p>
-                  <p className="font-medium">
-                    {member.shareContribution ? `UGX ${parseFloat(member.shareContribution).toLocaleString()}` : 'Not set'}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Number of Shares</p>
-                  <p className="font-medium">{member.numberOfShares || 0}</p>
-                </div>
-                <div>
                   <p className="text-sm text-muted-foreground">Bank Account Number</p>
                   <p className="font-medium">{member.accountNumber || 'Not provided'}</p>
                 </div>
                 <div className="col-span-2">
                   <p className="text-sm text-muted-foreground">Bank Branch</p>
                   <p className="font-medium">{member.branch || 'Not provided'}</p>
+                </div>
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Share Capital Section */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Share Capital
+                </h4>
+                {isAdmin && (
+                  <Button
+                    size="sm"
+                    onClick={() => setIsShareCapitalDialogOpen(true)}
+                    className="h-8"
+                  >
+                    <DollarSign className="h-3.5 w-3.5 mr-1" />
+                    Post Share Capital
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Contribution Per Share</p>
+                  <p className="font-medium">
+                    UGX {parseFloat(member.shareContribution || "20000").toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Number of Shares</p>
+                  <p className="font-medium">{member.numberOfShares || 4}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Expected Total</p>
+                  <p className="font-medium">
+                    UGX {(parseFloat(member.shareContribution || "20000") * (member.numberOfShares || 4)).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Amount Paid</p>
+                  <p className="font-medium text-green-600">
+                    UGX {parseFloat(member.shareCapital || "0").toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Balance Remaining</p>
+                  <p className="font-medium text-orange-600">
+                    UGX {Math.max(0, (parseFloat(member.shareContribution || "20000") * (member.numberOfShares || 4)) - parseFloat(member.shareCapital || "0")).toLocaleString()}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <Badge className={member.isPaidUp ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                    {member.isPaidUp ? 'Fully Paid' : 'Pending'}
+                  </Badge>
                 </div>
               </div>
             </div>
@@ -1026,6 +1116,66 @@ export default function MemberDetails() {
           </CardContent>
         </Card>
       )}
+
+      {/* Share Capital Posting Dialog */}
+      <Dialog open={isShareCapitalDialogOpen} onOpenChange={setIsShareCapitalDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Post Share Capital
+            </DialogTitle>
+            <DialogDescription>
+              Post a share capital payment for {member?.fullName || 'this member'}.
+              {member && (
+                <span className="block mt-2 text-xs">
+                  Expected: UGX {(parseFloat(member.shareContribution || "20000") * (member.numberOfShares || 4)).toLocaleString()} 
+                  {" | "}Paid: UGX {parseFloat(member.shareCapital || "0").toLocaleString()}
+                  {" | "}Remaining: UGX {Math.max(0, (parseFloat(member.shareContribution || "20000") * (member.numberOfShares || 4)) - parseFloat(member.shareCapital || "0")).toLocaleString()}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...shareCapitalForm}>
+            <form onSubmit={shareCapitalForm.handleSubmit((data) => shareCapitalMutation.mutate(data))} className="space-y-4">
+              <FormField
+                control={shareCapitalForm.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount (UGX)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="0.01" min="0" placeholder="Enter amount" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={shareCapitalForm.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description (Optional)</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="e.g., Monthly share capital installment" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => setIsShareCapitalDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={shareCapitalMutation.isPending}>
+                  {shareCapitalMutation.isPending ? "Posting..." : "Post Payment"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

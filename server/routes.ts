@@ -882,6 +882,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Post share capital for a member (admin only)
+  app.post('/api/members/:id/share-capital', isAuthenticated, async (req: any, res) => {
+    try {
+      const memberId = await storage.resolveMemberId(req.params.id);
+      const { amount, description } = req.body;
+
+      const requestingUser = await storage.getUser(getUserId(req)!);
+      if (!requestingUser || requestingUser.role !== 'admin') {
+        return res.status(403).json({ message: "Only administrators can post share capital" });
+      }
+
+      if (!amount || parseFloat(amount) <= 0) {
+        return res.status(400).json({ message: "Amount must be greater than zero" });
+      }
+
+      const member = await storage.getMember(memberId);
+      if (!member) {
+        return res.status(404).json({ message: "Member not found" });
+      }
+
+      const paymentAmount = parseFloat(amount);
+      const currentShareCapital = parseFloat(member.shareCapital || "0");
+      const newShareCapital = currentShareCapital + paymentAmount;
+      const expectedTotal = parseFloat(member.shareContribution || "20000") * (member.numberOfShares || 4);
+      const isPaidUp = newShareCapital >= expectedTotal;
+
+      const referenceNumber = `SHR${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+      const transaction = await storage.createTransaction({
+        memberId,
+        transactionType: 'share_capital',
+        amount: amount.toString(),
+        referenceNumber,
+        description: description || 'Share capital payment',
+        status: 'completed',
+        processedBy: getUserId(req),
+      });
+
+      await storage.updateMember(memberId, {
+        shareCapital: newShareCapital.toString(),
+        isPaidUp,
+        isFullyPaidShareholder: isPaidUp,
+      });
+
+      res.json({
+        transaction,
+        shareCapital: newShareCapital,
+        isPaidUp,
+        expectedTotal,
+        message: isPaidUp
+          ? "Share capital posted. Member is now fully paid up."
+          : `Share capital posted. UGX ${(expectedTotal - newShareCapital).toLocaleString()} remaining.`,
+      });
+    } catch (error) {
+      console.error("Error posting share capital:", error);
+      res.status(500).json({ message: "Failed to post share capital" });
+    }
+  });
+
   // Update member details
   app.patch('/api/members/:id', isAuthenticated, async (req: any, res) => {
     try {
