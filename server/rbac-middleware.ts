@@ -39,6 +39,18 @@ export function requirePermission(action: string, resource: string) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      const user = await storage.getUser(userId);
+      if (user?.role === 'admin') {
+        req.member = {
+          id: 0,
+          roles: ['admin' as UserRole],
+          userId: userId,
+          memberNumber: 'ADMIN',
+          status: 'active',
+        };
+        return next();
+      }
+
       // Get member data to check role
       const member = await storage.getMemberByUserId(userId);
       if (!member) {
