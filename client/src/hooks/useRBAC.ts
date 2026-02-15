@@ -18,8 +18,6 @@ export function useRBAC() {
     enabled: !!user && !!user.member,
   });
   
-  // Get user roles from member data - now supports multiple roles
-  // Handle both the old 'role' field and new 'roles' array
   let userRoles: UserRole[] = ['member'];
   
   if (user?.member) {
@@ -29,6 +27,8 @@ export function useRBAC() {
     } else if (member.role) {
       userRoles = [member.role as UserRole];
     }
+  } else if (user?.role === 'admin' || (user as any)?.isAdmin) {
+    userRoles = ['admin'];
   }
   
   // Get highest role for backward compatibility
