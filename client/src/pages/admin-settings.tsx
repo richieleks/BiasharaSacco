@@ -1208,7 +1208,7 @@ export default function AdminSettingsPage() {
                 <UserManagementTab />
               )}
 
-              {!['users', 'rbac', 'roleassign', 'preferences'].includes(activeTab) && (
+              {!['users', 'rbac', 'roleassign', 'preferences', 'loantypes'].includes(activeTab) && (
                 <div className="flex justify-end gap-4 pt-4 border-t">
                   <Button variant="outline" onClick={() => navigate('/')}>
                     Cancel
@@ -2316,7 +2316,7 @@ function LoanTypeFormDialog() {
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+          <form onSubmit={(e) => { e.stopPropagation(); form.handleSubmit(handleSubmit)(e); }} className="space-y-6">
             {/* Basic Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
