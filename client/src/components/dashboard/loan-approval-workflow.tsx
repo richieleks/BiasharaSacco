@@ -30,7 +30,7 @@ export default function LoanApprovalWorkflow() {
   const { user } = useAuth();
 
   // Determine which stages the user can access using multi-role support
-  const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : []);
+  const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : (user?.role ? [user.role] : []));
   // Handle legacy "teller" role by mapping to "treasurer"
   const mappedRoles = userRoles.map((role: any) => role === 'teller' ? 'treasurer' : role);
   const canAccessTreasurer = hasAnyRole(mappedRoles as any, ['treasurer', 'admin']);

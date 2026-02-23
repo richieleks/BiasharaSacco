@@ -22,7 +22,7 @@ export default function MemberApprovals() {
   const { user } = useAuth();
 
   // Check if user has committee or admin role using multi-role support
-  const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : []);
+  const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : (user?.role ? [user.role] : []));
   const hasApprovalAccess = hasAnyRole(userRoles, ['committee', 'admin']);
 
   const { data: pendingMembers, isLoading } = useQuery<MemberWithDetails[]>({
