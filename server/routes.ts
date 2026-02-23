@@ -612,14 +612,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Determine if this is an admin adding a new member or a user self-registering
+      // Determine if this is a staff member adding a new member or a user self-registering
       const currentUser = await storage.getUser(currentUserId);
       const currentMember = await storage.getMemberByUserId(currentUserId);
-      const isAdmin = currentUser?.role === 'admin' || (currentMember && (currentMember.role === 'admin' || currentMember.role === 'manager' || currentMember.role === 'committee'));
+      const currentRoles = currentMember ? await storage.getMemberRoles(currentMember.id) : (currentUser?.role ? [currentUser.role] : []);
+      const isStaff = currentUser?.role === 'admin' || currentRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      const canAutoApprove = currentUser?.role === 'admin';
 
       let newUserId = currentUserId;
 
-      if (isAdmin) {
+      if (isStaff) {
         // Admin is adding a new member - create a user account for them
         const username = req.body.username || req.body.idNumber.toLowerCase().replace(/[^a-z0-9]/g, '');
         const existingUser = await storage.getUserByUsername(username);
@@ -663,11 +665,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...req.body,
         memberNumber,
         userId: newUserId,
-        status: isAdmin ? 'active' : 'pending',
+        status: canAutoApprove ? 'active' : 'pending',
         joinDate: new Date(),
-        approvedBy: isAdmin ? currentUserId : undefined,
-        approvedAt: isAdmin ? new Date() : undefined,
-        membershipStartDate: isAdmin ? new Date() : undefined,
+        approvedBy: canAutoApprove ? currentUserId : undefined,
+        approvedAt: canAutoApprove ? new Date() : undefined,
+        membershipStartDate: canAutoApprove ? new Date() : undefined,
       };
 
       // Remove fields that aren't part of the member schema
