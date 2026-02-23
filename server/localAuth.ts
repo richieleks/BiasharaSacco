@@ -33,6 +33,17 @@ export async function setupLocalAuth() {
             return done(null, false, { message: "Invalid username or password" });
           }
 
+          // Check if user has a member profile that requires approval
+          const staffRoles = ['admin', 'manager', 'committee', 'teller', 'treasurer'];
+          const isStaffUser = user.role && staffRoles.includes(user.role);
+          
+          if (!isStaffUser) {
+            const member = await storage.getMemberByUserId(user.id);
+            if (member && member.status !== 'active') {
+              return done(null, false, { message: "Your account is pending approval. Please contact the SACCO administrator." });
+            }
+          }
+
           // Return user without password
           const { password: _, ...userWithoutPassword } = user;
           return done(null, userWithoutPassword);
