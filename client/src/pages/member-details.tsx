@@ -67,6 +67,7 @@ export default function MemberDetails() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const isStaff = ['admin', 'manager', 'committee', 'teller', 'treasurer'].includes(user?.role || '');
 
   const memberId = params?.id;
 
@@ -1107,7 +1108,7 @@ export default function MemberDetails() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setLocation(`/loans?loanId=${loan.uuid}`)}
+                        onClick={() => setLocation(isStaff ? `/loans?loanId=${loan.uuid}` : `/my-loans?loanId=${loan.uuid}`)}
                         className="text-xs"
                       >
                         <Eye className="mr-1 h-3 w-3" />
