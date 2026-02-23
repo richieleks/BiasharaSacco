@@ -43,6 +43,8 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     { action: 'read', resource: 'interest-calculations' },
     { action: 'create', resource: 'interest-calculations' },
     { action: 'update', resource: 'interest-calculations' },
+    { action: 'read', resource: 'share-capital' },
+    { action: 'create', resource: 'share-capital' },
   ],
   
   manager: [
@@ -200,6 +202,7 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Loan Workflow', path: '/loan-workflow', icon: 'GitBranch', group: 'Finance', permission: { action: 'approve', resource: 'loans' } },
   { name: 'Transactions', path: '/transactions', icon: 'Receipt', group: 'Finance', permission: { action: 'read', resource: 'transactions' } },
   { name: 'My Transactions', path: '/my-transactions', icon: 'Receipt', group: 'Finance', permission: { action: 'read', resource: 'personal-transactions' } },
+  { name: 'Share Capital', path: '/share-capital', icon: 'ArrowUpRight', group: 'Finance', permission: { action: 'read', resource: 'share-capital' } },
   { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck', group: 'Finance', permission: { action: 'read', resource: 'guarantors' } },
   { name: 'Interest Rates', path: '/interest-rates', icon: 'Percent', group: 'Finance', permission: { action: 'read', resource: 'interest-rates' } },
   { name: 'Interest Calculations', path: '/interest-calculations', icon: 'Calculator', group: 'Finance', permission: { action: 'read', resource: 'interest-calculations' } },

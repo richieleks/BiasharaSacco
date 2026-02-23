@@ -18,6 +18,7 @@ import Savings from "@/pages/savings";
 import Loans from "@/pages/loans";
 
 import Transactions from "@/pages/transactions";
+import ShareCapital from "@/pages/share-capital";
 import Reports from "@/pages/reports";
 import Guarantors from "@/pages/guarantors";
 import DataImport from "@/pages/data-import";
@@ -198,6 +199,11 @@ function Router() {
             <Route path="/my-transactions">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'personal-transactions' }}>
                 <Transactions />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/share-capital">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'share-capital' }}>
+                <ShareCapital />
               </ProtectedRoute>
             </Route>
             <Route path="/guarantors">
