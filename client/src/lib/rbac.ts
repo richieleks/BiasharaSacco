@@ -72,15 +72,22 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
   committee: [
     { action: 'read', resource: 'dashboard' },
     { action: 'read', resource: 'members' },
+    { action: 'create', resource: 'members' },
+    { action: 'update', resource: 'members' },
     { action: 'approve', resource: 'members' },
+    { action: 'reject', resource: 'members' },
     { action: 'read', resource: 'loans' },
     { action: 'approve', resource: 'loans' },
     { action: 'reject', resource: 'loans' },
     { action: 'read', resource: 'transactions' },
+    { action: 'create', resource: 'transactions' },
     { action: 'read', resource: 'savings' },
+    { action: 'create', resource: 'savings' },
+    { action: 'read', resource: 'reports' },
     { action: 'read', resource: 'guarantors' },
     { action: 'approve', resource: 'guarantors' },
     { action: 'read', resource: 'notifications' },
+    { action: 'read', resource: 'interest-calculations' },
   ],
 
   teller: [
@@ -156,6 +163,8 @@ export const DASHBOARD_COMPONENTS: Record<UserRole, string[]> = {
   ],
   committee: [
     'metrics-grid',
+    'recent-transactions',
+    'quick-actions',
     'pending-approvals',
     'loan-approval-workflow',
     'member-approvals',
