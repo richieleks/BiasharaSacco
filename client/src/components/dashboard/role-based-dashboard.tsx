@@ -118,7 +118,8 @@ function MemberDashboard() {
   });
 
   const { data: memberTransactions } = useQuery<any[]>({
-    queryKey: ['/api/transactions'],
+    queryKey: ['/api/transactions/my-transactions'],
+    enabled: !!memberId,
     refetchInterval: 30000,
   });
 
