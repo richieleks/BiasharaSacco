@@ -385,43 +385,52 @@ export default function Loans() {
       </div>
 
       {/* Active Loans Summary */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="section-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-500 text-sm font-medium">Total Active Loans</p>
-              <p className="text-2xl font-semibold text-slate-900 mt-1">0</p>
+      {(() => {
+        const activeLoansData = (allLoans || []).filter((l: any) => ['approved', 'active', 'disbursed'].includes(l.status));
+        const totalOutstanding = activeLoansData.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
+        const defaultedCount = (allLoans || []).filter((l: any) => l.status === 'defaulted').length;
+        const totalLoansCount = (allLoans || []).length;
+        const defaultRate = totalLoansCount > 0 ? ((defaultedCount / totalLoansCount) * 100).toFixed(1) : '0';
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="section-card p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-slate-500 text-sm font-medium">Total Active Loans</p>
+                  <p className="text-2xl font-semibold text-slate-900 mt-1">{activeLoansData.length}</p>
+                </div>
+                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <HandCoins className="text-blue-600 text-xl" />
+                </div>
+              </div>
             </div>
-            <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
-              <HandCoins className="text-blue-600 text-xl" />
-            </div>
-          </div>
-        </div>
 
-        <div className="section-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-500 text-sm font-medium">Outstanding Amount</p>
-              <p className="text-2xl font-semibold text-slate-900 mt-1">UGX 0</p>
+            <div className="section-card p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-slate-500 text-sm font-medium">Outstanding Amount</p>
+                  <p className="text-2xl font-semibold text-slate-900 mt-1">UGX {totalOutstanding.toLocaleString()}</p>
+                </div>
+                <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center">
+                  <DollarSign className="text-emerald-600 text-xl" />
+                </div>
+              </div>
             </div>
-            <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center">
-              <DollarSign className="text-emerald-600 text-xl" />
-            </div>
-          </div>
-        </div>
 
-        <div className="section-card p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-slate-500 text-sm font-medium">Default Rate</p>
-              <p className="text-2xl font-semibold text-slate-900 mt-1">0%</p>
-            </div>
-            <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
-              <XCircle className="text-red-600 text-xl" />
+            <div className="section-card p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-slate-500 text-sm font-medium">Default Rate</p>
+                  <p className="text-2xl font-semibold text-slate-900 mt-1">{defaultRate}%</p>
+                </div>
+                <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
+                  <XCircle className="text-red-600 text-xl" />
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
     </div>
   );
 }

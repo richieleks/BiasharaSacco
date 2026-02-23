@@ -1084,7 +1084,7 @@ export class DatabaseStorage implements IStorage {
     const [loansTotal] = await db
       .select({ total: sql<string>`COALESCE(sum(outstanding_balance), '0')` })
       .from(loans)
-      .where(eq(loans.status, 'approved'));
+      .where(sql`${loans.status} IN ('approved', 'active', 'disbursed')`);
 
     const [pendingLoansCount] = await db
       .select({ count: sql<number>`count(*)` })
@@ -1112,7 +1112,7 @@ export class DatabaseStorage implements IStorage {
     const [totalExpected] = await db
       .select({ total: sql<string>`COALESCE(sum(principal_amount), '0')` })
       .from(loans)
-      .where(sql`${loans.status} IN ('approved', 'completed')`);
+      .where(sql`${loans.status} IN ('approved', 'active', 'disbursed', 'completed')`);
 
     const repaid = parseFloat(totalRepayments?.total || '0');
     const expected = parseFloat(totalExpected?.total || '0');
