@@ -102,7 +102,7 @@ export const savingsAccounts = pgTable("savings_accounts", {
   accountNumber: varchar("account_number").unique().notNull(),
   accountType: varchar("account_type", { enum: ["regular", "fixed_deposit", "group"] }).default("regular"),
   balance: decimal("balance", { precision: 15, scale: 2 }).default("0.00"),
-  interestRate: decimal("interest_rate", { precision: 5, scale: 4 }).default("0.0500"),
+  interestRate: decimal("interest_rate", { precision: 5, scale: 4 }).default("0.0000"),
   status: varchar("status", { enum: ["active", "closed", "frozen"] }).default("active"),
   // Business rule compliance fields
   firstDepositDate: timestamp("first_deposit_date"),
