@@ -1,7 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
 
-export type UserRole = 'admin' | 'committee' | 'treasurer' | 'member';
+export type UserRole = 'admin' | 'manager' | 'committee' | 'teller' | 'treasurer' | 'member';
 
 export interface AuthRequest extends Request {
   user?: {
@@ -53,7 +53,20 @@ export function requirePermission(action: string, resource: string) {
 
       // Get member data to check role
       const member = await storage.getMemberByUserId(userId);
+      
       if (!member) {
+        const staffRoles: UserRole[] = ['manager', 'committee', 'teller', 'treasurer'];
+        const userRole = user?.role as UserRole;
+        if (userRole && staffRoles.includes(userRole)) {
+          req.member = {
+            id: 0,
+            roles: [userRole],
+            userId: userId,
+            memberNumber: userRole.toUpperCase(),
+            status: 'active',
+          };
+          return next();
+        }
         return res.status(403).json({ message: "Member profile not found" });
       }
 
@@ -120,12 +133,14 @@ export function filterDataByRole() {
       const member = await storage.getMemberByUserId(userId);
       
       if (!member) {
-        if (user?.role === 'admin') {
+        const staffRoles: UserRole[] = ['admin', 'manager', 'committee', 'teller', 'treasurer'];
+        const userRole = user?.role as UserRole;
+        if (userRole && staffRoles.includes(userRole)) {
           req.member = {
             id: 0,
-            roles: ['admin' as UserRole],
+            roles: [userRole],
             userId: userId,
-            memberNumber: 'ADMIN',
+            memberNumber: userRole.toUpperCase(),
             status: 'active',
           };
           return next();
@@ -197,14 +212,62 @@ function hasPermission(userRole: UserRole, action: string, resource: string): bo
     committee: [
       { action: 'read', resource: 'dashboard' },
       { action: 'read', resource: 'members' },
+      { action: 'create', resource: 'members' },
+      { action: 'update', resource: 'members' },
       { action: 'approve', resource: 'members' },
+      { action: 'reject', resource: 'members' },
       { action: 'read', resource: 'loans' },
       { action: 'approve', resource: 'loans' },
       { action: 'reject', resource: 'loans' },
       { action: 'read', resource: 'transactions' },
+      { action: 'create', resource: 'transactions' },
       { action: 'read', resource: 'savings' },
+      { action: 'create', resource: 'savings' },
+      { action: 'read', resource: 'reports' },
       { action: 'read', resource: 'guarantors' },
       { action: 'approve', resource: 'guarantors' },
+      { action: 'read', resource: 'interest-calculations' },
+    ],
+    
+    manager: [
+      { action: 'read', resource: 'dashboard' },
+      { action: 'read', resource: 'members' },
+      { action: 'create', resource: 'members' },
+      { action: 'update', resource: 'members' },
+      { action: 'approve', resource: 'members' },
+      { action: 'reject', resource: 'members' },
+      { action: 'read', resource: 'loans' },
+      { action: 'create', resource: 'loans' },
+      { action: 'approve', resource: 'loans' },
+      { action: 'reject', resource: 'loans' },
+      { action: 'read', resource: 'transactions' },
+      { action: 'create', resource: 'transactions' },
+      { action: 'read', resource: 'savings' },
+      { action: 'create', resource: 'savings' },
+      { action: 'read', resource: 'reports' },
+      { action: 'read', resource: 'guarantors' },
+      { action: 'create', resource: 'guarantors' },
+      { action: 'approve', resource: 'guarantors' },
+      { action: 'read', resource: 'system-settings' },
+      { action: 'read', resource: 'audit-logs' },
+      { action: 'read', resource: 'interest-calculations' },
+      { action: 'create', resource: 'interest-calculations' },
+    ],
+    
+    teller: [
+      { action: 'read', resource: 'dashboard' },
+      { action: 'read', resource: 'members' },
+      { action: 'create', resource: 'members' },
+      { action: 'update', resource: 'members' },
+      { action: 'read', resource: 'loans' },
+      { action: 'create', resource: 'loans' },
+      { action: 'approve', resource: 'loans' },
+      { action: 'read', resource: 'transactions' },
+      { action: 'create', resource: 'transactions' },
+      { action: 'read', resource: 'savings' },
+      { action: 'create', resource: 'savings' },
+      { action: 'read', resource: 'guarantors' },
+      { action: 'create', resource: 'guarantors' },
     ],
     
     treasurer: [

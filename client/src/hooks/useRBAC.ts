@@ -14,7 +14,7 @@ export function useRBAC() {
   
   const { data: dynamicPermissions = [] } = useQuery<any[]>({
     queryKey: ["/api/auth/permissions"],
-    enabled: !!user && !!user.member,
+    enabled: !!user,
   });
   
   let userRoles: UserRole[] = ['member'];

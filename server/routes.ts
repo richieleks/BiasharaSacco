@@ -92,14 +92,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle both Replit and local auth users
       const userId = getUserId(req)!;
       const member = await storage.getMemberByUserId(userId);
+      const user = await storage.getUser(userId);
       
-      if (!member) {
-        return res.json([]); // Return empty permissions if no member profile
+      // Get all roles for this member - also check user.role for staff without member profiles
+      let roleNames: string[];
+      if (member) {
+        const memberRoles = await storage.getMemberRoles(member.id);
+        roleNames = memberRoles.length > 0 ? memberRoles : ['member'];
+      } else if (user?.role) {
+        roleNames = [user.role];
+      } else {
+        return res.json([]);
       }
-      
-      // Get all roles for this member
-      const memberRoles = await storage.getMemberRoles(member.id);
-      const roleNames = memberRoles.length > 0 ? memberRoles : ['member'];
       
       // Get all permissions for all user's roles
       const allPermissions: any[] = [];
@@ -542,7 +546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Helper functions for role checking
   const isCommitteeOrAdmin = async (userId: string): Promise<boolean> => {
     const user = await storage.getUser(userId);
-    if (user?.role === 'admin') return true;
+    if (user?.role === 'admin' || user?.role === 'committee') return true;
     
     const member = await storage.getMemberByUserId(userId);
     if (!member) return false;
@@ -551,19 +555,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return roles.some(role => ['committee', 'admin'].includes(role));
   };
 
+  const isStaffUser = async (userId: string): Promise<boolean> => {
+    const user = await storage.getUser(userId);
+    if (user?.role && ['admin', 'manager', 'committee', 'teller', 'treasurer'].includes(user.role)) return true;
+    
+    const member = await storage.getMemberByUserId(userId);
+    if (!member) return false;
+    
+    const roles = await storage.getMemberRoles(member.id);
+    return roles.some(role => ['admin', 'manager', 'committee', 'teller', 'treasurer'].includes(role));
+  };
+
+  const getUserRoleNames = async (userId: string): Promise<string[]> => {
+    const user = await storage.getUser(userId);
+    const member = await storage.getMemberByUserId(userId);
+    
+    if (member) {
+      const roles = await storage.getMemberRoles(member.id);
+      if (roles.length > 0) return roles;
+    }
+    
+    if (user?.role) return [user.role];
+    return ['member'];
+  };
+
   const hasApprovalRole = async (userId: string, requiredRole: string): Promise<boolean> => {
     const user = await storage.getUser(userId);
     if (user?.role === 'admin') return true;
+    if (user?.role === requiredRole) return true;
     
     const member = await storage.getMemberByUserId(userId);
     if (!member) return false;
     
     const roles = await storage.getMemberRoles(member.id);
     
-    // Admin can perform any approval
     if (roles.includes('admin')) return true;
     
-    // Check specific role permissions
     if (requiredRole === 'teller' && roles.includes('teller')) return true;
     if (requiredRole === 'committee' && roles.includes('committee')) return true;
     if (requiredRole === 'manager' && roles.includes('manager')) return true;
@@ -851,13 +878,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Admin without member profile has full access
       const isUserAdmin = requestingUser?.role === 'admin';
 
-      // Get user's roles for permission checking
+      // Get user's roles for permission checking - also check user.role directly for staff without member profiles
       const roleNames = requestingMember ? await storage.getMemberRoles(requestingMember.id) : [];
+      const effectiveRoles = roleNames.length > 0 ? roleNames : (requestingUser?.role ? [requestingUser.role] : []);
 
       // Access control logic:
       // 1. Members can only view their own data
       // 2. Staff (teller, committee, manager, admin) can view any member data
-      const isStaff = isUserAdmin || roleNames.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      const isStaff = isUserAdmin || effectiveRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
       const isOwnRecord = requestingMember?.id === memberId;
 
       if (!isStaff && !isOwnRecord) {
@@ -874,7 +902,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isStaff && !isOwnRecord) {
         await storage.createAuditLog({
           userId,
-          memberId: requestingMember!.id,
+          memberId: requestingMember?.id || 0,
           action: 'view',
           resource: 'member',
           resourceId: memberId.toString(),
@@ -990,11 +1018,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestingMember = await storage.getMemberByUserId(getUserId(req)!);
       const isUpdatingAdmin = updatingUser?.role === 'admin';
 
-      // Get user's roles for permission checking
+      // Get user's roles for permission checking - also check user.role directly for staff without member profiles
       const roleNames = requestingMember ? await storage.getMemberRoles(requestingMember.id) : [];
+      const effectiveRoles = roleNames.length > 0 ? roleNames : (updatingUser?.role ? [updatingUser.role] : []);
 
       // Access control: members can only update their own data, staff can update any
-      const isStaff = isUpdatingAdmin || roleNames.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      const isStaff = isUpdatingAdmin || effectiveRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
       const isOwnRecord = requestingMember?.id === memberId;
 
       if (!isStaff && !isOwnRecord) {
@@ -1320,13 +1349,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not found" });
       }
 
-      // Get user's member record to access roles
+      // Get user's member record to access roles - also check user.role for staff without member profiles
       const member = await storage.getMemberByUserId(userId);
-      if (!member) {
-        return res.status(403).json({ message: "Member record not found" });
+      let userRoles: string[];
+      if (member) {
+        userRoles = await storage.getMemberRoles(member.id);
+        if (userRoles.length === 0) userRoles = [member.role || 'member'];
+      } else if (user?.role) {
+        userRoles = [user.role];
+      } else {
+        return res.status(403).json({ message: "No role found" });
       }
       
-      const userRoles = await storage.getMemberRoles(member.id);
       const loans = await storage.getLoansForApproval(stage, userRoles[0] || 'member');
       res.json(loans);
     } catch (error) {
@@ -1561,19 +1595,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const requestingMember = await storage.getMemberByUserId(userId);
       const isSavingsAdmin = savingsUser?.role === 'admin';
 
-      // Get user's roles for permission checking
+      // Get user's roles for permission checking - also check user.role directly for staff without member profiles
       const roleNames = requestingMember ? await storage.getMemberRoles(requestingMember.id) : [];
+      const effectiveRoles = roleNames.length > 0 ? roleNames : (savingsUser?.role ? [savingsUser.role] : []);
 
       // Access control: staff can see all accounts, members see only their own
-      const isStaff = isSavingsAdmin || roleNames.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      const isStaff = isSavingsAdmin || effectiveRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
 
       let savingsAccounts;
       if (isStaff) {
         // Staff can see all savings accounts
         savingsAccounts = await storage.getAllSavingsAccounts();
-      } else {
+      } else if (requestingMember) {
         // Members can only see their own accounts
-        savingsAccounts = await storage.getSavingsAccountsByMember(requestingMember!.id);
+        savingsAccounts = await storage.getSavingsAccountsByMember(requestingMember.id);
+      } else {
+        savingsAccounts = [];
       }
 
       res.json(savingsAccounts);
@@ -2766,8 +2803,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = getUserId(req);
       const reportUser = await storage.getUser(userId!);
       const reportMember = await storage.getMemberByUserId(userId!);
-      const reportRoles = reportMember ? await storage.getMemberRoles(reportMember.id) : [];
-      const canAccessReports = reportUser?.role === 'admin' || reportRoles.some((r: string) => ['admin', 'manager', 'committee', 'teller'].includes(r));
+      const reportRoles = reportMember ? await storage.getMemberRoles(reportMember.id) : (reportUser?.role ? [reportUser.role] : []);
+      const canAccessReports = reportRoles.some((r: string) => ['admin', 'manager', 'committee', 'teller'].includes(r));
       if (!canAccessReports) {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -2822,8 +2859,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = getUserId(req);
       const genReportUser = await storage.getUser(userId!);
       const genReportMember = await storage.getMemberByUserId(userId!);
-      const genReportRoles = genReportMember ? await storage.getMemberRoles(genReportMember.id) : [];
-      const canGenReport = genReportUser?.role === 'admin' || genReportRoles.some((r: string) => ['admin', 'manager', 'committee', 'teller'].includes(r));
+      const genReportRoles = genReportMember ? await storage.getMemberRoles(genReportMember.id) : (genReportUser?.role ? [genReportUser.role] : []);
+      const canGenReport = genReportRoles.some((r: string) => ['admin', 'manager', 'committee', 'teller'].includes(r));
       if (!canGenReport) {
         return res.status(403).json({ message: "Access denied" });
       }
