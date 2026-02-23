@@ -109,6 +109,19 @@ export default function MemberDetails() {
     enabled: !!memberId,
   });
 
+  // Fetch member's transactions
+  const { data: transactions } = useQuery<any[]>({
+    queryKey: ['/api/members', memberId, 'transactions'],
+    queryFn: async () => {
+      const response = await fetch(`/api/members/${memberId}/transactions`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch transactions');
+      }
+      return response.json();
+    },
+    enabled: !!memberId,
+  });
+
   const form = useForm<UpdateMemberData>({
     resolver: zodResolver(updateMemberSchema),
   });
@@ -999,6 +1012,22 @@ export default function MemberDetails() {
             </div>
 
             <div>
+              <p className="text-sm text-muted-foreground">Transactions</p>
+              <p className="text-2xl font-bold text-blue-600">
+                {Array.isArray(transactions) ? transactions.length : 0}
+              </p>
+            </div>
+
+            <Separator />
+
+            <div>
+              <p className="text-sm text-muted-foreground">Total Savings</p>
+              <p className="text-2xl font-bold text-green-600">
+                UGX {Array.isArray(savingsAccounts) ? savingsAccounts.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0).toLocaleString() : '0'}
+              </p>
+            </div>
+
+            <div>
               <p className="text-sm text-muted-foreground">Status</p>
               <Badge className={`capitalize ${
                 member.status === 'active' ? 'bg-green-100 text-green-800' :
@@ -1116,6 +1145,81 @@ export default function MemberDetails() {
           </CardContent>
         </Card>
       )}
+
+      {/* Transaction History */}
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Transaction History
+          </CardTitle>
+          <CardDescription>
+            All transactions for this member
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {Array.isArray(transactions) && transactions.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left">
+                    <th className="pb-2 font-medium text-muted-foreground">Date</th>
+                    <th className="pb-2 font-medium text-muted-foreground">Type</th>
+                    <th className="pb-2 font-medium text-muted-foreground">Description</th>
+                    <th className="pb-2 font-medium text-muted-foreground">Reference</th>
+                    <th className="pb-2 font-medium text-muted-foreground text-right">Amount (UGX)</th>
+                    <th className="pb-2 font-medium text-muted-foreground text-center">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map((tx: any) => {
+                    const isCredit = ['deposit', 'interest_credit', 'share_capital', 'loan_disbursement'].includes(tx.transactionType);
+                    return (
+                      <tr key={tx.id} className="border-b last:border-0 hover:bg-slate-50">
+                        <td className="py-3">
+                          {tx.createdAt ? (() => {
+                            try {
+                              return format(new Date(tx.createdAt), 'PP');
+                            } catch {
+                              return 'N/A';
+                            }
+                          })() : 'N/A'}
+                        </td>
+                        <td className="py-3">
+                          <Badge variant="outline" className="capitalize text-xs">
+                            {(tx.transactionType || '').replace(/_/g, ' ')}
+                          </Badge>
+                        </td>
+                        <td className="py-3 text-muted-foreground max-w-[200px] truncate">
+                          {tx.description || '-'}
+                        </td>
+                        <td className="py-3 text-muted-foreground text-xs font-mono">
+                          {tx.referenceNumber || '-'}
+                        </td>
+                        <td className={`py-3 text-right font-medium ${isCredit ? 'text-green-600' : 'text-red-600'}`}>
+                          {isCredit ? '+' : '-'}{parseFloat(tx.amount || '0').toLocaleString()}
+                        </td>
+                        <td className="py-3 text-center">
+                          <Badge className={`text-xs ${
+                            tx.status === 'completed' ? 'bg-green-100 text-green-800' :
+                            tx.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                            tx.status === 'failed' ? 'bg-red-100 text-red-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {tx.status || 'unknown'}
+                          </Badge>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-center py-8">No transactions found for this member.</p>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Share Capital Posting Dialog */}
       <Dialog open={isShareCapitalDialogOpen} onOpenChange={setIsShareCapitalDialogOpen}>
