@@ -195,6 +195,11 @@ function Router() {
                 <Transactions />
               </ProtectedRoute>
             </Route>
+            <Route path="/my-transactions">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'personal-transactions' }}>
+                <Transactions />
+              </ProtectedRoute>
+            </Route>
             <Route path="/guarantors">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'guarantors' }}>
                 <Guarantors />
