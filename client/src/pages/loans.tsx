@@ -235,14 +235,20 @@ export default function Loans() {
         </div>
       </div>
 
-      {/* Pending Loans Section */}
+      {/* Loans Section */}
       <div className="section-card">
         <div className="p-6 border-b border-slate-200/60">
           <div className="flex items-center space-x-2">
-            <Clock className="w-5 h-5 text-amber-600" />
-            <h3 className="text-lg font-semibold text-slate-900">Pending Loan Applications</h3>
+            {isPersonalView ? (
+              <HandCoins className="w-5 h-5 text-blue-600" />
+            ) : (
+              <Clock className="w-5 h-5 text-amber-600" />
+            )}
+            <h3 className="text-lg font-semibold text-slate-900">
+              {isPersonalView ? 'My Loan Applications' : 'Pending Loan Applications'}
+            </h3>
             {pendingLoans && (
-              <Badge className="bg-amber-50 text-amber-700 border-amber-200/50">
+              <Badge className={isPersonalView ? "bg-blue-50 text-blue-700 border-blue-200/50" : "bg-amber-50 text-amber-700 border-amber-200/50"}>
                 {pendingLoans.length}
               </Badge>
             )}
@@ -257,12 +263,18 @@ export default function Loans() {
                     <div className="flex items-center space-x-4">
                       <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
                         <span className="text-slate-600 text-sm font-medium">
-                          {loan.member?.user?.firstName?.charAt(0)}{loan.member?.user?.lastName?.charAt(0)}
+                          {isPersonalView 
+                            ? loan.loanNumber?.slice(-2) || 'LN'
+                            : `${loan.member?.user?.firstName?.charAt(0) || ''}${loan.member?.user?.lastName?.charAt(0) || ''}`
+                          }
                         </span>
                       </div>
                       <div>
                         <h3 className="font-medium text-slate-900">
-                          {loan.member?.user?.firstName} {loan.member?.user?.lastName}
+                          {isPersonalView 
+                            ? `${loan.loanType || 'Loan'} Application`
+                            : `${loan.member?.user?.firstName || ''} ${loan.member?.user?.lastName || ''}`
+                          }
                         </h3>
                         <p className="text-sm text-slate-500">Loan: {loan.loanNumber}</p>
                       </div>
@@ -302,44 +314,60 @@ export default function Loans() {
                     </div>
                   </div>
 
-                  <div className="flex space-x-3">
-                    {loan.status === 'pending' && (
-                      <>
+                  {isPersonalView ? (
+                    <div className="flex space-x-3">
+                      <p className="text-sm text-slate-500">
+                        {loan.status === 'pending' ? 'Your application is under review.' :
+                         loan.status === 'approved' ? 'Your loan has been approved and is awaiting disbursement.' :
+                         loan.status === 'active' || loan.status === 'disbursed' ? 'Your loan is active.' :
+                         loan.status === 'rejected' ? 'Your application was not approved.' :
+                         loan.status === 'completed' ? 'This loan has been fully repaid.' : ''}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex space-x-3">
+                      {loan.status === 'pending' && (
+                        <>
+                          <Button
+                            size="sm"
+                            onClick={() => approveLoanMutation.mutate(loan)}
+                            disabled={approveLoanMutation.isPending}
+                            className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Approve
+                          </Button>
+                          <Button size="sm" variant="outline" className="border-red-200/50 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      {loan.status === 'approved' && (
                         <Button
                           size="sm"
-                          onClick={() => approveLoanMutation.mutate(loan)}
-                          disabled={approveLoanMutation.isPending}
+                          onClick={() => disburseLoanMutation.mutate(loan)}
+                          disabled={disburseLoanMutation.isPending}
                           className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
                         >
-                          <CheckCircle className="w-4 h-4 mr-1" />
-                          Approve
+                          <DollarSign className="w-4 h-4 mr-1" />
+                          Disburse
                         </Button>
-                        <Button size="sm" variant="outline" className="border-red-200/50 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
-                          <XCircle className="w-4 h-4 mr-1" />
-                          Reject
-                        </Button>
-                      </>
-                    )}
-                    {loan.status === 'approved' && (
-                      <Button
-                        size="sm"
-                        onClick={() => disburseLoanMutation.mutate(loan)}
-                        disabled={disburseLoanMutation.isPending}
-                        className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
-                      >
-                        <DollarSign className="w-4 h-4 mr-1" />
-                        Disburse
-                      </Button>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
           ) : (
             <div className="py-16 text-center">
               <HandCoins className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">No pending applications</h3>
-              <p className="text-slate-500">All loan applications have been processed.</p>
+              <h3 className="text-lg font-medium text-slate-900 mb-2">
+                {isPersonalView ? 'No loan applications' : 'No pending applications'}
+              </h3>
+              <p className="text-slate-500">
+                {isPersonalView ? 'You have not applied for any loans yet.' : 'All loan applications have been processed.'}
+              </p>
             </div>
           )}
         </div>
