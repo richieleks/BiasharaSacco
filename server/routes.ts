@@ -245,12 +245,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: role || 'member'
       });
 
+      // If role is 'member', also create a member profile with member number
+      let memberProfile = null;
+      if (role === 'member') {
+        const allMembers = await storage.getAllMembers();
+        const pendingMembers = await storage.getPendingMembers();
+        const totalCount = allMembers.length + pendingMembers.length;
+        const memberNumber = `BCS${String(totalCount + 1).padStart(6, '0')}`;
+        
+        const fullName = `${firstName || ''} ${lastName || ''}`.trim();
+        
+        memberProfile = await storage.createMember({
+          memberNumber,
+          userId: newUser.id,
+          fullName: fullName || username,
+          idNumber: username,
+          phoneNumber: '',
+          address: '',
+          role: 'member',
+          status: 'active',
+          joinDate: new Date(),
+          approvedBy: getUserId(req),
+          approvedAt: new Date(),
+          membershipStartDate: new Date(),
+        } as any);
+
+        await storage.addMemberRole(memberProfile.id, 'member', getUserId(req) || userId);
+
+        const accountNumber = `SAV${String(memberProfile.id).padStart(8, '0')}`;
+        await storage.createSavingsAccount({
+          memberId: memberProfile.id,
+          accountNumber,
+          accountType: 'regular',
+          balance: '0.00',
+        });
+      }
+
       // Remove password from response
       const { password: _, ...userWithoutPassword } = newUser;
       
       res.status(201).json({ 
         message: "User created successfully", 
-        user: userWithoutPassword 
+        user: userWithoutPassword,
+        member: memberProfile
       });
     } catch (error) {
       console.error("Error creating user:", error);
