@@ -65,38 +65,38 @@ export default function Landing() {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white overflow-hidden">
-      <div className="absolute inset-0">
+    <div className="relative min-h-screen bg-slate-950 text-white overflow-x-hidden overflow-y-auto">
+      <div className="fixed inset-0 pointer-events-none">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-blue-900/40 via-slate-950 to-slate-950" />
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-emerald-900/20 via-transparent to-transparent" />
         <div className="absolute inset-0 opacity-[0.03]" style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M20 20h20v20H20z'/%3E%3C/g%3E%3C/svg%3E")`,
           backgroundSize: '40px 40px'
         }} />
-      </div>
 
-      {[...Array(6)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute rounded-full bg-blue-500/5 backdrop-blur-3xl"
-          style={{
-            width: `${150 + i * 100}px`,
-            height: `${150 + i * 100}px`,
-            left: `${5 + i * 16}%`,
-            top: `${10 + (i % 3) * 30}%`,
-          }}
-          animate={{
-            y: [0, -40 + i * 12, 0],
-            x: [0, 20 - i * 6, 0],
-            scale: [1, 1.08, 1],
-          }}
-          transition={{
-            duration: 10 + i * 2,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
+        {[...Array(6)].map((_, i) => (
+          <motion.div
+            key={i}
+            className="absolute rounded-full bg-blue-500/5 backdrop-blur-3xl"
+            style={{
+              width: `${150 + i * 100}px`,
+              height: `${150 + i * 100}px`,
+              left: `${5 + i * 16}%`,
+              top: `${10 + (i % 3) * 30}%`,
+            }}
+            animate={{
+              y: [0, -40 + i * 12, 0],
+              x: [0, 20 - i * 6, 0],
+              scale: [1, 1.08, 1],
+            }}
+            transition={{
+              duration: 10 + i * 2,
+              repeat: Infinity,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </div>
 
       <header className="relative z-10 border-b border-white/[0.06] backdrop-blur-xl bg-slate-950/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
