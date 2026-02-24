@@ -159,16 +159,8 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-72 p-0 border-r border-slate-200 bg-white z-50">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+            <div className="flex items-center p-5 border-b border-slate-100">
               <h2 className="text-sm font-bold text-slate-900">Navigation</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsMobileOpen(false)}
-                className="rounded-lg"
-              >
-                <X className="h-4 w-4" />
-              </Button>
             </div>
             <div className="overflow-y-auto h-[calc(100vh-65px)]">
               <SidebarContent mobile />
