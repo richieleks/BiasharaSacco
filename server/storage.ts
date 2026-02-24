@@ -121,6 +121,7 @@ export interface IStorage {
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   getTransaction(id: number): Promise<TransactionWithDetails | undefined>;
   getTransactionsByMember(memberId: number): Promise<TransactionWithDetails[]>;
+  getTransactionsByLoan(loanId: number): Promise<TransactionWithDetails[]>;
   getRecentTransactions(limit?: number): Promise<TransactionWithDetails[]>;
   updateTransactionStatus(id: number, status: string): Promise<Transaction>;
 

@@ -1349,6 +1349,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const allLoanTypes = await storage.getAllLoanTypes();
+      const matchingLoanType = allLoanTypes.find(lt => lt.name === originalLoan.loanType);
+      const minRepayments = matchingLoanType?.minRepaymentsForTopUp ?? 3;
+
+      if (minRepayments > 0) {
+        const loanTransactions = await storage.getTransactionsByLoan(originalLoanId);
+        const repaymentCount = loanTransactions.filter(t => t.transactionType === 'loan_payment' && t.status === 'completed').length;
+        
+        if (repaymentCount < minRepayments) {
+          return res.status(400).json({
+            message: `You must make at least ${minRepayments} repayment(s) on this loan before requesting a top-up. You have made ${repaymentCount} repayment(s) so far.`,
+            requiredRepayments: minRepayments,
+            currentRepayments: repaymentCount
+          });
+        }
+      }
+
       const outstandingBalance = parseFloat(originalLoan.outstandingBalance || '0');
       const additionalAmount = parseFloat(topUpAmount);
       const totalNewPrincipal = outstandingBalance + additionalAmount;

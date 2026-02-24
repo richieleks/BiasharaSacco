@@ -761,6 +761,7 @@ export const loanTypes = pgTable("loan_types", {
   processingFee: decimal("processing_fee", { precision: 5, scale: 2 }).default("0"), // percentage of loan amount
   requiresGuarantor: boolean("requires_guarantor").default(true),
   guarantorRatio: decimal("guarantor_ratio", { precision: 3, scale: 2 }).default("1.50"), // 1.5x means guarantors must cover 150% of loan
+  minRepaymentsForTopUp: integer("min_repayments_for_top_up").default(3),
   isActive: boolean("is_active").default(true),
   approvalWorkflow: varchar("approval_workflow", { enum: ["simple", "multi_stage"] }).default("multi_stage"),
   requiresCollateral: boolean("requires_collateral").default(false),

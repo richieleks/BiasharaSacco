@@ -63,6 +63,8 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
 
   const selectedLoanId = form.watch('originalLoanId');
   const selectedLoan = activeLoans.find((l: any) => l.id.toString() === selectedLoanId);
+  const matchedLoanType = selectedLoan ? loanTypes.find(lt => lt.name === selectedLoan.loanType) : null;
+  const minRepaymentsRequired = matchedLoanType?.minRepaymentsForTopUp ?? 3;
 
   useEffect(() => {
     if (selectedLoan) {
@@ -237,6 +239,12 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                     <span className="ml-1 font-medium text-blue-900 capitalize">{selectedLoan.status}</span>
                   </div>
                 </div>
+                {minRepaymentsRequired > 0 && (
+                  <div className="mt-2 pt-2 border-t border-blue-200 text-sm text-blue-700">
+                    <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
+                    This loan type requires at least <strong>{minRepaymentsRequired}</strong> repayment(s) before a top-up can be requested.
+                  </div>
+                )}
               </div>
             )}
 
