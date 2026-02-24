@@ -2299,6 +2299,7 @@ function LoanTypeFormDialog({ editLoanType }: { editLoanType?: any }) {
     requiresGuarantors: z.boolean().default(false),
     maxGuarantors: z.number().min(0).optional(),
     processingFeePercentage: z.number().min(0).max(100).default(0),
+    acceptanceFee: z.number().min(0).default(0),
     minRepaymentsForTopUp: z.number().min(0).default(3),
     isActive: z.boolean().default(true),
   });
@@ -2321,6 +2322,7 @@ function LoanTypeFormDialog({ editLoanType }: { editLoanType?: any }) {
         requiresGuarantors: editLoanType.requiresGuarantor ?? false,
         maxGuarantors: 0,
         processingFeePercentage: parseFloat(editLoanType.processingFee) || 0,
+        acceptanceFee: parseFloat(editLoanType.acceptanceFee) || 0,
         minRepaymentsForTopUp: editLoanType.minRepaymentsForTopUp ?? 3,
         isActive: editLoanType.isActive ?? true,
       };
@@ -2330,7 +2332,7 @@ function LoanTypeFormDialog({ editLoanType }: { editLoanType?: any }) {
       interestRate: 12, interestCalculationMethod: "reducing_balance",
       compoundingFrequency: "monthly", minAmount: 50000, maxAmount: 5000000,
       minTermMonths: 1, maxTermMonths: 24, requiresGuarantors: false,
-      maxGuarantors: 0, processingFeePercentage: 0, minRepaymentsForTopUp: 3, isActive: true,
+      maxGuarantors: 0, processingFeePercentage: 0, acceptanceFee: 0, minRepaymentsForTopUp: 3, isActive: true,
     };
   };
 
@@ -2625,6 +2627,23 @@ function LoanTypeFormDialog({ editLoanType }: { editLoanType?: any }) {
                   </FormItem>
                 )}
               />
+              <FormField
+                control={form.control}
+                name="acceptanceFee"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Acceptance Fee (UGX)</FormLabel>
+                    <FormControl>
+                      <Input type="number" step="100" min="0" {...field} onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)} />
+                    </FormControl>
+                    <FormDescription>Fixed amount charged when a loan is accepted/approved</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="minRepaymentsForTopUp"

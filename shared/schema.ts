@@ -759,6 +759,7 @@ export const loanTypes = pgTable("loan_types", {
   gracePeriod: integer("grace_period").default(0), // in days
   lateFeeRate: decimal("late_fee_rate", { precision: 5, scale: 2 }).default("2.00"), // percentage per month
   processingFee: decimal("processing_fee", { precision: 5, scale: 2 }).default("0"), // percentage of loan amount
+  acceptanceFee: decimal("acceptance_fee", { precision: 12, scale: 2 }).default("0"), // fixed amount charged on loan acceptance
   requiresGuarantor: boolean("requires_guarantor").default(true),
   guarantorRatio: decimal("guarantor_ratio", { precision: 3, scale: 2 }).default("1.50"), // 1.5x means guarantors must cover 150% of loan
   minRepaymentsForTopUp: integer("min_repayments_for_top_up").default(3),
