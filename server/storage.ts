@@ -115,6 +115,8 @@ export interface IStorage {
   getLoanApprovalHistory(loanId: number): Promise<any>;
   calculateRequiredApprovalStage(loanAmount: number, loanType: string): Promise<string>;
 
+  getMemberActiveLoans(memberId: number): Promise<LoanWithDetails[]>;
+
   // Transaction operations
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
   getTransaction(id: number): Promise<TransactionWithDetails | undefined>;
@@ -690,6 +692,29 @@ export class DatabaseStorage implements IStorage {
         and(
           eq(loans.memberId, memberId),
           eq(loans.status, 'pending')
+        )
+      )
+      .orderBy(desc(loans.createdAt));
+
+    return results.map(result => ({
+      ...result.loans,
+      member: result.members ? {
+        ...result.members,
+        user: result.users || undefined,
+      } : undefined,
+    }));
+  }
+
+  async getMemberActiveLoans(memberId: number): Promise<LoanWithDetails[]> {
+    const results = await db
+      .select()
+      .from(loans)
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(
+        and(
+          eq(loans.memberId, memberId),
+          sql`${loans.status} IN ('approved', 'active', 'disbursed')`
         )
       )
       .orderBy(desc(loans.createdAt));

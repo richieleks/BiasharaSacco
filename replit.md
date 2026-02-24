@@ -24,7 +24,7 @@ The system is divided into a `client/` (React frontend) and `server/` (Express.j
 ### Feature Specifications
 - **User Management**: Creation, profile management, and role assignment for SACCO members and staff.
 - **Savings Accounts**: Creation, management, deposits, withdrawals, and detailed statement generation.
-- **Loans**: Application, multi-stage approval, guarantor management, dynamic repayment schedules, and business rule validation.
+- **Loans**: Application, multi-stage approval, guarantor management, dynamic repayment schedules, business rule validation, and loan top-up module (members can request additional funds on active loans, consolidating outstanding balance with new amount into a single replacement loan through the standard approval workflow).
 - **Transactions**: Comprehensive tracking, auditing, and reporting.
 - **Reporting & Analytics**: Dashboards with KPIs, transaction history, member activity, and financial summaries, including visual analytics charts.
 - **System Settings**: Differentiated user and admin settings, allowing for personal preferences and system-wide configurations (e.g., loan limits, security policies, email setup, business rules).

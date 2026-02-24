@@ -149,6 +149,7 @@ export const loans = pgTable("loans", {
   nextOfKin: varchar("next_of_kin"),
   nextOfKinPhone: varchar("next_of_kin_phone"),
   isTopUp: boolean("is_top_up").default(false),
+  topUpOfLoanId: integer("top_up_of_loan_id"),
   previousLoanBalance: decimal("previous_loan_balance", { precision: 15, scale: 2 }),
   currentSavings: decimal("current_savings", { precision: 15, scale: 2 }),
   securityOffered: text("security_offered"),

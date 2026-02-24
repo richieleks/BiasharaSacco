@@ -12,12 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from "@/components/ui/dialog";
 import { Pagination } from "@/components/ui/pagination";
 import LoanApplicationForm from "@/components/forms/loan-application-form";
-import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign } from "lucide-react";
+import LoanTopUpForm from "@/components/forms/loan-topup-form";
+import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, ArrowUpCircle } from "lucide-react";
 
 export default function Loans() {
   const [location, setLocation] = useLocation();
   const isPersonalView = location === '/my-loans';
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
+  const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -216,9 +218,18 @@ export default function Loans() {
               <Plus className="mr-2 h-4 w-4" />
               {isPersonalView ? 'Apply for Loan' : 'New Loan Application'}
             </Button>
+            {isPersonalView && (
+              <Button
+                variant="outline"
+                className="border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl shadow-sm"
+                onClick={() => setIsTopUpModalOpen(true)}
+              >
+                <ArrowUpCircle className="mr-2 h-4 w-4" />
+                Request Top-Up
+              </Button>
+            )}
           </div>
           
-          {/* Loan Application Modal for all users */}
           <Dialog open={isApplicationModalOpen} onOpenChange={setIsApplicationModalOpen}>
             <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
               <DialogHeader>
@@ -230,6 +241,18 @@ export default function Loans() {
                 </DialogDescription>
               </DialogHeader>
               <LoanApplicationForm onSuccess={() => setIsApplicationModalOpen(false)} />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isTopUpModalOpen} onOpenChange={setIsTopUpModalOpen}>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Loan Top-Up Request</DialogTitle>
+                <DialogDescription>
+                  Request additional funds on an existing active loan
+                </DialogDescription>
+              </DialogHeader>
+              <LoanTopUpForm onSuccess={() => setIsTopUpModalOpen(false)} />
             </DialogContent>
           </Dialog>
         </div>
@@ -280,6 +303,12 @@ export default function Loans() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
+                      {loan.isTopUp && (
+                        <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200/50">
+                          <ArrowUpCircle className="w-3 h-3 mr-1" />
+                          Top-Up
+                        </Badge>
+                      )}
                       <Badge variant="outline" className={getStatusColor(loan.status)}>
                         {loan.status}
                       </Badge>
@@ -314,10 +343,20 @@ export default function Loans() {
                     </div>
                   </div>
 
+                  {loan.isTopUp && loan.previousLoanBalance && (
+                    <div className="mb-3 p-3 bg-violet-50 border border-violet-200 rounded-lg">
+                      <div className="flex items-center text-sm text-violet-700">
+                        <ArrowUpCircle className="w-4 h-4 mr-2" />
+                        <span>Top-up loan — Previous balance of UGX {parseFloat(loan.previousLoanBalance).toLocaleString()} was consolidated into this loan.</span>
+                      </div>
+                    </div>
+                  )}
+
                   {isPersonalView ? (
                     <div className="flex space-x-3">
                       <p className="text-sm text-slate-500">
-                        {loan.status === 'pending' ? 'Your application is under review.' :
+                        {loan.status === 'pending' && loan.isTopUp ? 'Your top-up request is under review.' :
+                         loan.status === 'pending' ? 'Your application is under review.' :
                          loan.status === 'approved' ? 'Your loan has been approved and is awaiting disbursement.' :
                          loan.status === 'active' || loan.status === 'disbursed' ? 'Your loan is active.' :
                          loan.status === 'rejected' ? 'Your application was not approved.' :

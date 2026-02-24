@@ -1295,6 +1295,145 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/loans/active-for-topup', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req)!;
+      const member = await storage.getMemberByUserId(userId);
+      if (!member) {
+        return res.status(404).json({ message: "Member record not found" });
+      }
+      const activeLoans = await storage.getMemberActiveLoans(member.id);
+      res.json(activeLoans);
+    } catch (error) {
+      console.error("Error fetching active loans for topup:", error);
+      res.status(500).json({ message: "Failed to fetch active loans" });
+    }
+  });
+
+  app.post('/api/loans/topup', isAuthenticated, async (req: any, res) => {
+    try {
+      const { originalLoanId, topUpAmount, loanType, interestRate, termMonths, purpose } = req.body;
+      const userId = getUserId(req)!;
+      const member = await storage.getMemberByUserId(userId);
+      
+      if (!member) {
+        return res.status(404).json({ message: "Member record not found" });
+      }
+
+      if (member.status !== 'active') {
+        return res.status(403).json({ 
+          message: "Loan top-ups are only available to approved members",
+          memberStatus: member.status
+        });
+      }
+
+      const originalLoan = await storage.getLoan(originalLoanId);
+      if (!originalLoan) {
+        return res.status(404).json({ message: "Original loan not found" });
+      }
+
+      if (!['approved', 'active', 'disbursed'].includes(originalLoan.status || '')) {
+        return res.status(400).json({ message: "Only active/disbursed loans can be topped up" });
+      }
+
+      if (originalLoan.memberId !== member.id) {
+        return res.status(403).json({ message: "You can only top up your own loans" });
+      }
+
+      const existingPendingLoans = await storage.getMemberPendingLoans(member.id);
+      if (existingPendingLoans && existingPendingLoans.length > 0) {
+        return res.status(400).json({
+          message: "Cannot request a top-up while you have a loan application pending approval",
+          pendingLoans: existingPendingLoans.length,
+          pendingLoanNumbers: existingPendingLoans.map(loan => loan.loanNumber)
+        });
+      }
+
+      const outstandingBalance = parseFloat(originalLoan.outstandingBalance || '0');
+      const additionalAmount = parseFloat(topUpAmount);
+      const totalNewPrincipal = outstandingBalance + additionalAmount;
+
+      const eligibilityResult = await businessRulesValidator.checkLoanEligibility(
+        member.id,
+        totalNewPrincipal
+      );
+
+      if (!eligibilityResult.isEligible) {
+        return res.status(400).json({
+          message: "Top-up loan does not meet eligibility requirements",
+          violations: eligibilityResult.violations,
+          warnings: eligibilityResult.warnings
+        });
+      }
+
+      const periodValidation = businessRulesValidator.validateLoanPeriod(termMonths);
+      if (!periodValidation.isValid) {
+        return res.status(400).json({ message: periodValidation.message });
+      }
+
+      const decimalInterestRate = parseFloat(interestRate) / 100;
+      const monthlyInterestRate = decimalInterestRate / 12;
+      const monthlyPayment = (totalNewPrincipal * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, termMonths)) /
+        (Math.pow(1 + monthlyInterestRate, termMonths) - 1);
+
+      const loanNumber = `LN${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+      const topUpLoan = await storage.createLoan({
+        memberId: member.id,
+        loanNumber,
+        loanType: loanType || originalLoan.loanType,
+        principalAmount: totalNewPrincipal.toFixed(2),
+        interestRate: decimalInterestRate.toFixed(4),
+        termMonths,
+        monthlyPayment: monthlyPayment.toFixed(2),
+        outstandingBalance: totalNewPrincipal.toFixed(2),
+        status: 'pending',
+        isTopUp: true,
+        topUpOfLoanId: originalLoanId,
+        previousLoanBalance: outstandingBalance.toFixed(2),
+        purpose: purpose || `Top-up on loan ${originalLoan.loanNumber}`,
+      });
+
+      const loanMember = await storage.getMember(member.id);
+      if (loanMember) {
+        await createAndBroadcastNotification({
+          type: 'loan_application',
+          title: 'Loan Top-Up Application Submitted',
+          message: `Top-up application ${loanNumber} for UGX ${totalNewPrincipal.toLocaleString()} (additional UGX ${additionalAmount.toLocaleString()}) on loan ${originalLoan.loanNumber} has been submitted.`,
+          priority: 'medium',
+          actionUrl: `/loans/${topUpLoan.uuid}`,
+          memberId: member.id,
+          userId: member.userId,
+          isRead: false
+        });
+
+        const allMembers = await storage.getAllMembers();
+        for (const staffMember of allMembers) {
+          if (staffMember.id === member.id) continue;
+          const roles = await storage.getMemberRoles(staffMember.id);
+          const hasStaffRole = roles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+          if (hasStaffRole) {
+            await createAndBroadcastNotification({
+              type: 'loan_application',
+              title: 'Loan Top-Up Request for Review',
+              message: `${loanMember.fullName} has submitted a loan top-up request for UGX ${totalNewPrincipal.toLocaleString()} on loan ${originalLoan.loanNumber}.`,
+              priority: 'medium',
+              actionUrl: `/loans`,
+              memberId: staffMember.id,
+              userId: staffMember.userId,
+              isRead: false
+            });
+          }
+        }
+      }
+
+      res.status(201).json(topUpLoan);
+    } catch (error) {
+      console.error("Error creating loan top-up:", error);
+      res.status(500).json({ message: "Failed to create loan top-up" });
+    }
+  });
+
   // Get all loans
   app.get('/api/loans', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
@@ -1524,18 +1663,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/loans/:id/disburse', isAuthenticated, async (req, res) => {
     try {
-      const loan = await storage.updateLoanStatus(await storage.resolveLoanId(req.params.id), 'disbursed');
+      const loanId = await storage.resolveLoanId(req.params.id);
+      const loanDetails = await storage.getLoan(loanId);
+      const loan = await storage.updateLoanStatus(loanId, 'disbursed');
       
       const referenceNumber = `DIS${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
-      // Create disbursement transaction
+      if (loanDetails?.isTopUp && loanDetails?.topUpOfLoanId) {
+        const originalLoan = await storage.getLoan(loanDetails.topUpOfLoanId);
+        const previousBalance = loanDetails.previousLoanBalance || originalLoan?.outstandingBalance || '0';
+        
+        if (parseFloat(previousBalance) > 0) {
+          await storage.updateLoanBalance(loanDetails.topUpOfLoanId, previousBalance);
+        }
+        
+        await storage.updateLoanStatus(loanDetails.topUpOfLoanId, 'completed');
+        
+        const settleRef = `STL${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+        await storage.createTransaction({
+          memberId: loan.memberId,
+          loanId: loanDetails.topUpOfLoanId,
+          transactionType: 'loan_payment',
+          amount: previousBalance,
+          referenceNumber: settleRef,
+          description: `Loan settled via top-up - ${originalLoan?.loanNumber || 'N/A'} replaced by ${loan.loanNumber}`,
+          status: 'completed',
+          processedBy: getUserId(req),
+        });
+      }
+
       await storage.createTransaction({
         memberId: loan.memberId,
         loanId: loan.id,
         transactionType: 'loan_disbursement',
         amount: loan.principalAmount,
         referenceNumber,
-        description: `Loan disbursement - ${loan.loanNumber}`,
+        description: `${loanDetails?.isTopUp ? 'Top-up loan' : 'Loan'} disbursement - ${loan.loanNumber}`,
         status: 'completed',
         processedBy: getUserId(req),
       });
