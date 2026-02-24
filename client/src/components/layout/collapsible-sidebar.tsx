@@ -153,12 +153,12 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
             <Button 
               variant="ghost" 
               size="sm" 
-              className="fixed top-4 left-4 z-50 lg:hidden bg-white/90 glass shadow-md rounded-xl border border-slate-200/60"
+              className="fixed top-[1.1rem] left-4 z-50 lg:hidden bg-white shadow-md rounded-xl border border-slate-200"
             >
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0 border-r border-slate-200/60">
+          <SheetContent side="left" className="w-72 p-0 border-r border-slate-200 bg-white z-50">
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <h2 className="text-sm font-bold text-slate-900">Navigation</h2>
               <Button
@@ -178,7 +178,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
       </div>
 
       <aside className={cn(
-        "hidden lg:block bg-white/50 glass border-r border-slate-200/60 transition-all duration-300 ease-in-out relative",
+        "hidden lg:block bg-white border-r border-slate-200 transition-all duration-300 ease-in-out relative",
         isCollapsed ? "w-[68px]" : "w-60",
         className
       )}>
