@@ -148,7 +148,7 @@ export default function Members() {
                 Add Member
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-[44.1rem] max-h-[90vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Add New Member</DialogTitle>
                 <DialogDescription>
