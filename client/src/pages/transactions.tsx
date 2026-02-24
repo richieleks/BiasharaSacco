@@ -223,8 +223,8 @@ export default function Transactions() {
                     {!isPersonalView && <TableHead>Member</TableHead>}
                     <TableHead>Type</TableHead>
                     <TableHead>Amount</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Date</TableHead>
+                    <TableHead className="hidden md:table-cell">Reference</TableHead>
+                    <TableHead className="hidden sm:table-cell">Date</TableHead>
                     <TableHead>Status</TableHead>
                     {!isPersonalView && <TableHead>Actions</TableHead>}
                   </TableRow>
@@ -261,10 +261,10 @@ export default function Transactions() {
                       <TableCell className="font-medium">
                         UGX {parseFloat(transaction.amount).toLocaleString()}
                       </TableCell>
-                      <TableCell className="font-mono text-sm">
+                      <TableCell className="font-mono text-sm hidden md:table-cell">
                         {transaction.referenceNumber}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         {new Date(transaction.transactionDate!).toLocaleDateString()}
                       </TableCell>
                       <TableCell>

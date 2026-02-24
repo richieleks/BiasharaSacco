@@ -131,7 +131,7 @@ export default function RolesMatrix() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-slate-900">Roles & Permissions Matrix</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Roles & Permissions Matrix</h1>
         <p className="text-slate-600 mt-2">
           Comprehensive overview of user roles, permissions, and system access levels
         </p>

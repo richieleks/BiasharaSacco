@@ -196,16 +196,16 @@ export default function Members() {
           </div>
         </div>
       ) : members && Array.isArray(members) && members.length > 0 ? (
-        <div className="section-card">
+        <div className="section-card overflow-x-auto">
           <Table className="table-modern">
             <TableHeader>
               <TableRow>
                 <TableHead>Member</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Gender</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Avg Net Pay</TableHead>
-                <TableHead>Next of Kin</TableHead>
+                <TableHead className="hidden sm:table-cell">Phone</TableHead>
+                <TableHead className="hidden lg:table-cell">Gender</TableHead>
+                <TableHead className="hidden lg:table-cell">Department</TableHead>
+                <TableHead className="hidden lg:table-cell">Avg Net Pay</TableHead>
+                <TableHead className="hidden lg:table-cell">Next of Kin</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -231,13 +231,13 @@ export default function Members() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-slate-900">{member.phoneNumber}</TableCell>
-                  <TableCell className="text-slate-900 capitalize">{member.gender || 'Not specified'}</TableCell>
-                  <TableCell className="text-slate-900">{member.department || 'Not specified'}</TableCell>
-                  <TableCell className="text-slate-900">
+                  <TableCell className="hidden sm:table-cell text-slate-900">{member.phoneNumber}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-slate-900 capitalize">{member.gender || 'Not specified'}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-slate-900">{member.department || 'Not specified'}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-slate-900">
                     {member.averageNetPay ? `UGX ${parseFloat(member.averageNetPay).toLocaleString()}` : 'Not specified'}
                   </TableCell>
-                  <TableCell className="text-slate-900">{member.nextOfKinName || 'Not specified'}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-slate-900">{member.nextOfKinName || 'Not specified'}</TableCell>
                   <TableCell>
                     <Badge variant="outline" className={`border ${getStatusColor(member.status ?? 'pending')}`}>
                       {member.status ?? 'pending'}

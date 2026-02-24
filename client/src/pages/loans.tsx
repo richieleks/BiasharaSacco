@@ -201,33 +201,37 @@ export default function Loans() {
               }
             </p>
           </div>
-          <div className="flex space-x-2 mt-4 sm:mt-0">
-            <div className="section-card p-4 relative flex items-center">
+          <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0 w-full sm:w-auto">
+            <div className="section-card p-4 relative flex items-center w-full sm:w-auto">
               <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
               <Input
                 placeholder="Search loans..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-64 border-0 bg-transparent focus-visible:ring-0"
+                className="pl-10 w-full sm:w-64 border-0 bg-transparent focus-visible:ring-0"
               />
             </div>
-            <Button 
-              className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
-              onClick={() => setIsApplicationModalOpen(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              {isPersonalView ? 'Apply for Loan' : 'New Loan Application'}
-            </Button>
-            {isPersonalView && (
-              <Button
-                variant="outline"
-                className="border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl shadow-sm"
-                onClick={() => setIsTopUpModalOpen(true)}
+            <div className="flex gap-2">
+              <Button 
+                className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm flex-1 sm:flex-none"
+                onClick={() => setIsApplicationModalOpen(true)}
               >
-                <ArrowUpCircle className="mr-2 h-4 w-4" />
-                Request Top-Up
+                <Plus className="mr-2 h-4 w-4" />
+                <span className="hidden sm:inline">{isPersonalView ? 'Apply for Loan' : 'New Loan Application'}</span>
+                <span className="sm:hidden">{isPersonalView ? 'Apply' : 'New Loan'}</span>
               </Button>
-            )}
+              {isPersonalView && (
+                <Button
+                  variant="outline"
+                  className="border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl shadow-sm flex-1 sm:flex-none"
+                  onClick={() => setIsTopUpModalOpen(true)}
+                >
+                  <ArrowUpCircle className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">Request Top-Up</span>
+                  <span className="sm:hidden">Top-Up</span>
+                </Button>
+              )}
+            </div>
           </div>
           
           <Dialog open={isApplicationModalOpen} onOpenChange={setIsApplicationModalOpen}>
@@ -282,9 +286,9 @@ export default function Loans() {
             <div className="space-y-4">
               {pendingLoans.map((loan: any) => (
                 <div key={loan.id} className="border border-slate-200/60 rounded-lg p-6 hover:shadow-sm transition-all">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
                         <span className="text-slate-600 text-sm font-medium">
                           {isPersonalView 
                             ? loan.loanNumber?.slice(-2) || 'LN'
@@ -302,7 +306,7 @@ export default function Loans() {
                         <p className="text-sm text-slate-500">Loan: {loan.loanNumber}</p>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center flex-wrap gap-2">
                       {loan.isTopUp && (
                         <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200/50">
                           <ArrowUpCircle className="w-3 h-3 mr-1" />
@@ -364,7 +368,7 @@ export default function Loans() {
                       </p>
                     </div>
                   ) : (
-                    <div className="flex space-x-3">
+                    <div className="flex flex-wrap gap-2">
                       {loan.status === 'pending' && (
                         <>
                           <Button

@@ -25,10 +25,10 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/80 glass border-b border-slate-200/60 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 ml-12 lg:ml-0">
             <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
               <div className="w-9 h-9 sacco-gradient rounded-xl flex items-center justify-center shadow-sm">
                 <PiggyBank className="text-white h-5 w-5" />
@@ -41,11 +41,9 @@ export default function Header() {
           </div>
           
           <div className="flex items-center gap-2">
-            <div className="hidden md:flex items-center">
-              <NotificationBell />
-            </div>
+            <NotificationBell />
             
-            <div className="w-px h-8 bg-slate-200/80 mx-1 hidden md:block" />
+            <div className="w-px h-8 bg-slate-200/80 mx-1 hidden sm:block" />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

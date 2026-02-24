@@ -164,12 +164,12 @@ export default function ShareCapital() {
         <TabsContent value="members" className="space-y-4">
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
                   <CardTitle>Member Share Capital Status</CardTitle>
                   <CardDescription>View and manage share capital for all active members</CardDescription>
                 </div>
-                <div className="relative w-64">
+                <div className="relative w-full sm:w-64">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search members..."
@@ -189,11 +189,11 @@ export default function ShareCapital() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Member</TableHead>
-                        <TableHead>Shares</TableHead>
-                        <TableHead className="text-right">Per Share</TableHead>
-                        <TableHead className="text-right">Expected</TableHead>
+                        <TableHead className="hidden sm:table-cell">Shares</TableHead>
+                        <TableHead className="hidden md:table-cell text-right">Per Share</TableHead>
+                        <TableHead className="hidden md:table-cell text-right">Expected</TableHead>
                         <TableHead className="text-right">Paid</TableHead>
-                        <TableHead className="text-right">Balance</TableHead>
+                        <TableHead className="hidden sm:table-cell text-right">Balance</TableHead>
                         <TableHead className="text-center">Status</TableHead>
                         {canPost && <TableHead className="text-center">Action</TableHead>}
                       </TableRow>
@@ -214,13 +214,13 @@ export default function ShareCapital() {
                                 <p className="text-xs text-muted-foreground">{member.memberNumber}</p>
                               </div>
                             </TableCell>
-                            <TableCell className="text-center">{shares}</TableCell>
-                            <TableCell className="text-right">UGX {perShare.toLocaleString()}</TableCell>
-                            <TableCell className="text-right">UGX {expected.toLocaleString()}</TableCell>
+                            <TableCell className="hidden sm:table-cell text-center">{shares}</TableCell>
+                            <TableCell className="hidden md:table-cell text-right">UGX {perShare.toLocaleString()}</TableCell>
+                            <TableCell className="hidden md:table-cell text-right">UGX {expected.toLocaleString()}</TableCell>
                             <TableCell className="text-right font-medium text-green-600">
                               UGX {paid.toLocaleString()}
                             </TableCell>
-                            <TableCell className="text-right font-medium text-orange-600">
+                            <TableCell className="hidden sm:table-cell text-right font-medium text-orange-600">
                               {balance > 0 ? `UGX ${balance.toLocaleString()}` : '-'}
                             </TableCell>
                             <TableCell className="text-center">
@@ -276,10 +276,10 @@ export default function ShareCapital() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Date</TableHead>
+                        <TableHead className="hidden sm:table-cell">Date</TableHead>
                         <TableHead>Member</TableHead>
-                        <TableHead>Reference</TableHead>
-                        <TableHead>Description</TableHead>
+                        <TableHead className="hidden md:table-cell">Reference</TableHead>
+                        <TableHead className="hidden md:table-cell">Description</TableHead>
                         <TableHead className="text-right">Amount (UGX)</TableHead>
                         <TableHead className="text-center">Status</TableHead>
                       </TableRow>
@@ -287,7 +287,7 @@ export default function ShareCapital() {
                     <TableBody>
                       {shareCapitalTransactions.map((tx: any) => (
                         <TableRow key={tx.id}>
-                          <TableCell>
+                          <TableCell className="hidden sm:table-cell">
                             {tx.createdAt ? (() => {
                               try { return format(new Date(tx.createdAt), 'PP'); }
                               catch { return 'N/A'; }
@@ -299,10 +299,10 @@ export default function ShareCapital() {
                               <p className="text-xs text-muted-foreground">{tx.member?.memberNumber || ''}</p>
                             </div>
                           </TableCell>
-                          <TableCell className="text-xs font-mono text-muted-foreground">
+                          <TableCell className="hidden md:table-cell text-xs font-mono text-muted-foreground">
                             {tx.referenceNumber || '-'}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell className="hidden md:table-cell text-muted-foreground">
                             {tx.description || '-'}
                           </TableCell>
                           <TableCell className="text-right font-medium text-green-600">
@@ -327,7 +327,7 @@ export default function ShareCapital() {
       </Tabs>
 
       <Dialog open={isPostDialogOpen} onOpenChange={setIsPostDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5" />

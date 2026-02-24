@@ -91,10 +91,10 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6 page-container animate-fade-in">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            <Bell className="h-7 w-7" />
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+            <Bell className="h-6 sm:h-7 w-6 sm:w-7" />
             Notifications
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
@@ -102,7 +102,7 @@ export default function NotificationsPage() {
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {isConnected && (
             <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200/50">
               ● Real-time updates enabled

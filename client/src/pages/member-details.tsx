@@ -243,18 +243,19 @@ export default function MemberDetails() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setLocation("/members")}
+            className="w-fit"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Members
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">
+            <h1 className="text-xl sm:text-2xl font-bold">
               {member.fullName || `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim() || 'Member Details'}
             </h1>
             <p className="text-muted-foreground">Member #{member.memberNumber}</p>
@@ -271,7 +272,7 @@ export default function MemberDetails() {
 
           {/* Edit Member Dialog */}
           <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-            <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+            <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Edit Member Details</DialogTitle>
                 <DialogDescription>
@@ -1166,8 +1167,8 @@ export default function MemberDetails() {
                   <tr className="border-b text-left">
                     <th className="pb-2 font-medium text-muted-foreground">Date</th>
                     <th className="pb-2 font-medium text-muted-foreground">Type</th>
-                    <th className="pb-2 font-medium text-muted-foreground">Description</th>
-                    <th className="pb-2 font-medium text-muted-foreground">Reference</th>
+                    <th className="pb-2 font-medium text-muted-foreground hidden sm:table-cell">Description</th>
+                    <th className="pb-2 font-medium text-muted-foreground hidden md:table-cell">Reference</th>
                     <th className="pb-2 font-medium text-muted-foreground text-right">Amount (UGX)</th>
                     <th className="pb-2 font-medium text-muted-foreground text-center">Status</th>
                   </tr>
@@ -1191,10 +1192,10 @@ export default function MemberDetails() {
                             {(tx.transactionType || '').replace(/_/g, ' ')}
                           </Badge>
                         </td>
-                        <td className="py-3 text-muted-foreground max-w-[200px] truncate">
+                        <td className="py-3 text-muted-foreground max-w-[200px] truncate hidden sm:table-cell">
                           {tx.description || '-'}
                         </td>
-                        <td className="py-3 text-muted-foreground text-xs font-mono">
+                        <td className="py-3 text-muted-foreground text-xs font-mono hidden md:table-cell">
                           {tx.referenceNumber || '-'}
                         </td>
                         <td className={`py-3 text-right font-medium ${isCredit ? 'text-green-600' : 'text-red-600'}`}>

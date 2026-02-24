@@ -407,7 +407,7 @@ export default function AdminSettingsPage() {
       variant={isActive ? "default" : "ghost"}
       size="sm"
       onClick={() => setActiveTab(tab)}
-      className="justify-start w-full"
+      className="justify-start whitespace-nowrap md:w-full shrink-0"
     >
       <Icon className="mr-2 h-4 w-4" />
       {label}
@@ -419,9 +419,9 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto p-6">
+    <div className="max-w-7xl mx-auto p-4 sm:p-6">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
         <Button
           variant="ghost"
           size="sm"
@@ -442,9 +442,9 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar Navigation */}
-        <div className="w-64 space-y-2">
+        <div className="w-full md:w-64 flex md:flex-col gap-1 md:gap-0 md:space-y-2 overflow-x-auto pb-2 md:pb-0">
           <TabButton
             tab="system"
             icon={Server}
@@ -493,7 +493,7 @@ export default function AdminSettingsPage() {
             label="User Management"
             isActive={activeTab === 'users'}
           />
-          <Separator className="my-2" />
+          <Separator className="hidden md:block my-2" />
           <TabButton
             tab="preferences"
             icon={User}
@@ -1217,7 +1217,7 @@ export default function AdminSettingsPage() {
                     </CardHeader>
                     <CardContent>
                       {loanTypes && loanTypes.length > 0 ? (
-                        <Table>
+                        <div className="overflow-x-auto"><Table>
                           <TableHeader>
                             <TableRow>
                               <TableHead>Name</TableHead>
@@ -1261,7 +1261,7 @@ export default function AdminSettingsPage() {
                               </TableRow>
                             ))}
                           </TableBody>
-                        </Table>
+                        </Table></div>
                       ) : (
                         <div className="text-center py-8">
                           <p className="text-muted-foreground mb-4">No loan types configured</p>
@@ -1665,7 +1665,7 @@ export default function AdminSettingsPage() {
                         <Plus className="h-4 w-4 mr-2" />
                         Create Role
                       </Button>
-                      <DialogContent>
+                      <DialogContent className="max-h-[85vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Create New Role</DialogTitle>
                           <DialogDescription>
@@ -1772,7 +1772,7 @@ export default function AdminSettingsPage() {
                       />
                     </div>
 
-                    <div className="border rounded-lg">
+                    <div className="border rounded-lg overflow-x-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1819,7 +1819,7 @@ export default function AdminSettingsPage() {
                                       <Edit className="h-3 w-3 mr-1" />
                                       Edit Roles
                                     </Button>
-                                    <DialogContent>
+                                    <DialogContent className="max-h-[85vh] overflow-y-auto">
                                       <DialogHeader>
                                         <DialogTitle>Edit Member Roles</DialogTitle>
                                         <DialogDescription>
@@ -2059,7 +2059,7 @@ function UserManagementTab() {
                 Create User
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create New User</DialogTitle>
                 <DialogDescription>Add a new user account to the system.</DialogDescription>
@@ -2136,7 +2136,7 @@ function UserManagementTab() {
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Loading users...</div>
           ) : allUsers.length > 0 ? (
-            <Table>
+            <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -2195,7 +2195,7 @@ function UserManagementTab() {
                   </TableRow>
                 ))}
               </TableBody>
-            </Table>
+            </Table></div>
           ) : (
             <div className="text-center py-8 text-muted-foreground">No users found.</div>
           )}
@@ -2203,7 +2203,7 @@ function UserManagementTab() {
       </Card>
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
             <DialogDescription>Update user account details. Leave password blank to keep unchanged.</DialogDescription>

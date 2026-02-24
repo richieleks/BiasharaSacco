@@ -177,13 +177,13 @@ export default function InterestRatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <TrendingUp className="h-7 w-7" />
+          <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+            <TrendingUp className="h-6 sm:h-7 w-6 sm:w-7" />
             Interest Rate Management
           </h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Configure interest rates for different loan products and savings accounts
           </p>
         </div>
@@ -197,7 +197,7 @@ export default function InterestRatesPage() {
               Add Interest Rate
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {editingRate ? "Edit Interest Rate" : "Create Interest Rate"}
@@ -399,9 +399,9 @@ export default function InterestRatesPage() {
             {interestRates.map((rate: InterestRate) => (
               <Card key={rate.id}>
                 <CardHeader>
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div>
-                      <CardTitle className="flex items-center gap-2">
+                      <CardTitle className="flex flex-wrap items-center gap-2">
                         {productTypeLabels[rate.productType as keyof typeof productTypeLabels]}
                         <Badge variant={rate.isActive ? "default" : "secondary"}>
                           {rate.isActive ? "Active" : "Inactive"}

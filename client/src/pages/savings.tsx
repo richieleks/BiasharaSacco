@@ -122,7 +122,7 @@ export default function Savings() {
             </p>
           </div>
           {!isPersonalView && (
-            <div className="mt-4 sm:mt-0 flex space-x-3">
+            <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3">
               <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm">
@@ -202,9 +202,9 @@ export default function Savings() {
             {savingsAccounts.map((account: any) => (
               <div key={account.id} className="section-card hover:shadow-md hover:border-slate-300/60 transition-all duration-200">
                 <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
+                      <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center shrink-0">
                         <span className="text-slate-600 text-sm font-medium">
                           {account.member?.user?.firstName?.charAt(0)}{account.member?.user?.lastName?.charAt(0)}
                         </span>
@@ -216,7 +216,7 @@ export default function Savings() {
                         <p className="text-sm text-slate-500">Member: {account.member?.memberNumber}</p>
                       </div>
                     </div>
-                    <div className="text-right">
+                    <div className="sm:text-right">
                       <div className="text-lg font-semibold text-slate-900">
                         UGX {parseFloat(account.balance || '0').toLocaleString()}
                       </div>

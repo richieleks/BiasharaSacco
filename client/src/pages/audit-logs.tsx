@@ -172,16 +172,16 @@ export default function AuditLogs() {
             Recent system activities and user actions
           </p>
         </div>
-        <div className="p-6">
+        <div className="p-6 overflow-x-auto">
           <Table className="table-modern">
             <TableHeader>
               <TableRow>
                 <TableHead>Timestamp</TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Action</TableHead>
-                <TableHead>Resource</TableHead>
-                <TableHead>Details</TableHead>
-                <TableHead>IP Address</TableHead>
+                <TableHead className="hidden md:table-cell">Resource</TableHead>
+                <TableHead className="hidden lg:table-cell">Details</TableHead>
+                <TableHead className="hidden lg:table-cell">IP Address</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -219,7 +219,7 @@ export default function AuditLogs() {
                     <TableCell>
                       {getActionBadge(log.action)}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       <div className="flex items-center gap-2">
                         {getResourceIcon(log.resource)}
                         <span className="capitalize">{log.resource}</span>
@@ -230,10 +230,10 @@ export default function AuditLogs() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-xs truncate">
+                    <TableCell className="hidden lg:table-cell max-w-xs truncate">
                       {log.details || '-'}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden lg:table-cell">
                       <span className="text-sm text-muted-foreground">
                         {log.ipAddress || '-'}
                       </span>

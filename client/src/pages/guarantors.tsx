@@ -335,33 +335,33 @@ export default function Guarantors() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex space-x-1 rounded-lg bg-muted p-1">
+      <div className="flex flex-col sm:flex-row space-y-1 sm:space-y-0 sm:space-x-1 rounded-lg bg-muted p-1">
         <Button
           variant={activeTab === 'my-loans' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setActiveTab('my-loans')}
-          className={`flex-1 ${activeTab === 'my-loans' ? 'rounded-xl' : ''}`}
+          className={`flex-1 text-xs sm:text-sm ${activeTab === 'my-loans' ? 'rounded-xl' : ''}`}
         >
-          <CreditCard className="h-4 w-4 mr-2" />
-          My Loan Applications ({loansNeedingGuarantors.length})
+          <CreditCard className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+          <span className="truncate">My Loans ({loansNeedingGuarantors.length})</span>
         </Button>
         <Button
           variant={activeTab === 'requests' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setActiveTab('requests')}
-          className={`flex-1 ${activeTab === 'requests' ? 'rounded-xl' : ''}`}
+          className={`flex-1 text-xs sm:text-sm ${activeTab === 'requests' ? 'rounded-xl' : ''}`}
         >
-          <Clock className="h-4 w-4 mr-2" />
-          Requests to Guarantee ({guarantorRequests.length})
+          <Clock className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+          <span className="truncate">Requests ({guarantorRequests.length})</span>
         </Button>
         <Button
           variant={activeTab === 'provided' ? 'default' : 'ghost'}
           size="sm"
           onClick={() => setActiveTab('provided')}
-          className={`flex-1 ${activeTab === 'provided' ? 'rounded-xl' : ''}`}
+          className={`flex-1 text-xs sm:text-sm ${activeTab === 'provided' ? 'rounded-xl' : ''}`}
         >
-          <Users className="h-4 w-4 mr-2" />
-          Guarantees Provided ({providedGuarantees.length})
+          <Users className="h-4 w-4 mr-1 sm:mr-2 shrink-0" />
+          <span className="truncate">Provided ({providedGuarantees.length})</span>
         </Button>
       </div>
 
@@ -398,9 +398,9 @@ export default function Guarantors() {
                   return (
                     <div key={loan.id} className="section-card border-l-4 border-l-blue-400">
                       <div className="px-6 py-4 border-b border-slate-100">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center gap-3">
-                            <CreditCard className="h-5 w-5 text-blue-600" />
+                            <CreditCard className="h-5 w-5 text-blue-600 shrink-0" />
                             <h3 className="text-sm font-semibold text-slate-900">Loan Application #{loan.loanNumber}</h3>
                           </div>
                           <Badge variant={getStatusVariant(loan.status)} className={getStatusColor(loan.status)}>
@@ -468,9 +468,9 @@ export default function Guarantors() {
                             <h4 className="font-medium text-slate-900 mb-3">Guarantor Details</h4>
                             <div className="space-y-3">
                               {guarantors.map((guarantor: any) => (
-                                <div key={guarantor.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                                <div key={guarantor.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 rounded-lg">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
                                       <UserCheck className="h-4 w-4 text-blue-600" />
                                     </div>
                                     <div>
@@ -488,7 +488,7 @@ export default function Guarantors() {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 ml-11 sm:ml-0">
                                     {getStatusIcon(guarantor.status)}
                                     <Badge variant={getStatusVariant(guarantor.status)} className={getStatusColor(guarantor.status)}>
                                       {guarantor.status}
@@ -738,7 +738,7 @@ export default function Guarantors() {
 
       {/* Approval/Rejection Dialog */}
       <Dialog open={isApprovalDialogOpen} onOpenChange={setIsApprovalDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {selectedGuarantor ? 'Respond to Guarantee Request' : 'Guarantee Request'}
@@ -794,7 +794,7 @@ export default function Guarantors() {
 
       {/* Guarantor Selection Dialog */}
       <Dialog open={isGuarantorSelectionOpen} onOpenChange={setIsGuarantorSelectionOpen}>
-        <DialogContent className="max-w-4xl">
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Select Guarantors for Loan #{selectedLoanForGuarantors?.loanNumber}

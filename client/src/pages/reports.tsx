@@ -183,7 +183,7 @@ export default function Reports() {
 
       {/* Tabs for different report sections */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-4 w-full max-w-2xl">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full max-w-2xl">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="financial">Financial</TabsTrigger>
@@ -373,9 +373,9 @@ export default function Reports() {
           ) : reportData ? (
             <div className="section-card">
               <div className="px-6 py-4 border-b border-slate-100">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                   <h3 className="text-sm font-semibold text-slate-900">Report Results</h3>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm">
                       <Printer className="w-4 h-4 mr-2" />
                       Print
@@ -391,15 +391,15 @@ export default function Reports() {
                   </div>
                 </div>
               </div>
-              <div className="p-6">
+              <div className="p-6 overflow-x-auto">
                 <Table className="table-modern">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Member Number</TableHead>
                       <TableHead>Full Name</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Join Date</TableHead>
+                      <TableHead className="hidden md:table-cell">Department</TableHead>
+                      <TableHead className="hidden md:table-cell">Join Date</TableHead>
                       <TableHead>Total Savings</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -469,7 +469,7 @@ export default function Reports() {
 
       {/* Report Generation Modal */}
       <Dialog open={isReportModalOpen} onOpenChange={setIsReportModalOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Generate Report</DialogTitle>
             <DialogDescription>
