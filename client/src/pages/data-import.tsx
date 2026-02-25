@@ -166,10 +166,10 @@ export default function DataImport() {
     <div className="space-y-6 page-container animate-fade-in">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center flex-wrap gap-2">
           <Shield className="h-6 w-6 text-blue-600" />
           Data Import
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/50 ml-2">Admin Only</Badge>
+          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/50">Admin Only</Badge>
         </h1>
         <p className="text-sm text-slate-500 mt-0.5">Import customer data from Excel files</p>
       </div>

@@ -50,7 +50,7 @@ export interface ImportResult {
   importedLoans?: number;
 }
 
-export async function importSavingsFromExcel(filePath: string, options?: { createNewMembers?: boolean }): Promise<ImportResult> {
+export async function importSavingsFromExcel(filePath: string, options?: { createNewMembers?: boolean; userId?: string }): Promise<ImportResult> {
   const result: ImportResult = {
     success: false,
     totalRows: 0,
@@ -257,7 +257,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
               description: details,
               transactionDate: new Date(postingDate),
               referenceNumber: refNumber,
-              processedBy: '43104392',
+              processedBy: options?.userId,
               status: 'completed' as const
             };
             
@@ -307,7 +307,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 }
 
 // Function to import loans from Excel file
-export async function importLoansFromExcel(filePath: string): Promise<ImportResult> {
+export async function importLoansFromExcel(filePath: string, options?: { userId?: string }): Promise<ImportResult> {
   const result: ImportResult = {
     success: false,
     totalRows: 0,
@@ -550,7 +550,7 @@ export async function importLoansFromExcel(filePath: string): Promise<ImportResu
             description: details,
             referenceNumber: `LTX${Date.now()}_${i}`,
             status: 'completed' as const,
-            processedBy: '43104392', // Admin user ID
+            processedBy: options?.userId,
             transactionDate: new Date()
           };
           

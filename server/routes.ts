@@ -3109,7 +3109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createNewMembers = req.body?.createNewMembers !== 'false';
       
       console.log('Starting import from:', filePath, '| createNewMembers:', createNewMembers);
-      const result = await importSavingsFromExcel(filePath, { createNewMembers });
+      const result = await importSavingsFromExcel(filePath, { createNewMembers, userId: getUserId(req) });
       
       // Create audit log
       await storage.createAuditLog({
@@ -3146,7 +3146,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filePath = req.file ? req.file.path : './attached_assets/loans_1753038438279.xlsx';
       
       console.log('Starting loan import from:', filePath);
-      const result = await importLoansFromExcel(filePath);
+      const result = await importLoansFromExcel(filePath, { userId: getUserId(req) });
       
       // Create audit log
       await storage.createAuditLog({
