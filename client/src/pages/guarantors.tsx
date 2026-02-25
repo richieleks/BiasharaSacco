@@ -804,7 +804,7 @@ export default function Guarantors() {
             <div className="space-y-6">
               <div className="bg-slate-50 p-4 rounded-lg">
                 <h4 className="font-medium mb-2">Loan Details</h4>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-slate-600">Amount:</span> 
                     <span className="font-medium ml-2">UGX {Number(selectedLoanForGuarantors.principalAmount).toLocaleString()}</span>

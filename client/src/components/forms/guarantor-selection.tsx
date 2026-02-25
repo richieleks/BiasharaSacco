@@ -164,7 +164,7 @@ export default function GuarantorSelection({
         {/* Guarantee Summary */}
         {loanAmount > 0 && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-slate-600">Loan Amount:</span>
                 <div className="font-medium">UGX {loanAmount.toLocaleString()}</div>
@@ -173,7 +173,7 @@ export default function GuarantorSelection({
                 <span className="text-slate-600">Total Guaranteed:</span>
                 <div className="font-medium">UGX {totalGuaranteed.toLocaleString()}</div>
               </div>
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <span className="text-slate-600">Coverage:</span>
                 <div className="flex items-center gap-2">
                   <div className="font-medium">{guaranteeCoverage.toFixed(1)}%</div>

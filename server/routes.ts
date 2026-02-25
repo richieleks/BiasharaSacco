@@ -3105,7 +3105,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { importSavingsFromExcel } = await import('./importUtils');
       
       // Use uploaded file or fallback to attached file
-      const filePath = req.file ? req.file.path : './attached_assets/savings_1753029560040.xlsx';
+      const filePath = req.file ? req.file.path : './attached_assets/savings_1772043613995.xlsx';
       const createNewMembers = req.body?.createNewMembers !== 'false';
       
       console.log('Starting import from:', filePath, '| createNewMembers:', createNewMembers);

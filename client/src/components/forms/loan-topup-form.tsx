@@ -213,7 +213,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
             {selectedLoan && (
               <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
                 <h4 className="font-medium text-sm text-blue-800">Current Loan Details</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div>
                     <span className="text-blue-600">Loan Number:</span>
                     <span className="ml-1 font-medium text-blue-900">{selectedLoan.loanNumber}</span>
@@ -265,7 +265,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
             {selectedLoan && topUpAmount > 0 && (
               <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
                 <h4 className="font-medium text-sm text-emerald-800">New Loan Summary</h4>
-                <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div>
                     <span className="text-emerald-600">Outstanding Balance:</span>
                     <span className="ml-1 font-medium text-emerald-900">UGX {outstandingBalance.toLocaleString()}</span>
@@ -274,12 +274,12 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                     <span className="text-emerald-600">Additional Amount:</span>
                     <span className="ml-1 font-medium text-emerald-900">UGX {topUpAmount.toLocaleString()}</span>
                   </div>
-                  <div className="col-span-2 pt-2 border-t border-emerald-200">
+                  <div className="sm:col-span-2 pt-2 border-t border-emerald-200">
                     <span className="text-emerald-700 font-semibold">Total New Loan:</span>
                     <span className="ml-1 font-bold text-emerald-900 text-lg">UGX {totalNewPrincipal.toLocaleString()}</span>
                   </div>
                   {monthlyPayment > 0 && (
-                    <div className="col-span-2">
+                    <div className="sm:col-span-2">
                       <span className="text-emerald-600">Estimated Monthly Payment:</span>
                       <span className="ml-1 font-medium text-emerald-900">UGX {monthlyPayment.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
                     </div>
@@ -288,7 +288,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="interestRate"

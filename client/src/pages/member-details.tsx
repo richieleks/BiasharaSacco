@@ -299,7 +299,7 @@ export default function MemberDetails() {
                       )}
                     />
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="idNumber"
@@ -328,7 +328,7 @@ export default function MemberDetails() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="dateOfBirth"
@@ -365,7 +365,7 @@ export default function MemberDetails() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="maritalStatus"
@@ -448,7 +448,7 @@ export default function MemberDetails() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Employment Information</h3>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="department"
@@ -477,7 +477,7 @@ export default function MemberDetails() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="termsOfService"
@@ -535,7 +535,7 @@ export default function MemberDetails() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Next of Kin Information</h3>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="nextOfKinName"
@@ -569,7 +569,7 @@ export default function MemberDetails() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Financial Information</h3>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="monthlySavings"
@@ -598,7 +598,7 @@ export default function MemberDetails() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="numberOfShares"
@@ -651,7 +651,7 @@ export default function MemberDetails() {
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium">Beneficiary Information</h3>
                     
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
                         name="beneficiaryName"
@@ -727,7 +727,7 @@ export default function MemberDetails() {
             {/* Basic Information */}
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-3">Basic Information</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Full Name</p>
                   <p className="font-medium">{member.fullName || `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim() || 'Not provided'}</p>
@@ -758,7 +758,7 @@ export default function MemberDetails() {
             {/* Contact Information */}
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-3">Contact Information</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Phone Number</p>
                   <p className="font-medium">{member.phoneNumber}</p>
@@ -767,7 +767,7 @@ export default function MemberDetails() {
                   <p className="text-sm text-muted-foreground">Email Address</p>
                   <p className="font-medium">{member.user?.email || 'Not provided'}</p>
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <p className="text-sm text-muted-foreground">Address</p>
                   <p className="font-medium">{member.address || 'Not provided'}</p>
                 </div>
@@ -777,7 +777,7 @@ export default function MemberDetails() {
             {/* Employment Information */}
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-3">Employment Information</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Department</p>
                   <p className="font-medium">{member.department || 'Not specified'}</p>
@@ -794,7 +794,7 @@ export default function MemberDetails() {
                   <p className="text-sm text-muted-foreground">Staff Account Number</p>
                   <p className="font-medium">{member.staffAccountNumber || 'Not provided'}</p>
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <p className="text-sm text-muted-foreground">Average Net Pay</p>
                   <p className="font-medium">
                     {member.averageNetPay ? `UGX ${parseFloat(member.averageNetPay).toLocaleString()}` : 'Not provided'}
@@ -806,7 +806,7 @@ export default function MemberDetails() {
             {/* Next of Kin Information */}
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-3">Next of Kin Information</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Next of Kin Name</p>
                   <p className="font-medium">{member.nextOfKinName || 'Not provided'}</p>
@@ -821,7 +821,7 @@ export default function MemberDetails() {
             {/* Financial Information */}
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-3">Financial Information</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Monthly Savings</p>
                   <p className="font-medium">
@@ -832,7 +832,7 @@ export default function MemberDetails() {
                   <p className="text-sm text-muted-foreground">Bank Account Number</p>
                   <p className="font-medium">{member.accountNumber || 'Not provided'}</p>
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <p className="text-sm text-muted-foreground">Bank Branch</p>
                   <p className="font-medium">{member.branch || 'Not provided'}</p>
                 </div>
@@ -859,7 +859,7 @@ export default function MemberDetails() {
                   </Button>
                 )}
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Contribution Per Share</p>
                   <p className="font-medium">
@@ -900,7 +900,7 @@ export default function MemberDetails() {
             {/* Beneficiary Information */}
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-3">Beneficiary Information</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Beneficiary Name</p>
                   <p className="font-medium">{member.beneficiaryName || 'Not provided'}</p>
@@ -909,7 +909,7 @@ export default function MemberDetails() {
                   <p className="text-sm text-muted-foreground">Relationship</p>
                   <p className="font-medium">{member.beneficiaryRelationship || 'Not specified'}</p>
                 </div>
-                <div className="col-span-2">
+                <div className="sm:col-span-2">
                   <p className="text-sm text-muted-foreground">Beneficiary Contact</p>
                   <p className="font-medium">{member.beneficiaryContact || 'Not provided'}</p>
                 </div>
@@ -919,7 +919,7 @@ export default function MemberDetails() {
             {/* Membership Information */}
             <div>
               <h4 className="text-sm font-medium text-muted-foreground mb-3">Membership Information</h4>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Join Date</p>
                   <p className="font-medium">
@@ -964,7 +964,7 @@ export default function MemberDetails() {
                   </>
                 )}
                 {member.approvalComments && (
-                  <div className="col-span-2">
+                  <div className="sm:col-span-2">
                     <p className="text-sm text-muted-foreground">Approval Comments</p>
                     <p className="font-medium">{member.approvalComments}</p>
                   </div>

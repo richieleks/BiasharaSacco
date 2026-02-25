@@ -2066,7 +2066,7 @@ function UserManagementTab() {
               </DialogHeader>
               <Form {...createForm}>
                 <form onSubmit={createForm.handleSubmit((data) => createUserMutation.mutate(data))} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField control={createForm.control} name="firstName" render={({ field }) => (
                       <FormItem>
                         <FormLabel>First Name</FormLabel>
@@ -2210,7 +2210,7 @@ function UserManagementTab() {
           </DialogHeader>
           <Form {...editForm}>
             <form onSubmit={editForm.handleSubmit((data) => updateUserMutation.mutate({ id: editingUser?.id, data }))} className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField control={editForm.control} name="firstName" render={({ field }) => (
                   <FormItem>
                     <FormLabel>First Name</FormLabel>
