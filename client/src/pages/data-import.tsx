@@ -9,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useRBAC } from "@/hooks/useRBAC";
 
 interface ImportResult {
@@ -29,6 +30,7 @@ export default function DataImport() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importType, setImportType] = useState<'savings' | 'loans'>('savings');
+  const [createNewMembers, setCreateNewMembers] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -54,6 +56,7 @@ export default function DataImport() {
       
       const formData = new FormData();
       formData.append('file', selectedFile);
+      formData.append('createNewMembers', createNewMembers.toString());
       
       const endpoint = importType === 'savings' ? '/api/import/savings' : '/api/import/loans';
       const response = await fetch(endpoint, {
@@ -259,6 +262,27 @@ export default function DataImport() {
                       {(selectedFile.size / 1024).toFixed(1)} KB • Ready for import
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {importType === 'savings' && (
+              <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <Checkbox
+                  id="createNewMembers"
+                  checked={createNewMembers}
+                  onCheckedChange={(checked) => setCreateNewMembers(checked === true)}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label htmlFor="createNewMembers" className="text-sm font-medium cursor-pointer">
+                    Create new members automatically
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {createNewMembers 
+                      ? "New member profiles will be created for accounts not found in the system."
+                      : "Only existing members will be matched. Accounts without a matching member will be skipped."
+                    }
+                  </p>
                 </div>
               </div>
             )}

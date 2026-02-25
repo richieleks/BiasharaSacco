@@ -50,7 +50,7 @@ export interface ImportResult {
   importedLoans?: number;
 }
 
-export async function importSavingsFromExcel(filePath: string): Promise<ImportResult> {
+export async function importSavingsFromExcel(filePath: string, options?: { createNewMembers?: boolean }): Promise<ImportResult> {
   const result: ImportResult = {
     success: false,
     totalRows: 0,
@@ -168,6 +168,8 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
         role: 'member' as const
       };
 
+      const shouldCreateMembers = options?.createNewMembers !== false;
+      
       // Check if member already exists
       const existingMember = await storage.getMemberByIdNumber(memberData.idNumber);
       
@@ -175,7 +177,7 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
       if (existingMember) {
         member = existingMember;
         console.log(`Member already exists: ${member.fullName} (${member.memberNumber})`);
-      } else {
+      } else if (shouldCreateMembers) {
         // Generate member number
         const memberCount = await storage.getMembersCount();
         const memberNumber = `IMP${String(memberCount + 1).padStart(6, '0')}`;
@@ -192,6 +194,14 @@ export async function importSavingsFromExcel(filePath: string): Promise<ImportRe
         member = await storage.createMember(validatedMemberData);
         result.importedMembers++;
         console.log(`Created new member: ${member.fullName} (${member.memberNumber})`);
+      } else {
+        result.errors.push({
+          row: 1,
+          error: `Member not found for account "${accountName}" and member creation is disabled`,
+          data: { accountName, accountNumber }
+        });
+        result.success = result.errors.length < result.totalRows;
+        return result;
       }
 
       // Update existing savings account or create if none exists
