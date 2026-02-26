@@ -143,7 +143,7 @@ export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const { hasPermission } = useRBAC();
-  const [activeTab, setActiveTab] = useState<'system' | 'security' | 'email' | 'notifications' | 'business' | 'maintenance' | 'loantypes' | 'users' | 'preferences' | 'rbac' | 'roleassign'>('system');
+  const [activeTab, setActiveTab] = useState<'system' | 'security' | 'email' | 'notifications' | 'business' | 'maintenance' | 'loantypes' | 'users' | 'preferences' | 'rbac' | 'roleassign'>('business');
 
   const settingsDefaults: AdminSettingsData = {
     maintenanceMode: false,
@@ -444,7 +444,22 @@ export default function AdminSettingsPage() {
 
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar Navigation */}
-        <div className="w-full md:w-64 flex md:flex-col gap-1 md:gap-0 md:space-y-2 overflow-x-auto pb-2 md:pb-0">
+        <div className="w-full md:w-64 flex md:flex-col gap-1 md:gap-0 md:space-y-1 overflow-x-auto pb-2 md:pb-0">
+          <p className="hidden md:block text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 pt-1 pb-1">SACCO Settings</p>
+          <TabButton
+            tab="business"
+            icon={CreditCard}
+            label="Business Rules"
+            isActive={activeTab === 'business'}
+          />
+          <TabButton
+            tab="loantypes"
+            icon={CreditCard}
+            label="Loan Types"
+            isActive={activeTab === 'loantypes'}
+          />
+          <Separator className="hidden md:block my-2" />
+          <p className="hidden md:block text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 pt-1 pb-1">System Settings</p>
           <TabButton
             tab="system"
             icon={Server}
@@ -470,35 +485,10 @@ export default function AdminSettingsPage() {
             isActive={activeTab === 'notifications'}
           />
           <TabButton
-            tab="business"
-            icon={CreditCard}
-            label="Business Rules"
-            isActive={activeTab === 'business'}
-          />
-          <TabButton
-            tab="maintenance"
-            icon={Database}
-            label="Backup & Maintenance"
-            isActive={activeTab === 'maintenance'}
-          />
-          <TabButton
-            tab="loantypes"
-            icon={CreditCard}
-            label="Loan Types"
-            isActive={activeTab === 'loantypes'}
-          />
-          <TabButton
             tab="users"
             icon={Users}
             label="User Management"
             isActive={activeTab === 'users'}
-          />
-          <Separator className="hidden md:block my-2" />
-          <TabButton
-            tab="preferences"
-            icon={User}
-            label="Preferences"
-            isActive={activeTab === 'preferences'}
           />
           <TabButton
             tab="rbac"
@@ -511,6 +501,20 @@ export default function AdminSettingsPage() {
             icon={UserCheck}
             label="Role Assignment"
             isActive={activeTab === 'roleassign'}
+          />
+          <TabButton
+            tab="maintenance"
+            icon={Database}
+            label="Backup & Maintenance"
+            isActive={activeTab === 'maintenance'}
+          />
+          <Separator className="hidden md:block my-2" />
+          <p className="hidden md:block text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 pt-1 pb-1">Personal</p>
+          <TabButton
+            tab="preferences"
+            icon={User}
+            label="Preferences"
+            isActive={activeTab === 'preferences'}
           />
         </div>
 
