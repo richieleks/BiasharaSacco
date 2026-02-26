@@ -855,23 +855,31 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
         const row = rawData[i] as any[];
         if (!row || row.length < 4 || !row[0]) continue;
         
-        const postingDate = row[0];
+        const postingDate = excelDateToDate(row[0]);
         const details = row[1]?.toString() || '';
+        const detailsLower = details.toLowerCase();
         const amountDebited = parseFloat(row[2]) || 0;
         const principalRepayment = parseFloat(row[3]) || 0;
         const interest = parseFloat(row[4]) || 0;
+        
+        // Determine transaction type from the description
+        const isDisbursement = detailsLower.includes('disbursed') || 
+                               detailsLower.includes('loan amount') || 
+                               detailsLower.includes('top up') || 
+                               detailsLower.includes('top-up') ||
+                               detailsLower.includes('topup');
         
         if (amountDebited !== 0 || principalRepayment !== 0) {
           const transactionData = {
             memberId: member.id,
             loanId: createdLoan.id,
-            transactionType: amountDebited > 0 ? 'loan_payment' as const : 'loan_disbursement' as const,
+            transactionType: isDisbursement ? 'loan_disbursement' as const : 'loan_payment' as const,
             amount: Math.abs(amountDebited || principalRepayment).toString(),
             description: details,
             referenceNumber: `LTX${Date.now()}_${i}`,
             status: 'completed' as const,
             processedBy: options?.userId,
-            transactionDate: new Date()
+            transactionDate: postingDate
           };
           
           transactionEntries.push(transactionData);
