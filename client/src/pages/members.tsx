@@ -204,8 +204,9 @@ export default function Members() {
                 <TableHead className="hidden sm:table-cell">Phone</TableHead>
                 <TableHead className="hidden lg:table-cell">Gender</TableHead>
                 <TableHead className="hidden lg:table-cell">Department</TableHead>
-                <TableHead className="hidden lg:table-cell">Avg Net Pay</TableHead>
-                <TableHead className="hidden lg:table-cell">Next of Kin</TableHead>
+                <TableHead className="hidden xl:table-cell">Avg Net Pay</TableHead>
+                <TableHead className="hidden xl:table-cell">Next of Kin</TableHead>
+                <TableHead className="hidden md:table-cell">Date Joined</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -234,10 +235,13 @@ export default function Members() {
                   <TableCell className="hidden sm:table-cell text-slate-900">{member.phoneNumber}</TableCell>
                   <TableCell className="hidden lg:table-cell text-slate-900 capitalize">{member.gender || 'Not specified'}</TableCell>
                   <TableCell className="hidden lg:table-cell text-slate-900">{member.department || 'Not specified'}</TableCell>
-                  <TableCell className="hidden lg:table-cell text-slate-900">
+                  <TableCell className="hidden xl:table-cell text-slate-900">
                     {member.averageNetPay ? `UGX ${parseFloat(member.averageNetPay).toLocaleString()}` : 'Not specified'}
                   </TableCell>
-                  <TableCell className="hidden lg:table-cell text-slate-900">{member.nextOfKinName || 'Not specified'}</TableCell>
+                  <TableCell className="hidden xl:table-cell text-slate-900">{member.nextOfKinName || 'Not specified'}</TableCell>
+                  <TableCell className="hidden md:table-cell text-slate-900">
+                    {member.joinDate ? new Date(member.joinDate).toLocaleDateString() : 'N/A'}
+                  </TableCell>
                   <TableCell>
                     <Badge variant="outline" className={`border ${getStatusColor(member.status ?? 'pending')}`}>
                       {member.status ?? 'pending'}

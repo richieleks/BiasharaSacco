@@ -374,6 +374,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
       ['beneficiaryName', ['beneficiary name (in case of death)', 'beneficiary name', 'beneficiary']],
       ['beneficiaryRelationship', ['relationship']],
       ['beneficiaryContact', ['contact address', 'beneficiary contact', 'beneficiary address']],
+      ['dateJoined', ['date joined', 'join date', 'joined', 'membership date', 'date of joining']],
     ];
 
     for (const [key, variants] of mappings) {
@@ -466,6 +467,15 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
         const beneficiaryRelationship = colMap.beneficiaryRelationship !== undefined ? (row[colMap.beneficiaryRelationship] || '').toString().trim() : '';
         const beneficiaryContact = colMap.beneficiaryContact !== undefined ? (row[colMap.beneficiaryContact] || '').toString().trim() : '';
 
+        const dateJoinedRaw = colMap.dateJoined !== undefined ? row[colMap.dateJoined] : null;
+        let joinDate: string | null = null;
+        if (dateJoinedRaw) {
+          const parsedJoinDate = excelDateToDate(dateJoinedRaw);
+          if (!isNaN(parsedJoinDate.getTime())) {
+            joinDate = parsedJoinDate.toISOString();
+          }
+        }
+
         newMemberIndex++;
         const memberNumber = `BCS${String(newMemberIndex).padStart(6, '0')}`;
 
@@ -496,6 +506,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
           nextOfKinPhone,
           status: 'active' as const,
           role: 'member' as const,
+          ...(joinDate ? { joinDate: new Date(joinDate) } : {}),
         };
 
         const validatedMemberData = insertMemberSchema.parse(memberData);
