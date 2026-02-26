@@ -691,22 +691,23 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
     let interestEarned = 0;
     let tenure = 0;
 
-    // Look for account info in first few rows
+    // Look for account info in first few rows - scan all cells in each row
     for (let i = 0; i < Math.min(5, rawData.length); i++) {
       const row = rawData[i] as any[];
       if (row && row.length > 1) {
-        const firstCell = row[0]?.toString().toUpperCase() || '';
-        
-        if (firstCell.includes('ACCOUNT NAME')) {
-          accountName = row[1]?.toString() || '';
-        } else if (firstCell.includes('ACCOUNT NUMBER')) {
-          accountNumber = row[1]?.toString() || '';
-        } else if (firstCell.includes('CLOSING BALANCE')) {
-          closingBalance = parseFloat(row[4]) || 0;
-        } else if (firstCell.includes('INTEREST EARNED')) {
-          interestEarned = parseFloat(row[4]) || 0;
-        } else if (firstCell.includes('TENURE')) {
-          tenure = parseInt(row[1]) || 12;
+        for (let j = 0; j < row.length; j++) {
+          const cellText = row[j]?.toString().toUpperCase().trim() || '';
+          if (cellText.includes('ACCOUNT NAME') && row[j + 1]) {
+            accountName = row[j + 1]?.toString() || '';
+          } else if (cellText.includes('ACCOUNT NUMBER') && row[j + 1]) {
+            accountNumber = row[j + 1]?.toString() || '';
+          } else if (cellText.includes('CLOSING BALANCE') && row[j + 1] !== undefined) {
+            closingBalance = parseFloat(row[j + 1]) || 0;
+          } else if (cellText.includes('INTEREST EARNED') && row[j + 1] !== undefined) {
+            interestEarned = parseFloat(row[j + 1]) || 0;
+          } else if (cellText.includes('TENURE') && row[j + 1] !== undefined) {
+            tenure = parseInt(row[j + 1]) || 12;
+          }
         }
       }
     }
