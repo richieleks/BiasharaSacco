@@ -745,35 +745,52 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
     try {
       console.log('Processing loan statement for:', accountName);
 
-      // Find the initial loan disbursement and calculate loan amount
-      let initialLoanAmount = 0;
       let currentBalance = closingBalance;
-      let interestRate = 12; // Default rate
+      // Use interest rate from header if available, otherwise default
+      let interestRate = interestEarned > 0 ? 12 : 12;
       
-      // Analyze transactions to get loan details
+      // Calculate total disbursed and total repaid from transactions
+      let totalDisbursed = 0;
+      let totalPrincipalRepaid = 0;
+      let totalInterestPaid = 0;
+      let firstDisbursementDate: Date | null = null;
+      
       for (let i = headerRowIndex + 1; i < rawData.length; i++) {
         const row = rawData[i] as any[];
         if (!row || row.length < 4) continue;
         
         const details = row[1]?.toString().toLowerCase() || '';
-        const amountDebited = parseFloat(row[2]) || 0;
+        const amtDebited = parseFloat(row[2]) || 0;
+        const principalRepyt = parseFloat(row[3]) || 0;
+        const interest = parseFloat(row[4]) || 0;
         
-        // Look for loan disbursement
-        if (details.includes('disbursed') || details.includes('loan amount')) {
-          initialLoanAmount += Math.abs(amountDebited);
-        }
-        // Look for top-ups (negative amounts in debited column)
-        else if (details.includes('top') && amountDebited < 0) {
-          initialLoanAmount += Math.abs(amountDebited);
+        const isDisbursementOrTopUp = details.includes('disbursed') || 
+                                      details.includes('loan amount') || 
+                                      details.includes('top up') || 
+                                      details.includes('top-up') ||
+                                      details.includes('topup');
+        
+        if (isDisbursementOrTopUp) {
+          // Top-ups/disbursements: amount is negative in PRINCIPLE REPYT (col 3)
+          // or negative in AMT DEBITED (col 2), or positive for initial disbursement
+          const disbAmount = Math.abs(principalRepyt) || Math.abs(amtDebited);
+          totalDisbursed += disbAmount;
+          if (!firstDisbursementDate) {
+            firstDisbursementDate = excelDateToDate(row[0]);
+          }
+        } else if (amtDebited > 0) {
+          // Regular payment - principal and interest breakdown
+          totalPrincipalRepaid += Math.abs(principalRepyt);
+          totalInterestPaid += Math.abs(interest);
         }
       }
 
-      // If no initial amount found, estimate from balance and transactions
-      if (initialLoanAmount === 0) {
-        initialLoanAmount = Math.max(currentBalance, 1000000); // Reasonable minimum
+      // If no disbursements found, use closing balance as fallback
+      if (totalDisbursed === 0) {
+        totalDisbursed = Math.max(currentBalance, 1000000);
       }
 
-      console.log(`Loan details: Amount=${initialLoanAmount}, Balance=${currentBalance}, Interest=${interestEarned}`);
+      console.log(`Loan details: Total Disbursed=${totalDisbursed}, Balance=${currentBalance}, Interest Earned=${interestEarned}, Principal Repaid=${totalPrincipalRepaid}, Interest Paid=${totalInterestPaid}`);
 
       // Match to existing member only - no auto-creation
       const allMembers = await storage.getAllMembers();
@@ -824,30 +841,48 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
         }
       }
 
-      // Create loan
-      const monthlyPayment = calculateMonthlyPayment(initialLoanAmount, loanTypeInterestRate, tenure || 12);
+      // Calculate monthly payment from actual transaction data if possible
+      // Use the last installment amount as the current monthly payment
+      let lastInstallmentAmount = 0;
+      for (let i = rawData.length - 1; i > headerRowIndex; i--) {
+        const row = rawData[i] as any[];
+        if (!row || row.length < 3) continue;
+        const details = row[1]?.toString().toLowerCase() || '';
+        const amt = parseFloat(row[2]) || 0;
+        if (amt > 0 && (details.includes('installment') || details.includes('instalment'))) {
+          lastInstallmentAmount = amt;
+          break;
+        }
+      }
+      
+      const monthlyPayment = lastInstallmentAmount > 0 
+        ? lastInstallmentAmount 
+        : calculateMonthlyPayment(totalDisbursed, loanTypeInterestRate, tenure || 12);
+
+      const disbursementDate = firstDisbursementDate || new Date();
+      
       const loanData = {
         memberId: member.id,
         loanNumber: `LOAN${String(Date.now()).slice(-6)}`,
         loanType: loanTypeName,
-        principalAmount: initialLoanAmount.toString(),
+        principalAmount: totalDisbursed.toString(),
         interestRate: Math.min(loanTypeInterestRate / 100, 0.9999).toString(),
         termMonths: tenure || 12,
         monthlyPayment: monthlyPayment.toString(),
         outstandingBalance: currentBalance.toString(),
         status: 'active' as const,
         purpose: 'Imported from loan statement',
-        applicationDate: new Date(),
-        approvalDate: new Date(),
-        disbursementDate: new Date(),
-        currentSavings: Math.max(initialLoanAmount * 0.4, 100000).toString()
+        applicationDate: disbursementDate,
+        approvalDate: disbursementDate,
+        disbursementDate: disbursementDate,
+        currentSavings: Math.max(totalDisbursed * 0.4, 100000).toString()
       };
 
       const validatedLoanData = insertLoanSchema.parse(loanData);
       const createdLoan = await storage.createLoan(validatedLoanData);
       
       result.importedLoans = (result.importedLoans || 0) + 1;
-      console.log(`✓ Created loan: ${loanData.loanNumber} for ${member.fullName} - UGX ${initialLoanAmount.toLocaleString()}`);
+      console.log(`✓ Created loan: ${loanData.loanNumber} for ${member.fullName} - UGX ${totalDisbursed.toLocaleString()}`);
 
       // Process transactions and create transaction records
       const transactionEntries = [];
@@ -858,9 +893,10 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
         const postingDate = excelDateToDate(row[0]);
         const details = row[1]?.toString() || '';
         const detailsLower = details.toLowerCase();
-        const amountDebited = parseFloat(row[2]) || 0;
-        const principalRepayment = parseFloat(row[3]) || 0;
+        const amtDebited = parseFloat(row[2]) || 0;
+        const principalRepyt = parseFloat(row[3]) || 0;
         const interest = parseFloat(row[4]) || 0;
+        const balance = parseFloat(row[5]) || 0;
         
         // Determine transaction type from the description
         const isDisbursement = detailsLower.includes('disbursed') || 
@@ -869,20 +905,35 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
                                detailsLower.includes('top-up') ||
                                detailsLower.includes('topup');
         
-        if (amountDebited !== 0 || principalRepayment !== 0) {
-          const transactionData = {
+        if (isDisbursement) {
+          // Disbursement/top-up: amount is in PRINCIPLE REPYT (negative) or AMT DEBITED
+          const disbAmount = Math.abs(principalRepyt) || Math.abs(amtDebited);
+          if (disbAmount > 0) {
+            transactionEntries.push({
+              memberId: member.id,
+              loanId: createdLoan.id,
+              transactionType: 'loan_disbursement' as const,
+              amount: disbAmount.toString(),
+              description: details,
+              referenceNumber: `LTX${Date.now()}_${i}`,
+              status: 'completed' as const,
+              processedBy: options?.userId,
+              transactionDate: postingDate
+            });
+          }
+        } else if (amtDebited > 0) {
+          // Regular installment payment with principal + interest breakdown
+          transactionEntries.push({
             memberId: member.id,
             loanId: createdLoan.id,
-            transactionType: isDisbursement ? 'loan_disbursement' as const : 'loan_payment' as const,
-            amount: Math.abs(amountDebited || principalRepayment).toString(),
+            transactionType: 'loan_payment' as const,
+            amount: amtDebited.toString(),
             description: details,
             referenceNumber: `LTX${Date.now()}_${i}`,
             status: 'completed' as const,
             processedBy: options?.userId,
             transactionDate: postingDate
-          };
-          
-          transactionEntries.push(transactionData);
+          });
         }
       }
 
