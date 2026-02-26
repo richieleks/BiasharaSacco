@@ -3193,19 +3193,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { importLoansFromExcel } = await import('./importUtils');
       
-      // Use uploaded file or fallback to attached file
-      const filePath = req.file ? req.file.path : './attached_assets/loans_1753038438279.xlsx';
+      const filePath = req.file ? req.file.path : '';
+      const loanTypeId = req.body?.loanTypeId ? parseInt(req.body.loanTypeId) : undefined;
       
-      console.log('Starting loan import from:', filePath);
-      const result = await importLoansFromExcel(filePath, { userId: getUserId(req) });
+      if (!filePath) {
+        return res.status(400).json({ message: 'No file uploaded' });
+      }
+
+      if (!loanTypeId) {
+        return res.status(400).json({ message: 'Loan type is required. Please select a loan type before uploading.' });
+      }
+
+      console.log('Starting loan import from:', filePath, 'with loanTypeId:', loanTypeId);
+      const result = await importLoansFromExcel(filePath, { userId: getUserId(req), loanTypeId });
       
-      // Create audit log
       await storage.createAuditLog({
         userId: getUserId(req) || '',
         action: 'import',
         resource: 'loans',
         resourceId: 'bulk_import',
-        details: `Imported ${result.importedLoans || 0} loans, ${result.importedMembers} members, and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
+        details: `Imported ${result.importedLoans || 0} loans. ${result.errors?.length || 0} errors.`,
       });
 
       res.json(result);

@@ -19,7 +19,7 @@ The system is divided into a `client/` (React frontend) and `server/` (Express.j
 - **Financial Operations**: Includes comprehensive management of savings accounts, loans (with multi-stage approval workflows, dynamic repayment calculations, and conditional guarantor workflows), and transactions. An advanced interest calculation system supports various methods (simple, compound, reducing balance) and manages financial years.
 - **Business Logic**: A robust business rules validation system ensures compliance with SACCO regulations, providing real-time eligibility checks for loan applications based on membership duration, active saver status, and savings-to-loan ratios.
 - **Notifications**: A real-time notification system with WebSocket support keeps users informed of critical activities, offering various notification types and priority levels.
-- **Data Management**: Features include Excel file upload for bank statement processing and transaction import, comprehensive account statement generation, and an audit logging system for tracking all critical system activities.
+- **Data Management**: Features include Excel file upload for bank statement processing and transaction import, comprehensive account statement generation, and an audit logging system for tracking all critical system activities. Loan import requires selecting a loan type beforehand and only maps to existing members (no auto-creation of members or savings accounts).
 
 ### Feature Specifications
 - **User Management**: Creation, profile management, and role assignment for SACCO members and staff.

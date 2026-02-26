@@ -641,7 +641,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 }
 
 // Function to import loans from Excel file
-export async function importLoansFromExcel(filePath: string, options?: { userId?: string }): Promise<ImportResult> {
+export async function importLoansFromExcel(filePath: string, options?: { userId?: string; loanTypeId?: number }): Promise<ImportResult> {
   const result: ImportResult = {
     success: false,
     totalRows: 0,
@@ -774,79 +774,63 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
 
       console.log(`Loan details: Amount=${initialLoanAmount}, Balance=${currentBalance}, Interest=${interestEarned}`);
 
-      // Find or create member
-      let member;
-      
-      // Try to find existing member by name
+      // Match to existing member only - no auto-creation
       const allMembers = await storage.getAllMembers();
-      member = allMembers.find(m => 
-        m.fullName?.toLowerCase().includes(accountName.toLowerCase()) ||
-        accountName.toLowerCase().includes(m.fullName?.toLowerCase() || '')
+      let member = allMembers.find(m => 
+        m.accountNumber === accountNumber ||
+        m.staffAccountNumber === accountNumber
       );
 
       if (!member) {
-        // Create new member for this loan
-        const memberCount = await storage.getMembersCount();
-        const newMemberNumber = `BCS${String(memberCount + 1).padStart(6, '0')}`;
-        
-        const memberData = {
-          fullName: accountName,
-          idNumber: `LOAN${accountNumber || Date.now()}`,
-          phoneNumber: '0700000000',
-          email: `${accountName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
-          department: 'Loan Import',
-          monthlySavings: '50000',
-          shareContribution: '20000',
-          numberOfShares: 4,
-          status: 'active' as const,
-          gender: 'male' as const,
-          averageNetPay: Math.round(initialLoanAmount / 10).toString(),
-          staffAccountNumber: accountNumber || `STAFF${Date.now()}`,
-          nextOfKinName: 'Next of Kin',
-          nextOfKinPhone: '0700000000',
-          dateOfBirth: '1990-01-01',
-          address: '123 Main Street',
-          maritalStatus: 'single' as const,
-          section: 'General',
-          termsOfService: 'permanent' as const,
-          accountNumber: accountNumber || `ACC${Date.now()}`,
-          branch: 'Main Branch',
-          beneficiaryName: accountName,
-          beneficiaryRelationship: 'Self',
-          beneficiaryContact: '0700000000',
-          role: 'member' as const,
-          memberNumber: newMemberNumber
-        };
-
-        const validatedMemberData = insertMemberSchema.parse(memberData);
-        member = await storage.createMember(validatedMemberData);
-        result.importedMembers++;
-        console.log(`Created new member: ${member.fullName} (${member.memberNumber})`);
+        member = allMembers.find(m => 
+          m.fullName?.toLowerCase().trim() === accountName.toLowerCase().trim()
+        );
       }
 
-      // Create savings account if none exists (required for loans)
-      const existingAccounts = await storage.getSavingsAccountsByMember(member.id);
-      if (existingAccounts.length === 0) {
-        const savingsData = {
-          memberId: member.id,
-          accountNumber: `SAV${member.memberNumber}`,
-          accountType: 'regular' as const,
-          balance: Math.max(initialLoanAmount * 0.4, 100000).toString(), // Ensure sufficient savings for loan
-          status: 'active' as const
-        };
-        const validatedSavingsData = insertSavingsAccountSchema.parse(savingsData);
-        await storage.createSavingsAccount(validatedSavingsData);
-        result.importedAccounts++;
+      if (!member) {
+        member = allMembers.find(m => 
+          m.fullName?.toLowerCase().includes(accountName.toLowerCase()) ||
+          accountName.toLowerCase().includes(m.fullName?.toLowerCase() || '')
+        );
+      }
+
+      if (!member) {
+        result.errors.push({
+          row: 1,
+          error: `No existing member found matching "${accountName}" (account: ${accountNumber}). Loan import requires an existing member. Please import the member first.`,
+          data: { accountName, accountNumber }
+        });
+        result.totalRows = 1;
+        result.success = false;
+        return result;
+      }
+
+      console.log(`Matched to existing member: ${member.fullName} (${member.memberNumber})`);
+
+      // Get loan type details if loanTypeId provided
+      let loanTypeName: 'personal' | 'business' | 'emergency' | 'asset' | 'development' = 'personal';
+      let loanTypeInterestRate = interestRate;
+      if (options?.loanTypeId) {
+        const loanTypeRecord = await storage.getLoanType(options.loanTypeId);
+        if (loanTypeRecord) {
+          const nameMap: Record<string, 'personal' | 'business' | 'emergency' | 'asset' | 'development'> = {
+            'personal': 'personal', 'business': 'business', 'emergency': 'emergency',
+            'asset': 'asset', 'development': 'development'
+          };
+          loanTypeName = nameMap[loanTypeRecord.name.toLowerCase()] || 'personal';
+          loanTypeInterestRate = parseFloat(loanTypeRecord.interestRate) || interestRate;
+          console.log(`Using loan type: ${loanTypeRecord.displayName} (${loanTypeName}), interest: ${loanTypeInterestRate}%`);
+        }
       }
 
       // Create loan
-      const monthlyPayment = calculateMonthlyPayment(initialLoanAmount, interestRate, tenure || 12);
+      const monthlyPayment = calculateMonthlyPayment(initialLoanAmount, loanTypeInterestRate, tenure || 12);
       const loanData = {
         memberId: member.id,
         loanNumber: `LOAN${String(Date.now()).slice(-6)}`,
-        loanType: 'personal' as const,
+        loanType: loanTypeName,
         principalAmount: initialLoanAmount.toString(),
-        interestRate: Math.min(interestRate / 100, 0.9999).toString(), // Convert percentage to decimal and ensure within precision limits
+        interestRate: Math.min(loanTypeInterestRate / 100, 0.9999).toString(),
         termMonths: tenure || 12,
         monthlyPayment: monthlyPayment.toString(),
         outstandingBalance: currentBalance.toString(),

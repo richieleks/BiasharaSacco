@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,9 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRBAC } from "@/hooks/useRBAC";
+import type { LoanType } from "@shared/schema";
 
 interface ImportResult {
   success: boolean;
@@ -31,10 +33,16 @@ export default function DataImport() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importType, setImportType] = useState<'members' | 'savings' | 'loans'>('members');
   const [createNewMembers, setCreateNewMembers] = useState(true);
+  const [selectedLoanTypeId, setSelectedLoanTypeId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { hasPermission } = useRBAC();
+
+  const { data: loanTypes } = useQuery<LoanType[]>({
+    queryKey: ['/api/loan-types/active'],
+    enabled: importType === 'loans',
+  });
 
   const canImport = hasPermission('update', 'system-settings');
 
@@ -57,6 +65,9 @@ export default function DataImport() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('createNewMembers', createNewMembers.toString());
+      if (importType === 'loans' && selectedLoanTypeId) {
+        formData.append('loanTypeId', selectedLoanTypeId);
+      }
       
       const endpoint = importType === 'members' ? '/api/import/members' : importType === 'savings' ? '/api/import/savings' : '/api/import/loans';
       const response = await fetch(endpoint, {
@@ -78,7 +89,7 @@ export default function DataImport() {
           ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
           : importType === 'savings' 
           ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
-          : `Successfully imported ${data.importedLoans || 0} loans, ${data.importedMembers} members, and ${data.importedAccounts} savings accounts.`;
+          : `Successfully imported ${data.importedLoans || 0} loans.`;
         
         toast({
           title: "Import Successful",
@@ -132,6 +143,14 @@ export default function DataImport() {
       });
       return;
     }
+    if (importType === 'loans' && !selectedLoanTypeId) {
+      toast({
+        title: "Loan Type Required",
+        description: "Please select a loan type before importing loan data",
+        variant: "destructive",
+      });
+      return;
+    }
     importMutation.mutate();
   };
 
@@ -145,6 +164,7 @@ export default function DataImport() {
 
   const handleImportTypeChange = (type: 'members' | 'savings' | 'loans') => {
     setImportType(type);
+    setSelectedLoanTypeId('');
     handleReset();
   };
 
@@ -308,10 +328,37 @@ export default function DataImport() {
               </div>
             )}
 
+            {importType === 'loans' && (
+              <div className="space-y-2 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <Label htmlFor="loanType" className="text-sm font-medium">
+                  Loan Type <span className="text-red-500">*</span>
+                </Label>
+                <Select value={selectedLoanTypeId} onValueChange={setSelectedLoanTypeId}>
+                  <SelectTrigger id="loanType">
+                    <SelectValue placeholder="Select loan type for imported loans" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loanTypes && loanTypes.length > 0 ? (
+                      loanTypes.map((lt) => (
+                        <SelectItem key={lt.id} value={lt.id.toString()}>
+                          {lt.displayName} ({lt.interestRate}% - {lt.interestType?.replace('_', ' ')})
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="none" disabled>No active loan types available</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  All imported loans will be assigned to this loan type. The interest rate and settings from the selected type will be applied.
+                </p>
+              </div>
+            )}
+
             {/* Import Button */}
             <Button 
               onClick={handleImport}
-              disabled={importMutation.isPending || !selectedFile}
+              disabled={importMutation.isPending || !selectedFile || (importType === 'loans' && !selectedLoanTypeId)}
               className="w-full rounded-xl"
             >
               {importMutation.isPending ? (
@@ -393,10 +440,10 @@ export default function DataImport() {
                   </>
                 ) : (
                   <>
-                    <li>• Member profiles created from loan account names</li>
-                    <li>• Loan records generated from statement data</li>
-                    <li>• Savings accounts created automatically for loans</li>
-                    <li>• Transaction history imported and processed</li>
+                    <li>• Loans are matched to existing members by account number or name</li>
+                    <li>• A loan type must be selected before uploading</li>
+                    <li>• Loan records are created with the selected type's settings</li>
+                    <li>• Members must be imported first if they don't exist</li>
                   </>
                 )}
               </ul>
