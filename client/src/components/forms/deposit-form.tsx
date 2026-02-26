@@ -115,7 +115,7 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
                 <SelectContent>
                   {members?.map((member: any) => (
                     <SelectItem key={member.id} value={member.id.toString()}>
-                      {member.user?.firstName} {member.user?.lastName} ({member.memberNumber})
+                      {member.memberNumber} - {member.fullName || `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim() || 'Unknown'}
                     </SelectItem>
                   ))}
                 </SelectContent>
