@@ -67,7 +67,7 @@ import {
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
-import { eq, desc, sql, like, or, and, getTableColumns } from "drizzle-orm";
+import { eq, desc, sql, like, or, and, gte, lte, count, getTableColumns } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -1018,6 +1018,68 @@ export class DatabaseStorage implements IStorage {
       savingsAccount: result.savings_accounts || undefined,
       loan: result.loans || undefined,
     }));
+  }
+
+  async getTransactionsBySavingsAccountPaginated(
+    savingsAccountId: number,
+    options: { startDate?: Date; endDate?: Date; page: number; limit: number }
+  ): Promise<{ transactions: TransactionWithDetails[]; total: number; totalDeposits: number; totalWithdrawals: number; totalInterest: number }> {
+    const conditions = [eq(transactions.savingsAccountId, savingsAccountId)];
+    if (options.startDate) {
+      conditions.push(gte(transactions.transactionDate, options.startDate));
+    }
+    if (options.endDate) {
+      const endOfDay = new Date(options.endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      conditions.push(lte(transactions.transactionDate, endOfDay));
+    }
+
+    const whereClause = and(...conditions);
+
+    const [countResult] = await db
+      .select({ value: count() })
+      .from(transactions)
+      .where(whereClause!);
+
+    const [summaryResult] = await db
+      .select({
+        totalDeposits: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} IN ('deposit') AND ${transactions.status} = 'completed' THEN CAST(${transactions.amount} AS DECIMAL) ELSE 0 END), 0)`,
+        totalWithdrawals: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} IN ('withdrawal', 'fee_charge') AND ${transactions.status} = 'completed' THEN CAST(${transactions.amount} AS DECIMAL) ELSE 0 END), 0)`,
+        totalInterest: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} = 'interest_credit' AND ${transactions.status} = 'completed' THEN CAST(${transactions.amount} AS DECIMAL) ELSE 0 END), 0)`,
+      })
+      .from(transactions)
+      .where(whereClause!);
+
+    const offset = (options.page - 1) * options.limit;
+    const results = await db
+      .select()
+      .from(transactions)
+      .leftJoin(members, eq(transactions.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .leftJoin(savingsAccounts, eq(transactions.savingsAccountId, savingsAccounts.id))
+      .leftJoin(loans, eq(transactions.loanId, loans.id))
+      .where(whereClause!)
+      .orderBy(desc(transactions.transactionDate), desc(transactions.createdAt))
+      .limit(options.limit)
+      .offset(offset);
+
+    const mappedTransactions = results.map(result => ({
+      ...result.transactions,
+      member: result.members ? {
+        ...result.members,
+        user: result.users || undefined,
+      } : undefined,
+      savingsAccount: result.savings_accounts || undefined,
+      loan: result.loans || undefined,
+    }));
+
+    return {
+      transactions: mappedTransactions,
+      total: countResult?.value || 0,
+      totalDeposits: parseFloat(summaryResult?.totalDeposits || '0'),
+      totalWithdrawals: parseFloat(summaryResult?.totalWithdrawals || '0'),
+      totalInterest: parseFloat(summaryResult?.totalInterest || '0'),
+    };
   }
 
   async getTransactionsByLoan(loanId: number): Promise<TransactionWithDetails[]> {
