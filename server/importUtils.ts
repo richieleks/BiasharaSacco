@@ -824,7 +824,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
         loanNumber: `LOAN${String(Date.now()).slice(-6)}`,
         loanType: loanTypeName,
         principalAmount: headerClosingBalance.toString(),
-        interestRate: interestRate.toString(),
+        interestRate: headerInterestRate.toString(),
         termMonths: tenure || 12,
         monthlyPayment: lastInstallmentAmount.toString(),
         outstandingBalance: headerClosingBalance.toString(),
