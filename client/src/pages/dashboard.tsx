@@ -39,7 +39,7 @@ export default function Dashboard() {
     <div className="space-y-6 page-container animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Dashboard</h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Welcome to Biashara SACCO Management System
             <span className="inline-flex items-center ml-2 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-primary/10 text-primary capitalize">

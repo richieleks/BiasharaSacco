@@ -168,28 +168,28 @@ export default function MemberApprovals() {
           <div className="space-y-4">
             {pendingMembers.map((member) => (
               <div key={member.id} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                  <div className="space-y-2 flex-1 min-w-0">
+                    <div className="flex items-center flex-wrap gap-2">
                       <h3 className="font-semibold">{member.fullName}</h3>
                       <Badge variant="outline">Pending</Badge>
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1">
-                        <User className="h-4 w-4" />
+                        <User className="h-4 w-4 shrink-0" />
                         ID: {member.idNumber}
                       </div>
                       <div className="flex items-center gap-1">
-                        <Phone className="h-4 w-4" />
+                        <Phone className="h-4 w-4 shrink-0" />
                         {member.phoneNumber}
                       </div>
                       <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4" />
+                        <MapPin className="h-4 w-4 shrink-0" />
                         {member.department}
                       </div>
                       <div className="flex items-center gap-1">
-                        <Calendar className="h-4 w-4" />
+                        <Calendar className="h-4 w-4 shrink-0" />
                         Applied: {new Date(member.createdAt!).toLocaleDateString()}
                       </div>
                     </div>
@@ -202,7 +202,7 @@ export default function MemberApprovals() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
                     <Button
                       size="sm"
                       onClick={() => handleAction(member, 'approve')}
@@ -229,7 +229,7 @@ export default function MemberApprovals() {
         )}
 
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent>
+          <DialogContent className="max-h-[85vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {actionType === 'approve' ? 'Approve' : 'Reject'} Member Application

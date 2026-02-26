@@ -93,8 +93,8 @@ export default function RecentTransactions() {
                   <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6">Member</TableHead>
                   <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</TableHead>
                   <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</TableHead>
-                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</TableHead>
-                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6">Status</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Date</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6 hidden sm:table-cell">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -127,10 +127,10 @@ export default function RecentTransactions() {
                     <TableCell className="text-sm font-semibold text-slate-900">
                       UGX {parseFloat(transaction.amount).toLocaleString()}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-500">
+                    <TableCell className="text-sm text-slate-500 hidden sm:table-cell">
                       {new Date(transaction.transactionDate!).toLocaleDateString()}
                     </TableCell>
-                    <TableCell className="pr-6">
+                    <TableCell className="pr-6 hidden sm:table-cell">
                       <Badge variant="outline" className={`text-[11px] font-medium capitalize border ${getStatusColor(transaction.status || 'pending')}`}>
                         {transaction.status || 'pending'}
                       </Badge>

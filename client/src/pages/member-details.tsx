@@ -270,7 +270,7 @@ export default function MemberDetails() {
     : [];
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-6 page-container animate-fade-in">
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" onClick={() => setLocation("/members")} className="text-slate-500 hover:text-slate-800">
           <ArrowLeft className="mr-1.5 h-4 w-4" />
@@ -825,7 +825,7 @@ export default function MemberDetails() {
       </Dialog>
 
       <Dialog open={isShareCapitalDialogOpen} onOpenChange={setIsShareCapitalDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[425px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <DollarSign className="h-5 w-5" />

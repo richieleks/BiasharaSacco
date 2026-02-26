@@ -685,8 +685,8 @@ export default function Guarantors() {
               <div className="space-y-4">
                 {providedGuarantees.map((guarantee: GuarantorWithDetails) => (
                   <div key={guarantee.id} className="border rounded-lg p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex-1">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
+                      <div className="flex-1 min-w-0">
                         <div className="font-medium">
                           Loan for {guarantee.loan?.member?.user?.firstName} {guarantee.loan?.member?.user?.lastName}
                         </div>
@@ -705,7 +705,7 @@ export default function Guarantors() {
                           </div>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {getStatusIcon(guarantee.status || 'pending')}
                         <Badge variant={getStatusVariant(guarantee.status || 'pending')} className={getStatusColor(guarantee.status || 'pending')}>
                           {guarantee.status || 'pending'}
@@ -713,7 +713,7 @@ export default function Guarantors() {
                       </div>
                     </div>
 
-                    <div className="flex justify-between items-center text-xs text-muted-foreground border-t pt-2">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 text-xs text-muted-foreground border-t pt-2">
                       <span>
                         Guaranteed on: {guarantee.createdAt ? new Date(guarantee.createdAt).toLocaleDateString() : 'N/A'}
                       </span>
@@ -827,7 +827,7 @@ export default function Guarantors() {
 
                 <div className="space-y-4">
                   {selectedGuarantors.map((guarantor, index) => (
-                    <div key={index} className="flex items-center gap-4 p-4 border rounded-lg">
+                    <div key={index} className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4 p-4 border rounded-lg">
                       <div className="flex-1">
                         <Label htmlFor={`guarantor-${index}`}>Select Member</Label>
                         <Select 
@@ -847,7 +847,7 @@ export default function Guarantors() {
                         </Select>
                       </div>
                       
-                      <div className="w-48">
+                      <div className="w-full sm:w-48">
                         <Label htmlFor={`amount-${index}`}>Guarantee Amount (UGX)</Label>
                         <Input
                           id={`amount-${index}`}
@@ -863,7 +863,7 @@ export default function Guarantors() {
                           onClick={() => removeGuarantorRow(index)}
                           size="icon"
                           variant="outline"
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-600 hover:text-red-700 self-end shrink-0"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
