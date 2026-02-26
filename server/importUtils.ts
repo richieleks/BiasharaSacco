@@ -689,6 +689,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
     let accountNumber = '';
     let closingBalance = 0;
     let interestEarned = 0;
+    let interestRateValue = 0;
     let tenure = 0;
 
     // Look for account info in first few rows - scan all cells in each row
@@ -705,6 +706,8 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
             closingBalance = parseFloat(row[j + 1]) || 0;
           } else if (cellText.includes('INTEREST EARNED') && row[j + 1] !== undefined) {
             interestEarned = parseFloat(row[j + 1]) || 0;
+          } else if (cellText === 'INTEREST RATE' && row[j + 1] !== undefined) {
+            interestRateValue = parseFloat(row[j + 1]) || 0;
           } else if (cellText.includes('TENURE') && row[j + 1] !== undefined) {
             tenure = parseInt(row[j + 1]) || 12;
           }
@@ -712,7 +715,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
       }
     }
 
-    console.log('Account Info:', { accountName, accountNumber, closingBalance, interestEarned, tenure });
+    console.log('Account Info:', { accountName, accountNumber, closingBalance, interestEarned, interestRateValue, tenure });
 
     // Find transaction header row (POSTING DATE, DETAILS, etc.)
     let headerRowIndex = -1;
@@ -746,7 +749,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
       console.log('Processing loan statement for:', accountName);
 
       // Read values directly from the header - no calculations
-      const headerInterestRate = interestEarned; // INTEREST EARNED from header
+      const headerInterestRate = interestRateValue; // INTEREST RATE from header (e.g., 0.08 for 8%)
       const headerClosingBalance = closingBalance; // CLOSING BALANCE from header
 
       // Find the first disbursement date and the last installment amount directly from rows
