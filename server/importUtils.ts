@@ -317,6 +317,236 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
   }
 }
 
+export async function importMembersFromExcel(filePath: string, options?: { userId?: string }): Promise<ImportResult> {
+  const result: ImportResult = {
+    success: false,
+    totalRows: 0,
+    successfulImports: 0,
+    errors: [],
+    importedMembers: 0,
+    importedAccounts: 0
+  };
+
+  try {
+    const XLSX = await import('xlsx');
+    const fs = await import('fs');
+
+    if (!fs.existsSync(filePath)) {
+      result.errors.push({ row: 0, error: `File not found: ${filePath}` });
+      return result;
+    }
+
+    const workbook = XLSX.default ? XLSX.default.readFile(filePath) : XLSX.readFile(filePath);
+    const sheetName = workbook.SheetNames[0];
+    const worksheet = workbook.Sheets[sheetName];
+    const utils = XLSX.default ? XLSX.default.utils : XLSX.utils;
+    const rawData = utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+
+    if (rawData.length < 2) {
+      result.errors.push({ row: 0, error: "File has no data rows (only header or empty)" });
+      return result;
+    }
+
+    const headers = rawData[0].map((h: any) => (h || '').toString().trim().toLowerCase());
+    console.log('Member import headers:', headers);
+
+    const colMap: Record<string, number> = {};
+    const mappings: [string, string[]][] = [
+      ['name', ['name (capital letters)', 'name', 'full name', 'fullname', 'member name']],
+      ['idNumber', ['id number', 'id no', 'national id', 'id']],
+      ['dateOfBirth', ['date of birth', 'dob', 'birth date', 'birthdate']],
+      ['gender', ['gender', 'sex']],
+      ['address', ['postal address', 'address', 'postal']],
+      ['phone', ['tel contact', 'phone', 'phone number', 'telephone', 'mobile', 'contact']],
+      ['maritalStatus', ['marital status', 'marital']],
+      ['department', ['department', 'dept']],
+      ['section', ['section']],
+      ['termsOfService', ['terms of service', 'terms', 'employment type', 'service terms']],
+      ['averageNetPay', ['average net pay (ugx)', 'average net pay', 'net pay', 'salary']],
+      ['staffAccountNumber', ['staff account number', 'staff account', 'staff acc', 'employee number']],
+      ['nextOfKinName', ['next of kin name', 'next of kin', 'nok name', 'kin name']],
+      ['nextOfKinPhone', ['nok phone number', 'nok phone', 'kin phone', 'next of kin phone']],
+      ['monthlySavings', ['monthly deposit amount (ugx)', 'monthly deposit amount', 'monthly savings', 'monthly deposit', 'deposit amount']],
+      ['accountNumber', ['account number', 'account no', 'acc number', 'bank account']],
+      ['branch', ['branch', 'bank branch']],
+      ['numberOfShares', ['number of shares', 'shares', 'no of shares']],
+      ['shareContribution', ['share contribution (shs)', 'share contribution', 'share amount', 'contribution per share']],
+      ['beneficiaryName', ['beneficiary name (in case of death)', 'beneficiary name', 'beneficiary']],
+      ['beneficiaryRelationship', ['relationship']],
+      ['beneficiaryContact', ['contact address', 'beneficiary contact', 'beneficiary address']],
+    ];
+
+    for (const [key, variants] of mappings) {
+      const idx = headers.findIndex((h: string) => variants.some(v => h.includes(v)));
+      if (idx !== -1) colMap[key] = idx;
+    }
+
+    console.log('Column mapping:', colMap);
+
+    if (colMap.name === undefined) {
+      result.errors.push({ row: 0, error: "Could not find 'Name' column in the Excel file" });
+      return result;
+    }
+
+    const dataRows = rawData.slice(1).filter((row: any[]) => row.length > 0 && row[colMap.name]);
+    result.totalRows = dataRows.length;
+
+    const allMembers = await storage.getAllMembers();
+    const memberCount = await storage.getMembersCount();
+    let newMemberIndex = memberCount;
+
+    for (let i = 0; i < dataRows.length; i++) {
+      const row = dataRows[i];
+      const rowNum = i + 2;
+
+      try {
+        const fullName = (row[colMap.name] || '').toString().trim();
+        if (!fullName) {
+          result.errors.push({ row: rowNum, error: 'Missing name' });
+          continue;
+        }
+
+        const idNumber = colMap.idNumber !== undefined ? (row[colMap.idNumber] || '').toString().trim() : '';
+        const staffAccNum = colMap.staffAccountNumber !== undefined ? (row[colMap.staffAccountNumber] || '').toString().trim() : '';
+        const accountNum = colMap.accountNumber !== undefined ? (row[colMap.accountNumber] || '').toString().trim() : '';
+
+        const existingMember = allMembers.find(m =>
+          (idNumber && m.idNumber === idNumber) ||
+          (staffAccNum && m.staffAccountNumber === staffAccNum) ||
+          (accountNum && m.accountNumber === accountNum)
+        );
+
+        if (existingMember) {
+          result.errors.push({
+            row: rowNum,
+            error: `Member already exists: ${existingMember.fullName} (${existingMember.memberNumber})`,
+            data: { fullName, idNumber }
+          });
+          continue;
+        }
+
+        const rawGender = colMap.gender !== undefined ? (row[colMap.gender] || '').toString().trim().toLowerCase() : '';
+        const gender = rawGender.startsWith('f') ? 'female' as const : 'male' as const;
+
+        const rawMarital = colMap.maritalStatus !== undefined ? (row[colMap.maritalStatus] || '').toString().trim().toLowerCase() : '';
+        let maritalStatus: 'single' | 'married' | 'divorced' | 'widowed' = 'single';
+        if (rawMarital.startsWith('m')) maritalStatus = 'married';
+        else if (rawMarital.startsWith('d')) maritalStatus = 'divorced';
+        else if (rawMarital.startsWith('w')) maritalStatus = 'widowed';
+
+        const rawTerms = colMap.termsOfService !== undefined ? (row[colMap.termsOfService] || '').toString().trim().toLowerCase() : '';
+        let termsOfService: 'permanent' | 'temporary' | 'contract' | 'ex-staff' = 'permanent';
+        if (rawTerms.includes('temp')) termsOfService = 'temporary';
+        else if (rawTerms.includes('contract')) termsOfService = 'contract';
+        else if (rawTerms.includes('ex')) termsOfService = 'ex-staff';
+
+        const dobRaw = colMap.dateOfBirth !== undefined ? row[colMap.dateOfBirth] : null;
+        let dateOfBirth = '1990-01-01';
+        if (dobRaw) {
+          const parsed = excelDateToDate(dobRaw);
+          if (!isNaN(parsed.getTime())) {
+            dateOfBirth = parsed.toISOString().split('T')[0];
+          }
+        }
+
+        const phone = colMap.phone !== undefined ? (row[colMap.phone] || '').toString().trim() : '0700000000';
+        const address = colMap.address !== undefined ? (row[colMap.address] || '').toString().trim() : '';
+        const department = colMap.department !== undefined ? (row[colMap.department] || '').toString().trim() : '';
+        const section = colMap.section !== undefined ? (row[colMap.section] || '').toString().trim() : '';
+        const averageNetPay = colMap.averageNetPay !== undefined ? (parseFloat(row[colMap.averageNetPay]) || 0).toString() : '0';
+        const staffAccountNumber = staffAccNum;
+        const nextOfKinName = colMap.nextOfKinName !== undefined ? (row[colMap.nextOfKinName] || '').toString().trim() : '';
+        const nextOfKinPhone = colMap.nextOfKinPhone !== undefined ? (row[colMap.nextOfKinPhone] || '').toString().trim() : '';
+        const monthlySavings = colMap.monthlySavings !== undefined ? (parseFloat(row[colMap.monthlySavings]) || 0).toString() : '0';
+        const accountNumber = accountNum;
+        const branch = colMap.branch !== undefined ? (row[colMap.branch] || '').toString().trim() : '';
+        const numberOfShares = colMap.numberOfShares !== undefined ? (parseInt(row[colMap.numberOfShares]) || 4) : 4;
+        const shareContribution = colMap.shareContribution !== undefined ? (parseFloat(row[colMap.shareContribution]) || 20000).toString() : '20000';
+        const beneficiaryName = colMap.beneficiaryName !== undefined ? (row[colMap.beneficiaryName] || '').toString().trim() : '';
+        const beneficiaryRelationship = colMap.beneficiaryRelationship !== undefined ? (row[colMap.beneficiaryRelationship] || '').toString().trim() : '';
+        const beneficiaryContact = colMap.beneficiaryContact !== undefined ? (row[colMap.beneficiaryContact] || '').toString().trim() : '';
+
+        newMemberIndex++;
+        const memberNumber = `BCS${String(newMemberIndex).padStart(6, '0')}`;
+
+        const memberData = {
+          memberNumber,
+          fullName,
+          idNumber: idNumber || `IMPORT-${newMemberIndex}`,
+          dateOfBirth,
+          gender,
+          phoneNumber: phone || '0700000000',
+          email: `${fullName.toLowerCase().replace(/\s+/g, '.')}@import.local`,
+          address: address || 'N/A',
+          maritalStatus,
+          department: department || 'General',
+          section: section || 'General',
+          termsOfService,
+          averageNetPay,
+          staffAccountNumber,
+          monthlySavings,
+          accountNumber,
+          branch,
+          shareContribution,
+          numberOfShares,
+          beneficiaryName,
+          beneficiaryRelationship,
+          beneficiaryContact,
+          nextOfKinName,
+          nextOfKinPhone,
+          status: 'active' as const,
+          role: 'member' as const,
+        };
+
+        const validatedMemberData = insertMemberSchema.parse(memberData);
+        const createdMember = await storage.createMember(validatedMemberData);
+        result.importedMembers++;
+        result.successfulImports++;
+
+        allMembers.push(createdMember);
+
+        if (parseFloat(monthlySavings) > 0 || accountNumber) {
+          try {
+            const savingsAccountRef = `SAV${accountNumber || memberNumber}`;
+            const savingsData = {
+              memberId: createdMember.id,
+              accountNumber: savingsAccountRef,
+              accountType: 'regular' as const,
+              balance: '0',
+              status: 'active' as const
+            };
+            const validatedSavingsData = insertSavingsAccountSchema.parse(savingsData);
+            await storage.createSavingsAccount(validatedSavingsData);
+            result.importedAccounts++;
+          } catch (err) {
+            console.log(`Warning: Could not create savings account for ${fullName}:`, err);
+          }
+        }
+
+        console.log(`Imported member ${rowNum}: ${fullName} (${memberNumber})`);
+      } catch (error) {
+        result.errors.push({
+          row: rowNum,
+          error: `Failed to import member: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          data: { name: row[colMap.name] }
+        });
+      }
+    }
+
+    result.success = result.importedMembers > 0;
+    console.log('Member import completed:', result);
+    return result;
+
+  } catch (error) {
+    console.error('Member import failed:', error);
+    result.errors.push({
+      row: 0,
+      error: `File processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+    });
+    return result;
+  }
+}
+
 // Function to import loans from Excel file
 export async function importLoansFromExcel(filePath: string, options?: { userId?: string }): Promise<ImportResult> {
   const result: ImportResult = {

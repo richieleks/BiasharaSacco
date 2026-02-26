@@ -3138,6 +3138,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Import loans from Excel
+  app.post('/api/import/members', isAuthenticated, requirePermission('update', 'system-settings'), upload.single('file'), async (req: any, res) => {
+    try {
+      const { importMembersFromExcel } = await import('./importUtils');
+      
+      const filePath = req.file ? req.file.path : './attached_assets/members_1772094048114.xlsx';
+      
+      console.log('Starting member import from:', filePath);
+      const result = await importMembersFromExcel(filePath, { userId: getUserId(req) });
+      
+      await storage.createAuditLog({
+        userId: getUserId(req) || '',
+        action: 'import',
+        resource: 'members',
+        resourceId: 'bulk_import',
+        details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error('Error importing member data:', error);
+      res.status(500).json({ message: 'Failed to import member data', error: error instanceof Error ? error.message : 'Unknown error' });
+    } finally {
+      if (req.file) {
+        const fs = await import('fs');
+        try {
+          await fs.promises.unlink(req.file.path);
+        } catch (unlinkError) {
+          console.error('Error cleaning up uploaded file:', unlinkError);
+        }
+      }
+    }
+  });
+
   app.post('/api/import/loans', isAuthenticated, requirePermission('update', 'system-settings'), upload.single('file'), async (req: any, res) => {
     try {
       const { importLoansFromExcel } = await import('./importUtils');

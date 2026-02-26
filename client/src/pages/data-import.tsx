@@ -29,7 +29,7 @@ interface ImportResult {
 export default function DataImport() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [importType, setImportType] = useState<'savings' | 'loans'>('savings');
+  const [importType, setImportType] = useState<'members' | 'savings' | 'loans'>('members');
   const [createNewMembers, setCreateNewMembers] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -58,7 +58,7 @@ export default function DataImport() {
       formData.append('file', selectedFile);
       formData.append('createNewMembers', createNewMembers.toString());
       
-      const endpoint = importType === 'savings' ? '/api/import/savings' : '/api/import/loans';
+      const endpoint = importType === 'members' ? '/api/import/members' : importType === 'savings' ? '/api/import/savings' : '/api/import/loans';
       const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
@@ -74,7 +74,9 @@ export default function DataImport() {
     onSuccess: (data: ImportResult) => {
       setImportResult(data);
       if (data && data.success) {
-        const successMessage = importType === 'savings' 
+        const successMessage = importType === 'members'
+          ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
+          : importType === 'savings' 
           ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
           : `Successfully imported ${data.importedLoans || 0} loans, ${data.importedMembers} members, and ${data.importedAccounts} savings accounts.`;
         
@@ -141,7 +143,7 @@ export default function DataImport() {
     }
   };
 
-  const handleImportTypeChange = (type: 'savings' | 'loans') => {
+  const handleImportTypeChange = (type: 'members' | 'savings' | 'loans') => {
     setImportType(type);
     handleReset();
   };
@@ -183,7 +185,24 @@ export default function DataImport() {
           </p>
         </div>
         <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <button
+              onClick={() => handleImportTypeChange('members')}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                importType === 'members'
+                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Users className={`h-6 w-6 ${importType === 'members' ? 'text-blue-600' : 'text-gray-500'}`} />
+                <div className="text-left">
+                  <div className="font-semibold">Members</div>
+                  <div className="text-sm text-muted-foreground">Import member registration data</div>
+                </div>
+              </div>
+            </button>
+
             <button
               onClick={() => handleImportTypeChange('savings')}
               className={`p-4 rounded-lg border-2 transition-all ${
@@ -196,7 +215,7 @@ export default function DataImport() {
                 <PiggyBank className={`h-6 w-6 ${importType === 'savings' ? 'text-blue-600' : 'text-gray-500'}`} />
                 <div className="text-left">
                   <div className="font-semibold">Savings Accounts</div>
-                  <div className="text-sm text-muted-foreground">Import member savings data and transactions</div>
+                  <div className="text-sm text-muted-foreground">Import savings data and transactions</div>
                 </div>
               </div>
             </button>
@@ -213,7 +232,7 @@ export default function DataImport() {
                 <FileSpreadsheet className={`h-6 w-6 ${importType === 'loans' ? 'text-blue-600' : 'text-gray-500'}`} />
                 <div className="text-left">
                   <div className="font-semibold">Loan Statements</div>
-                  <div className="text-sm text-muted-foreground">Import loan data and member information</div>
+                  <div className="text-sm text-muted-foreground">Import loan data and information</div>
                 </div>
               </div>
             </button>
@@ -230,7 +249,9 @@ export default function DataImport() {
               Upload Excel File
             </h3>
             <p className="text-sm text-slate-500 mt-0.5">
-              {importType === 'savings' 
+              {importType === 'members'
+                ? 'Select an Excel file containing member registration data'
+                : importType === 'savings' 
                 ? 'Select an Excel file containing customer savings account data'
                 : 'Select an Excel file containing loan statement data'
               }
@@ -322,10 +343,20 @@ export default function DataImport() {
           <div className="p-6 space-y-4">
             <div>
               <h4 className="font-medium mb-2">
-                {importType === 'savings' ? 'Savings Import Format:' : 'Loan Import Format:'}
+                {importType === 'members' ? 'Members Import Format:' : importType === 'savings' ? 'Savings Import Format:' : 'Loan Import Format:'}
               </h4>
               <ul className="text-sm text-muted-foreground space-y-1">
-                {importType === 'savings' ? (
+                {importType === 'members' ? (
+                  <>
+                    <li>• Column headers in the first row</li>
+                    <li>• Name, ID Number, Date of Birth, Gender</li>
+                    <li>• Address, Phone, Marital Status</li>
+                    <li>• Department, Section, Terms of Service</li>
+                    <li>• Net Pay, Staff Account, Next of Kin</li>
+                    <li>• Monthly Savings, Account Number, Branch</li>
+                    <li>• Shares, Beneficiary details</li>
+                  </>
+                ) : importType === 'savings' ? (
                   <>
                     <li>• Column headers in the first row</li>
                     <li>• Full Name, ID Number, Phone Number</li>
@@ -346,7 +377,14 @@ export default function DataImport() {
             <div>
               <h4 className="font-medium mb-2">What happens during import:</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
-                {importType === 'savings' ? (
+                {importType === 'members' ? (
+                  <>
+                    <li>• New member profiles are created from each row</li>
+                    <li>• Duplicates detected by ID, Staff Account, or Bank Account</li>
+                    <li>• Savings accounts created for members with deposit amounts</li>
+                    <li>• Member numbers assigned automatically (BCS prefix)</li>
+                  </>
+                ) : importType === 'savings' ? (
                   <>
                     <li>• New member profiles are created automatically</li>
                     <li>• Savings accounts are set up with imported balances</li>
