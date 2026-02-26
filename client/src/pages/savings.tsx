@@ -206,14 +206,14 @@ export default function Savings() {
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center shrink-0">
                         <span className="text-slate-600 text-sm font-medium">
-                          {account.member?.user?.firstName?.charAt(0)}{account.member?.user?.lastName?.charAt(0)}
+                          {account.member?.fullName ? account.member.fullName.split(' ').map((n: string) => n.charAt(0)).slice(0, 2).join('').toUpperCase() : `${account.member?.user?.firstName?.charAt(0) || ''}${account.member?.user?.lastName?.charAt(0) || ''}`}
                         </span>
                       </div>
                       <div>
                         <h3 className="font-medium text-slate-900">
-                          {account.member?.user?.firstName} {account.member?.user?.lastName}
+                          Member: {account.member?.memberNumber}
                         </h3>
-                        <p className="text-sm text-slate-500">Member: {account.member?.memberNumber}</p>
+                        <p className="text-sm text-slate-500">{account.member?.fullName || `${account.member?.user?.firstName || ''} ${account.member?.user?.lastName || ''}`.trim() || 'N/A'}</p>
                       </div>
                     </div>
                     <div className="sm:text-right">
