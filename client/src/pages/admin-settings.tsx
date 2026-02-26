@@ -581,142 +581,6 @@ export default function AdminSettingsPage() {
                     </CardContent>
                   </Card>
 
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Membership Configuration
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="entranceFee"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Entrance Fee (UGX)</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  {...field}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                One-time fee charged when a new member joins the SACCO
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="sharePrice"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Share Price (UGX)</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  {...field}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                Price per share for share capital contribution
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        Loan Configuration
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="maxLoanAmount"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Maximum Loan Amount (UGX)</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  {...field}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                Maximum loan amount that can be approved
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="maxLoanTerm"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Maximum Loan Term (months)</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  min="1" 
-                                  max="60"
-                                  {...field}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                Maximum loan repayment period
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="defaultInterestRate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Default Interest Rate (%)</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  min="0" 
-                                  max="100"
-                                  step="0.001"
-                                  {...field}
-                                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                Default annual interest rate for loans
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
               )}
 
@@ -1018,9 +882,146 @@ export default function AdminSettingsPage() {
                   <div>
                     <h3 className="text-lg font-medium mb-4">Business Rules</h3>
                     <p className="text-sm text-muted-foreground mb-6">
-                      Configure SACCO business rules and operational limits
+                      Configure SACCO business rules, membership and loan operational limits
                     </p>
                   </div>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Users className="h-4 w-4" />
+                        Membership Configuration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="entranceFee"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Entrance Fee (UGX)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                One-time fee charged when a new member joins the SACCO
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="sharePrice"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Share Price (UGX)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Price per share for share capital contribution
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Loan Configuration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="maxLoanAmount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Maximum Loan Amount (UGX)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Maximum loan amount that can be approved
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="maxLoanTerm"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Maximum Loan Term (months)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  max="60"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Maximum loan repayment period
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="defaultInterestRate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Default Interest Rate (%)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0" 
+                                  max="100"
+                                  step="0.001"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Default annual interest rate for loans
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
 
                   <Card>
                     <CardHeader>
