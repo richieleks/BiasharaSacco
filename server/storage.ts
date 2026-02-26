@@ -67,7 +67,7 @@ import {
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
-import { eq, desc, sql, like, or, and, gte, lte, count, getTableColumns } from "drizzle-orm";
+import { eq, desc, sql, like, or, and, gte, lte, count, getTableColumns, inArray } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -1238,7 +1238,7 @@ export class DatabaseStorage implements IStorage {
         total: sql<number>`sum(principal_amount)::numeric`,
       })
       .from(loans)
-      .where(eq(loans.status, 'approved'))
+      .where(inArray(loans.status, ['approved', 'active', 'disbursed']))
       .groupBy(loans.loanType);
 
     // Monthly transaction trends (last 6 months)

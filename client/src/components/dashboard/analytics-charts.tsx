@@ -72,30 +72,38 @@ export default function AnalyticsCharts() {
           </div>
         </div>
         <div className={chartContentClass}>
-          <ResponsiveContainer width="100%" height={280}>
-            <PieChart>
-              <Pie
-                data={analytics.loanDistribution}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => 
-                  `${name}: ${(percent * 100).toFixed(1)}%`
-                }
-                outerRadius={90}
-                innerRadius={40}
-                fill="#8884d8"
-                dataKey="value"
-                strokeWidth={2}
-                stroke="#fff"
-              >
-                {analytics.loanDistribution?.map((_: any, index: number) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value: number) => formatCurrency(value)} />
-            </PieChart>
-          </ResponsiveContainer>
+          {analytics.loanDistribution && analytics.loanDistribution.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={analytics.loanDistribution}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => 
+                    `${name}: ${(percent * 100).toFixed(1)}%`
+                  }
+                  outerRadius={90}
+                  innerRadius={40}
+                  fill="#8884d8"
+                  dataKey="value"
+                  strokeWidth={2}
+                  stroke="#fff"
+                >
+                  {analytics.loanDistribution?.map((_: any, index: number) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-[280px] text-center">
+              <DollarSign className="h-10 w-10 text-slate-300 mb-3" />
+              <p className="text-sm font-medium text-slate-500">No loan data available</p>
+              <p className="text-xs text-slate-400 mt-1">Loan distribution will appear once loans are approved and active</p>
+            </div>
+          )}
         </div>
       </div>
 
