@@ -745,52 +745,29 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
     try {
       console.log('Processing loan statement for:', accountName);
 
-      let currentBalance = closingBalance;
-      // Use interest rate from header if available, otherwise default
-      let interestRate = interestEarned > 0 ? 12 : 12;
-      
-      // Calculate total disbursed and total repaid from transactions
-      let totalDisbursed = 0;
-      let totalPrincipalRepaid = 0;
-      let totalInterestPaid = 0;
+      // Read values directly from the header - no calculations
+      const headerInterestRate = interestEarned; // INTEREST EARNED from header
+      const headerClosingBalance = closingBalance; // CLOSING BALANCE from header
+
+      // Find the first disbursement date and the last installment amount directly from rows
       let firstDisbursementDate: Date | null = null;
-      
+      let lastInstallmentAmount = 0;
+
       for (let i = headerRowIndex + 1; i < rawData.length; i++) {
         const row = rawData[i] as any[];
-        if (!row || row.length < 4) continue;
-        
+        if (!row || row.length < 3) continue;
         const details = row[1]?.toString().toLowerCase() || '';
-        const amtDebited = parseFloat(row[2]) || 0;
-        const principalRepyt = parseFloat(row[3]) || 0;
-        const interest = parseFloat(row[4]) || 0;
-        
-        const isDisbursementOrTopUp = details.includes('disbursed') || 
-                                      details.includes('loan amount') || 
-                                      details.includes('top up') || 
-                                      details.includes('top-up') ||
-                                      details.includes('topup');
-        
-        if (isDisbursementOrTopUp) {
-          // Top-ups/disbursements: amount is negative in PRINCIPLE REPYT (col 3)
-          // or negative in AMT DEBITED (col 2), or positive for initial disbursement
-          const disbAmount = Math.abs(principalRepyt) || Math.abs(amtDebited);
-          totalDisbursed += disbAmount;
-          if (!firstDisbursementDate) {
-            firstDisbursementDate = excelDateToDate(row[0]);
-          }
-        } else if (amtDebited > 0) {
-          // Regular payment - principal and interest breakdown
-          totalPrincipalRepaid += Math.abs(principalRepyt);
-          totalInterestPaid += Math.abs(interest);
+        const amt = parseFloat(row[2]) || 0;
+
+        if (!firstDisbursementDate && (details.includes('disbursed') || details.includes('loan amount'))) {
+          firstDisbursementDate = excelDateToDate(row[0]);
+        }
+        if (amt > 0 && (details.includes('installment') || details.includes('instalment'))) {
+          lastInstallmentAmount = amt;
         }
       }
 
-      // If no disbursements found, use closing balance as fallback
-      if (totalDisbursed === 0) {
-        totalDisbursed = Math.max(currentBalance, 1000000);
-      }
-
-      console.log(`Loan details: Total Disbursed=${totalDisbursed}, Balance=${currentBalance}, Interest Earned=${interestEarned}, Principal Repaid=${totalPrincipalRepaid}, Interest Paid=${totalInterestPaid}`);
+      console.log(`Loan header values: Closing Balance=${headerClosingBalance}, Interest Earned=${headerInterestRate}, Tenure=${tenure}, Monthly Payment=${lastInstallmentAmount}`);
 
       // Match to existing member only - no auto-creation
       const allMembers = await storage.getAllMembers();
@@ -825,9 +802,8 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
 
       console.log(`Matched to existing member: ${member.fullName} (${member.memberNumber})`);
 
-      // Get loan type details if loanTypeId provided
+      // Get loan type name for the enum field
       let loanTypeName: 'personal' | 'business' | 'emergency' | 'asset' | 'development' = 'personal';
-      let loanTypeInterestRate = interestRate;
       if (options?.loanTypeId) {
         const loanTypeRecord = await storage.getLoanType(options.loanTypeId);
         if (loanTypeRecord) {
@@ -836,69 +812,49 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
             'asset': 'asset', 'development': 'development'
           };
           loanTypeName = nameMap[loanTypeRecord.name.toLowerCase()] || 'personal';
-          loanTypeInterestRate = parseFloat(loanTypeRecord.interestRate) || interestRate;
-          console.log(`Using loan type: ${loanTypeRecord.displayName} (${loanTypeName}), interest: ${loanTypeInterestRate}%`);
+          console.log(`Using loan type: ${loanTypeRecord.displayName} (${loanTypeName})`);
         }
       }
 
-      // Calculate monthly payment from actual transaction data if possible
-      // Use the last installment amount as the current monthly payment
-      let lastInstallmentAmount = 0;
-      for (let i = rawData.length - 1; i > headerRowIndex; i--) {
-        const row = rawData[i] as any[];
-        if (!row || row.length < 3) continue;
-        const details = row[1]?.toString().toLowerCase() || '';
-        const amt = parseFloat(row[2]) || 0;
-        if (amt > 0 && (details.includes('installment') || details.includes('instalment'))) {
-          lastInstallmentAmount = amt;
-          break;
-        }
-      }
-      
-      const monthlyPayment = lastInstallmentAmount > 0 
-        ? lastInstallmentAmount 
-        : calculateMonthlyPayment(totalDisbursed, loanTypeInterestRate, tenure || 12);
-
+      // Import loan as-is from header values - no calculations
       const disbursementDate = firstDisbursementDate || new Date();
       
       const loanData = {
         memberId: member.id,
         loanNumber: `LOAN${String(Date.now()).slice(-6)}`,
         loanType: loanTypeName,
-        principalAmount: totalDisbursed.toString(),
-        interestRate: Math.min(loanTypeInterestRate / 100, 0.9999).toString(),
+        principalAmount: headerClosingBalance.toString(),
+        interestRate: interestRate.toString(),
         termMonths: tenure || 12,
-        monthlyPayment: monthlyPayment.toString(),
-        outstandingBalance: currentBalance.toString(),
+        monthlyPayment: lastInstallmentAmount.toString(),
+        outstandingBalance: headerClosingBalance.toString(),
         status: 'active' as const,
         purpose: 'Imported from loan statement',
         applicationDate: disbursementDate,
         approvalDate: disbursementDate,
         disbursementDate: disbursementDate,
-        currentSavings: Math.max(totalDisbursed * 0.4, 100000).toString()
+        currentSavings: '0'
       };
 
       const validatedLoanData = insertLoanSchema.parse(loanData);
       const createdLoan = await storage.createLoan(validatedLoanData);
       
       result.importedLoans = (result.importedLoans || 0) + 1;
-      console.log(`✓ Created loan: ${loanData.loanNumber} for ${member.fullName} - UGX ${totalDisbursed.toLocaleString()}`);
+      console.log(`✓ Created loan: ${loanData.loanNumber} for ${member.fullName} - Balance: UGX ${headerClosingBalance.toLocaleString()}`);
 
-      // Process transactions and create transaction records
+      // Import each transaction row as-is from the statement
       const transactionEntries = [];
       for (let i = headerRowIndex + 1; i < rawData.length; i++) {
         const row = rawData[i] as any[];
-        if (!row || row.length < 4 || !row[0]) continue;
+        if (!row || row.length < 3 || !row[0]) continue;
         
         const postingDate = excelDateToDate(row[0]);
         const details = row[1]?.toString() || '';
         const detailsLower = details.toLowerCase();
         const amtDebited = parseFloat(row[2]) || 0;
         const principalRepyt = parseFloat(row[3]) || 0;
-        const interest = parseFloat(row[4]) || 0;
-        const balance = parseFloat(row[5]) || 0;
         
-        // Determine transaction type from the description
+        // Determine type from description
         const isDisbursement = detailsLower.includes('disbursed') || 
                                detailsLower.includes('loan amount') || 
                                detailsLower.includes('top up') || 
@@ -906,14 +862,14 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
                                detailsLower.includes('topup');
         
         if (isDisbursement) {
-          // Disbursement/top-up: amount is in PRINCIPLE REPYT (negative) or AMT DEBITED
-          const disbAmount = Math.abs(principalRepyt) || Math.abs(amtDebited);
-          if (disbAmount > 0) {
+          // Use the amount as-is from whichever column has it
+          const amount = Math.abs(principalRepyt) || Math.abs(amtDebited);
+          if (amount > 0) {
             transactionEntries.push({
               memberId: member.id,
               loanId: createdLoan.id,
               transactionType: 'loan_disbursement' as const,
-              amount: disbAmount.toString(),
+              amount: amount.toString(),
               description: details,
               referenceNumber: `LTX${Date.now()}_${i}`,
               status: 'completed' as const,
@@ -922,7 +878,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
             });
           }
         } else if (amtDebited > 0) {
-          // Regular installment payment with principal + interest breakdown
+          // Payment row - use AMT DEBITED as-is
           transactionEntries.push({
             memberId: member.id,
             loanId: createdLoan.id,
