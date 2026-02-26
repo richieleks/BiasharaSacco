@@ -4,7 +4,6 @@ import { z } from 'zod';
 
 function excelDateToDate(excelDate: any): Date {
   if (typeof excelDate === 'number') {
-    // Excel dates start from 1900-01-01 (but Excel considers 1900 a leap year, which it isn't)
     const excelEpoch = new Date(1900, 0, 1);
     const millisecondsPerDay = 24 * 60 * 60 * 1000;
     return new Date(excelEpoch.getTime() + (excelDate - 2) * millisecondsPerDay);
@@ -13,8 +12,17 @@ function excelDateToDate(excelDate: any): Date {
     return excelDate;
   }
   if (typeof excelDate === 'string') {
-    return new Date(excelDate);
+    const trimmed = excelDate.trim();
+    const ddmmyyyy = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+    if (ddmmyyyy) {
+      return new Date(parseInt(ddmmyyyy[3]), parseInt(ddmmyyyy[2]) - 1, parseInt(ddmmyyyy[1]));
+    }
+    const parsed = new Date(trimmed);
+    if (!isNaN(parsed.getTime())) {
+      return parsed;
+    }
   }
+  console.log(`Warning: Could not parse date value: ${JSON.stringify(excelDate)} (type: ${typeof excelDate}), defaulting to current date`);
   return new Date();
 }
 
@@ -237,6 +245,9 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
         
         if (row.length >= 5 && row[0] && row[1]) {
           const postingDate = excelDateToDate(row[0]);
+          if (i < 3) {
+            console.log(`Row ${i + 1} raw date value: ${JSON.stringify(row[0])} (type: ${typeof row[0]}) -> parsed: ${postingDate.toISOString()}`);
+          }
           const details = row[1]?.toString() || '';
           const debitAmount = parseFloat(row[2]) || 0;
           const creditAmount = parseFloat(row[3]) || 0;
@@ -255,7 +266,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
               transactionType: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
               amount: (creditAmount > 0 ? creditAmount : debitAmount).toString(),
               description: details,
-              transactionDate: new Date(postingDate),
+              transactionDate: postingDate,
               referenceNumber: refNumber,
               processedBy: options?.userId,
               status: 'completed' as const

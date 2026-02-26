@@ -266,7 +266,7 @@ export default function MemberDetails() {
   const shareRemaining = Math.max(0, shareExpected - sharePaid);
 
   const recentTransactions = Array.isArray(transactions)
-    ? [...transactions].sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()).slice(0, 15)
+    ? [...transactions].sort((a: any, b: any) => new Date(b.transactionDate || b.createdAt || 0).getTime() - new Date(a.transactionDate || a.createdAt || 0).getTime()).slice(0, 15)
     : [];
 
   return (
@@ -658,7 +658,7 @@ export default function MemberDetails() {
                         const isCredit = ['deposit', 'interest_credit', 'share_capital', 'loan_disbursement'].includes(tx.transactionType);
                         return (
                           <tr key={tx.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
-                            <td className="py-3 px-6 text-slate-600 whitespace-nowrap">{formatDate(tx.createdAt)}</td>
+                            <td className="py-3 px-6 text-slate-600 whitespace-nowrap">{formatDate(tx.transactionDate || tx.createdAt)}</td>
                             <td className="py-3 px-3">
                               <Badge variant="outline" className="capitalize text-xs font-medium">
                                 {(tx.transactionType || '').replace(/_/g, ' ')}
