@@ -99,7 +99,7 @@ export default function AuditLogs() {
     <div className="space-y-6 page-container animate-fade-in">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Audit Logs</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Audit Logs</h1>
         <p className="text-sm text-slate-500 mt-0.5">
           Track all system activities and user actions
         </p>
@@ -114,7 +114,7 @@ export default function AuditLogs() {
           </p>
         </div>
         <div className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <Select
               value={filters.resource}
               onValueChange={(value) => setFilters({ ...filters, resource: value })}
@@ -151,7 +151,7 @@ export default function AuditLogs() {
               </SelectContent>
             </Select>
 
-            <div className="relative col-span-1 md:col-span-2">
+            <div className="relative col-span-2 md:col-span-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
               <Input
                 placeholder="Search by user, details, or resource ID..."
@@ -176,7 +176,7 @@ export default function AuditLogs() {
           <Table className="table-modern">
             <TableHeader>
               <TableRow>
-                <TableHead>Timestamp</TableHead>
+                <TableHead className="hidden sm:table-cell">Timestamp</TableHead>
                 <TableHead>User</TableHead>
                 <TableHead>Action</TableHead>
                 <TableHead className="hidden md:table-cell">Resource</TableHead>
@@ -200,7 +200,7 @@ export default function AuditLogs() {
               ) : (
                 filteredLogs.map((log: any) => (
                   <TableRow key={log.id}>
-                    <TableCell className="font-medium">
+                    <TableCell className="font-medium hidden sm:table-cell">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-gray-400" />
                         {formatTimestamp(log.timestamp)}

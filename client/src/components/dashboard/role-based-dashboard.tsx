@@ -138,28 +138,28 @@ function MemberDashboard() {
           <CardDescription>Your personal SACCO dashboard</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             <div className="text-center p-3 bg-slate-50 rounded-lg">
-              <h3 className="text-sm font-medium text-slate-500">Member Number</h3>
-              <p className="text-xl font-bold text-primary mt-1">{user?.member?.memberNumber}</p>
+              <h3 className="text-xs sm:text-sm font-medium text-slate-500">Member Number</h3>
+              <p className="text-base sm:text-xl font-bold text-primary mt-1 truncate">{user?.member?.memberNumber}</p>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
-              <h3 className="text-sm font-medium text-slate-500">Total Savings</h3>
-              <p className="text-xl font-bold text-green-600 mt-1">UGX {totalSavings.toLocaleString()}</p>
+              <h3 className="text-xs sm:text-sm font-medium text-slate-500">Total Savings</h3>
+              <p className="text-base sm:text-xl font-bold text-green-600 mt-1 truncate">UGX {totalSavings.toLocaleString()}</p>
             </div>
             <div className="text-center p-3 bg-emerald-50 rounded-lg">
-              <h3 className="text-sm font-medium text-slate-500">Interest Earned</h3>
-              <p className="text-xl font-bold text-emerald-600 mt-1">UGX {totalInterestEarned.toLocaleString()}</p>
+              <h3 className="text-xs sm:text-sm font-medium text-slate-500">Interest Earned</h3>
+              <p className="text-base sm:text-xl font-bold text-emerald-600 mt-1 truncate">UGX {totalInterestEarned.toLocaleString()}</p>
               <p className="text-xs text-slate-400">Total credited</p>
             </div>
             <div className="text-center p-3 bg-yellow-50 rounded-lg">
-              <h3 className="text-sm font-medium text-slate-500">Active Loans</h3>
-              <p className="text-xl font-bold text-yellow-600 mt-1">{activeLoansCount}</p>
-              {totalOutstanding > 0 && <p className="text-xs text-slate-400">UGX {totalOutstanding.toLocaleString()} outstanding</p>}
+              <h3 className="text-xs sm:text-sm font-medium text-slate-500">Active Loans</h3>
+              <p className="text-base sm:text-xl font-bold text-yellow-600 mt-1">{activeLoansCount}</p>
+              {totalOutstanding > 0 && <p className="text-xs text-slate-400 truncate">UGX {totalOutstanding.toLocaleString()} outstanding</p>}
             </div>
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <h3 className="text-sm font-medium text-slate-500">Status</h3>
-              <p className="text-xl font-bold capitalize text-blue-600 mt-1">{user?.member?.status}</p>
+            <div className="text-center p-3 bg-blue-50 rounded-lg col-span-2 sm:col-span-1">
+              <h3 className="text-xs sm:text-sm font-medium text-slate-500">Status</h3>
+              <p className="text-base sm:text-xl font-bold capitalize text-blue-600 mt-1">{user?.member?.status}</p>
               <p className="text-xs text-slate-400">{user?.member?.joinDate ? `Since ${new Date(user.member.joinDate).toLocaleDateString()}` : ''}</p>
             </div>
           </div>

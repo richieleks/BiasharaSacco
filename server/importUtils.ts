@@ -48,6 +48,7 @@ export interface ImportResult {
   success: boolean;
   totalRows: number;
   successfulImports: number;
+  skippedDuplicates: number;
   errors: Array<{
     row: number;
     error: string;
@@ -63,6 +64,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
     success: false,
     totalRows: 0,
     successfulImports: 0,
+    skippedDuplicates: 0,
     errors: [],
     importedMembers: 0,
     importedAccounts: 0
@@ -322,6 +324,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
     success: false,
     totalRows: 0,
     successfulImports: 0,
+    skippedDuplicates: 0,
     errors: [],
     importedMembers: 0,
     importedAccounts: 0
@@ -378,7 +381,18 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
     ];
 
     for (const [key, variants] of mappings) {
-      const idx = headers.findIndex((h: string) => variants.some(v => h.includes(v)));
+      const idx = headers.findIndex((h: string) => {
+        if (colMap[key] !== undefined) return false;
+        return variants.some(v => {
+          if (h === v) return true;
+          if (h.includes(v)) {
+            const alreadyMapped = Object.values(colMap).includes(headers.indexOf(h));
+            if (alreadyMapped) return false;
+            return true;
+          }
+          return false;
+        });
+      });
       if (idx !== -1) colMap[key] = idx;
     }
 
@@ -396,6 +410,10 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
     const memberCount = await storage.getMembersCount();
     let newMemberIndex = memberCount;
 
+    const seenIdNumbers = new Set<string>();
+    const seenStaffAccounts = new Set<string>();
+    const seenBankAccounts = new Set<string>();
+
     for (let i = 0; i < dataRows.length; i++) {
       const row = dataRows[i];
       const rowNum = i + 2;
@@ -411,19 +429,80 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
         const staffAccNum = colMap.staffAccountNumber !== undefined ? (row[colMap.staffAccountNumber] || '').toString().trim() : '';
         const accountNum = colMap.accountNumber !== undefined ? (row[colMap.accountNumber] || '').toString().trim() : '';
 
-        const existingMember = allMembers.find(m =>
-          (idNumber && m.idNumber === idNumber) ||
-          (staffAccNum && m.staffAccountNumber === staffAccNum) ||
-          (accountNum && m.accountNumber === accountNum)
-        );
-
-        if (existingMember) {
+        if (!idNumber) {
           result.errors.push({
             row: rowNum,
-            error: `Member already exists: ${existingMember.fullName} (${existingMember.memberNumber})`,
-            data: { fullName, idNumber }
+            error: `Missing ID number for member "${fullName}". Every member must have a valid ID number.`,
+            data: { fullName }
           });
           continue;
+        }
+
+        if (seenIdNumbers.has(idNumber)) {
+          result.skippedDuplicates++;
+          result.errors.push({
+            row: rowNum,
+            error: `Duplicate ID number "${idNumber}" within this file: member "${fullName}" has the same ID as another row in this import`,
+            data: { fullName, idNumber, matchedField: 'idNumber' }
+          });
+          continue;
+        }
+
+        if (staffAccNum && seenStaffAccounts.has(staffAccNum)) {
+          result.skippedDuplicates++;
+          result.errors.push({
+            row: rowNum,
+            error: `Duplicate staff account "${staffAccNum}" within this file: member "${fullName}" has the same staff account as another row in this import`,
+            data: { fullName, idNumber, matchedField: 'staffAccountNumber' }
+          });
+          continue;
+        }
+
+        if (accountNum && seenBankAccounts.has(accountNum)) {
+          result.skippedDuplicates++;
+          result.errors.push({
+            row: rowNum,
+            error: `Duplicate bank account "${accountNum}" within this file: member "${fullName}" has the same bank account as another row in this import`,
+            data: { fullName, idNumber, matchedField: 'accountNumber' }
+          });
+          continue;
+        }
+
+        const duplicateByIdNumber = allMembers.find(m => idNumber && m.idNumber === idNumber);
+        if (duplicateByIdNumber) {
+          result.skippedDuplicates++;
+          result.errors.push({
+            row: rowNum,
+            error: `Duplicate ID number "${idNumber}": matches existing member ${duplicateByIdNumber.fullName} (${duplicateByIdNumber.memberNumber})`,
+            data: { fullName, idNumber, matchedField: 'idNumber' }
+          });
+          continue;
+        }
+
+        if (staffAccNum) {
+          const duplicateByStaffAcc = allMembers.find(m => m.staffAccountNumber === staffAccNum);
+          if (duplicateByStaffAcc) {
+            result.skippedDuplicates++;
+            result.errors.push({
+              row: rowNum,
+              error: `Duplicate staff account "${staffAccNum}": matches existing member ${duplicateByStaffAcc.fullName} (${duplicateByStaffAcc.memberNumber})`,
+              data: { fullName, idNumber, matchedField: 'staffAccountNumber' }
+            });
+            continue;
+          }
+        }
+
+        if (accountNum) {
+          const duplicateByBankAcc = allMembers.find(m => m.accountNumber === accountNum);
+          if (duplicateByBankAcc) {
+            result.skippedDuplicates++;
+            result.errors.push({
+              row: rowNum,
+              error: `Duplicate bank account "${accountNum}": matches existing member ${duplicateByBankAcc.fullName} (${duplicateByBankAcc.memberNumber})`,
+              data: { fullName, idNumber, matchedField: 'accountNumber' }
+            });
+            continue;
+          }
         }
 
         const rawGender = colMap.gender !== undefined ? (row[colMap.gender] || '').toString().trim().toLowerCase() : '';
@@ -482,7 +561,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
         const memberData = {
           memberNumber,
           fullName,
-          idNumber: idNumber || `IMPORT-${newMemberIndex}`,
+          idNumber,
           dateOfBirth,
           gender,
           phoneNumber: phone || '0700000000',
@@ -514,6 +593,9 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
         result.importedMembers++;
         result.successfulImports++;
 
+        seenIdNumbers.add(idNumber);
+        if (staffAccountNumber) seenStaffAccounts.add(staffAccountNumber);
+        if (accountNumber) seenBankAccounts.add(accountNumber);
         allMembers.push(createdMember);
 
         if (parseFloat(monthlySavings) > 0 || accountNumber) {
@@ -564,6 +646,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
     success: false,
     totalRows: 0,
     successfulImports: 0,
+    skippedDuplicates: 0,
     errors: [],
     importedMembers: 0,
     importedAccounts: 0,

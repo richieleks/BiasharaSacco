@@ -94,22 +94,22 @@ export default function ShareCapital() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 page-container animate-fade-in">
       <div>
-        <h1 className="text-2xl font-bold">Share Capital Management</h1>
-        <p className="text-muted-foreground">Manage member share capital contributions and track payment status</p>
+        <h1 className="text-xl sm:text-2xl font-bold">Share Capital Management</h1>
+        <p className="text-sm text-muted-foreground">Manage member share capital contributions and track payment status</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <Users className="h-5 w-5 text-blue-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Members</p>
-                <p className="text-2xl font-bold">{activeMembers.length}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Members</p>
+                <p className="text-lg sm:text-2xl font-bold">{activeMembers.length}</p>
               </div>
             </div>
           </CardContent>
@@ -120,9 +120,9 @@ export default function ShareCapital() {
               <div className="p-2 bg-green-100 rounded-lg">
                 <DollarSign className="h-5 w-5 text-green-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Paid</p>
-                <p className="text-2xl font-bold text-green-600">UGX {totalPaid.toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Total Paid</p>
+                <p className="text-lg sm:text-2xl font-bold text-green-600 truncate">UGX {totalPaid.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
@@ -133,9 +133,9 @@ export default function ShareCapital() {
               <div className="p-2 bg-orange-100 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-orange-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Outstanding</p>
-                <p className="text-2xl font-bold text-orange-600">UGX {totalOutstanding.toLocaleString()}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Outstanding</p>
+                <p className="text-lg sm:text-2xl font-bold text-orange-600 truncate">UGX {totalOutstanding.toLocaleString()}</p>
               </div>
             </div>
           </CardContent>
@@ -146,9 +146,9 @@ export default function ShareCapital() {
               <div className="p-2 bg-emerald-100 rounded-lg">
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Fully Paid</p>
-                <p className="text-2xl font-bold text-emerald-600">{fullyPaidCount} / {activeMembers.length}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Fully Paid</p>
+                <p className="text-lg sm:text-2xl font-bold text-emerald-600">{fullyPaidCount} / {activeMembers.length}</p>
               </div>
             </div>
           </CardContent>
@@ -156,9 +156,9 @@ export default function ShareCapital() {
       </div>
 
       <Tabs defaultValue="members">
-        <TabsList>
-          <TabsTrigger value="members">Member Share Capital</TabsTrigger>
-          <TabsTrigger value="history">Payment History</TabsTrigger>
+        <TabsList className="w-full grid grid-cols-2">
+          <TabsTrigger value="members" className="text-xs sm:text-sm">Member Share Capital</TabsTrigger>
+          <TabsTrigger value="history" className="text-xs sm:text-sm">Payment History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="members" className="space-y-4">

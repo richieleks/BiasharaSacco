@@ -168,7 +168,7 @@ export default function DataImport() {
     <div className="space-y-6 page-container animate-fade-in">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900 flex items-center flex-wrap gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center flex-wrap gap-2">
           <Shield className="h-6 w-6 text-blue-600" />
           Data Import
           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/50">Admin Only</Badge>
@@ -435,22 +435,26 @@ export default function DataImport() {
             </div>
 
             {/* Statistics Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{importResult.totalRows}</div>
-                <div className="text-sm text-blue-600">Total Rows</div>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+              <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-blue-600">{importResult.totalRows}</div>
+                <div className="text-xs sm:text-sm text-blue-600">Total Rows</div>
               </div>
-              <div className="text-center p-4 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{importResult.importedMembers}</div>
-                <div className="text-sm text-green-600">New Members</div>
+              <div className="text-center p-3 sm:p-4 bg-green-50 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">{importResult.importedMembers}</div>
+                <div className="text-xs sm:text-sm text-green-600">New Members</div>
               </div>
-              <div className="text-center p-4 bg-purple-50 rounded-lg">
-                <div className="text-2xl font-bold text-purple-600">{importResult.importedAccounts}</div>
-                <div className="text-sm text-purple-600">Savings Accounts</div>
+              <div className="text-center p-3 sm:p-4 bg-purple-50 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-purple-600">{importResult.importedAccounts}</div>
+                <div className="text-xs sm:text-sm text-purple-600">Savings Accounts</div>
               </div>
-              <div className="text-center p-4 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{importResult.errors?.length || 0}</div>
-                <div className="text-sm text-red-600">Errors</div>
+              <div className="text-center p-3 sm:p-4 bg-amber-50 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-amber-600">{importResult.skippedDuplicates || 0}</div>
+                <div className="text-xs sm:text-sm text-amber-600">Duplicates Skipped</div>
+              </div>
+              <div className="text-center p-3 sm:p-4 bg-red-50 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-red-600">{(importResult.errors?.length || 0) - (importResult.skippedDuplicates || 0)}</div>
+                <div className="text-xs sm:text-sm text-red-600">Other Errors</div>
               </div>
             </div>
 
@@ -463,18 +467,22 @@ export default function DataImport() {
                   Import Errors ({importResult.errors?.length || 0})
                 </h4>
                 <div className="max-h-60 overflow-y-auto space-y-2">
-                  {(importResult.errors || []).map((error, index) => (
-                    <Alert key={index} variant="destructive">
-                      <AlertDescription>
-                        <strong>Row {error.row}:</strong> {error.error}
-                        {error.data && (
-                          <div className="mt-1 text-xs">
-                            Data: {JSON.stringify(error.data, null, 2)}
-                          </div>
-                        )}
-                      </AlertDescription>
-                    </Alert>
-                  ))}
+                  {(importResult.errors || []).map((error, index) => {
+                    const isDuplicate = error.error?.includes('Duplicate') || error.error?.includes('already exists');
+                    const isMissing = error.error?.includes('Missing');
+                    return (
+                      <Alert key={index} variant="destructive" className={isDuplicate ? '!border-amber-300 !bg-amber-50 !text-amber-900' : isMissing ? '!border-orange-300 !bg-orange-50 !text-orange-900' : ''}>
+                        <AlertDescription>
+                          <strong>Row {error.row}:</strong> {error.error}
+                          {error.data?.matchedField && (
+                            <span className="ml-1 text-xs font-medium px-1.5 py-0.5 rounded bg-amber-200/60 text-amber-800">
+                              matched by: {error.data.matchedField === 'idNumber' ? 'ID Number' : error.data.matchedField === 'staffAccountNumber' ? 'Staff Account' : 'Bank Account'}
+                            </span>
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  })}
                 </div>
               </div>
             )}

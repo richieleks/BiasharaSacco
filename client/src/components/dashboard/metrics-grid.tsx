@@ -9,7 +9,7 @@ export default function MetricsGrid() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 mb-8">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="metric-card animate-pulse">
             <div className="flex items-center justify-between">
@@ -95,27 +95,27 @@ export default function MetricsGrid() {
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-5 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 mb-8">
       {metricCards.map((metric, index) => {
         const changeVal = parseFloat(metric.change || '0');
         return (
           <div key={index} className="metric-card group animate-fade-in" style={{ animationDelay: `${index * 80}ms` }}>
             <div className={`absolute top-0 left-0 right-0 h-[3px] rounded-t-xl bg-gradient-to-r ${metric.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-200`} />
             <div className="flex items-start justify-between">
-              <div className="space-y-1">
-                <p className="text-slate-500 text-xs font-semibold uppercase tracking-wide">{metric.title}</p>
-                <p className="text-2xl font-bold text-slate-900 tracking-tight">{metric.value}</p>
+              <div className="space-y-1 min-w-0 flex-1">
+                <p className="text-slate-500 text-[10px] sm:text-xs font-semibold uppercase tracking-wide">{metric.title}</p>
+                <p className="text-lg sm:text-2xl font-bold text-slate-900 tracking-tight truncate">{metric.value}</p>
               </div>
-              <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${metric.iconBg} transition-transform group-hover:scale-105`}>
-                <metric.icon className="h-5 w-5" />
+              <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center ${metric.iconBg} transition-transform group-hover:scale-105 shrink-0 ml-2`}>
+                <metric.icon className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
-            <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-100">
-              <div className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full ${getChangeColor(changeVal)}`}>
+            <div className="flex items-center justify-between mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100">
+              <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full ${getChangeColor(changeVal)}`}>
                 {getChangeIcon(changeVal)}
                 <span>{formatChange(metric.change)}</span>
               </div>
-              <p className="text-[11px] text-slate-400 font-medium">{metric.subtitle}</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate ml-1">{metric.subtitle}</p>
             </div>
           </div>
         );

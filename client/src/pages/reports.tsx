@@ -177,13 +177,13 @@ export default function Reports() {
     <div className="space-y-6 page-container animate-fade-in">
       {/* Page Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-slate-900">Reports & Analytics</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Reports & Analytics</h1>
         <p className="text-sm text-slate-500 mt-0.5">Generate comprehensive reports and analyze SACCO performance</p>
       </div>
 
       {/* Tabs for different report sections */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full max-w-2xl">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="financial">Financial</TabsTrigger>
@@ -194,7 +194,7 @@ export default function Reports() {
         <TabsContent value="overview" className="space-y-6">
           {/* Quick Stats */}
           {metricsLoading ? (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="section-card">
                   <div className="p-6">
@@ -205,55 +205,55 @@ export default function Reports() {
               ))}
             </div>
           ) : metrics ? (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               <div className="section-card border-l-4 border-l-blue-500">
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600">Total Members</p>
-                      <p className="text-2xl font-bold mt-1">{metrics.totalMembers}</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-medium text-slate-600">Total Members</p>
+                      <p className="text-lg sm:text-2xl font-bold mt-1">{metrics.totalMembers}</p>
                     </div>
-                    <Users className="h-8 w-8 text-blue-500" />
+                    <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 shrink-0" />
                   </div>
                 </div>
               </div>
 
               <div className="section-card border-l-4 border-l-green-500">
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600">Total Savings</p>
-                      <p className="text-2xl font-bold mt-1">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-medium text-slate-600">Total Savings</p>
+                      <p className="text-lg sm:text-2xl font-bold mt-1 truncate">
                         UGX {parseFloat(metrics.totalSavings).toLocaleString()}
                       </p>
                     </div>
-                    <PiggyBank className="h-8 w-8 text-green-500" />
+                    <PiggyBank className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 shrink-0" />
                   </div>
                 </div>
               </div>
 
               <div className="section-card border-l-4 border-l-purple-500">
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600">Active Loans</p>
-                      <p className="text-2xl font-bold mt-1">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-medium text-slate-600">Active Loans</p>
+                      <p className="text-lg sm:text-2xl font-bold mt-1 truncate">
                         UGX {parseFloat(metrics.activeLoans).toLocaleString()}
                       </p>
                     </div>
-                    <HandCoins className="h-8 w-8 text-purple-500" />
+                    <HandCoins className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500 shrink-0" />
                   </div>
                 </div>
               </div>
 
               <div className="section-card border-l-4 border-l-yellow-500">
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600">Repayment Rate</p>
-                      <p className="text-2xl font-bold mt-1">{metrics.repaymentRate}%</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-medium text-slate-600">Repayment Rate</p>
+                      <p className="text-lg sm:text-2xl font-bold mt-1">{metrics.repaymentRate}%</p>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-yellow-500" />
+                    <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-500 shrink-0" />
                   </div>
                 </div>
               </div>
@@ -261,7 +261,7 @@ export default function Reports() {
           ) : null}
 
           {/* Report Types Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {reportTypes.map((report) => (
               <div key={report.id} className="section-card hover:shadow-lg transition-all hover:-translate-y-1">
                 <div className="px-6 py-4 border-b border-slate-100">

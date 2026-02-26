@@ -191,7 +191,7 @@ export default function Loans() {
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
               {isPersonalView ? 'My Loans' : 'Loan Management'}
             </h2>
             <p className="text-sm text-slate-500 mt-0.5">
@@ -435,39 +435,39 @@ export default function Loans() {
         const totalLoansCount = (allLoans || []).length;
         const defaultRate = totalLoansCount > 0 ? ((defaultedCount / totalLoansCount) * 100).toFixed(1) : '0';
         return (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="section-card p-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+            <div className="section-card p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-500 text-sm font-medium">Total Active Loans</p>
-                  <p className="text-2xl font-semibold text-slate-900 mt-1">{activeLoansData.length}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-slate-500 text-xs sm:text-sm font-medium">Total Active Loans</p>
+                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1">{activeLoansData.length}</p>
                 </div>
-                <div className="w-12 h-12 bg-blue-50 rounded-lg flex items-center justify-center">
-                  <HandCoins className="text-blue-600 text-xl" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                  <HandCoins className="text-blue-600 h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
               </div>
             </div>
 
-            <div className="section-card p-6">
+            <div className="section-card p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-500 text-sm font-medium">Outstanding Amount</p>
-                  <p className="text-2xl font-semibold text-slate-900 mt-1">UGX {totalOutstanding.toLocaleString()}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-slate-500 text-xs sm:text-sm font-medium">Outstanding Amount</p>
+                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1 truncate">UGX {totalOutstanding.toLocaleString()}</p>
                 </div>
-                <div className="w-12 h-12 bg-emerald-50 rounded-lg flex items-center justify-center">
-                  <DollarSign className="text-emerald-600 text-xl" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
+                  <DollarSign className="text-emerald-600 h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
               </div>
             </div>
 
-            <div className="section-card p-6">
+            <div className="section-card p-4 sm:p-6">
               <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-slate-500 text-sm font-medium">Default Rate</p>
-                  <p className="text-2xl font-semibold text-slate-900 mt-1">{defaultRate}%</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-slate-500 text-xs sm:text-sm font-medium">Default Rate</p>
+                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1">{defaultRate}%</p>
                 </div>
-                <div className="w-12 h-12 bg-red-50 rounded-lg flex items-center justify-center">
-                  <XCircle className="text-red-600 text-xl" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
+                  <XCircle className="text-red-600 h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
               </div>
             </div>

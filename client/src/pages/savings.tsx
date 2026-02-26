@@ -111,7 +111,7 @@ export default function Savings() {
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
               {isPersonalView ? 'My Savings' : 'Savings Accounts'}
             </h2>
             <p className="text-sm text-slate-500 mt-0.5">

@@ -55,10 +55,10 @@ export function Pagination({
   }
 
   return (
-    <div className="flex items-center justify-between px-2 py-4">
-      <div className="flex items-center space-x-2 text-sm text-muted-foreground">
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-2 py-4 gap-3">
+      <div className="flex items-center space-x-2 text-xs sm:text-sm text-muted-foreground">
         <p>
-          Showing {startItem} to {endItem} of {totalItems} items
+          {startItem}-{endItem} of {totalItems}
         </p>
         {showItemsPerPage && (
           <>
@@ -67,7 +67,7 @@ export function Pagination({
               value={itemsPerPage.toString()} 
               onValueChange={(value) => onItemsPerPageChange(Number(value))}
             >
-              <SelectTrigger className="h-8 w-auto">
+              <SelectTrigger className="h-8 w-auto text-xs sm:text-sm">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -83,12 +83,13 @@ export function Pagination({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-1 sm:space-x-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => onPageChange(1)}
             disabled={currentPage === 1}
+            className="h-8 w-8 p-0 hidden sm:flex"
           >
             <ChevronsLeft className="h-4 w-4" />
           </Button>
@@ -97,6 +98,7 @@ export function Pagination({
             size="sm"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
+            className="h-8 w-8 p-0"
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
@@ -104,7 +106,7 @@ export function Pagination({
           {getVisiblePages().map((page, index) => {
             if (page === '...') {
               return (
-                <span key={index} className="px-2 text-muted-foreground">
+                <span key={index} className="px-1 sm:px-2 text-muted-foreground text-xs">
                   ...
                 </span>
               );
@@ -116,6 +118,7 @@ export function Pagination({
                 variant={currentPage === page ? "default" : "outline"}
                 size="sm"
                 onClick={() => onPageChange(page as number)}
+                className="h-8 w-8 p-0 text-xs sm:text-sm"
               >
                 {page}
               </Button>
@@ -127,6 +130,7 @@ export function Pagination({
             size="sm"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage === totalPages}
+            className="h-8 w-8 p-0"
           >
             <ChevronRight className="h-4 w-4" />
           </Button>
@@ -135,6 +139,7 @@ export function Pagination({
             size="sm"
             onClick={() => onPageChange(totalPages)}
             disabled={currentPage === totalPages}
+            className="h-8 w-8 p-0 hidden sm:flex"
           >
             <ChevronsRight className="h-4 w-4" />
           </Button>

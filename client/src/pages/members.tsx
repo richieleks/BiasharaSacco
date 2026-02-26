@@ -138,7 +138,7 @@ export default function Members() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
           <Users className="h-7 w-7" />
-          <h1 className="text-2xl font-bold tracking-tight text-slate-900">Members</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Members</h1>
         </div>
         {hasPermission('create', 'members') && (
           <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
