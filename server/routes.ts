@@ -12,6 +12,11 @@ import { z } from "zod";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 
+function generateDefaultPassword(fullName: string): string {
+  const namePart = fullName.trim().split(/\s+/)[0] || 'Member';
+  return `${namePart}@2026!`;
+}
+
 function getUserId(req: any): string | undefined {
   if (!req.user) return undefined;
   if (req.user.authMethod === 'local') return req.user.id;
@@ -669,7 +674,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             field: "username"
           });
         }
-        const defaultPassword = await hashPassword(req.body.password || 'member123');
+        const autoPassword = req.body.password || generateDefaultPassword(req.body.fullName);
+        const defaultPassword = await hashPassword(autoPassword);
         const nameParts = (req.body.fullName || '').split(' ');
         const firstName = nameParts[0] || '';
         const lastName = nameParts.slice(1).join(' ') || '';
@@ -682,6 +688,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName,
           role: 'member',
           authMethod: 'local',
+          mustChangePassword: true,
         });
         newUserId = newUser.id;
       } else {

@@ -1,6 +1,12 @@
 import { storage } from './storage';
 import { insertMemberSchema, insertSavingsAccountSchema, insertTransactionSchema, insertLoanSchema } from '@shared/schema';
 import { z } from 'zod';
+import { hashPassword } from './localAuth';
+
+function generateDefaultPassword(fullName: string): string {
+  const namePart = fullName.trim().split(/\s+/)[0] || 'Member';
+  return `${namePart}@2026!`;
+}
 
 function excelDateToDate(excelDate: any): Date {
   if (typeof excelDate === 'number') {
@@ -560,6 +566,39 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
         newMemberIndex++;
         const memberNumber = `BCS${String(newMemberIndex).padStart(6, '0')}`;
 
+        const memberEmail = email || `${fullName.toLowerCase().replace(/\s+/g, '.')}@import.local`;
+
+        const username = idNumber.toLowerCase().replace(/[^a-z0-9]/g, '');
+        let newUserId: string | undefined;
+        try {
+          const existingUser = await storage.getUserByUsername(username);
+          if (!existingUser) {
+            const defaultPassword = generateDefaultPassword(fullName);
+            const hashedPwd = await hashPassword(defaultPassword);
+            const nameParts = fullName.split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+            const newUser = await storage.upsertUser({
+              id: `member-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+              username,
+              password: hashedPwd,
+              email: memberEmail,
+              firstName,
+              lastName,
+              role: 'member',
+              authMethod: 'local',
+              mustChangePassword: true,
+            });
+            newUserId = newUser.id;
+            console.log(`Created user account for ${fullName}: username=${username}, password=${defaultPassword}`);
+          } else {
+            newUserId = existingUser.id;
+            console.log(`User account already exists for ${fullName}: username=${username}`);
+          }
+        } catch (userErr) {
+          console.log(`Warning: Could not create user account for ${fullName}:`, userErr);
+        }
+
         const memberData = {
           memberNumber,
           fullName,
@@ -567,7 +606,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
           dateOfBirth,
           gender,
           phoneNumber: phone || '0700000000',
-          email: email || `${fullName.toLowerCase().replace(/\s+/g, '.')}@import.local`,
+          email: memberEmail,
           address: address || 'N/A',
           maritalStatus,
           department: department || 'General',
@@ -587,6 +626,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
           nextOfKinPhone,
           status: 'active' as const,
           role: 'member' as const,
+          ...(newUserId ? { userId: newUserId } : {}),
           ...(joinDate ? { joinDate: new Date(joinDate) } : {}),
         };
 
