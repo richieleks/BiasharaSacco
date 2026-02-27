@@ -93,7 +93,7 @@ export default function LoanWorkflowVisualization({
   selectedWorkflowId,
   autoPlay = false 
 }: LoanWorkflowVisualizationProps) {
-  const [currentWorkflow, setCurrentWorkflow] = useState<LoanWorkflow>(workflowDefinitions[1]);
+  const [currentWorkflow, setCurrentWorkflow] = useState<LoanWorkflow>(workflowDefinitions[0]);
   const [currentStep, setCurrentStep] = useState(0);
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [animationSpeed, setAnimationSpeed] = useState(2000);
