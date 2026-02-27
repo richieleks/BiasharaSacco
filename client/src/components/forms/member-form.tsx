@@ -13,6 +13,7 @@ const memberFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   idNumber: z.string().min(1, "ID number is required"),
   phoneNumber: z.string().min(1, "Phone number is required"),
+  email: z.string().email("Invalid email address").optional().or(z.literal("")),
   address: z.string().optional(),
   dateOfBirth: z.string().min(1, "Date of birth is required"),
   gender: z.enum(["male", "female"]).default("male"),
@@ -68,6 +69,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
       dateOfBirth: member?.dateOfBirth || "",
       gender: member?.gender || "male",
       phoneNumber: member?.phoneNumber || "",
+      email: member?.email || "",
       address: member?.address || "",
       maritalStatus: member?.maritalStatus || "single",
       department: member?.department || "",
@@ -210,7 +212,21 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                   <FormItem>
                     <FormLabel>Tel Contact *</FormLabel>
                     <FormControl>
-                      <Input placeholder="+254 7XX XXX XXX" {...field} />
+                      <Input placeholder="+256 7XX XXX XXX" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" placeholder="member@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>

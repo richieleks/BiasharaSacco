@@ -409,7 +409,7 @@ export default function MemberDetails() {
               <CardContent className="pt-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
                   <InfoRow icon={Phone} label="Phone" value={member.phoneNumber} />
-                  <InfoRow icon={Mail} label="Email" value={member.user?.email} />
+                  <InfoRow icon={Mail} label="Email" value={member.email || member.user?.email} />
                 </div>
                 <InfoRow icon={MapPin} label="Address" value={member.address} />
               </CardContent>

@@ -713,7 +713,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Remove fields that aren't part of the member schema
       delete memberData.username;
       delete memberData.password;
-      delete memberData.email;
       delete memberData.initialDeposit;
       
       // Create member
