@@ -55,6 +55,7 @@ export const members = pgTable("members", {
   dateOfBirth: varchar("date_of_birth").default("2000-01-01"),
   gender: varchar("gender", { enum: ["male", "female"] }).default("male"),
   phoneNumber: varchar("phone_number").notNull(),
+  email: varchar("member_email"),
   address: text("address"),
   maritalStatus: varchar("marital_status", { enum: ["single", "married", "divorced", "widowed"] }).default("single"),
   department: varchar("department").default(""),
