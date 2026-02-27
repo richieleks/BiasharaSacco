@@ -427,16 +427,34 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
           </CardContent>
         </Card>
 
-        {/* Entrance Fee and Share Contribution */}
+        {/* Entrance Fee */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">C. ENTRANCE FEE AND SHARE CONTRIBUTION</CardTitle>
+            <CardTitle className="text-lg">C. ENTRANCE FEE</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="bg-muted p-4 rounded-lg">
               <p className="text-sm">
-                If my application is accepted, I agree to pay an Entrance Fee of <strong>Shs. {entranceFee.toLocaleString()}</strong> 
-                and a share capital contribution as indicated below.
+                If my application is accepted, I agree to pay an Entrance Fee of <strong>Shs. {entranceFee.toLocaleString()}</strong>.
+                This is a one-time, non-refundable fee payable upon admission.
+              </p>
+            </div>
+            <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
+              <span className="text-sm font-medium text-slate-700">Entrance Fee</span>
+              <span className="text-sm font-bold text-slate-900">Shs. {entranceFee.toLocaleString()}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Share Capital Contribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">D. SHARE CAPITAL CONTRIBUTION</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="bg-muted p-4 rounded-lg">
+              <p className="text-sm">
+                I agree to purchase shares at <strong>Shs. {sharePrice.toLocaleString()}</strong> per share as indicated below.
               </p>
             </div>
 
@@ -472,7 +490,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                 name="shareContribution"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Share Contribution (Shs) *</FormLabel>
+                    <FormLabel>Total Share Contribution (Shs) *</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
@@ -482,7 +500,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                       />
                     </FormControl>
                     <FormDescription>
-                      Total share capital contribution
+                      Total share capital: {form.watch('numberOfShares') || 4} shares × Shs. {sharePrice.toLocaleString()}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -495,7 +513,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
         {/* Beneficiary Details */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">D. BENEFICIARY</CardTitle>
+            <CardTitle className="text-lg">E. BENEFICIARY</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <FormField
