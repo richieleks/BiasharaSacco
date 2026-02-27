@@ -8,6 +8,14 @@ function generateDefaultPassword(fullName: string): string {
   return `${namePart}@2026!`;
 }
 
+function generateUsername(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return parts[0]?.toLowerCase() || 'member';
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+  return `${firstName[0]}${lastName}`.toLowerCase();
+}
+
 function excelDateToDate(excelDate: any): Date {
   if (typeof excelDate === 'number') {
     const excelEpoch = new Date(1900, 0, 1);
@@ -568,7 +576,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 
         const memberEmail = email || `${fullName.toLowerCase().replace(/\s+/g, '.')}@import.local`;
 
-        const username = idNumber.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const username = generateUsername(fullName);
         let newUserId: string | undefined;
         try {
           const existingUser = await storage.getUserByUsername(username);

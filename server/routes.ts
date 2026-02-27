@@ -17,6 +17,14 @@ function generateDefaultPassword(fullName: string): string {
   return `${namePart}@2026!`;
 }
 
+function generateUsername(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return parts[0]?.toLowerCase() || 'member';
+  const firstName = parts[0];
+  const lastName = parts[parts.length - 1];
+  return `${firstName[0]}${lastName}`.toLowerCase();
+}
+
 function getUserId(req: any): string | undefined {
   if (!req.user) return undefined;
   if (req.user.authMethod === 'local') return req.user.id;
@@ -666,7 +674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (isStaff) {
         // Admin is adding a new member - create a user account for them
-        const username = req.body.username || req.body.idNumber.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const username = req.body.username || generateUsername(req.body.fullName);
         const existingUser = await storage.getUserByUsername(username);
         if (existingUser) {
           return res.status(400).json({
