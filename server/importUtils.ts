@@ -361,6 +361,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
       ['gender', ['gender', 'sex']],
       ['address', ['postal address', 'address', 'postal']],
       ['phone', ['tel contact', 'phone', 'phone number', 'telephone', 'mobile', 'contact']],
+      ['email', ['email', 'email address', 'e-mail']],
       ['maritalStatus', ['marital status', 'marital']],
       ['department', ['department', 'dept']],
       ['section', ['section']],
@@ -530,6 +531,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
         }
 
         const phone = colMap.phone !== undefined ? (row[colMap.phone] || '').toString().trim() : '0700000000';
+        const email = colMap.email !== undefined ? (row[colMap.email] || '').toString().trim() : '';
         const address = colMap.address !== undefined ? (row[colMap.address] || '').toString().trim() : '';
         const department = colMap.department !== undefined ? (row[colMap.department] || '').toString().trim() : '';
         const section = colMap.section !== undefined ? (row[colMap.section] || '').toString().trim() : '';
@@ -565,7 +567,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
           dateOfBirth,
           gender,
           phoneNumber: phone || '0700000000',
-          email: `${fullName.toLowerCase().replace(/\s+/g, '.')}@import.local`,
+          email: email || `${fullName.toLowerCase().replace(/\s+/g, '.')}@import.local`,
           address: address || 'N/A',
           maritalStatus,
           department: department || 'General',
