@@ -1930,7 +1930,7 @@ function UserManagementTab() {
     email: z.string().email("Invalid email address"),
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
-    role: z.enum(["admin", "manager", "committee", "teller", "member"]),
+    roles: z.array(z.string()).min(1, "At least one role must be selected"),
     password: z.string().optional(),
   });
 
@@ -1953,7 +1953,7 @@ function UserManagementTab() {
       email: "",
       firstName: "",
       lastName: "",
-      role: "member",
+      roles: ["member"],
       password: "",
     },
   });
@@ -1977,6 +1977,9 @@ function UserManagementTab() {
     mutationFn: async ({ id, data }: { id: string; data: any }) => {
       const payload = { ...data };
       if (!payload.password) delete payload.password;
+      if (payload.roles) {
+        payload.role = payload.roles[0];
+      }
       return await apiRequest('PATCH', `/api/auth/users/${id}`, payload);
     },
     onSuccess: () => {
@@ -2022,12 +2025,13 @@ function UserManagementTab() {
 
   const handleEditUser = (u: any) => {
     setEditingUser(u);
+    const userRoles = Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role || "member"];
     editForm.reset({
       username: u.username || "",
       email: u.email || "",
       firstName: u.firstName || "",
       lastName: u.lastName || "",
-      role: u.role || "member",
+      roles: userRoles,
       password: "",
     });
     setShowEditDialog(true);
@@ -2160,9 +2164,13 @@ function UserManagementTab() {
                     <TableCell>{u.username}</TableCell>
                     <TableCell>{u.email}</TableCell>
                     <TableCell>
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getRoleBadgeColor(u.role)}`}>
-                        {u.role}
-                      </span>
+                      <div className="flex flex-wrap gap-1">
+                        {(Array.isArray(u.roles) ? u.roles : [u.role]).map((r: string) => (
+                          <span key={r} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${getRoleBadgeColor(r)}`}>
+                            {r}
+                          </span>
+                        ))}
+                      </div>
                     </TableCell>
                     <TableCell>{new Date(u.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
@@ -2253,21 +2261,38 @@ function UserManagementTab() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={editForm.control} name="role" render={({ field }) => (
+              <FormField control={editForm.control} name="roles" render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Role</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="manager">Manager</SelectItem>
-                      <SelectItem value="committee">Committee</SelectItem>
-                      <SelectItem value="teller">Teller</SelectItem>
-                      <SelectItem value="member">Member</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <FormLabel>Roles</FormLabel>
+                  <div className="space-y-2">
+                    {[
+                      { value: "admin", label: "Admin" },
+                      { value: "manager", label: "Manager" },
+                      { value: "committee", label: "Committee" },
+                      { value: "teller", label: "Teller" },
+                      { value: "member", label: "Member" },
+                    ].map((roleOption) => (
+                      <div key={roleOption.value} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`edit-role-${roleOption.value}`}
+                          checked={field.value?.includes(roleOption.value)}
+                          onCheckedChange={(checked) => {
+                            const current = field.value || [];
+                            if (checked) {
+                              field.onChange([...current, roleOption.value]);
+                            } else {
+                              const updated = current.filter((r: string) => r !== roleOption.value);
+                              field.onChange(updated.length > 0 ? updated : current);
+                            }
+                          }}
+                        />
+                        <label htmlFor={`edit-role-${roleOption.value}`} className="text-sm font-medium cursor-pointer">
+                          {roleOption.label}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">Select one or more roles. The first selected role will be the primary role.</p>
                   <FormMessage />
                 </FormItem>
               )} />

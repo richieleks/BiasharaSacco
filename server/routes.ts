@@ -311,8 +311,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/users', isAuthenticated, requirePermission('read', 'users'), async (req: AuthRequest, res) => {
     try {
       const allUsers = await storage.getAllUsers();
-      const usersWithoutPasswords = allUsers.map(({ password, ...u }: any) => u);
-      res.json(usersWithoutPasswords);
+      const usersWithRoles = await Promise.all(allUsers.map(async ({ password, ...u }: any) => {
+        const member = await storage.getMemberByUserId(u.id);
+        const roles = member ? await storage.getMemberRoles(member.id) : [u.role || 'member'];
+        return { ...u, roles, memberId: member?.id || null };
+      }));
+      res.json(usersWithRoles);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
@@ -322,21 +326,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/auth/users/:id', isAuthenticated, requirePermission('update', 'users'), async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
-      const { username, email, firstName, lastName, role, password } = req.body;
+      const { username, email, firstName, lastName, role, roles, password } = req.body;
 
       const updateData: any = {};
       if (username) updateData.username = username;
       if (email) updateData.email = email;
       if (firstName) updateData.firstName = firstName;
       if (lastName) updateData.lastName = lastName;
-      if (role) updateData.role = role;
+      const primaryRole = role || (Array.isArray(roles) && roles.length > 0 ? roles[0] : undefined);
+      if (primaryRole) updateData.role = primaryRole;
       if (password) {
         updateData.password = await hashPassword(password);
       }
 
       const updatedUser = await storage.updateUser(id, updateData);
+
+      if (Array.isArray(roles) && roles.length > 0) {
+        const member = await storage.getMemberByUserId(id);
+        if (member) {
+          await storage.replaceMemberRoles(member.id, roles, getUserId(req) || id);
+          await storage.updateMember(member.id, { role: primaryRole });
+        }
+      }
+
       const { password: _, ...userWithoutPassword } = updatedUser as any;
-      res.json(userWithoutPassword);
+      const member = await storage.getMemberByUserId(id);
+      const memberRoles = member ? await storage.getMemberRoles(member.id) : [primaryRole || updatedUser.role];
+      res.json({ ...userWithoutPassword, roles: memberRoles, memberId: member?.id || null });
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });
