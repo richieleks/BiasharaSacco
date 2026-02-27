@@ -29,14 +29,11 @@ export default function LoanApprovalWorkflow() {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Determine which stages the user can access using multi-role support
   const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : (user?.role ? [user.role] : []));
-  // Handle legacy "teller" role by mapping to "treasurer"
   const mappedRoles = userRoles.map((role: any) => role === 'teller' ? 'treasurer' : role);
   const canAccessTreasurer = hasAnyRole(mappedRoles as any, ['treasurer', 'admin']);
   const canAccessCommittee = hasAnyRole(mappedRoles as any, ['committee', 'treasurer', 'admin']);
 
-  // Set default tab based on user role
   useState(() => {
     const primaryRole = (user?.member?.role || user?.role) as string | undefined;
     if (primaryRole === 'committee') setActiveTab('committee');
@@ -148,10 +145,10 @@ export default function LoanApprovalWorkflow() {
 
   const getStatusBadge = (status: string, stage: string) => {
     const badges: Record<string, { variant: any; text: string; icon: any }> = {
-      'pending': { variant: 'secondary', text: 'Pending Treasurer Review', icon: Clock },
-      'treasurer_approved': { variant: 'default', text: 'Treasurer Approved', icon: CheckCircle },
+      'pending': { variant: 'secondary', text: 'Pending Committee Review', icon: Clock },
       'committee_approved': { variant: 'default', text: 'Committee Approved', icon: CheckCircle },
-      'approved': { variant: 'default', text: 'Fully Approved', icon: CheckCircle },
+      'approved': { variant: 'default', text: 'Approved - Awaiting Disbursement', icon: CheckCircle },
+      'disbursed': { variant: 'default', text: 'Disbursed', icon: CheckCircle },
       'rejected': { variant: 'destructive', text: 'Rejected', icon: XCircle },
     };
 
@@ -248,7 +245,7 @@ export default function LoanApprovalWorkflow() {
       {parseFloat(loan.principalAmount) > 500000 && (
         <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
           <AlertTriangle className="h-4 w-4" />
-          <span className="text-sm">High-value loan requiring admin approval</span>
+          <span className="text-sm">High-value loan - requires careful risk assessment</span>
         </div>
       )}
     </div>
@@ -284,7 +281,7 @@ export default function LoanApprovalWorkflow() {
               )}
             </TabsTrigger>
             <TabsTrigger value="treasurer" disabled={!canAccessTreasurer}>
-              Treasurer Approval
+              Treasurer Disbursement
               {treasurerLoans && treasurerLoans.length > 0 && (
                 <Badge variant="secondary" className="ml-2">{treasurerLoans.length}</Badge>
               )}
@@ -294,8 +291,8 @@ export default function LoanApprovalWorkflow() {
           <TabsContent value="committee" className="mt-4">
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <User className="h-4 w-4" />
-                Initial loan review and documentation verification
+                <Users className="h-4 w-4" />
+                Detailed evaluation of loan request, risk assessment, and approval of terms and conditions
               </div>
               {committeeLoading ? (
                 <p>Loading committee review queue...</p>
@@ -319,8 +316,8 @@ export default function LoanApprovalWorkflow() {
           <TabsContent value="treasurer" className="mt-4">
             <div className="space-y-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                Final approval for loans within authority (UGX 100K - 500K)
+                <DollarSign className="h-4 w-4" />
+                Disburse approved funds to member accounts
               </div>
               {treasurerLoading ? (
                 <p>Loading treasurer approval queue...</p>

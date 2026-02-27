@@ -791,22 +791,13 @@ export class DatabaseStorage implements IStorage {
   async getLoansForApproval(stage: string, userRole: string): Promise<LoanWithDetails[]> {
     let whereCondition;
     
-    // Define approval logic based on user role and stage
-    if (userRole === 'teller' && stage === 'teller') {
+    if (stage === 'committee') {
       whereCondition = and(
         eq(loans.status, 'pending'),
-        eq(loans.approvalStage, 'teller')
-      );
-    } else if (userRole === 'committee' && stage === 'committee') {
-      whereCondition = and(
-        eq(loans.status, 'teller_approved'),
         eq(loans.approvalStage, 'committee')
       );
-    } else if ((userRole === 'manager' || userRole === 'admin') && stage === 'manager') {
-      whereCondition = and(
-        eq(loans.status, 'committee_approved'),
-        eq(loans.approvalStage, 'manager')
-      );
+    } else if (stage === 'treasurer') {
+      whereCondition = eq(loans.status, 'approved');
     } else {
       // Return empty array if no matching conditions
       return [];
@@ -833,37 +824,22 @@ export class DatabaseStorage implements IStorage {
     const currentTime = new Date();
     let updateData: any = {};
 
-    // Determine the next stage and status
-    if (stage === 'teller') {
+    if (stage === 'committee') {
       updateData = {
-        status: 'teller_approved',
-        approvalStage: 'committee',
+        status: 'approved',
+        approvalStage: 'completed',
+        committeeApprovedBy: approvedBy,
+        committeeApprovedAt: currentTime,
+        committeeComments: comments,
+      };
+    } else if (stage === 'teller') {
+      updateData = {
+        status: 'approved',
+        approvalStage: 'completed',
         tellerApprovedBy: approvedBy,
         tellerApprovedAt: currentTime,
         tellerComments: comments,
       };
-    } else if (stage === 'committee') {
-      // Check if loan amount requires manager approval
-      const loan = await this.getLoan(loanId);
-      const requiresManagerApproval = loan && parseFloat(loan.principalAmount) > 500000; // KES 500K threshold
-      
-      if (requiresManagerApproval) {
-        updateData = {
-          status: 'committee_approved',
-          approvalStage: 'manager',
-          committeeApprovedBy: approvedBy,
-          committeeApprovedAt: currentTime,
-          committeeComments: comments,
-        };
-      } else {
-        updateData = {
-          status: 'approved',
-          approvalStage: 'completed',
-          committeeApprovedBy: approvedBy,
-          committeeApprovedAt: currentTime,
-          committeeComments: comments,
-        };
-      }
     } else if (stage === 'manager') {
       updateData = {
         status: 'approved',

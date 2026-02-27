@@ -97,31 +97,12 @@ const rolesData = [
 
 const loanApprovalWorkflow = [
   {
-    amount: '< UGX 100,000',
-    type: 'Emergency Loans',
+    amount: 'All Amounts',
+    type: 'Loan Approval Process',
     workflow: [
-      { stage: 'Direct to Committee', color: 'bg-blue-500' },
-      { stage: 'Committee Decision', color: 'bg-blue-500' },
-      { stage: 'Immediate Disbursement', color: 'bg-green-500' }
-    ]
-  },
-  {
-    amount: 'UGX 100K - 500K',
-    type: 'Standard Loans',
-    workflow: [
-      { stage: 'Committee Review', color: 'bg-blue-500' },
-      { stage: 'Treasurer Approval', color: 'bg-green-500' },
-      { stage: 'Disbursement', color: 'bg-green-500' }
-    ]
-  },
-  {
-    amount: '> UGX 500,000',
-    type: 'High-Value Loans',
-    workflow: [
-      { stage: 'Committee Review', color: 'bg-blue-500' },
-      { stage: 'Treasurer Assessment', color: 'bg-green-500' },
-      { stage: 'Admin Approval', color: 'bg-red-500' },
-      { stage: 'Disbursement', color: 'bg-green-500' }
+      { stage: 'Member Application', color: 'bg-slate-500' },
+      { stage: 'Committee Evaluation & Approval', color: 'bg-blue-500' },
+      { stage: 'Treasurer Disbursement', color: 'bg-green-500' }
     ]
   }
 ];

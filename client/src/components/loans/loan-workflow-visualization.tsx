@@ -45,55 +45,10 @@ interface LoanWorkflow {
 
 const workflowDefinitions: LoanWorkflow[] = [
   {
-    id: 'emergency',
-    title: 'Emergency Loans',
-    description: 'Fast-track approval for urgent financial needs',
-    amountRange: '< UGX 100,000',
-    color: 'bg-orange-500',
-    steps: [
-      {
-        id: 'application',
-        title: 'Application Submission',
-        description: 'Member submits emergency loan application with supporting documents',
-        icon: FileText,
-        role: 'Member',
-        estimatedTime: '5 minutes',
-        requirements: ['Emergency justification', 'ID verification', 'Employment proof']
-      },
-      {
-        id: 'committee-review',
-        title: 'Committee Review',
-        description: 'Committee evaluates emergency status and creditworthiness',
-        icon: Users,
-        role: 'Committee',
-        estimatedTime: '2 hours',
-        requirements: ['Emergency verification', 'Credit history check', 'Guarantor confirmation']
-      },
-      {
-        id: 'approval',
-        title: 'Immediate Approval',
-        description: 'Committee makes final decision and approves disbursement',
-        icon: CheckCircle,
-        role: 'Committee',
-        estimatedTime: '30 minutes',
-        requirements: ['Committee consensus', 'Risk assessment']
-      },
-      {
-        id: 'disbursement',
-        title: 'Fund Disbursement',
-        description: 'Approved funds are transferred to member account',
-        icon: CreditCard,
-        role: 'System',
-        estimatedTime: '15 minutes',
-        requirements: ['Account verification', 'Transfer authorization']
-      }
-    ]
-  },
-  {
     id: 'standard',
-    title: 'Standard Loans',
-    description: 'Regular loan processing for typical requests',
-    amountRange: 'UGX 100K - 500K',
+    title: 'Loan Approval Process',
+    description: 'Standard 3-step loan approval workflow for all loan applications',
+    amountRange: 'All Amounts',
     color: 'bg-blue-500',
     steps: [
       {
@@ -103,97 +58,25 @@ const workflowDefinitions: LoanWorkflow[] = [
         icon: FileText,
         role: 'Member',
         estimatedTime: '15 minutes',
-        requirements: ['Complete application form', 'Income verification', 'Guarantor details']
+        requirements: ['Complete application form', 'Income verification', 'Guarantor details', 'ID verification']
       },
       {
-        id: 'teller-review',
-        title: 'Teller Review',
-        description: 'Initial verification of documents and eligibility',
-        icon: User,
-        role: 'Teller',
-        estimatedTime: '1 hour',
-        requirements: ['Document verification', 'Member status check', 'Basic eligibility']
-      },
-      {
-        id: 'committee-assessment',
-        title: 'Committee Assessment',
-        description: 'Detailed evaluation of loan request and risk assessment',
+        id: 'committee-review',
+        title: 'Committee Evaluation & Approval',
+        description: 'Detailed evaluation of loan request, risk assessment, and approval of loan terms and conditions',
         icon: Users,
         role: 'Committee',
-        estimatedTime: '24 hours',
-        requirements: ['Credit scoring', 'Guarantor verification', 'Risk analysis']
-      },
-      {
-        id: 'approval',
-        title: 'Final Approval',
-        description: 'Committee approves loan terms and conditions',
-        icon: CheckCircle,
-        role: 'Committee',
-        estimatedTime: '2 hours',
-        requirements: ['Committee vote', 'Terms agreement']
+        estimatedTime: '24-48 hours',
+        requirements: ['Credit scoring', 'Risk analysis', 'Guarantor verification', 'Terms approval', 'Committee consensus']
       },
       {
         id: 'disbursement',
-        title: 'Fund Disbursement',
-        description: 'Approved funds are transferred to member account',
-        icon: CreditCard,
-        role: 'System',
-        estimatedTime: '30 minutes',
-        requirements: ['Final verification', 'Transfer processing']
-      }
-    ]
-  },
-  {
-    id: 'high-value',
-    title: 'High-Value Loans',
-    description: 'Enhanced approval process for large loan amounts',
-    amountRange: '> UGX 500,000',
-    color: 'bg-purple-500',
-    steps: [
-      {
-        id: 'application',
-        title: 'Application Submission',
-        description: 'Member submits comprehensive loan application',
-        icon: FileText,
-        role: 'Member',
-        estimatedTime: '30 minutes',
-        requirements: ['Detailed application', 'Financial statements', 'Multiple guarantors']
-      },
-      {
-        id: 'teller-review',
-        title: 'Teller Review',
-        description: 'Thorough verification of all documentation',
-        icon: User,
-        role: 'Teller',
-        estimatedTime: '2 hours',
-        requirements: ['Enhanced document check', 'Preliminary assessment']
-      },
-      {
-        id: 'committee-assessment',
-        title: 'Committee Assessment',
-        description: 'Comprehensive evaluation and risk analysis',
-        icon: Users,
-        role: 'Committee',
-        estimatedTime: '48 hours',
-        requirements: ['Detailed credit analysis', 'Collateral evaluation', 'Guarantor assessment']
-      },
-      {
-        id: 'manager-approval',
-        title: 'Manager Approval',
-        description: 'Senior management review and final authorization',
-        icon: Building2,
-        role: 'Manager',
-        estimatedTime: '24 hours',
-        requirements: ['Senior review', 'Policy compliance', 'Strategic assessment']
-      },
-      {
-        id: 'disbursement',
-        title: 'Fund Disbursement',
-        description: 'High-value transfer with enhanced security',
-        icon: CreditCard,
-        role: 'System',
-        estimatedTime: '1 hour',
-        requirements: ['Multi-level verification', 'Secure transfer']
+        title: 'Treasurer Disbursement',
+        description: 'Treasurer disburses approved funds to member account',
+        icon: DollarSign,
+        role: 'Treasurer',
+        estimatedTime: '1-2 hours',
+        requirements: ['Account verification', 'Transfer authorization', 'Fund availability check']
       }
     ]
   }
@@ -217,26 +100,9 @@ export default function LoanWorkflowVisualization({
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
 
   useEffect(() => {
-    if (selectedLoanAmount) {
-      let workflow: LoanWorkflow;
-      if (selectedLoanAmount < 100000) {
-        workflow = workflowDefinitions[0];
-      } else if (selectedLoanAmount <= 500000) {
-        workflow = workflowDefinitions[1];
-      } else {
-        workflow = workflowDefinitions[2];
-      }
-      setCurrentWorkflow(workflow);
-      setCurrentStep(0);
-      setCompletedSteps(new Set());
-    } else if (selectedWorkflowId) {
-      const workflow = workflowDefinitions.find(w => w.id === selectedWorkflowId);
-      if (workflow) {
-        setCurrentWorkflow(workflow);
-        setCurrentStep(0);
-        setCompletedSteps(new Set());
-      }
-    }
+    setCurrentWorkflow(workflowDefinitions[0]);
+    setCurrentStep(0);
+    setCompletedSteps(new Set());
   }, [selectedLoanAmount, selectedWorkflowId]);
 
   useEffect(() => {

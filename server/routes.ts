@@ -628,8 +628,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     
     if (roles.includes('admin')) return true;
     
-    if (requiredRole === 'teller' && roles.includes('teller')) return true;
     if (requiredRole === 'committee' && roles.includes('committee')) return true;
+    if (requiredRole === 'treasurer' && (roles.includes('treasurer') || roles.includes('teller'))) return true;
+    if (requiredRole === 'teller' && (roles.includes('teller') || roles.includes('treasurer'))) return true;
     if (requiredRole === 'manager' && roles.includes('manager')) return true;
     
     return false;
@@ -1271,7 +1272,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const staffMember of staffMembers) {
           // Only notify members who have staff roles
           const roles = await storage.getMemberRoles(staffMember.id);
-          const hasStaffRole = roles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+          const hasStaffRole = roles.some(role => ['admin', 'manager', 'committee', 'treasurer', 'teller'].includes(role));
           
           if (hasStaffRole) {
             await createAndBroadcastNotification({
@@ -1428,7 +1429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const staffMember of allMembers) {
           if (staffMember.id === member.id) continue;
           const roles = await storage.getMemberRoles(staffMember.id);
-          const hasStaffRole = roles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+          const hasStaffRole = roles.some(role => ['admin', 'manager', 'committee', 'treasurer', 'teller'].includes(role));
           if (hasStaffRole) {
             await createAndBroadcastNotification({
               type: 'loan_application',
