@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PiggyBank, ChevronDown, User, Settings, LogOut, Shield } from "lucide-react";
+import { PiggyBank, ChevronDown, User, Settings, LogOut, Shield, ArrowRightLeft, Check } from "lucide-react";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import {
   DropdownMenu,
@@ -11,12 +11,33 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Link, useLocation } from "wouter";
 
+const ROLE_LABELS: Record<string, string> = {
+  admin: 'Administrator',
+  manager: 'Manager',
+  committee: 'Committee',
+  treasurer: 'Treasurer',
+  teller: 'Teller',
+  member: 'Member',
+};
+
+const ROLE_COLORS: Record<string, string> = {
+  admin: 'bg-red-100 text-red-700',
+  manager: 'bg-purple-100 text-purple-700',
+  committee: 'bg-blue-100 text-blue-700',
+  treasurer: 'bg-amber-100 text-amber-700',
+  teller: 'bg-emerald-100 text-emerald-700',
+  member: 'bg-slate-100 text-slate-700',
+};
+
 export default function Header() {
   const { user } = useAuth();
-  const { hasPermission } = useRBAC();
+  const { hasPermission, userRoles, activeRole, switchRole, canSwitchRoles } = useRBAC();
   const [, navigate] = useLocation();
 
   const getInitials = (firstName?: string, lastName?: string) => {
@@ -57,7 +78,14 @@ export default function Header() {
                     <p className="text-sm font-semibold text-slate-800 leading-none">
                       {user?.firstName} {user?.lastName}
                     </p>
-                    <p className="text-[11px] text-slate-400 font-medium capitalize mt-0.5">{user?.role || "Member"}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 h-4 font-medium ${ROLE_COLORS[activeRole] || ROLE_COLORS.member}`}>
+                        {ROLE_LABELS[activeRole] || activeRole}
+                      </Badge>
+                      {canSwitchRoles && (
+                        <ArrowRightLeft className="h-3 w-3 text-slate-400" />
+                      )}
+                    </div>
                   </div>
                   <ChevronDown className="h-3.5 w-3.5 text-slate-400 hidden sm:block" />
                 </Button>
@@ -76,6 +104,41 @@ export default function Header() {
                 </DropdownMenuLabel>
                 
                 <DropdownMenuSeparator className="my-1" />
+
+                {canSwitchRoles && (
+                  <>
+                    <DropdownMenuSub>
+                      <DropdownMenuSubTrigger className="rounded-lg cursor-pointer px-3 py-2">
+                        <ArrowRightLeft className="mr-2.5 h-4 w-4 text-slate-500" />
+                        <span className="text-sm">Switch Role</span>
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="rounded-xl p-1.5">
+                        {userRoles.map((role) => (
+                          <DropdownMenuItem
+                            key={role}
+                            onClick={() => {
+                              switchRole(role);
+                              navigate('/dashboard');
+                            }}
+                            className="rounded-lg cursor-pointer px-3 py-2"
+                          >
+                            <div className="flex items-center justify-between w-full">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className={`text-[10px] px-1.5 py-0 h-4 font-medium ${ROLE_COLORS[role] || ROLE_COLORS.member}`}>
+                                  {ROLE_LABELS[role] || role}
+                                </Badge>
+                              </div>
+                              {activeRole === role && (
+                                <Check className="h-4 w-4 text-green-600" />
+                              )}
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                    <DropdownMenuSeparator className="my-1" />
+                  </>
+                )}
                 
                 <DropdownMenuItem onClick={() => navigate('/profile')} className="rounded-lg cursor-pointer px-3 py-2">
                   <User className="mr-2.5 h-4 w-4 text-slate-500" />

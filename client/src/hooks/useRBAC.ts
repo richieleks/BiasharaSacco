@@ -1,5 +1,6 @@
 import { useAuth } from "./useAuth";
 import { useQuery } from "@tanstack/react-query";
+import { useState, useEffect, useCallback } from "react";
 import { 
   hasPermission, 
   canAccessDashboardComponent, 
@@ -8,6 +9,8 @@ import {
   canApproveAtStage,
   type UserRole 
 } from "@/lib/rbac";
+
+const ACTIVE_ROLE_KEY = 'biashara_active_role';
 
 export function useRBAC() {
   const { user, isLoading } = useAuth();
@@ -38,57 +41,75 @@ export function useRBAC() {
       hierarchy[current] > hierarchy[highest] ? current : highest
     , 'member' as UserRole);
   };
-  
-  const userRole = getHighestRole(userRoles);
+
+  const [activeRole, setActiveRoleState] = useState<UserRole>(() => {
+    const stored = localStorage.getItem(ACTIVE_ROLE_KEY);
+    return (stored as UserRole) || getHighestRole(userRoles);
+  });
+
+  useEffect(() => {
+    if (userRoles.length > 0) {
+      const stored = localStorage.getItem(ACTIVE_ROLE_KEY) as UserRole | null;
+      if (!stored || !userRoles.includes(stored)) {
+        const highest = getHighestRole(userRoles);
+        setActiveRoleState(highest);
+        localStorage.setItem(ACTIVE_ROLE_KEY, highest);
+      }
+    }
+  }, [JSON.stringify(userRoles)]);
+
+  const switchRole = useCallback((role: UserRole) => {
+    if (userRoles.includes(role)) {
+      setActiveRoleState(role);
+      localStorage.setItem(ACTIVE_ROLE_KEY, role);
+    }
+  }, [JSON.stringify(userRoles)]);
+
+  const effectiveRole = userRoles.includes(activeRole) ? activeRole : getHighestRole(userRoles);
+  const effectiveRoles = [effectiveRole];
   
   return {
-    userRole, // Keep for backward compatibility
-    userRoles, // New: array of all user roles
+    userRole: effectiveRole,
+    userRoles,
+    activeRole: effectiveRole,
+    switchRole,
+    canSwitchRoles: userRoles.length > 1,
     isLoading,
     
-    // Permission checking functions - now check both hardcoded and dynamic permissions
     hasPermission: (action: string, resource: string) => {
-      // First check dynamic permissions from database
       const hasDynamicPermission = dynamicPermissions.some(
         (p: any) => p.action === action && p.resource === resource
       );
       
-      // If we have dynamic permissions, use them exclusively
       if (dynamicPermissions.length > 0) {
         return hasDynamicPermission;
       }
       
-      // Otherwise fallback to hardcoded permissions
-      return userRoles.some(role => hasPermission(role, action, resource));
+      return hasPermission(effectiveRole, action, resource);
     },
     
     canAccessDashboardComponent: (component: string) => 
-      userRoles.some(role => canAccessDashboardComponent(role, component)),
+      canAccessDashboardComponent(effectiveRole, component),
     
     canAccessRoute: (route: string) => 
-      canAccessRoute(userRoles, route, dynamicPermissions),
+      canAccessRoute(effectiveRoles, route, dynamicPermissions),
     
     canApproveAtStage: (stage: string) => 
-      userRoles.some(role => canApproveAtStage(role, stage)),
+      canApproveAtStage(effectiveRole, stage),
     
-    // Navigation and UI helpers - pass all user roles and dynamic permissions for proper filtering
-    getNavigationItems: () => getNavigationItems(userRoles, dynamicPermissions),
+    getNavigationItems: () => getNavigationItems(effectiveRoles, dynamicPermissions),
     
-    // Role-based content filtering
     filterContentByRole: <T>(content: T[], filter: (item: T) => boolean) => {
       return content.filter(filter);
     },
     
-    // Check if user has any of the specified roles
     hasAnyRole: (roles: UserRole[]) => roles.some(role => userRoles.includes(role)),
     
-    // Check if user has specific role
     hasRole: (role: UserRole) => userRoles.includes(role),
     
-    // Get user's highest role level for comparison
     isHigherThan: (role: UserRole) => {
       const hierarchy: Record<UserRole, number> = { member: 1, teller: 2, treasurer: 2, committee: 3, manager: 4, admin: 5 };
-      return hierarchy[userRole] > hierarchy[role];
+      return hierarchy[effectiveRole] > hierarchy[role];
     }
   };
 }
