@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
 import { usePagination } from "@/hooks/usePagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -18,7 +19,8 @@ import { Search, Plus, ArrowUp, ArrowDown, Wallet, PiggyBank, FileText } from "l
 
 export default function Savings() {
   const [location] = useLocation();
-  const isPersonalView = location === '/my-savings';
+  const { activeRole } = useRBAC();
+  const isPersonalView = location === '/my-savings' || activeRole === 'member';
   const [searchQuery, setSearchQuery] = useState("");
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);

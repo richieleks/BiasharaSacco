@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
 import { usePagination } from "@/hooks/usePagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -18,7 +19,8 @@ import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, Arrow
 
 export default function Loans() {
   const [location, setLocation] = useLocation();
-  const isPersonalView = location === '/my-loans';
+  const { activeRole } = useRBAC();
+  const isPersonalView = location === '/my-loans' || activeRole === 'member';
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");

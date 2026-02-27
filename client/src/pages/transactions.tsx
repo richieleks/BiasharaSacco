@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
 import { usePagination } from "@/hooks/usePagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
@@ -17,7 +18,8 @@ import type { TransactionWithDetails } from "@shared/schema";
 
 export default function Transactions() {
   const [location] = useLocation();
-  const isPersonalView = location === '/my-transactions';
+  const { activeRole } = useRBAC();
+  const isPersonalView = location === '/my-transactions' || activeRole === 'member';
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
