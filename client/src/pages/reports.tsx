@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart3, Download, FileText, TrendingUp, Users, PiggyBank, HandCoins, Calendar, Filter, Printer, Mail, FileSpreadsheet, Plus } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 interface ReportFilter {
   startDate?: Date;
@@ -224,7 +225,7 @@ export default function Reports() {
                     <div className="min-w-0 flex-1">
                       <p className="text-xs sm:text-sm font-medium text-slate-600">Total Savings</p>
                       <p className="text-lg sm:text-2xl font-bold mt-1 truncate">
-                        UGX {parseFloat(metrics.totalSavings).toLocaleString()}
+                        {formatCurrency(metrics.totalSavings)}
                       </p>
                     </div>
                     <PiggyBank className="h-6 w-6 sm:h-8 sm:w-8 text-green-500 shrink-0" />
@@ -238,7 +239,7 @@ export default function Reports() {
                     <div className="min-w-0 flex-1">
                       <p className="text-xs sm:text-sm font-medium text-slate-600">Active Loans</p>
                       <p className="text-lg sm:text-2xl font-bold mt-1 truncate">
-                        UGX {parseFloat(metrics.activeLoans).toLocaleString()}
+                        {formatCurrency(metrics.activeLoans)}
                       </p>
                     </div>
                     <HandCoins className="h-6 w-6 sm:h-8 sm:w-8 text-purple-500 shrink-0" />

@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { formatCurrency } from "@/lib/utils";
 
 export default function PendingApprovals() {
   const { toast } = useToast();
@@ -120,7 +121,7 @@ export default function PendingApprovals() {
                   <div>
                     <p className="text-sm font-medium text-slate-900">Loan Application</p>
                     <p className="text-xs text-slate-500">
-                      {loan.member?.user?.firstName} {loan.member?.user?.lastName} - UGX {parseFloat(loan.principalAmount).toLocaleString()}
+                      {loan.member?.user?.firstName} {loan.member?.user?.lastName} - {formatCurrency(loan.principalAmount)}
                     </p>
                   </div>
                   <Badge className="text-xs text-yellow-600 bg-yellow-100">Pending</Badge>
@@ -143,7 +144,7 @@ export default function PendingApprovals() {
                   <div>
                     <p className="text-sm font-medium text-slate-900">Withdrawal Request</p>
                     <p className="text-xs text-slate-500">
-                      {withdrawal.member?.user?.firstName} {withdrawal.member?.user?.lastName} - UGX {parseFloat(withdrawal.amount).toLocaleString()}
+                      {withdrawal.member?.user?.firstName} {withdrawal.member?.user?.lastName} - {formatCurrency(withdrawal.amount)}
                     </p>
                   </div>
                   <Badge className="text-xs text-yellow-600 bg-yellow-100">Pending</Badge>

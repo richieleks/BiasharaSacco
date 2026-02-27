@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Download, FileText, Calendar, DollarSign } from "lucide-react";
 import { format } from "date-fns";
+import { formatCurrency } from "@/lib/utils";
 
 export default function LoanStatement() {
   const [match, params] = useRoute("/loans/:id/statement");
@@ -149,15 +150,15 @@ export default function LoanStatement() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
               <p className="text-sm text-muted-foreground">Principal Amount</p>
-              <p className="text-lg font-semibold">UGX {parseFloat(loan.principalAmount || 0).toLocaleString()}</p>
+              <p className="text-lg font-semibold">{formatCurrency(loan.principalAmount || 0)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Outstanding Balance</p>
-              <p className="text-lg font-semibold">UGX {parseFloat(loan.outstandingBalance || 0).toLocaleString()}</p>
+              <p className="text-lg font-semibold">{formatCurrency(loan.outstandingBalance || 0)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Monthly Payment</p>
-              <p className="text-lg font-semibold">UGX {parseFloat(loan.monthlyPayment || 0).toLocaleString()}</p>
+              <p className="text-lg font-semibold">{formatCurrency(loan.monthlyPayment || 0)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Status</p>
@@ -251,14 +252,14 @@ export default function LoanStatement() {
                           <td className="p-2">{transaction.description || transaction.transactionType || 'N/A'}</td>
                           <td className="p-2 text-right">
                             {(transaction.transactionType === 'loan_payment' || transaction.transactionType === 'debit') ? 
-                              `UGX ${parseFloat(transaction.amount || 0).toLocaleString()}` : ''}
+                              formatCurrency(transaction.amount || 0) : ''}
                           </td>
                           <td className="p-2 text-right">
                             {(transaction.transactionType === 'loan_disbursement' || transaction.transactionType === 'credit') ? 
-                              `UGX ${parseFloat(transaction.amount || 0).toLocaleString()}` : ''}
+                              formatCurrency(transaction.amount || 0) : ''}
                           </td>
                           <td className="p-2 text-right font-medium">
-                            UGX {transaction.runningBalance.toLocaleString()}
+                            {formatCurrency(transaction.runningBalance)}
                           </td>
                           <td className="p-2 text-center">
                             <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'} className="text-xs">

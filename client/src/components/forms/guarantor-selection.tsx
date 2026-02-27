@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Trash2, Plus, UserPlus, DollarSign } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import type { Member } from "@shared/schema";
 
 interface GuarantorData {
@@ -167,11 +168,11 @@ export default function GuarantorSelection({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-slate-600">Loan Amount:</span>
-                <div className="font-medium">UGX {loanAmount.toLocaleString()}</div>
+                <div className="font-medium">{formatCurrency(loanAmount)}</div>
               </div>
               <div>
                 <span className="text-slate-600">Total Guaranteed:</span>
-                <div className="font-medium">UGX {totalGuaranteed.toLocaleString()}</div>
+                <div className="font-medium">{formatCurrency(totalGuaranteed)}</div>
               </div>
               <div className="sm:col-span-2">
                 <span className="text-slate-600">Coverage:</span>

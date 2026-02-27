@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
+import { formatCurrency } from '@/lib/utils';
 import { Calculator, Calendar, DollarSign, FileText, TrendingUp, Users, Download, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 
 interface FinancialYear {
@@ -277,10 +278,6 @@ export default function InterestCalculations() {
       default:
         return <Badge variant="outline">{status}</Badge>;
     }
-  };
-
-  const formatCurrency = (amount: string) => {
-    return `UGX ${parseFloat(amount).toLocaleString()}`;
   };
 
   const formatPercentage = (rate: string) => {

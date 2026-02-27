@@ -73,6 +73,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRBAC } from "@/hooks/useRBAC";
+import { formatCurrency } from "@/lib/utils";
 
 const adminSettingsSchema = z.object({
   // System Configuration
@@ -1241,8 +1242,8 @@ export default function AdminSettingsPage() {
                                   {loanType.displayName}
                                 </TableCell>
                                 <TableCell>{loanType.interestRate}%</TableCell>
-                                <TableCell>UGX {loanType.minAmount?.toLocaleString()}</TableCell>
-                                <TableCell>UGX {loanType.maxAmount?.toLocaleString()}</TableCell>
+                                <TableCell>{formatCurrency(loanType.minAmount || 0)}</TableCell>
+                                <TableCell>{formatCurrency(loanType.maxAmount || 0)}</TableCell>
                                 <TableCell>{loanType.minTerm || loanType.minTermMonths} months</TableCell>
                                 <TableCell>{loanType.maxTerm || loanType.maxTermMonths} months</TableCell>
                                 <TableCell>

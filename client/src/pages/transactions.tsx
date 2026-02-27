@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
+import { formatCurrency } from "@/lib/utils";
 import { Search, ArrowUp, ArrowDown, DollarSign, CreditCard, CheckCircle, Clock, X } from "lucide-react";
 import type { TransactionWithDetails } from "@shared/schema";
 
@@ -259,7 +260,7 @@ export default function Transactions() {
                         </div>
                       </TableCell>
                       <TableCell className="font-medium">
-                        UGX {parseFloat(transaction.amount).toLocaleString()}
+                        {formatCurrency(transaction.amount)}
                       </TableCell>
                       <TableCell className="font-mono text-sm hidden md:table-cell">
                         {transaction.referenceNumber}

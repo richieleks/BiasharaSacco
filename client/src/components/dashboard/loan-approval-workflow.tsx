@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { CheckCircle, XCircle, Clock, User, DollarSign, Calendar, FileText, AlertTriangle, Users } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import type { LoanWithDetails } from "@shared/schema";
 
 interface ApprovalAction {
@@ -161,10 +162,6 @@ export default function LoanApprovalWorkflow() {
         {config.text}
       </Badge>
     );
-  };
-
-  const formatCurrency = (amount: string) => {
-    return `UGX ${Number(amount).toLocaleString()}`;
   };
 
   const LoanCard = ({ loan, stage, canApprove }: { loan: LoanWithDetails; stage: string; canApprove: boolean }) => (

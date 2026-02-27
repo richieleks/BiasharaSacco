@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Users, CheckCircle, XCircle, Clock } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import type { GuarantorWithDetails } from "@shared/schema";
 
 interface GuarantorListProps {
@@ -77,7 +78,7 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
                 </Badge>
               </div>
               <div className="text-sm text-muted-foreground">
-                Total Guaranteed: UGX {guarantors.reduce((sum, g) => sum + Number(g.guaranteeAmount), 0).toLocaleString()}
+                Total Guaranteed: {formatCurrency(guarantors.reduce((sum, g) => sum + Number(g.guaranteeAmount), 0))}
               </div>
               {!guarantors.every(g => g.status === 'approved') && (
                 <div className="text-sm text-amber-600 mt-1">
@@ -99,7 +100,7 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Member: {guarantor.guarantorMember?.memberNumber} | 
-                      Guarantee: UGX {Number(guarantor.guaranteeAmount).toLocaleString()}
+                      Guarantee: {formatCurrency(guarantor.guaranteeAmount)}
                     </div>
                     {guarantor.comments && (
                       <div className="text-sm text-muted-foreground mt-1">

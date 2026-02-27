@@ -8,6 +8,7 @@ import { CheckCircle, XCircle, Clock, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/utils";
 import type { GuarantorWithDetails } from "@shared/schema";
 
 interface GuarantorRequestsProps {
@@ -118,8 +119,8 @@ export default function GuarantorRequests({ memberId }: GuarantorRequestsProps) 
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Member: {request.loan?.member?.memberNumber} | 
-                      Loan: UGX {Number(request.loan?.principalAmount).toLocaleString()} |
-                      Guarantee: UGX {Number(request.guaranteeAmount).toLocaleString()}
+                      Loan: {formatCurrency(request.loan?.principalAmount)} |
+                      Guarantee: {formatCurrency(request.guaranteeAmount)}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       Loan Type: {request.loan?.loanType} | 

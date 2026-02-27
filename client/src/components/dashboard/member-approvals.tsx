@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from "@/components/ui/dialog";
 import { CheckCircle, XCircle, User, Phone, MapPin, Calendar } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import type { MemberWithDetails } from "@shared/schema";
 
 export default function MemberApprovals() {
@@ -196,8 +197,8 @@ export default function MemberApprovals() {
 
                     <div className="text-sm">
                       <p><strong>Member Number:</strong> {member.memberNumber}</p>
-                      <p><strong>Monthly Savings:</strong> UGX {Number(member.monthlySavings).toLocaleString()}</p>
-                      <p><strong>Share Contribution:</strong> UGX {Number(member.shareContribution).toLocaleString()}</p>
+                      <p><strong>Monthly Savings:</strong> {formatCurrency(member.monthlySavings || '0')}</p>
+                      <p><strong>Share Contribution:</strong> {formatCurrency(member.shareContribution || '0')}</p>
                       <p><strong>Beneficiary:</strong> {member.beneficiaryName} ({member.beneficiaryRelationship})</p>
                     </div>
                   </div>

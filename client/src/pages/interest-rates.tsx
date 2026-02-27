@@ -13,6 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/utils";
 import type { InterestRate } from "@shared/schema";
 
 const interestRateSchema = z.object({
@@ -436,7 +437,7 @@ export default function InterestRatesPage() {
                       <p className="text-muted-foreground">Amount Range</p>
                       <p className="font-medium">
                         {rate.minimumAmount && rate.maximumAmount 
-                          ? `UGX ${Number(rate.minimumAmount).toLocaleString()} - ${Number(rate.maximumAmount).toLocaleString()}`
+                          ? `${formatCurrency(rate.minimumAmount)} - ${formatCurrency(rate.maximumAmount)}`
                           : "No limits"
                         }
                       </p>

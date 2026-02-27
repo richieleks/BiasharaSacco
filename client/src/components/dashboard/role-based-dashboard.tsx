@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/hooks/useAuth";
 import { PiggyBank, HandCoins, ArrowUp, ArrowDown, CreditCard, TrendingUp } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 // Role-specific dashboard components
 function AdminDashboard() {
@@ -145,17 +146,17 @@ function MemberDashboard() {
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
               <h3 className="text-xs sm:text-sm font-medium text-slate-500">Total Savings</h3>
-              <p className="text-base sm:text-xl font-bold text-green-600 mt-1 truncate">UGX {totalSavings.toLocaleString()}</p>
+              <p className="text-base sm:text-xl font-bold text-green-600 mt-1 truncate">{formatCurrency(totalSavings)}</p>
             </div>
             <div className="text-center p-3 bg-emerald-50 rounded-lg">
               <h3 className="text-xs sm:text-sm font-medium text-slate-500">Interest Earned</h3>
-              <p className="text-base sm:text-xl font-bold text-emerald-600 mt-1 truncate">UGX {totalInterestEarned.toLocaleString()}</p>
+              <p className="text-base sm:text-xl font-bold text-emerald-600 mt-1 truncate">{formatCurrency(totalInterestEarned)}</p>
               <p className="text-xs text-slate-400">Total credited</p>
             </div>
             <div className="text-center p-3 bg-yellow-50 rounded-lg">
               <h3 className="text-xs sm:text-sm font-medium text-slate-500">Active Loans</h3>
               <p className="text-base sm:text-xl font-bold text-yellow-600 mt-1">{activeLoansCount}</p>
-              {totalOutstanding > 0 && <p className="text-xs text-slate-400 truncate">UGX {totalOutstanding.toLocaleString()} outstanding</p>}
+              {totalOutstanding > 0 && <p className="text-xs text-slate-400 truncate">{formatCurrency(totalOutstanding)} outstanding</p>}
             </div>
             <div className="text-center p-3 bg-blue-50 rounded-lg col-span-2 sm:col-span-1">
               <h3 className="text-xs sm:text-sm font-medium text-slate-500">Status</h3>
@@ -196,7 +197,7 @@ function MemberDashboard() {
                       <TableRow key={acc.id}>
                         <TableCell className="font-medium">{acc.accountNumber}</TableCell>
                         <TableCell className="capitalize">{acc.accountType}</TableCell>
-                        <TableCell className="font-semibold text-green-600">UGX {parseFloat(acc.balance || '0').toLocaleString()}</TableCell>
+                        <TableCell className="font-semibold text-green-600">{formatCurrency(acc.balance || '0')}</TableCell>
                         <TableCell>
                           <Badge className={acc.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
                             {acc.status}
@@ -235,8 +236,8 @@ function MemberDashboard() {
                     {memberLoans.map((loan: any) => (
                       <TableRow key={loan.id}>
                         <TableCell className="capitalize">{loan.loanType?.replace('_', ' ')}</TableCell>
-                        <TableCell>UGX {parseFloat(loan.principalAmount || '0').toLocaleString()}</TableCell>
-                        <TableCell className="font-semibold">UGX {parseFloat(loan.outstandingBalance || '0').toLocaleString()}</TableCell>
+                        <TableCell>{formatCurrency(loan.principalAmount || '0')}</TableCell>
+                        <TableCell className="font-semibold">{formatCurrency(loan.outstandingBalance || '0')}</TableCell>
                         <TableCell>
                           <Badge className={
                             loan.status === 'approved' ? 'bg-green-100 text-green-800' :
@@ -289,7 +290,7 @@ function MemberDashboard() {
                           </div>
                         </TableCell>
                         <TableCell className={`font-semibold ${txn.transactionType === 'deposit' ? 'text-green-600' : 'text-red-600'}`}>
-                          {txn.transactionType === 'deposit' ? '+' : '-'}UGX {parseFloat(txn.amount || '0').toLocaleString()}
+                          {txn.transactionType === 'deposit' ? '+' : '-'}{formatCurrency(txn.amount || '0')}
                         </TableCell>
                         <TableCell>
                           <Badge className={

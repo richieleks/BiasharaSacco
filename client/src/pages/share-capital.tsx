@@ -19,6 +19,7 @@ import { z } from "zod";
 import { format } from "date-fns";
 import { DollarSign, Users, TrendingUp, CheckCircle, Search, Plus, ArrowUpRight } from "lucide-react";
 import type { MemberWithDetails } from "@shared/schema";
+import { formatCurrency } from "@/lib/utils";
 
 const postShareCapitalSchema = z.object({
   amount: z.string().min(1, "Amount is required").refine(val => parseFloat(val) > 0, "Amount must be greater than zero"),
@@ -122,7 +123,7 @@ export default function ShareCapital() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs sm:text-sm text-muted-foreground">Total Paid</p>
-                <p className="text-lg sm:text-2xl font-bold text-green-600 truncate">UGX {totalPaid.toLocaleString()}</p>
+                <p className="text-lg sm:text-2xl font-bold text-green-600 truncate">{formatCurrency(totalPaid)}</p>
               </div>
             </div>
           </CardContent>
@@ -135,7 +136,7 @@ export default function ShareCapital() {
               </div>
               <div className="min-w-0">
                 <p className="text-xs sm:text-sm text-muted-foreground">Outstanding</p>
-                <p className="text-lg sm:text-2xl font-bold text-orange-600 truncate">UGX {totalOutstanding.toLocaleString()}</p>
+                <p className="text-lg sm:text-2xl font-bold text-orange-600 truncate">{formatCurrency(totalOutstanding)}</p>
               </div>
             </div>
           </CardContent>
@@ -215,13 +216,13 @@ export default function ShareCapital() {
                               </div>
                             </TableCell>
                             <TableCell className="hidden sm:table-cell text-center">{shares}</TableCell>
-                            <TableCell className="hidden md:table-cell text-right">UGX {perShare.toLocaleString()}</TableCell>
-                            <TableCell className="hidden md:table-cell text-right">UGX {expected.toLocaleString()}</TableCell>
+                            <TableCell className="hidden md:table-cell text-right">{formatCurrency(perShare)}</TableCell>
+                            <TableCell className="hidden md:table-cell text-right">{formatCurrency(expected)}</TableCell>
                             <TableCell className="text-right font-medium text-green-600">
-                              UGX {paid.toLocaleString()}
+                              {formatCurrency(paid)}
                             </TableCell>
                             <TableCell className="hidden sm:table-cell text-right font-medium text-orange-600">
-                              {balance > 0 ? `UGX ${balance.toLocaleString()}` : '-'}
+                              {balance > 0 ? formatCurrency(balance) : '-'}
                             </TableCell>
                             <TableCell className="text-center">
                               <Badge className={member.isPaidUp
@@ -306,7 +307,7 @@ export default function ShareCapital() {
                             {tx.description || '-'}
                           </TableCell>
                           <TableCell className="text-right font-medium text-green-600">
-                            +{parseFloat(tx.amount || '0').toLocaleString()}
+                            +{Math.round(parseFloat(tx.amount || '0')).toLocaleString()}
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge className="bg-green-100 text-green-800 text-xs">
@@ -337,9 +338,9 @@ export default function ShareCapital() {
               Post a share capital payment for {selectedMember?.fullName || 'member'}.
               {selectedMember && (
                 <span className="block mt-2 text-xs">
-                  Expected: UGX {(parseFloat(selectedMember.shareContribution || "20000") * (selectedMember.numberOfShares || 4)).toLocaleString()}
-                  {" | "}Paid: UGX {parseFloat(selectedMember.shareCapital || "0").toLocaleString()}
-                  {" | "}Balance: UGX {Math.max(0, (parseFloat(selectedMember.shareContribution || "20000") * (selectedMember.numberOfShares || 4)) - parseFloat(selectedMember.shareCapital || "0")).toLocaleString()}
+                  Expected: {formatCurrency(parseFloat(selectedMember.shareContribution || "20000") * (selectedMember.numberOfShares || 4))}
+                  {" | "}Paid: {formatCurrency(selectedMember.shareCapital || "0")}
+                  {" | "}Balance: {formatCurrency(Math.max(0, (parseFloat(selectedMember.shareContribution || "20000") * (selectedMember.numberOfShares || 4)) - parseFloat(selectedMember.shareCapital || "0")))}
                 </span>
               )}
             </DialogDescription>

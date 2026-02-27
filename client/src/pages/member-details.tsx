@@ -16,6 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { type Member, type MemberWithDetails } from "@shared/schema";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import {
   ArrowLeft, Edit, User, Phone, Mail, MapPin, Calendar, CreditCard, Building,
@@ -340,7 +341,7 @@ export default function MemberDetails() {
         <StatCard
           icon={PiggyBank}
           label="Total Savings"
-          value={`UGX ${totalSavings.toLocaleString()}`}
+          value={formatCurrency(totalSavings)}
           color="green"
           subtext={`${Array.isArray(savingsAccounts) ? savingsAccounts.length : 0} account(s)`}
         />
@@ -360,7 +361,7 @@ export default function MemberDetails() {
         <StatCard
           icon={TrendingUp}
           label="Share Capital"
-          value={`UGX ${sharePaid.toLocaleString()}`}
+          value={formatCurrency(sharePaid)}
           color="purple"
           subtext={member.isPaidUp ? 'Fully paid' : `${Math.round((sharePaid / shareExpected) * 100)}% of target`}
         />
@@ -428,7 +429,7 @@ export default function MemberDetails() {
                   <InfoRow icon={Briefcase} label="Terms of Service" value={member.termsOfService ? member.termsOfService.charAt(0).toUpperCase() + member.termsOfService.slice(1) : null} />
                   <InfoRow icon={CreditCard} label="Staff Account" value={member.staffAccountNumber} />
                 </div>
-                <InfoRow icon={Wallet} label="Average Net Pay" value={member.averageNetPay ? `UGX ${parseFloat(member.averageNetPay).toLocaleString()}` : null} />
+                <InfoRow icon={Wallet} label="Average Net Pay" value={member.averageNetPay ? formatCurrency(member.averageNetPay) : null} />
               </CardContent>
             </Card>
 
@@ -481,7 +482,7 @@ export default function MemberDetails() {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-                  <InfoRow icon={PiggyBank} label="Monthly Savings" value={member.monthlySavings ? `UGX ${parseFloat(member.monthlySavings).toLocaleString()}` : null} />
+                  <InfoRow icon={PiggyBank} label="Monthly Savings" value={member.monthlySavings ? formatCurrency(member.monthlySavings) : null} />
                   <InfoRow icon={CreditCard} label="Bank Account" value={member.accountNumber} />
                   <InfoRow icon={Building} label="Bank Branch" value={member.branch} />
                 </div>
@@ -503,7 +504,7 @@ export default function MemberDetails() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg bg-slate-50 p-3 text-center">
                       <p className="text-xs text-slate-500 mb-1">Per Share</p>
-                      <p className="text-sm font-bold text-slate-800">UGX {parseFloat(member.shareContribution || "20000").toLocaleString()}</p>
+                      <p className="text-sm font-bold text-slate-800">{formatCurrency(member.shareContribution || "20000")}</p>
                     </div>
                     <div className="rounded-lg bg-slate-50 p-3 text-center">
                       <p className="text-xs text-slate-500 mb-1">Shares</p>
@@ -511,11 +512,11 @@ export default function MemberDetails() {
                     </div>
                     <div className="rounded-lg bg-emerald-50 p-3 text-center">
                       <p className="text-xs text-emerald-600 mb-1">Paid</p>
-                      <p className="text-sm font-bold text-emerald-700">UGX {sharePaid.toLocaleString()}</p>
+                      <p className="text-sm font-bold text-emerald-700">{formatCurrency(sharePaid)}</p>
                     </div>
                     <div className="rounded-lg bg-amber-50 p-3 text-center">
                       <p className="text-xs text-amber-600 mb-1">Remaining</p>
-                      <p className="text-sm font-bold text-amber-700">UGX {shareRemaining.toLocaleString()}</p>
+                      <p className="text-sm font-bold text-amber-700">{formatCurrency(shareRemaining)}</p>
                     </div>
                   </div>
                   {!member.isPaidUp && (
@@ -552,7 +553,7 @@ export default function MemberDetails() {
                         </div>
                       </div>
                       <div className="sm:text-right pl-11 sm:pl-0">
-                        <p className="text-lg font-bold text-emerald-600">UGX {parseFloat(account.balance).toLocaleString()}</p>
+                        <p className="text-lg font-bold text-emerald-600">{formatCurrency(account.balance)}</p>
                         <p className="text-xs text-slate-400">Current Balance</p>
                       </div>
                     </div>
@@ -610,9 +611,9 @@ export default function MemberDetails() {
                           </div>
                         </div>
                         <div className="sm:text-right shrink-0">
-                          <p className="text-lg font-bold text-slate-800">UGX {parseFloat(loan.principalAmount || loan.amount || 0).toLocaleString()}</p>
+                          <p className="text-lg font-bold text-slate-800">{formatCurrency(loan.principalAmount || loan.amount || 0)}</p>
                           <p className="text-xs text-amber-600 font-medium">
-                            Outstanding: UGX {parseFloat(loan.outstandingBalance || 0).toLocaleString()}
+                            Outstanding: {formatCurrency(loan.outstandingBalance || 0)}
                           </p>
                         </div>
                       </div>
@@ -666,7 +667,7 @@ export default function MemberDetails() {
                             </td>
                             <td className="py-3 px-3 text-slate-500 max-w-[200px] truncate hidden sm:table-cell">{tx.description || '-'}</td>
                             <td className={`py-3 px-3 text-right font-semibold whitespace-nowrap ${isCredit ? 'text-emerald-600' : 'text-red-500'}`}>
-                              {isCredit ? '+' : '-'}{parseFloat(tx.amount || '0').toLocaleString()}
+                              {isCredit ? '+' : '-'}{Math.round(parseFloat(tx.amount || '0')).toLocaleString()}
                             </td>
                             <td className="py-3 px-6 text-center">
                               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
@@ -835,9 +836,9 @@ export default function MemberDetails() {
               Post a share capital payment for {member?.fullName || 'this member'}.
               {member && (
                 <span className="block mt-2 text-xs">
-                  Expected: UGX {shareExpected.toLocaleString()}
-                  {" | "}Paid: UGX {sharePaid.toLocaleString()}
-                  {" | "}Remaining: UGX {shareRemaining.toLocaleString()}
+                  Expected: {formatCurrency(shareExpected)}
+                  {" | "}Paid: {formatCurrency(sharePaid)}
+                  {" | "}Remaining: {formatCurrency(shareRemaining)}
                 </span>
               )}
             </DialogDescription>

@@ -13,6 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/utils";
 import type { AmortizationScheduleWithDetails, LoanWithDetails } from "@shared/schema";
 
 interface AmortizationScheduleProps {
@@ -80,7 +81,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
       queryClient.invalidateQueries({ queryKey: ['/api/loans', loan.uuid, 'interest-calculations'] });
       toast({
         title: "Interest Calculated",
-        description: `Monthly payment: UGX ${data.monthlyPayment.toFixed(2)}`,
+        description: `Monthly payment: ${formatCurrency(data.monthlyPayment)}`,
       });
     },
     onError: (error) => {
@@ -187,7 +188,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Scheduled</p>
-                <p className="text-2xl font-bold">UGX {totalScheduled.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalScheduled)}</p>
               </div>
               <DollarSign className="h-8 w-8 text-muted-foreground" />
             </div>
@@ -199,7 +200,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Total Paid</p>
-                <p className="text-2xl font-bold text-green-600">UGX {totalPaid.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-green-600">{formatCurrency(totalPaid)}</p>
               </div>
               <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
@@ -211,7 +212,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Principal</p>
-                <p className="text-2xl font-bold">UGX {totalPrincipal.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalPrincipal)}</p>
               </div>
               <DollarSign className="h-8 w-8 text-blue-600" />
             </div>
@@ -223,7 +224,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Interest</p>
-                <p className="text-2xl font-bold text-orange-600">UGX {totalInterest.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-orange-600">{formatCurrency(totalInterest)}</p>
               </div>
               <Calculator className="h-8 w-8 text-orange-600" />
             </div>
@@ -297,16 +298,16 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
                         </div>
                       </TableCell>
                       <TableCell>
-                        UGX {Number(payment.principalAmount).toLocaleString()}
+                        {formatCurrency(payment.principalAmount)}
                       </TableCell>
                       <TableCell>
-                        UGX {Number(payment.interestAmount).toLocaleString()}
+                        {formatCurrency(payment.interestAmount)}
                       </TableCell>
                       <TableCell className="font-medium">
-                        UGX {Number(payment.totalPayment).toLocaleString()}
+                        {formatCurrency(payment.totalPayment)}
                       </TableCell>
                       <TableCell>
-                        UGX {Number(payment.outstandingBalance).toLocaleString()}
+                        {formatCurrency(payment.outstandingBalance)}
                       </TableCell>
                       <TableCell>
                         <Badge 
@@ -331,7 +332,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
                           <div className="text-xs text-muted-foreground">
                             Paid {new Date(payment.actualPaymentDate).toLocaleDateString()}
                             <br />
-                            UGX {Number(payment.actualAmountPaid).toLocaleString()}
+                            {formatCurrency(payment.actualAmountPaid)}
                           </div>
                         )}
                       </TableCell>
@@ -379,7 +380,7 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-lg">UGX {Number(calc.calculatedInterest).toLocaleString()}</p>
+                    <p className="font-bold text-lg">{formatCurrency(calc.calculatedInterest)}</p>
                     <p className="text-sm text-muted-foreground">
                       Rate: {calc.rate}% | Time: {calc.time}
                     </p>

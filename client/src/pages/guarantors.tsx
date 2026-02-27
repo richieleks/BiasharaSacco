@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { formatCurrency } from "@/lib/utils";
 import type { GuarantorWithDetails, MemberWithDetails } from "@shared/schema";
 
 export default function Guarantors() {
@@ -416,7 +417,7 @@ export default function Guarantors() {
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
                                 <span className="text-slate-600">Amount:</span>
-                                <span className="font-medium">UGX {Number(loan.principalAmount || 0).toLocaleString()}</span>
+                                <span className="font-medium">{formatCurrency(loan.principalAmount || 0)}</span>
                               </div>
                               <div className="flex justify-between">
                                 <span className="text-slate-600">Type:</span>
@@ -479,7 +480,7 @@ export default function Guarantors() {
                                       </div>
                                       <div className="text-sm text-slate-600">
                                         {guarantor.guarantorMember?.memberNumber} | 
-                                        UGX {Number(guarantor.guaranteeAmount).toLocaleString()}
+                                        {formatCurrency(guarantor.guaranteeAmount)}
                                       </div>
                                       {guarantor.comments && (
                                         <div className="text-xs text-slate-500 mt-1">
@@ -598,7 +599,7 @@ export default function Guarantors() {
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-600">Loan Amount:</span>
-                              <span className="font-medium">UGX {Number(request.loan?.principalAmount || 0).toLocaleString()}</span>
+                              <span className="font-medium">{formatCurrency(request.loan?.principalAmount || 0)}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-slate-600">Loan Type:</span>
@@ -620,7 +621,7 @@ export default function Guarantors() {
                               <span className="font-medium text-blue-900">Amount to Guarantee</span>
                             </div>
                             <div className="text-2xl font-bold text-blue-900">
-                              UGX {Number(request.guaranteeAmount).toLocaleString()}
+                              {formatCurrency(request.guaranteeAmount)}
                             </div>
                             <div className="text-sm text-blue-700 mt-1">
                               You are being asked to guarantee this amount for the loan
@@ -691,8 +692,8 @@ export default function Guarantors() {
                           Loan for {guarantee.loan?.member?.user?.firstName} {guarantee.loan?.member?.user?.lastName}
                         </div>
                         <div className="text-sm text-muted-foreground">
-                          Loan: UGX {Number(guarantee.loan?.principalAmount || 0).toLocaleString()} |
-                          Your Guarantee: UGX {Number(guarantee.guaranteeAmount || 0).toLocaleString()}
+                          Loan: {formatCurrency(guarantee.loan?.principalAmount || 0)} |
+                          Your Guarantee: {formatCurrency(guarantee.guaranteeAmount || 0)}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           Loan Type: {guarantee.loan?.loanType} | 
@@ -751,7 +752,7 @@ export default function Guarantors() {
                   <strong>Applicant:</strong> {selectedGuarantor.loan?.member?.user?.firstName} {selectedGuarantor.loan?.member?.user?.lastName}
                 </p>
                 <p className="text-sm text-slate-600">
-                  <strong>Guarantee Amount:</strong> UGX {Number(selectedGuarantor.guaranteeAmount).toLocaleString()}
+                  <strong>Guarantee Amount:</strong> {formatCurrency(selectedGuarantor.guaranteeAmount)}
                 </p>
               </div>
               
@@ -807,7 +808,7 @@ export default function Guarantors() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="text-slate-600">Amount:</span> 
-                    <span className="font-medium ml-2">UGX {Number(selectedLoanForGuarantors.principalAmount).toLocaleString()}</span>
+                    <span className="font-medium ml-2">{formatCurrency(selectedLoanForGuarantors.principalAmount)}</span>
                   </div>
                   <div>
                     <span className="text-slate-600">Type:</span> 
@@ -878,10 +879,10 @@ export default function Guarantors() {
                     <span className="font-medium text-blue-900">Total Guarantee Coverage</span>
                   </div>
                   <div className="text-2xl font-bold text-blue-900">
-                    UGX {selectedGuarantors.reduce((total, g) => total + (parseFloat(g.guaranteeAmount) || 0), 0).toLocaleString()}
+                    {formatCurrency(selectedGuarantors.reduce((total, g) => total + (parseFloat(g.guaranteeAmount) || 0), 0))}
                   </div>
                   <div className="text-sm text-blue-700 mt-1">
-                    Loan Amount: UGX {Number(selectedLoanForGuarantors.principalAmount).toLocaleString()}
+                    Loan Amount: {formatCurrency(selectedLoanForGuarantors.principalAmount)}
                   </div>
                 </div>
               </div>

@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Pagination } from "@/components/ui/pagination";
 import DepositForm from "@/components/forms/deposit-form";
 import WithdrawalForm from "@/components/forms/withdrawal-form";
+import { formatCurrency } from "@/lib/utils";
 import { Search, Plus, ArrowUp, ArrowDown, Wallet, PiggyBank, FileText } from "lucide-react";
 
 export default function Savings() {
@@ -218,7 +219,7 @@ export default function Savings() {
                     </div>
                     <div className="sm:text-right">
                       <div className="text-lg font-semibold text-slate-900">
-                        UGX {parseFloat(account.balance || '0').toLocaleString()}
+                        {formatCurrency(account.balance || '0')}
                       </div>
                       <div className="text-sm text-slate-500">Current Balance</div>
                     </div>

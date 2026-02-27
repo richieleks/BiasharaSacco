@@ -25,6 +25,7 @@ import { Label } from '@/components/ui/label';
 import { Pagination } from '@/components/ui/pagination';
 import { ArrowLeft, Download, FileText, Calendar, Filter, X } from 'lucide-react';
 import { Link } from 'wouter';
+import { formatCurrency } from '@/lib/utils';
 
 export default function AccountStatement() {
   const [, params] = useRoute('/savings/:id/statement');
@@ -104,8 +105,8 @@ export default function AccountStatement() {
         new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
         txn.description || txn.transactionType,
         txn.referenceNumber || '',
-        (txn.transactionType === 'withdrawal' || txn.transactionType === 'fee_charge') ? `UGX ${parseFloat(txn.amount || '0').toLocaleString()}` : '',
-        (txn.transactionType === 'deposit' || txn.transactionType === 'interest_credit') ? `UGX ${parseFloat(txn.amount || '0').toLocaleString()}` : '',
+        (txn.transactionType === 'withdrawal' || txn.transactionType === 'fee_charge') ? formatCurrency(txn.amount || '0') : '',
+        (txn.transactionType === 'deposit' || txn.transactionType === 'interest_credit') ? formatCurrency(txn.amount || '0') : '',
         txn.status || 'completed'
       ])
     ].map(row => row.join(',')).join('\n');
@@ -214,7 +215,7 @@ export default function AccountStatement() {
               <div>
                 <p className="text-xs sm:text-sm font-medium text-slate-600">Current Balance</p>
                 <p className="text-sm sm:text-lg font-semibold text-green-600">
-                  UGX {parseFloat(statementData.account.balance || '0').toLocaleString()}
+                  {formatCurrency(statementData.account.balance || '0')}
                 </p>
               </div>
             </div>
@@ -222,15 +223,15 @@ export default function AccountStatement() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 pt-4 border-t">
               <div className="bg-green-50 rounded-lg p-3">
                 <p className="text-xs sm:text-sm font-medium text-green-700">Total Deposits{hasDateFilter ? ' (filtered)' : ''}</p>
-                <p className="text-base sm:text-lg font-semibold text-green-800">UGX {(statementData.totalDeposits || 0).toLocaleString()}</p>
+                <p className="text-base sm:text-lg font-semibold text-green-800">{formatCurrency(statementData.totalDeposits || 0)}</p>
               </div>
               <div className="bg-red-50 rounded-lg p-3">
                 <p className="text-xs sm:text-sm font-medium text-red-700">Total Withdrawals{hasDateFilter ? ' (filtered)' : ''}</p>
-                <p className="text-base sm:text-lg font-semibold text-red-800">UGX {(statementData.totalWithdrawals || 0).toLocaleString()}</p>
+                <p className="text-base sm:text-lg font-semibold text-red-800">{formatCurrency(statementData.totalWithdrawals || 0)}</p>
               </div>
               <div className="bg-blue-50 rounded-lg p-3">
                 <p className="text-xs sm:text-sm font-medium text-blue-700">Total Interest{hasDateFilter ? ' (filtered)' : ''}</p>
-                <p className="text-base sm:text-lg font-semibold text-blue-800">UGX {(statementData.totalInterest || 0).toLocaleString()}</p>
+                <p className="text-base sm:text-lg font-semibold text-blue-800">{formatCurrency(statementData.totalInterest || 0)}</p>
               </div>
             </div>
           </CardContent>
@@ -342,14 +343,14 @@ export default function AccountStatement() {
                         <TableCell className="text-right text-xs sm:text-sm">
                           {(transaction.transactionType === 'withdrawal' || transaction.transactionType === 'fee_charge') && (
                             <span className="text-red-600 font-medium">
-                              {parseFloat(transaction.amount || '0').toLocaleString()}
+                              {Math.round(parseFloat(transaction.amount || '0')).toLocaleString()}
                             </span>
                           )}
                         </TableCell>
                         <TableCell className="text-right text-xs sm:text-sm">
                           {(transaction.transactionType === 'deposit' || transaction.transactionType === 'interest_credit') && (
                             <span className={transaction.transactionType === 'interest_credit' ? "text-blue-600 font-medium" : "text-green-600 font-medium"}>
-                              {parseFloat(transaction.amount || '0').toLocaleString()}
+                              {Math.round(parseFloat(transaction.amount || '0')).toLocaleString()}
                             </span>
                           )}
                         </TableCell>

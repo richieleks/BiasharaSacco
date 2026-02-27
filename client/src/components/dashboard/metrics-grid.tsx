@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Users, PiggyBank, HandCoins, TrendingUp, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 export default function MetricsGrid() {
   const { data: metrics, isLoading } = useQuery({
@@ -64,7 +65,7 @@ export default function MetricsGrid() {
     },
     {
       title: "Total Savings",
-      value: `UGX ${parseFloat(metrics.totalSavings || "0").toLocaleString()}`,
+      value: formatCurrency(metrics.totalSavings || "0"),
       icon: PiggyBank,
       gradient: "from-emerald-500 to-emerald-600",
       iconBg: "bg-emerald-50 text-emerald-600",
@@ -74,7 +75,7 @@ export default function MetricsGrid() {
     },
     {
       title: "Active Loans",
-      value: `UGX ${parseFloat(metrics.activeLoans || "0").toLocaleString()}`,
+      value: formatCurrency(metrics.activeLoans || "0"),
       icon: HandCoins,
       gradient: "from-amber-500 to-orange-500",
       iconBg: "bg-amber-50 text-amber-600",

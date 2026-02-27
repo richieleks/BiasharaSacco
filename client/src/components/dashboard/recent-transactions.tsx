@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ArrowUp, ArrowDown, CreditCard, DollarSign, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
+import { formatCurrency } from "@/lib/utils";
 import type { TransactionWithDetails } from "@shared/schema";
 
 export default function RecentTransactions() {
@@ -125,7 +126,7 @@ export default function RecentTransactions() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm font-semibold text-slate-900">
-                      UGX {parseFloat(transaction.amount).toLocaleString()}
+                      {formatCurrency(transaction.amount)}
                     </TableCell>
                     <TableCell className="text-sm text-slate-500 hidden sm:table-cell">
                       {new Date(transaction.transactionDate!).toLocaleDateString()}

@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
+import { formatCurrency } from "@/lib/utils";
 
 const withdrawalFormSchema = z.object({
   memberId: z.string().min(1, "Please select a member"),
@@ -89,7 +90,7 @@ export default function WithdrawalForm({ onSuccess }: WithdrawalFormProps) {
     if (requestAmount > availableBalance) {
       toast({
         title: "Insufficient Funds",
-        description: `Available balance is UGX ${availableBalance.toLocaleString()}`,
+        description: `Available balance is ${formatCurrency(availableBalance)}`,
         variant: "destructive",
       });
       return;
@@ -153,7 +154,7 @@ export default function WithdrawalForm({ onSuccess }: WithdrawalFormProps) {
                 <SelectContent>
                   {accounts?.map((account: any) => (
                     <SelectItem key={account.id} value={account.id.toString()}>
-                      {account.accountNumber} ({account.accountType}) - UGX {parseFloat(account.balance).toLocaleString()}
+                      {account.accountNumber} ({account.accountType}) - {formatCurrency(account.balance)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -166,7 +167,7 @@ export default function WithdrawalForm({ onSuccess }: WithdrawalFormProps) {
         {selectedAccount && (
           <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
             <p className="text-sm text-blue-800">
-              <span className="font-medium">Available Balance:</span> UGX {parseFloat(selectedAccount.balance).toLocaleString()}
+              <span className="font-medium">Available Balance:</span> {formatCurrency(selectedAccount.balance)}
             </p>
           </div>
         )}

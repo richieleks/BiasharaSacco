@@ -17,6 +17,7 @@ import {
   Cell 
 } from "recharts";
 import { Activity, TrendingUp, Users, DollarSign } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
@@ -43,10 +44,6 @@ export default function AnalyticsCharts() {
       </div>
     );
   }
-
-  const formatCurrency = (value: number) => {
-    return `UGX ${value.toLocaleString()}`;
-  };
 
   const formatTooltipValue = (value: number, name: string) => {
     if (name.includes('Amount') || name.includes('Balance') || name.includes('Savings') || name.includes('Loans')) {

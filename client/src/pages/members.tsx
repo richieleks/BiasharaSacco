@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { usePagination } from "@/hooks/usePagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -236,7 +237,7 @@ export default function Members() {
                   <TableCell className="hidden lg:table-cell text-slate-900 capitalize">{member.gender || 'Not specified'}</TableCell>
                   <TableCell className="hidden lg:table-cell text-slate-900">{member.department || 'Not specified'}</TableCell>
                   <TableCell className="hidden xl:table-cell text-slate-900">
-                    {member.averageNetPay ? `UGX ${parseFloat(member.averageNetPay).toLocaleString()}` : 'Not specified'}
+                    {member.averageNetPay ? formatCurrency(member.averageNetPay) : 'Not specified'}
                   </TableCell>
                   <TableCell className="hidden xl:table-cell text-slate-900">{member.nextOfKinName || 'Not specified'}</TableCell>
                   <TableCell className="hidden md:table-cell text-slate-900">

@@ -17,6 +17,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import GuarantorForm from "./guarantor-form";
 import GuarantorList from "../guarantor/guarantor-list";
 import { useAuth } from "@/hooks/useAuth";
+import { formatCurrency } from "@/lib/utils";
 import type { LoanTypeWithTerms } from "@shared/schema";
 
 const loanApplicationSchema = z.object({
@@ -509,7 +510,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                       <div className="font-bold text-lg text-green-800 mb-2">✅ LOAN APPLICATION ELIGIBLE</div>
                       {eligibilityResult.maxLoanAmount && (
                         <div className="text-sm font-medium text-green-800 mb-2">
-                          💰 Maximum loan amount: UGX {eligibilityResult.maxLoanAmount.toLocaleString()}
+                          💰 Maximum loan amount: {formatCurrency(eligibilityResult.maxLoanAmount)}
                         </div>
                       )}
                       {eligibilityResult.warnings?.length > 0 && (
@@ -573,8 +574,8 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                     </FormControl>
                     {selectedLoanType && (
                       <p className="text-xs text-muted-foreground">
-                        Allowed range: UGX {Number(selectedLoanType.minAmount || selectedLoanType.min_amount || 0).toLocaleString()} - 
-                        UGX {Number(selectedLoanType.maxAmount || selectedLoanType.max_amount || 0).toLocaleString()}
+                        Allowed range: {formatCurrency(selectedLoanType.minAmount || selectedLoanType.min_amount || 0)} - 
+                        {formatCurrency(selectedLoanType.maxAmount || selectedLoanType.max_amount || 0)}
                         <br />
                         {(selectedLoanType.requiresGuarantor ?? selectedLoanType.requires_guarantor ?? true) 
                           ? 'This loan type requires guarantors' 
@@ -626,8 +627,8 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                                 <span className="font-medium">{loanType.displayName || loanType.display_name || loanType.name}</span>
                                 <span className="text-xs text-muted-foreground">
                                   {loanType.interestRate || loanType.interest_rate}% ({(loanType.interestType || loanType.interest_type || 'reducing_balance').replace('_', ' ')}) | 
-                                  UGX {Number(loanType.minAmount || loanType.min_amount || 0).toLocaleString()} - 
-                                  UGX {Number(loanType.maxAmount || loanType.max_amount || 0).toLocaleString()}
+                                  {formatCurrency(loanType.minAmount || loanType.min_amount || 0)} - 
+                                  {formatCurrency(loanType.maxAmount || loanType.max_amount || 0)}
                                   {(loanType.requiresGuarantor ?? loanType.requires_guarantor ?? true) ? ' | Guarantor Required' : ' | No Guarantor Required'}
                                 </span>
                               </div>
@@ -713,7 +714,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                         <Input
                           type="text"
                           placeholder="Auto-populated from member profile"
-                          value={field.value ? `UGX ${parseFloat(field.value).toLocaleString()}` : 'Not set in profile'}
+                          value={field.value ? formatCurrency(field.value) : 'Not set in profile'}
                           onChange={field.onChange}
                           disabled={true}
                           className="bg-muted border-blue-200"
@@ -807,7 +808,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                         <Input
                           type="text"
                           placeholder="Auto-calculated from savings accounts"
-                          value={field.value ? `UGX ${parseFloat(field.value).toLocaleString()}` : 'UGX 0.00'}
+                          value={field.value ? formatCurrency(field.value) : 'UGX 0'}
                           onChange={field.onChange}
                           disabled={true}
                           className="bg-muted border-blue-200"
@@ -932,7 +933,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                   <div className="text-center">
                     <div className="text-sm font-medium text-muted-foreground">Monthly Repayment Amount</div>
                     <div className="text-3xl font-bold text-primary">
-                      UGX {monthlyPayment.toLocaleString()}
+                      {formatCurrency(monthlyPayment)}
                     </div>
                     <div className="mt-2 text-xs text-muted-foreground">
                       Calculated using{' '}

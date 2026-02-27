@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Pagination } from "@/components/ui/pagination";
 import LoanApplicationForm from "@/components/forms/loan-application-form";
 import LoanTopUpForm from "@/components/forms/loan-topup-form";
+import { formatCurrency } from "@/lib/utils";
 import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, ArrowUpCircle } from "lucide-react";
 
 export default function Loans() {
@@ -326,7 +327,7 @@ export default function Loans() {
                     <div>
                       <p className="text-sm text-slate-500">Amount</p>
                       <p className="font-medium text-slate-900">
-                        UGX {parseFloat(loan.principalAmount).toLocaleString()}
+                        {formatCurrency(loan.principalAmount)}
                       </p>
                     </div>
                     <div>
@@ -342,7 +343,7 @@ export default function Loans() {
                     <div>
                       <p className="text-sm text-slate-500">Monthly Payment</p>
                       <p className="font-medium text-slate-900">
-                        UGX {parseFloat(loan.monthlyPayment).toLocaleString()}
+                        {formatCurrency(loan.monthlyPayment)}
                       </p>
                     </div>
                   </div>
@@ -351,7 +352,7 @@ export default function Loans() {
                     <div className="mb-3 p-3 bg-violet-50 border border-violet-200 rounded-lg">
                       <div className="flex items-center text-sm text-violet-700">
                         <ArrowUpCircle className="w-4 h-4 mr-2" />
-                        <span>Top-up loan — Previous balance of UGX {parseFloat(loan.previousLoanBalance).toLocaleString()} was consolidated into this loan.</span>
+                        <span>Top-up loan — Previous balance of {formatCurrency(loan.previousLoanBalance)} was consolidated into this loan.</span>
                       </div>
                     </div>
                   )}
@@ -452,7 +453,7 @@ export default function Loans() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-slate-500 text-xs sm:text-sm font-medium">Outstanding Amount</p>
-                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1 truncate">UGX {totalOutstanding.toLocaleString()}</p>
+                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1 truncate">{formatCurrency(totalOutstanding)}</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
                   <DollarSign className="text-emerald-600 h-5 w-5 sm:h-6 sm:w-6" />

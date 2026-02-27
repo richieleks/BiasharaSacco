@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calculator, TrendingUp, Clock, DollarSign } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { formatCurrency } from "@/lib/utils";
 
 interface AmortizationEntry {
   paymentNumber: number;
@@ -226,7 +227,7 @@ export default function AmortizationDemo() {
                     <DollarSign className="h-4 w-4 text-green-600" />
                     <span className="text-sm text-muted-foreground">Monthly Payment</span>
                   </div>
-                  <p className="text-xl font-bold">UGX {calculation.monthlyPayment.toLocaleString()}</p>
+                  <p className="text-xl font-bold">{formatCurrency(calculation.monthlyPayment)}</p>
                 </div>
 
                 <div className="p-4 border rounded-lg">
@@ -234,7 +235,7 @@ export default function AmortizationDemo() {
                     <TrendingUp className="h-4 w-4 text-orange-600" />
                     <span className="text-sm text-muted-foreground">Total Interest</span>
                   </div>
-                  <p className="text-xl font-bold">UGX {calculation.totalInterest.toLocaleString()}</p>
+                  <p className="text-xl font-bold">{formatCurrency(calculation.totalInterest)}</p>
                 </div>
 
                 <div className="p-4 border rounded-lg">
@@ -242,7 +243,7 @@ export default function AmortizationDemo() {
                     <DollarSign className="h-4 w-4 text-blue-600" />
                     <span className="text-sm text-muted-foreground">Total Amount</span>
                   </div>
-                  <p className="text-xl font-bold">UGX {calculation.totalAmount.toLocaleString()}</p>
+                  <p className="text-xl font-bold">{formatCurrency(calculation.totalAmount)}</p>
                 </div>
 
                 <div className="p-4 border rounded-lg">
@@ -257,7 +258,7 @@ export default function AmortizationDemo() {
               <div className="mt-4 p-4 bg-muted rounded-lg">
                 <h4 className="font-semibold mb-2">Calculation Details</h4>
                 <div className="text-sm space-y-1">
-                  <p>Principal: UGX {parseFloat(principal).toLocaleString()}</p>
+                  <p>Principal: {formatCurrency(principal)}</p>
                   <p>Interest Rate: {rate}% per annum</p>
                   <p>Term: {term} months</p>
                   <p>Method: {calculationType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
@@ -295,10 +296,10 @@ export default function AmortizationDemo() {
                     <TableRow key={index}>
                       <TableCell className="font-medium">{payment.paymentNumber}</TableCell>
                       <TableCell>{new Date(payment.paymentDate).toLocaleDateString()}</TableCell>
-                      <TableCell>UGX {payment.principalAmount.toLocaleString()}</TableCell>
-                      <TableCell>UGX {payment.interestAmount.toLocaleString()}</TableCell>
-                      <TableCell className="font-medium">UGX {payment.totalPayment.toLocaleString()}</TableCell>
-                      <TableCell>UGX {payment.outstandingBalance.toLocaleString()}</TableCell>
+                      <TableCell>{formatCurrency(payment.principalAmount)}</TableCell>
+                      <TableCell>{formatCurrency(payment.interestAmount)}</TableCell>
+                      <TableCell className="font-medium">{formatCurrency(payment.totalPayment)}</TableCell>
+                      <TableCell>{formatCurrency(payment.outstandingBalance)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -308,15 +309,15 @@ export default function AmortizationDemo() {
             <div className="mt-4 grid grid-cols-3 gap-4 text-sm">
               <div>
                 <span className="text-muted-foreground">Total Principal:</span>
-                <p className="font-semibold">UGX {schedule.reduce((sum, p) => sum + p.principalAmount, 0).toLocaleString()}</p>
+                <p className="font-semibold">{formatCurrency(schedule.reduce((sum, p) => sum + p.principalAmount, 0))}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Total Interest:</span>
-                <p className="font-semibold">UGX {schedule.reduce((sum, p) => sum + p.interestAmount, 0).toLocaleString()}</p>
+                <p className="font-semibold">{formatCurrency(schedule.reduce((sum, p) => sum + p.interestAmount, 0))}</p>
               </div>
               <div>
                 <span className="text-muted-foreground">Total Payments:</span>
-                <p className="font-semibold">UGX {schedule.reduce((sum, p) => sum + p.totalPayment, 0).toLocaleString()}</p>
+                <p className="font-semibold">{formatCurrency(schedule.reduce((sum, p) => sum + p.totalPayment, 0))}</p>
               </div>
             </div>
           </CardContent>

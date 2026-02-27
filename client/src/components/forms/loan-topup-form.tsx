@@ -14,6 +14,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
+import { formatCurrency } from "@/lib/utils";
 import type { LoanTypeWithTerms } from "@shared/schema";
 
 const topUpSchema = z.object({
@@ -200,7 +201,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                     <SelectContent>
                       {activeLoans.map((loan: any) => (
                         <SelectItem key={loan.id} value={loan.id.toString()}>
-                          {loan.loanNumber} - {loan.loanType} - Outstanding: UGX {parseFloat(loan.outstandingBalance || '0').toLocaleString()}
+                          {loan.loanNumber} - {loan.loanType} - Outstanding: {formatCurrency(loan.outstandingBalance || '0')}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -224,11 +225,11 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                   </div>
                   <div>
                     <span className="text-blue-600">Original Amount:</span>
-                    <span className="ml-1 font-medium text-blue-900">UGX {parseFloat(selectedLoan.principalAmount || '0').toLocaleString()}</span>
+                    <span className="ml-1 font-medium text-blue-900">{formatCurrency(selectedLoan.principalAmount || '0')}</span>
                   </div>
                   <div>
                     <span className="text-blue-600">Outstanding Balance:</span>
-                    <span className="ml-1 font-medium text-blue-900">UGX {outstandingBalance.toLocaleString()}</span>
+                    <span className="ml-1 font-medium text-blue-900">{formatCurrency(outstandingBalance)}</span>
                   </div>
                   <div>
                     <span className="text-blue-600">Interest Rate:</span>
@@ -268,20 +269,20 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div>
                     <span className="text-emerald-600">Outstanding Balance:</span>
-                    <span className="ml-1 font-medium text-emerald-900">UGX {outstandingBalance.toLocaleString()}</span>
+                    <span className="ml-1 font-medium text-emerald-900">{formatCurrency(outstandingBalance)}</span>
                   </div>
                   <div>
                     <span className="text-emerald-600">Additional Amount:</span>
-                    <span className="ml-1 font-medium text-emerald-900">UGX {topUpAmount.toLocaleString()}</span>
+                    <span className="ml-1 font-medium text-emerald-900">{formatCurrency(topUpAmount)}</span>
                   </div>
                   <div className="sm:col-span-2 pt-2 border-t border-emerald-200">
                     <span className="text-emerald-700 font-semibold">Total New Loan:</span>
-                    <span className="ml-1 font-bold text-emerald-900 text-lg">UGX {totalNewPrincipal.toLocaleString()}</span>
+                    <span className="ml-1 font-bold text-emerald-900 text-lg">{formatCurrency(totalNewPrincipal)}</span>
                   </div>
                   {monthlyPayment > 0 && (
                     <div className="sm:col-span-2">
                       <span className="text-emerald-600">Estimated Monthly Payment:</span>
-                      <span className="ml-1 font-medium text-emerald-900">UGX {monthlyPayment.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
+                      <span className="ml-1 font-medium text-emerald-900">{formatCurrency(monthlyPayment)}</span>
                     </div>
                   )}
                 </div>
