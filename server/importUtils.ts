@@ -643,6 +643,14 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
         result.importedMembers++;
         result.successfulImports++;
 
+        if (newUserId) {
+          try {
+            await storage.addMemberRole(createdMember.id, 'member', newUserId);
+          } catch (roleErr) {
+            console.log(`Warning: Could not assign member role for ${fullName}:`, roleErr);
+          }
+        }
+
         seenIdNumbers.add(idNumber);
         if (staffAccountNumber) seenStaffAccounts.add(staffAccountNumber);
         if (accountNumber) seenBankAccounts.add(accountNumber);
