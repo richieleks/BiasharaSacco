@@ -333,7 +333,8 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
   }
 }
 
-export async function importMembersFromExcel(filePath: string, options?: { userId?: string }): Promise<ImportResult> {
+export async function importMembersFromExcel(filePath: string, options?: { userId?: string; updateExisting?: boolean }): Promise<ImportResult> {
+  const updateExisting = options?.updateExisting || false;
   const result: ImportResult = {
     success: false,
     totalRows: 0,
@@ -485,6 +486,80 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 
         const duplicateByIdNumber = allMembers.find(m => idNumber && m.idNumber === idNumber);
         if (duplicateByIdNumber) {
+          if (updateExisting) {
+            // Parse all fields first, then update the existing member
+            const rawGender = colMap.gender !== undefined ? (row[colMap.gender] || '').toString().trim().toLowerCase() : '';
+            const gender = rawGender.startsWith('f') ? 'female' as const : 'male' as const;
+            const rawMarital = colMap.maritalStatus !== undefined ? (row[colMap.maritalStatus] || '').toString().trim().toLowerCase() : '';
+            let maritalStatus: 'single' | 'married' | 'divorced' | 'widowed' = 'single';
+            if (rawMarital.startsWith('m')) maritalStatus = 'married';
+            else if (rawMarital.startsWith('d')) maritalStatus = 'divorced';
+            else if (rawMarital.startsWith('w')) maritalStatus = 'widowed';
+            const rawTerms = colMap.termsOfService !== undefined ? (row[colMap.termsOfService] || '').toString().trim().toLowerCase() : '';
+            let termsOfService: 'permanent' | 'temporary' | 'contract' | 'ex-staff' = 'permanent';
+            if (rawTerms.includes('temp')) termsOfService = 'temporary';
+            else if (rawTerms.includes('contract')) termsOfService = 'contract';
+            else if (rawTerms.includes('ex')) termsOfService = 'ex-staff';
+            const dobRaw = colMap.dateOfBirth !== undefined ? row[colMap.dateOfBirth] : null;
+            let dateOfBirth = duplicateByIdNumber.dateOfBirth || '1990-01-01';
+            if (dobRaw) {
+              const parsed = excelDateToDate(dobRaw);
+              if (!isNaN(parsed.getTime())) dateOfBirth = parsed.toISOString().split('T')[0];
+            }
+            const phone = colMap.phone !== undefined ? (row[colMap.phone] || '').toString().trim() : '';
+            const emailVal = colMap.email !== undefined ? (row[colMap.email] || '').toString().trim() : '';
+            const address = colMap.address !== undefined ? (row[colMap.address] || '').toString().trim() : '';
+            const department = colMap.department !== undefined ? (row[colMap.department] || '').toString().trim() : '';
+            const section = colMap.section !== undefined ? (row[colMap.section] || '').toString().trim() : '';
+            const averageNetPay = colMap.averageNetPay !== undefined ? (parseFloat(row[colMap.averageNetPay]) || 0).toString() : undefined;
+            const monthlySavings = colMap.monthlySavings !== undefined ? (parseFloat(row[colMap.monthlySavings]) || 0).toString() : undefined;
+            const branch = colMap.branch !== undefined ? (row[colMap.branch] || '').toString().trim() : '';
+            const numberOfShares = colMap.numberOfShares !== undefined ? (parseInt(row[colMap.numberOfShares]) || undefined) : undefined;
+            const shareContribution = colMap.shareContribution !== undefined ? (parseFloat(row[colMap.shareContribution]) || undefined)?.toString() : undefined;
+            const beneficiaryName = colMap.beneficiaryName !== undefined ? (row[colMap.beneficiaryName] || '').toString().trim() : '';
+            const beneficiaryRelationship = colMap.beneficiaryRelationship !== undefined ? (row[colMap.beneficiaryRelationship] || '').toString().trim() : '';
+            const beneficiaryContact = colMap.beneficiaryContact !== undefined ? (row[colMap.beneficiaryContact] || '').toString().trim() : '';
+            const nextOfKinName = colMap.nextOfKinName !== undefined ? (row[colMap.nextOfKinName] || '').toString().trim() : '';
+            const nextOfKinPhone = colMap.nextOfKinPhone !== undefined ? (row[colMap.nextOfKinPhone] || '').toString().trim() : '';
+
+            const updateData: Record<string, any> = {};
+            if (fullName) updateData.fullName = fullName;
+            if (dateOfBirth) updateData.dateOfBirth = dateOfBirth;
+            updateData.gender = gender;
+            updateData.maritalStatus = maritalStatus;
+            updateData.termsOfService = termsOfService;
+            if (phone) updateData.phoneNumber = phone;
+            if (emailVal) updateData.email = emailVal;
+            if (address) updateData.address = address;
+            if (department) updateData.department = department;
+            if (section) updateData.section = section;
+            if (averageNetPay !== undefined) updateData.averageNetPay = averageNetPay;
+            if (staffAccNum) updateData.staffAccountNumber = staffAccNum;
+            if (monthlySavings !== undefined) updateData.monthlySavings = monthlySavings;
+            if (accountNum) updateData.accountNumber = accountNum;
+            if (branch) updateData.branch = branch;
+            if (numberOfShares !== undefined) updateData.numberOfShares = numberOfShares;
+            if (shareContribution !== undefined) updateData.shareContribution = shareContribution;
+            if (beneficiaryName) updateData.beneficiaryName = beneficiaryName;
+            if (beneficiaryRelationship) updateData.beneficiaryRelationship = beneficiaryRelationship;
+            if (beneficiaryContact) updateData.beneficiaryContact = beneficiaryContact;
+            if (nextOfKinName) updateData.nextOfKinName = nextOfKinName;
+            if (nextOfKinPhone) updateData.nextOfKinPhone = nextOfKinPhone;
+
+            try {
+              await storage.updateMember(duplicateByIdNumber.id, updateData);
+              result.successfulImports++;
+              console.log(`Updated existing member ${rowNum}: ${fullName} (${duplicateByIdNumber.memberNumber})`);
+            } catch (updateErr) {
+              result.errors.push({
+                row: rowNum,
+                error: `Failed to update member "${fullName}": ${updateErr instanceof Error ? updateErr.message : 'Unknown error'}`,
+                data: { fullName, idNumber }
+              });
+            }
+            seenIdNumbers.add(idNumber);
+            continue;
+          }
           result.skippedDuplicates++;
           result.errors.push({
             row: rowNum,
@@ -496,7 +571,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 
         if (staffAccNum) {
           const duplicateByStaffAcc = allMembers.find(m => m.staffAccountNumber === staffAccNum);
-          if (duplicateByStaffAcc) {
+          if (duplicateByStaffAcc && (!updateExisting || duplicateByStaffAcc.idNumber !== idNumber)) {
             result.skippedDuplicates++;
             result.errors.push({
               row: rowNum,
@@ -509,7 +584,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 
         if (accountNum) {
           const duplicateByBankAcc = allMembers.find(m => m.accountNumber === accountNum);
-          if (duplicateByBankAcc) {
+          if (duplicateByBankAcc && (!updateExisting || duplicateByBankAcc.idNumber !== idNumber)) {
             result.skippedDuplicates++;
             result.errors.push({
               row: rowNum,
@@ -684,7 +759,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
       }
     }
 
-    result.success = result.importedMembers > 0;
+    result.success = result.importedMembers > 0 || result.successfulImports > 0;
     console.log('Member import completed:', result);
     return result;
 

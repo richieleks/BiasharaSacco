@@ -3177,8 +3177,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const filePath = req.file ? req.file.path : './attached_assets/members_1772094048114.xlsx';
       
-      console.log('Starting member import from:', filePath);
-      const result = await importMembersFromExcel(filePath, { userId: getUserId(req) });
+      const updateExisting = req.body?.updateExisting === 'true';
+      console.log('Starting member import from:', filePath, '| updateExisting:', updateExisting);
+      const result = await importMembersFromExcel(filePath, { userId: getUserId(req), updateExisting });
       
       await storage.createAuditLog({
         userId: getUserId(req) || '',

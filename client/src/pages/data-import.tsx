@@ -33,6 +33,7 @@ export default function DataImport() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [importType, setImportType] = useState<'members' | 'savings' | 'loans'>('members');
   const [createNewMembers, setCreateNewMembers] = useState(true);
+  const [updateExistingMembers, setUpdateExistingMembers] = useState(false);
   const [selectedLoanTypeId, setSelectedLoanTypeId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -65,6 +66,9 @@ export default function DataImport() {
       const formData = new FormData();
       formData.append('file', selectedFile);
       formData.append('createNewMembers', createNewMembers.toString());
+      if (importType === 'members') {
+        formData.append('updateExisting', updateExistingMembers.toString());
+      }
       if (importType === 'loans' && selectedLoanTypeId) {
         formData.append('loanTypeId', selectedLoanTypeId);
       }
@@ -303,6 +307,27 @@ export default function DataImport() {
                       {(selectedFile.size / 1024).toFixed(1)} KB • Ready for import
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {importType === 'members' && (
+              <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <Checkbox
+                  id="updateExistingMembers"
+                  checked={updateExistingMembers}
+                  onCheckedChange={(checked) => setUpdateExistingMembers(checked === true)}
+                />
+                <div className="grid gap-1.5 leading-none">
+                  <Label htmlFor="updateExistingMembers" className="text-sm font-medium cursor-pointer">
+                    Update existing members
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {updateExistingMembers 
+                      ? "Existing members (matched by ID number) will have their details updated from the file."
+                      : "Existing members will be skipped. Only new members will be imported."
+                    }
+                  </p>
                 </div>
               </div>
             )}
