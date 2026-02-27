@@ -1,6 +1,6 @@
 import { useAuth } from "./useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
 import { 
   hasPermission, 
   canAccessDashboardComponent, 
@@ -11,6 +11,25 @@ import {
 } from "@/lib/rbac";
 
 const ACTIVE_ROLE_KEY = 'biashara_active_role';
+const ROLE_CHANGE_EVENT = 'biashara_role_change';
+
+let activeRoleSnapshot: UserRole = (localStorage.getItem(ACTIVE_ROLE_KEY) as UserRole) || 'member';
+const listeners = new Set<() => void>();
+
+function getActiveRoleSnapshot() {
+  return activeRoleSnapshot;
+}
+
+function subscribeToRoleChanges(callback: () => void) {
+  listeners.add(callback);
+  return () => listeners.delete(callback);
+}
+
+function setSharedActiveRole(role: UserRole) {
+  activeRoleSnapshot = role;
+  localStorage.setItem(ACTIVE_ROLE_KEY, role);
+  listeners.forEach(cb => cb());
+}
 
 export function useRBAC() {
   const { user, isLoading } = useAuth();
@@ -42,26 +61,20 @@ export function useRBAC() {
     , 'member' as UserRole);
   };
 
-  const [activeRole, setActiveRoleState] = useState<UserRole>(() => {
-    const stored = localStorage.getItem(ACTIVE_ROLE_KEY);
-    return (stored as UserRole) || getHighestRole(userRoles);
-  });
+  const activeRole = useSyncExternalStore(subscribeToRoleChanges, getActiveRoleSnapshot);
 
   useEffect(() => {
     if (userRoles.length > 0) {
-      const stored = localStorage.getItem(ACTIVE_ROLE_KEY) as UserRole | null;
-      if (!stored || !userRoles.includes(stored)) {
+      if (!userRoles.includes(activeRole)) {
         const highest = getHighestRole(userRoles);
-        setActiveRoleState(highest);
-        localStorage.setItem(ACTIVE_ROLE_KEY, highest);
+        setSharedActiveRole(highest);
       }
     }
   }, [JSON.stringify(userRoles)]);
 
   const switchRole = useCallback((role: UserRole) => {
     if (userRoles.includes(role)) {
-      setActiveRoleState(role);
-      localStorage.setItem(ACTIVE_ROLE_KEY, role);
+      setSharedActiveRole(role);
     }
   }, [JSON.stringify(userRoles)]);
 
