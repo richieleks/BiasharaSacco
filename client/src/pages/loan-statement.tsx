@@ -185,11 +185,11 @@ export default function LoanStatement() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b">
-                      <th className="text-left p-2">Date</th>
+                      <th className="text-left p-2 whitespace-nowrap">Date</th>
                       <th className="text-left p-2">Description</th>
-                      <th className="text-right p-2">Debit</th>
-                      <th className="text-right p-2">Credit</th>
-                      <th className="text-right p-2">Running Balance</th>
+                      <th className="text-right p-2 whitespace-nowrap">Debit</th>
+                      <th className="text-right p-2 whitespace-nowrap">Credit</th>
+                      <th className="text-right p-2 whitespace-nowrap">Running Balance</th>
                       <th className="text-center p-2">Status</th>
                     </tr>
                   </thead>
@@ -250,15 +250,15 @@ export default function LoanStatement() {
                             {format(transaction.displayDate, 'MMM dd, yyyy')}
                           </td>
                           <td className="p-2">{transaction.description || transaction.transactionType || 'N/A'}</td>
-                          <td className="p-2 text-right">
+                          <td className="p-2 text-right tabular-nums whitespace-nowrap">
                             {(transaction.transactionType === 'loan_payment' || transaction.transactionType === 'debit') ? 
                               formatCurrency(transaction.amount || 0) : ''}
                           </td>
-                          <td className="p-2 text-right">
+                          <td className="p-2 text-right tabular-nums whitespace-nowrap">
                             {(transaction.transactionType === 'loan_disbursement' || transaction.transactionType === 'credit') ? 
                               formatCurrency(transaction.amount || 0) : ''}
                           </td>
-                          <td className="p-2 text-right font-medium">
+                          <td className="p-2 text-right font-medium tabular-nums whitespace-nowrap">
                             {formatCurrency(transaction.runningBalance)}
                           </td>
                           <td className="p-2 text-center">
