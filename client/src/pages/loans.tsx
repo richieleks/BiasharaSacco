@@ -12,10 +12,12 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Pagination } from "@/components/ui/pagination";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import LoanApplicationForm from "@/components/forms/loan-application-form";
 import LoanTopUpForm from "@/components/forms/loan-topup-form";
 import { formatCurrency } from "@/lib/utils";
-import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, ArrowUpCircle } from "lucide-react";
+import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, ArrowUpCircle, Banknote, Loader2 } from "lucide-react";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -45,6 +47,10 @@ export default function Loans() {
   const isPersonalView = location === '/my-loans' || activeRole === 'member';
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
+  const [isRepaymentModalOpen, setIsRepaymentModalOpen] = useState(false);
+  const [repaymentLoan, setRepaymentLoan] = useState<any>(null);
+  const [repaymentAmount, setRepaymentAmount] = useState("");
+  const [repaymentDescription, setRepaymentDescription] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -125,6 +131,58 @@ export default function Loans() {
       toast({ title: "Error", description: "Failed to disburse loan. Please try again.", variant: "destructive" });
     },
   });
+
+  const repaymentMutation = useMutation({
+    mutationFn: async ({ loanUuid, amount, description }: { loanUuid: string; amount: string; description: string }) => {
+      await apiRequest('POST', `/api/loans/${loanUuid}/payment`, {
+        amount,
+        description,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/my-loans'] });
+      toast({ title: "Success", description: "Loan repayment recorded successfully!" });
+      setIsRepaymentModalOpen(false);
+      setRepaymentLoan(null);
+      setRepaymentAmount("");
+      setRepaymentDescription("");
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
+      toast({ title: "Error", description: "Failed to record repayment. Please try again.", variant: "destructive" });
+    },
+  });
+
+  const openRepaymentModal = (loan: any) => {
+    setRepaymentLoan(loan);
+    setRepaymentAmount(loan.monthlyPayment || '');
+    setRepaymentDescription('');
+    setIsRepaymentModalOpen(true);
+  };
+
+  const handleRepaymentSubmit = () => {
+    if (!repaymentLoan || !repaymentAmount) return;
+    const amount = parseFloat(repaymentAmount);
+    const outstanding = parseFloat(repaymentLoan.outstandingBalance || '0');
+    if (amount <= 0) {
+      toast({ title: "Error", description: "Payment amount must be greater than zero.", variant: "destructive" });
+      return;
+    }
+    if (amount > outstanding) {
+      toast({ title: "Error", description: `Payment amount cannot exceed the outstanding balance of ${formatCurrency(outstanding)}.`, variant: "destructive" });
+      return;
+    }
+    repaymentMutation.mutate({
+      loanUuid: repaymentLoan.uuid,
+      amount: amount.toFixed(2),
+      description: repaymentDescription || `Loan repayment - ${repaymentLoan.loanNumber}`,
+    });
+  };
 
   if (pendingLoading) {
     return (
@@ -218,6 +276,123 @@ export default function Loans() {
                 </DialogDescription>
               </DialogHeader>
               <LoanTopUpForm onSuccess={() => setIsTopUpModalOpen(false)} />
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={isRepaymentModalOpen} onOpenChange={(open) => {
+            setIsRepaymentModalOpen(open);
+            if (!open) {
+              setRepaymentLoan(null);
+              setRepaymentAmount("");
+              setRepaymentDescription("");
+            }
+          }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Banknote className="h-5 w-5 text-emerald-600" />
+                  Record Loan Repayment
+                </DialogTitle>
+                <DialogDescription>
+                  Record a payment for this loan
+                </DialogDescription>
+              </DialogHeader>
+              {repaymentLoan && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2 text-sm">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-blue-600">Loan Number:</span>
+                        <span className="ml-1 font-medium text-blue-900">{repaymentLoan.loanNumber}</span>
+                      </div>
+                      <div>
+                        <span className="text-blue-600">Member:</span>
+                        <span className="ml-1 font-medium text-blue-900">{repaymentLoan.member?.fullName || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-blue-600">Outstanding:</span>
+                        <span className="ml-1 font-bold text-blue-900">{formatCurrency(repaymentLoan.outstandingBalance || '0')}</span>
+                      </div>
+                      <div>
+                        <span className="text-blue-600">Monthly Payment:</span>
+                        <span className="ml-1 font-medium text-blue-900">{formatCurrency(repaymentLoan.monthlyPayment || '0')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="repayment-amount">Payment Amount (UGX)</Label>
+                    <Input
+                      id="repayment-amount"
+                      type="number"
+                      value={repaymentAmount}
+                      onChange={(e) => setRepaymentAmount(e.target.value)}
+                      min={1}
+                      max={parseFloat(repaymentLoan.outstandingBalance || '0')}
+                      placeholder="Enter payment amount"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Maximum: {formatCurrency(repaymentLoan.outstandingBalance || '0')}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="repayment-description">Description (Optional)</Label>
+                    <Textarea
+                      id="repayment-description"
+                      value={repaymentDescription}
+                      onChange={(e) => setRepaymentDescription(e.target.value)}
+                      placeholder="e.g. Monthly installment, partial payment..."
+                      rows={2}
+                    />
+                  </div>
+
+                  {parseFloat(repaymentAmount || '0') > 0 && (
+                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-emerald-700">Payment Amount:</span>
+                        <span className="font-medium text-emerald-900">{formatCurrency(repaymentAmount)}</span>
+                      </div>
+                      <div className="flex justify-between mt-1">
+                        <span className="text-emerald-700">Balance After Payment:</span>
+                        <span className="font-bold text-emerald-900">
+                          {formatCurrency(Math.max(0, parseFloat(repaymentLoan.outstandingBalance || '0') - parseFloat(repaymentAmount || '0')))}
+                        </span>
+                      </div>
+                      {parseFloat(repaymentAmount || '0') >= parseFloat(repaymentLoan.outstandingBalance || '0') && (
+                        <p className="mt-2 text-emerald-800 font-medium text-xs">This payment will fully settle this loan.</p>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setIsRepaymentModalOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="flex-1 sacco-gradient text-white hover:opacity-90"
+                      onClick={handleRepaymentSubmit}
+                      disabled={repaymentMutation.isPending || !repaymentAmount || parseFloat(repaymentAmount) <= 0}
+                    >
+                      {repaymentMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Banknote className="mr-2 h-4 w-4" />
+                          Record Payment
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         </div>
@@ -355,6 +530,17 @@ export default function Loans() {
                             >
                               <DollarSign className="w-4 h-4 mr-1" />
                               Disburse
+                            </Button>
+                          )}
+                          {(['active', 'disbursed'].includes(loan.status)) && parseFloat(loan.outstandingBalance || '0') > 0 && (
+                            <Button
+                              size="sm"
+                              onClick={() => openRepaymentModal(loan)}
+                              variant="outline"
+                              className="border-emerald-200/50 text-emerald-700 hover:bg-emerald-50 rounded-xl shadow-sm"
+                            >
+                              <Banknote className="w-4 h-4 mr-1" />
+                              Record Repayment
                             </Button>
                           )}
                         </div>
