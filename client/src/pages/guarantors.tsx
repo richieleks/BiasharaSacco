@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Clock, CheckCircle, XCircle, FileText, DollarSign, CreditCard, UserCheck, Plus, Trash2 } from "lucide-react";
+import { Users, Clock, CheckCircle, XCircle, FileText, DollarSign, CreditCard, UserCheck, Plus, Trash2, RefreshCw } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
@@ -146,6 +146,28 @@ export default function Guarantors() {
       toast({
         title: "Error",
         description: error.message || "Failed to reject guarantor request",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const resendGuarantorMutation = useMutation({
+    mutationFn: async ({ guarantorId }: { guarantorId: number }) => {
+      await apiRequest('PATCH', `/api/guarantors/${guarantorId}/resend`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/guarantors/member'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
+      toast({
+        title: "Success",
+        description: "Guarantor request resent successfully!",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend guarantor request",
         variant: "destructive",
       });
     },
@@ -511,6 +533,18 @@ export default function Guarantors() {
                                     </div>
                                   </div>
                                   <div className="flex items-center gap-2 ml-11 sm:ml-0">
+                                    {guarantor.status === 'rejected' && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => resendGuarantorMutation.mutate({ guarantorId: guarantor.id })}
+                                        disabled={resendGuarantorMutation.isPending}
+                                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                      >
+                                        <RefreshCw className="h-3 w-3 mr-1" />
+                                        Resend
+                                      </Button>
+                                    )}
                                     {getStatusIcon(guarantor.status)}
                                     <Badge variant={getStatusVariant(guarantor.status)} className={getStatusColor(guarantor.status)}>
                                       {guarantor.status}

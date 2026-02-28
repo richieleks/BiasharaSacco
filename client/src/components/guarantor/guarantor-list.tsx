@@ -1,8 +1,11 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Users, CheckCircle, XCircle, Clock } from "lucide-react";
+import { Users, CheckCircle, XCircle, Clock, RefreshCw } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { GuarantorWithDetails } from "@shared/schema";
 
 interface GuarantorListProps {
@@ -10,6 +13,9 @@ interface GuarantorListProps {
 }
 
 export default function GuarantorList({ loanId }: GuarantorListProps) {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const { data: guarantors = [], isLoading } = useQuery<GuarantorWithDetails[]>({
     queryKey: ['/api/guarantors/loan', loanId],
     queryFn: async () => {
@@ -18,6 +24,27 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
       return res.json();
     },
     enabled: !!loanId,
+  });
+
+  const resendMutation = useMutation({
+    mutationFn: async (guarantorId: number) => {
+      await apiRequest('PATCH', `/api/guarantors/${guarantorId}/resend`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/guarantors/loan', loanId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending'] });
+      toast({
+        title: "Success",
+        description: "Guarantor request resent successfully!",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend guarantor request",
+        variant: "destructive",
+      });
+    },
   });
 
   if (isLoading) {
@@ -125,6 +152,18 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    {guarantor.status === 'rejected' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => resendMutation.mutate(guarantor.id)}
+                        disabled={resendMutation.isPending}
+                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                      >
+                        <RefreshCw className="h-3 w-3 mr-1" />
+                        Resend
+                      </Button>
+                    )}
                     {getStatusIcon(guarantor.status)}
                     <Badge variant={getStatusVariant(guarantor.status)}>
                       {guarantor.status || 'pending'}

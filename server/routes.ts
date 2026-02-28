@@ -2273,6 +2273,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch('/api/guarantors/:id/resend', isAuthenticated, async (req: any, res) => {
+    try {
+      const guarantorId = await storage.resolveGuarantorId(req.params.id);
+      const userId = getUserId(req)!;
+
+      const guarantor = await storage.getGuarantor(guarantorId);
+      if (!guarantor) {
+        return res.status(404).json({ message: "Guarantor request not found" });
+      }
+
+      if (guarantor.status !== 'rejected') {
+        return res.status(400).json({ message: "Only rejected guarantor requests can be resent" });
+      }
+
+      const loan = await storage.getLoan(guarantor.loanId);
+      if (!loan) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      const member = await storage.getMemberByUserId(userId);
+      if (!member || member.id !== loan.memberId) {
+        return res.status(403).json({ message: "Only the loan applicant can resend guarantor requests" });
+      }
+
+      const updatedGuarantor = await storage.updateGuarantorStatus(guarantorId, 'pending');
+      
+      await storage.createAuditLog({
+        userId,
+        action: 'resend',
+        resource: 'guarantor',
+        resourceId: guarantorId.toString(),
+        details: `Resent guarantor request to member ${guarantor.guarantorMemberId}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
+
+      res.json(updatedGuarantor);
+    } catch (error) {
+      console.error("Error resending guarantor request:", error);
+      res.status(500).json({ message: "Failed to resend guarantor request" });
+    }
+  });
+
   // Get pending guarantor requests for the current user
   app.get('/api/guarantors/pending', isAuthenticated, async (req: any, res) => {
     try {
