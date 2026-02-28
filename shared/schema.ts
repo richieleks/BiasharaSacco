@@ -319,7 +319,9 @@ export const guarantors = pgTable("guarantors", {
   comments: text("comments"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  unique("guarantors_loan_member_unique").on(table.loanId, table.guarantorMemberId),
+]);
 
 // Relations
 export const usersRelations = relations(users, ({ one }) => ({

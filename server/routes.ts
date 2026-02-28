@@ -2098,10 +2098,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const guarantor = await storage.createGuarantor(validatedData);
       res.status(201).json(guarantor);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating guarantor:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
+      }
+      if (error?.code === '23505' || error?.message?.includes('guarantors_loan_member_unique')) {
+        return res.status(400).json({ message: "This member is already a guarantor for this loan" });
       }
       res.status(500).json({ message: "Failed to create guarantor" });
     }
