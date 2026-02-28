@@ -1810,7 +1810,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Member record not found" });
       }
       const savingsAccounts = await storage.getSavingsAccountsByMember(member.id);
-      res.json(savingsAccounts);
+      const accountsWithMember = savingsAccounts.map(account => ({
+        ...account,
+        member: {
+          id: member.id,
+          fullName: member.fullName,
+          memberNumber: member.memberNumber,
+          user: member.user ? { firstName: member.user.firstName, lastName: member.user.lastName } : undefined,
+        },
+      }));
+      res.json(accountsWithMember);
     } catch (error) {
       console.error("Error fetching personal savings:", error);
       res.status(500).json({ message: "Failed to fetch personal savings" });
