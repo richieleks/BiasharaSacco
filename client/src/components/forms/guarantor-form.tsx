@@ -105,14 +105,27 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
     mutation.mutate(data);
   };
 
-  const selectedMember = eligibleMembers.find(m => m.id === form.watch('guarantorMemberId'));
+  const selectedMemberId = form.watch('guarantorMemberId');
+  const selectedMember = eligibleMembers.find(m => m.id === selectedMemberId);
+
+  const { data: guarantorSavingsAccounts } = useQuery<any[]>({
+    queryKey: ['/api/members', selectedMemberId, 'savings'],
+    queryFn: async () => {
+      const res = await fetch(`/api/members/${selectedMemberId}/savings`);
+      if (!res.ok) throw new Error('Failed to fetch savings');
+      return res.json();
+    },
+    enabled: !!selectedMemberId && selectedMemberId > 0,
+  });
+
+  const guarantorTotalSavings = guarantorSavingsAccounts?.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0) || 0;
 
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium">Add Guarantor</h3>
         <p className="text-sm text-muted-foreground">
-          Add a guarantor for this loan application. The guarantor must be an existing member and must approve the request.
+          Add a guarantor for this loan application. The guarantor must have enough savings to cover the guarantee amount.
         </p>
       </div>
 
@@ -201,9 +214,14 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
                 </Popover>
                 <FormMessage />
                 {selectedMember && (
-                  <div className="text-sm text-muted-foreground">
-                    Selected: {selectedMember.fullName} ({selectedMember.memberNumber})
-                    {selectedMember.department && ` • ${selectedMember.department}`}
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">
+                      Selected: {selectedMember.fullName} ({selectedMember.memberNumber})
+                      {selectedMember.department && ` • ${selectedMember.department}`}
+                    </span>
+                    <div className="mt-1 font-medium">
+                      Savings: <span className={guarantorTotalSavings > 0 ? "text-emerald-700" : "text-red-600"}>{formatCurrency(guarantorTotalSavings)}</span>
+                    </div>
                   </div>
                 )}
               </FormItem>
@@ -225,8 +243,13 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
                   />
                 </FormControl>
                 <FormMessage />
+                {selectedMember && parseFloat(form.watch('guaranteeAmount') || '0') > guarantorTotalSavings && (
+                  <div className="text-xs text-red-600 font-medium">
+                    This member's savings ({formatCurrency(guarantorTotalSavings)}) are not enough to guarantee this amount
+                  </div>
+                )}
                 <div className="text-xs text-muted-foreground">
-                  Amount this member will guarantee for the loan
+                  Amount this member will guarantee for the loan. Must not exceed their savings
                 </div>
               </FormItem>
             )}
@@ -235,7 +258,7 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
           <div className="flex gap-3 pt-4">
             <Button
               type="submit"
-              disabled={mutation.isPending || !selectedMember || !form.watch('guaranteeAmount')}
+              disabled={mutation.isPending || !selectedMember || !form.watch('guaranteeAmount') || (selectedMember && parseFloat(form.watch('guaranteeAmount') || '0') > guarantorTotalSavings)}
               className="flex-1"
             >
               {mutation.isPending ? "Sending Request..." : "Send Guarantor Request"}

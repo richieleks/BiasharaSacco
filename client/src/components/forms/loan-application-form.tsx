@@ -347,6 +347,9 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
 
   if (currentLoanId) {
     const requiresGuarantor = selectedLoanType?.requiresGuarantor ?? selectedLoanType?.requires_guarantor ?? true;
+    const loanPrincipal = parseFloat(form.getValues('principalAmount') || '0');
+    const savingsCoverLoan = totalSavingsBalance >= loanPrincipal && loanPrincipal > 0;
+    const needsGuarantors = requiresGuarantor && !savingsCoverLoan;
     
     return (
       <div className="space-y-6">
@@ -358,7 +361,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {requiresGuarantor ? (
+            {needsGuarantors ? (
               <>
                 <p className="text-sm text-muted-foreground mb-4">
                   Your loan application has been created successfully. Now add guarantors to complete the application.
@@ -391,8 +394,9 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                   Application Complete
                 </h3>
                 <p className="text-gray-600 mb-4">
-                  Your loan application has been created successfully. This loan type does not require guarantors, 
-                  so your application is ready for review by the loan committee.
+                  {savingsCoverLoan 
+                    ? "Your loan application has been created successfully. Your savings fully cover this loan amount, so no guarantors are required. Your application is ready for review by the loan committee."
+                    : "Your loan application has been created successfully. This loan type does not require guarantors, so your application is ready for review by the loan committee."}
                 </p>
               </div>
             )}
