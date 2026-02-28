@@ -73,8 +73,12 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
       const matchingType = loanTypes.find(lt => lt.name === selectedLoan.loanType);
       if (matchingType) {
         form.setValue('interestRate', (matchingType.interestRate || '12.00').toString());
-        const maxTerm = matchingType.maxTerm || 12;
-        form.setValue('termMonths', maxTerm.toString());
+        const maxTerm = matchingType.maxTerm || 60;
+        const minTerm = matchingType.minTerm || 1;
+        const currentTerm = parseInt(form.getValues('termMonths') || '0');
+        if (currentTerm < minTerm || currentTerm > maxTerm) {
+          form.setValue('termMonths', maxTerm.toString());
+        }
       }
     }
   }, [selectedLoan, loanTypes, form]);
