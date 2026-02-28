@@ -146,7 +146,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
       form.reset({
         ...form.getValues(),
         averageNetPay: member.averageNetPay?.toString() || "",
-        staffAccountNumber: member.staffAccountNumber || "",
+        staffAccountNumber: member.idNumber || "",
         nextOfKin: member.nextOfKinName || "",
         nextOfKinPhone: member.nextOfKinPhone || "",
         currentSavings: totalSavingsBalance.toFixed(2),
