@@ -83,14 +83,13 @@ export default function LoanStatement() {
       });
     
     const csvData = [
-      ['Date', 'Description', 'Payment', 'Disbursement', 'Balance', 'Status'],
+      ['Date', 'Description', 'Debit', 'Credit', 'Balance'],
       ...transactionsWithBalance.map((txn: any) => [
         format(txn.displayDate, 'yyyy-MM-dd'),
         txn.description || txn.transactionType || 'N/A',
         (txn.transactionType === 'loan_payment' || txn.transactionType === 'debit') ? txn.amount || 0 : '',
         (txn.transactionType === 'loan_disbursement' || txn.transactionType === 'credit') ? txn.amount || 0 : '',
-        txn.runningBalance,
-        txn.status || 'completed'
+        txn.runningBalance
       ])
     ];
 
@@ -177,10 +176,9 @@ export default function LoanStatement() {
                     <tr className="border-b">
                       <th className="text-left p-2 whitespace-nowrap">Date</th>
                       <th className="text-left p-2">Description</th>
-                      <th className="text-right p-2 whitespace-nowrap">Payment</th>
-                      <th className="text-right p-2 whitespace-nowrap">Disbursement</th>
+                      <th className="text-right p-2 whitespace-nowrap">Debit</th>
+                      <th className="text-right p-2 whitespace-nowrap">Credit</th>
                       <th className="text-right p-2 whitespace-nowrap">Balance</th>
-                      <th className="text-center p-2">Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -237,11 +235,6 @@ export default function LoanStatement() {
                           </td>
                           <td className="p-2 text-right font-medium tabular-nums whitespace-nowrap">
                             {formatCurrency(transaction.runningBalance)}
-                          </td>
-                          <td className="p-2 text-center">
-                            <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'} className="text-xs">
-                              {transaction.status || 'completed'}
-                            </Badge>
                           </td>
                         </tr>
                       ));
