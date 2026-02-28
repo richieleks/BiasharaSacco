@@ -1401,7 +1401,7 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(members, eq(guarantors.guarantorMemberId, members.id))
       .leftJoin(users, eq(members.userId, users.id))
       .leftJoin(loans, eq(guarantors.loanId, loans.id))
-      .where(eq(guarantors.guarantorMemberId, memberId));
+      .where(and(eq(guarantors.guarantorMemberId, memberId), eq(guarantors.status, 'approved')));
 
     return results.map(result => ({
       ...result.guarantors,
