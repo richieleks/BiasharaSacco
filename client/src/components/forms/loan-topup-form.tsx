@@ -9,12 +9,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpCircle, Loader2, AlertCircle, Info } from "lucide-react";
+import { ArrowUpCircle, Loader2, AlertCircle, Info, FileText, Plus, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
+import GuarantorForm from "./guarantor-form";
+import GuarantorList from "../guarantor/guarantor-list";
 import type { LoanTypeWithTerms } from "@shared/schema";
 
 const topUpSchema = z.object({
@@ -38,6 +40,9 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
   const { user } = useAuth();
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [serverErrors, setServerErrors] = useState<string[]>([]);
+  const [currentLoanId, setCurrentLoanId] = useState<number | null>(null);
+  const [showGuarantorForm, setShowGuarantorForm] = useState(false);
+  const [savedTopUpPrincipal, setSavedTopUpPrincipal] = useState(0);
 
   const { data: activeLoans = [], isLoading: loadingLoans } = useQuery<any[]>({
     queryKey: ['/api/loans/active-for-topup'],
@@ -190,17 +195,32 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
       });
       return response;
     },
-    onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Loan top-up application submitted successfully. It will go through the standard approval process.",
-      });
+    onSuccess: async (response: any) => {
+      const loanData = await response.json();
       setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/my-loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/active-for-topup'] });
-      form.reset();
-      onSuccess();
+
+      const requiresGuarantor = matchedLoanType?.requiresGuarantor ?? matchedLoanType?.requires_guarantor ?? true;
+      const savingsCoverLoan = totalSavingsBalance >= totalNewPrincipal && totalNewPrincipal > 0;
+      const needsGuarantors = requiresGuarantor && !savingsCoverLoan;
+
+      if (needsGuarantors && loanData?.id) {
+        setCurrentLoanId(loanData.id);
+        setSavedTopUpPrincipal(totalNewPrincipal);
+        toast({
+          title: "Top-Up Application Created",
+          description: "Now add guarantors to complete your application.",
+        });
+      } else {
+        toast({
+          title: "Success",
+          description: "Loan top-up application submitted successfully. It will go through the standard approval process.",
+        });
+        form.reset();
+        onSuccess();
+      }
     },
     onError: async (error: any) => {
       const errors: string[] = [];
@@ -237,6 +257,75 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
         <span className="ml-2 text-slate-500">Loading your active loans...</span>
+      </div>
+    );
+  }
+
+  if (currentLoanId) {
+    const requiresGuarantor = matchedLoanType?.requiresGuarantor ?? matchedLoanType?.requires_guarantor ?? true;
+    const savingsCoverLoan = totalSavingsBalance >= savedTopUpPrincipal && savedTopUpPrincipal > 0;
+    const needsGuarantors = requiresGuarantor && !savingsCoverLoan;
+
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Top-Up Application Created
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {needsGuarantors ? (
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Your loan top-up application has been created successfully. This loan type requires guarantors since your savings ({formatCurrency(totalSavingsBalance)}) do not fully cover the loan amount ({formatCurrency(savedTopUpPrincipal)}). Please add guarantors to complete the application.
+                </p>
+                <GuarantorList loanId={currentLoanId} />
+                <div className="mt-6">
+                  {!showGuarantorForm ? (
+                    <Button onClick={() => setShowGuarantorForm(true)} className="w-full">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Guarantor
+                    </Button>
+                  ) : (
+                    <GuarantorForm
+                      loanId={currentLoanId}
+                      onSuccess={() => {
+                        setShowGuarantorForm(false);
+                        queryClient.invalidateQueries({ queryKey: ['/api/guarantors/loan', currentLoanId] });
+                      }}
+                      onCancel={() => setShowGuarantorForm(false)}
+                    />
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="text-center p-6">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="w-8 h-8 text-green-600" />
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Application Complete
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Your savings fully cover this loan amount, so no guarantors are required. Your top-up application is ready for review by the loan committee.
+                </p>
+              </div>
+            )}
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCurrentLoanId(null);
+                form.reset();
+                onSuccess();
+              }}
+              className="w-full mt-4"
+            >
+              Return to Loans
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
