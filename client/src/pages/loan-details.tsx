@@ -294,6 +294,24 @@ export default function LoanDetails() {
                   <span className="text-sm text-slate-500">Principal Amount</span>
                   <span className="font-semibold text-slate-900">{formatCurrency(loan.principalAmount)}</span>
                 </div>
+                {loan.isTopUp && loan.previousLoanBalance && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                        <ArrowUpCircle className="h-3.5 w-3.5" /> Previous Loan Balance
+                      </span>
+                      <span className="font-semibold text-slate-600">{formatCurrency(loan.previousLoanBalance)}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                        <ArrowUpCircle className="h-3.5 w-3.5" /> Top-Up Amount
+                      </span>
+                      <span className="font-semibold text-blue-700">
+                        {formatCurrency(Math.max(0, parseFloat(loan.principalAmount) - parseFloat(loan.previousLoanBalance)))}
+                      </span>
+                    </div>
+                  </>
+                )}
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-500">Total Interest</span>
                   <span className="font-semibold text-amber-700">{formatCurrency(totalInterestAmount)}</span>
