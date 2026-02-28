@@ -53,53 +53,18 @@ export default function LoanDetails() {
     enabled: !!loanId,
   });
 
-  if (isLoading) {
-    return (
-      <div className="space-y-6 page-container animate-fade-in">
-        <div className="section-card p-6 animate-pulse">
-          <div className="h-6 bg-slate-100 rounded w-48 mb-4"></div>
-          <div className="h-4 bg-slate-100 rounded w-32 mb-6"></div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i}>
-                <div className="h-3 bg-slate-100 rounded w-20 mb-2"></div>
-                <div className="h-5 bg-slate-100 rounded w-28"></div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (!loan) {
-    return (
-      <div className="space-y-6 page-container animate-fade-in">
-        <div className="section-card p-6 text-center py-16">
-          <AlertCircle className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 mb-2">Loan not found</h3>
-          <p className="text-slate-500 mb-4">The loan you're looking for doesn't exist or you don't have access to it.</p>
-          <Button onClick={() => setLocation(backPath)} variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Loans
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const principal = parseFloat(loan.principalAmount || '0');
-  const monthlyPayment = parseFloat(loan.monthlyPayment || '0');
-  const termMonths = parseInt(loan.termMonths || '0');
-  const interestRate = parseFloat(loan.interestRate || '0');
+  const principal = parseFloat(loan?.principalAmount || '0');
+  const monthlyPayment = parseFloat(loan?.monthlyPayment || '0');
+  const termMonths = parseInt(loan?.termMonths || '0');
+  const interestRate = parseFloat(loan?.interestRate || '0');
 
   const totalInterestAmount = (monthlyPayment * termMonths) - principal;
   const totalRepayable = principal + totalInterestAmount;
-  const totalPaid = totalRepayable - parseFloat(loan.outstandingBalance || '0');
+  const totalPaid = totalRepayable - parseFloat(loan?.outstandingBalance || '0');
   const progressPercent = totalRepayable > 0 ? Math.min((totalPaid / totalRepayable) * 100, 100) : 0;
 
   const repaymentSchedule = useMemo(() => {
-    if (!principal || !monthlyPayment || !termMonths) return [];
+    if (!loan || !principal || !monthlyPayment || !termMonths) return [];
 
     const startDate = loan.disbursedAt ? new Date(loan.disbursedAt) : 
                       loan.approvedAt ? new Date(loan.approvedAt) : 
@@ -138,7 +103,42 @@ export default function LoanDetails() {
     }
 
     return schedule;
-  }, [principal, monthlyPayment, termMonths, interestRate, loan.disbursedAt, loan.approvedAt, loan.createdAt]);
+  }, [loan, principal, monthlyPayment, termMonths, interestRate]);
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 page-container animate-fade-in">
+        <div className="section-card p-6 animate-pulse">
+          <div className="h-6 bg-slate-100 rounded w-48 mb-4"></div>
+          <div className="h-4 bg-slate-100 rounded w-32 mb-6"></div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i}>
+                <div className="h-3 bg-slate-100 rounded w-20 mb-2"></div>
+                <div className="h-5 bg-slate-100 rounded w-28"></div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!loan) {
+    return (
+      <div className="space-y-6 page-container animate-fade-in">
+        <div className="section-card p-6 text-center py-16">
+          <AlertCircle className="h-12 w-12 text-slate-300 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-slate-900 mb-2">Loan not found</h3>
+          <p className="text-slate-500 mb-4">The loan you're looking for doesn't exist or you don't have access to it.</p>
+          <Button onClick={() => setLocation(backPath)} variant="outline">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Loans
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const handleExportStatement = () => {
     if (!transactions || transactions.length === 0) return;

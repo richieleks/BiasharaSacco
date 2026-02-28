@@ -1,0 +1,145 @@
+client:536  WebSocket connection to 'wss://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/?token=3w2skIVRw2eG' failed: 
+setupWebSocket @ client:536
+client:536  Uncaught (in promise) SyntaxError: Failed to construct 'WebSocket': The URL 'wss://localhost:undefined/?token=3w2skIVRw2eG' is invalid.
+    at setupWebSocket (client:536:19)
+    at fallback (client:509:16)
+    at WebSocket.<anonymous> (client:555:7)
+chunk-RPCDYKBN.js?v=1d3869d2:21551 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+useWebSocket.ts:36 Attempting WebSocket connection to: wss://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/ws
+useWebSocket.ts:36 Attempting WebSocket connection to: wss://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/ws
+useWebSocket.ts:42 WebSocket connected
+useWebSocket.ts:57 WebSocket authenticated
+useWebSocket.ts:42 WebSocket connected
+useWebSocket.ts:57 WebSocket authenticated
+chunk-RPCDYKBN.js?v=1d3869d2:521  Warning: React has detected a change in the order of Hooks called by LoanDetails. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://reactjs.org/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+1. useContext                 useContext
+2. useContext                 useContext
+3. useSyncExternalStore       useSyncExternalStore
+4. useRef                     useRef
+5. useInsertionEffect         useInsertionEffect
+6. useContext                 useContext
+7. useSyncExternalStore       useSyncExternalStore
+8. useRef                     useRef
+9. useInsertionEffect         useInsertionEffect
+10. useContext                useContext
+11. useContext                useContext
+12. useContext                useContext
+13. useEffect                 useEffect
+14. useState                  useState
+15. useCallback               useCallback
+16. useSyncExternalStore      useSyncExternalStore
+17. useEffect                 useEffect
+18. useContext                useContext
+19. useContext                useContext
+20. useContext                useContext
+21. useEffect                 useEffect
+22. useState                  useState
+23. useCallback               useCallback
+24. useSyncExternalStore      useSyncExternalStore
+25. useEffect                 useEffect
+26. useSyncExternalStore      useSyncExternalStore
+27. useEffect                 useEffect
+28. useCallback               useCallback
+29. useContext                useContext
+30. useContext                useContext
+31. useContext                useContext
+32. useEffect                 useEffect
+33. useState                  useState
+34. useCallback               useCallback
+35. useSyncExternalStore      useSyncExternalStore
+36. useEffect                 useEffect
+37. useContext                useContext
+38. useContext                useContext
+39. useContext                useContext
+40. useEffect                 useEffect
+41. useState                  useState
+42. useCallback               useCallback
+43. useSyncExternalStore      useSyncExternalStore
+44. useEffect                 useEffect
+45. undefined                 useMemo
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    at LoanDetails (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/loan-details.tsx:64:22)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=YC0NPosgfeYJaEhlnIwUz:55:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1d3869d2:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1d3869d2:379:17)
+    at div
+    at PageTransition (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=YC0NPosgfeYJaEhlnIwUz:105:27)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=YC0NPosgfeYJaEhlnIwUz:197:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=1d3869d2:38:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=1d3869d2:67:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=1d3869d2:2805:3)
+    at App
+printWarning @ chunk-RPCDYKBN.js?v=1d3869d2:521
+chunk-RPCDYKBN.js?v=1d3869d2:11678  Uncaught Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (chunk-RPCDYKBN.js?v=1d3869d2:11678:21)
+    at updateMemo (chunk-RPCDYKBN.js?v=1d3869d2:12199:22)
+    at Object.useMemo (chunk-RPCDYKBN.js?v=1d3869d2:12726:24)
+    at useMemo (react.development.js:1650:21)
+    at LoanDetails (loan-details.tsx:101:29)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=1d3869d2:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=1d3869d2:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=1d3869d2:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=1d3869d2:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=1d3869d2:3699:24)
+chunk-RPCDYKBN.js?v=1d3869d2:11678  Uncaught Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (chunk-RPCDYKBN.js?v=1d3869d2:11678:21)
+    at updateMemo (chunk-RPCDYKBN.js?v=1d3869d2:12199:22)
+    at Object.useMemo (chunk-RPCDYKBN.js?v=1d3869d2:12726:24)
+    at useMemo (react.development.js:1650:21)
+    at LoanDetails (loan-details.tsx:101:29)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=1d3869d2:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=1d3869d2:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=1d3869d2:15924:22)
+    at HTMLUnknownElement.callCallback2 (chunk-RPCDYKBN.js?v=1d3869d2:3674:22)
+    at Object.invokeGuardedCallbackDev (chunk-RPCDYKBN.js?v=1d3869d2:3699:24)
+chunk-RPCDYKBN.js?v=1d3869d2:14032  The above error occurred in the <LoanDetails> component:
+
+    at LoanDetails (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/loan-details.tsx:64:22)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=YC0NPosgfeYJaEhlnIwUz:55:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1d3869d2:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1d3869d2:379:17)
+    at div
+    at PageTransition (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=YC0NPosgfeYJaEhlnIwUz:105:27)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=YC0NPosgfeYJaEhlnIwUz:197:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=1d3869d2:38:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=1d3869d2:67:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=1d3869d2:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ chunk-RPCDYKBN.js?v=1d3869d2:14032
+chunk-RPCDYKBN.js?v=1d3869d2:9129  Uncaught Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (chunk-RPCDYKBN.js?v=1d3869d2:11678:21)
+    at updateMemo (chunk-RPCDYKBN.js?v=1d3869d2:12199:22)
+    at Object.useMemo (chunk-RPCDYKBN.js?v=1d3869d2:12726:24)
+    at useMemo (react.development.js:1650:21)
+    at LoanDetails (loan-details.tsx:101:29)
+    at renderWithHooks (chunk-RPCDYKBN.js?v=1d3869d2:11548:26)
+    at updateFunctionComponent (chunk-RPCDYKBN.js?v=1d3869d2:14582:28)
+    at beginWork (chunk-RPCDYKBN.js?v=1d3869d2:15924:22)
+    at beginWork$1 (chunk-RPCDYKBN.js?v=1d3869d2:19753:22)
+    at performUnitOfWork (chunk-RPCDYKBN.js?v=1d3869d2:19198:20)
+useWebSocket.ts:82 WebSocket disconnected
+useWebSocket.ts:82 WebSocket disconnected
+useWebSocket.ts:36 Attempting WebSocket connection to: wss://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/ws
+useWebSocket.ts:36 Attempting WebSocket connection to: wss://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/ws
+useWebSocket.ts:42 WebSocket connected
+useWebSocket.ts:57 WebSocket authenticated
+[NEW] Explain Console errors by using Copilot in Edge: click
+         
+         to explain an error. 
+        Learn more
+        Don't show again
+useWebSocket.ts:42 WebSocket connected
+useWebSocket.ts:57 WebSocket authenticated
