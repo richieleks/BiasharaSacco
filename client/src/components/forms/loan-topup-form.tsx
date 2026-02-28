@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowUpCircle, Loader2, AlertCircle } from "lucide-react";
+import { ArrowUpCircle, Loader2, AlertCircle, Info } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -36,6 +36,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
 
   const { data: activeLoans = [], isLoading: loadingLoans } = useQuery<any[]>({
     queryKey: ['/api/loans/active-for-topup'],
@@ -67,27 +68,59 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
   const matchedLoanType = selectedLoan ? loanTypes.find(lt => lt.name === selectedLoan.loanType) : null;
   const minRepaymentsRequired = matchedLoanType?.minRepaymentsForTopUp ?? 3;
 
+  const loanTypeMinAmount = parseFloat(matchedLoanType?.minAmount || '0');
+  const loanTypeMaxAmount = parseFloat(matchedLoanType?.maxAmount || '0');
+  const loanTypeMinTerm = matchedLoanType?.minTerm || 1;
+  const loanTypeMaxTerm = matchedLoanType?.maxTerm || 60;
+  const loanTypeInterestRate = matchedLoanType?.interestRate || '12.00';
+
   useEffect(() => {
     if (selectedLoan) {
       form.setValue('loanType', selectedLoan.loanType || '');
-      const matchingType = loanTypes.find(lt => lt.name === selectedLoan.loanType);
-      if (matchingType) {
-        form.setValue('interestRate', (matchingType.interestRate || '12.00').toString());
-        const maxTerm = matchingType.maxTerm || 60;
-        const minTerm = matchingType.minTerm || 1;
+      if (matchedLoanType) {
+        form.setValue('interestRate', loanTypeInterestRate.toString());
         const currentTerm = parseInt(form.getValues('termMonths') || '0');
-        if (currentTerm < minTerm || currentTerm > maxTerm) {
-          form.setValue('termMonths', maxTerm.toString());
+        if (currentTerm < loanTypeMinTerm || currentTerm > loanTypeMaxTerm) {
+          form.setValue('termMonths', loanTypeMaxTerm.toString());
         }
       }
     }
-  }, [selectedLoan, loanTypes, form]);
+  }, [selectedLoan, matchedLoanType, loanTypeInterestRate, loanTypeMinTerm, loanTypeMaxTerm, form]);
 
   const topUpAmount = parseFloat(form.watch('topUpAmount') || '0');
   const outstandingBalance = selectedLoan ? parseFloat(selectedLoan.outstandingBalance || '0') : 0;
   const totalNewPrincipal = outstandingBalance + topUpAmount;
   const annualRate = parseFloat(form.watch('interestRate') || '0');
   const termMonths = parseInt(form.watch('termMonths') || '0');
+
+  useEffect(() => {
+    if (!matchedLoanType || !selectedLoan) {
+      setValidationErrors([]);
+      return;
+    }
+
+    const errors: string[] = [];
+
+    if (topUpAmount > 0) {
+      if (loanTypeMinAmount > 0 && totalNewPrincipal < loanTypeMinAmount) {
+        errors.push(`Total loan amount (${formatCurrency(totalNewPrincipal)}) is below the minimum of ${formatCurrency(loanTypeMinAmount)} for this loan type`);
+      }
+      if (loanTypeMaxAmount > 0 && totalNewPrincipal > loanTypeMaxAmount) {
+        errors.push(`Total loan amount (${formatCurrency(totalNewPrincipal)}) exceeds the maximum of ${formatCurrency(loanTypeMaxAmount)} for this loan type`);
+      }
+    }
+
+    if (termMonths > 0) {
+      if (termMonths < loanTypeMinTerm) {
+        errors.push(`Repayment period (${termMonths} months) is below the minimum of ${loanTypeMinTerm} months`);
+      }
+      if (termMonths > loanTypeMaxTerm) {
+        errors.push(`Repayment period (${termMonths} months) exceeds the maximum of ${loanTypeMaxTerm} months`);
+      }
+    }
+
+    setValidationErrors(errors);
+  }, [topUpAmount, totalNewPrincipal, termMonths, matchedLoanType, selectedLoan, loanTypeMinAmount, loanTypeMaxAmount, loanTypeMinTerm, loanTypeMaxTerm]);
 
   const calculateMonthlyPayment = () => {
     if (totalNewPrincipal > 0 && annualRate > 0 && termMonths > 0) {
@@ -149,6 +182,14 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
   });
 
   const handleSubmit = (data: TopUpFormData) => {
+    if (validationErrors.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: validationErrors[0],
+        variant: "destructive",
+      });
+      return;
+    }
     mutation.mutate(data);
   };
 
@@ -253,6 +294,49 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
               </div>
             )}
 
+            {matchedLoanType && (
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                <h4 className="font-medium text-sm text-slate-700 flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5" />
+                  Loan Type Rules ({matchedLoanType.displayName || matchedLoanType.name})
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-slate-500">Interest Rate:</span>
+                    <span className="ml-1 font-medium text-slate-800">{parseFloat(loanTypeInterestRate).toFixed(1)}% p.a.</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Term Range:</span>
+                    <span className="ml-1 font-medium text-slate-800">{loanTypeMinTerm} - {loanTypeMaxTerm} months</span>
+                  </div>
+                  {loanTypeMinAmount > 0 && (
+                    <div>
+                      <span className="text-slate-500">Min Amount:</span>
+                      <span className="ml-1 font-medium text-slate-800">{formatCurrency(loanTypeMinAmount)}</span>
+                    </div>
+                  )}
+                  {loanTypeMaxAmount > 0 && (
+                    <div>
+                      <span className="text-slate-500">Max Amount:</span>
+                      <span className="ml-1 font-medium text-slate-800">{formatCurrency(loanTypeMaxAmount)}</span>
+                    </div>
+                  )}
+                  {matchedLoanType.interestType && (
+                    <div>
+                      <span className="text-slate-500">Interest Method:</span>
+                      <span className="ml-1 font-medium text-slate-800 capitalize">{matchedLoanType.interestType.replace('_', ' ')}</span>
+                    </div>
+                  )}
+                  {matchedLoanType.processingFee && parseFloat(matchedLoanType.processingFee) > 0 && (
+                    <div>
+                      <span className="text-slate-500">Processing Fee:</span>
+                      <span className="ml-1 font-medium text-slate-800">{parseFloat(matchedLoanType.processingFee).toFixed(1)}%</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="topUpAmount"
@@ -262,12 +346,32 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                   <FormControl>
                     <Input type="number" placeholder="Enter additional amount" {...field} />
                   </FormControl>
+                  {matchedLoanType && (
+                    <p className="text-xs text-muted-foreground">
+                      {loanTypeMaxAmount > 0
+                        ? `Maximum additional amount: ${formatCurrency(Math.max(0, loanTypeMaxAmount - outstandingBalance))}`
+                        : 'No maximum amount limit for this loan type'}
+                    </p>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {selectedLoan && topUpAmount > 0 && (
+            {validationErrors.length > 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <ul className="list-disc pl-4 space-y-1">
+                    {validationErrors.map((error, i) => (
+                      <li key={i} className="text-sm">{error}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {selectedLoan && topUpAmount > 0 && validationErrors.length === 0 && (
               <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
                 <h4 className="font-medium text-sm text-emerald-800">New Loan Summary</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
@@ -301,8 +405,9 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                   <FormItem>
                     <FormLabel>Interest Rate (%)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} />
+                      <Input type="number" step="0.01" {...field} readOnly disabled className="bg-slate-100 cursor-not-allowed" />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">Set by loan type, cannot be changed</p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -315,8 +420,16 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                   <FormItem>
                     <FormLabel>Repayment Period (Months)</FormLabel>
                     <FormControl>
-                      <Input type="number" max={24} {...field} />
+                      <Input
+                        type="number"
+                        min={loanTypeMinTerm}
+                        max={loanTypeMaxTerm}
+                        {...field}
+                      />
                     </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      {loanTypeMinTerm} to {loanTypeMaxTerm} months
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -351,7 +464,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
             <Button
               type="submit"
               className="w-full sacco-gradient text-white hover:opacity-90"
-              disabled={mutation.isPending || !selectedLoan}
+              disabled={mutation.isPending || !selectedLoan || validationErrors.length > 0}
             >
               {mutation.isPending ? (
                 <>

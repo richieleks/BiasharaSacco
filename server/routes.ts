@@ -1425,6 +1425,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const additionalAmount = parseFloat(topUpAmount);
       const totalNewPrincipal = outstandingBalance + additionalAmount;
 
+      if (additionalAmount <= 0) {
+        return res.status(400).json({ message: "Top-up amount must be greater than zero" });
+      }
+
+      if (matchingLoanType) {
+        const minAmount = parseFloat(matchingLoanType.minAmount || '0');
+        const maxAmount = parseFloat(matchingLoanType.maxAmount || '0');
+        const minTerm = matchingLoanType.minTerm || 1;
+        const maxTerm = matchingLoanType.maxTerm || 60;
+
+        if (minAmount > 0 && totalNewPrincipal < minAmount) {
+          return res.status(400).json({
+            message: `Total loan amount (${totalNewPrincipal.toLocaleString()}) is below the minimum of ${minAmount.toLocaleString()} for this loan type`
+          });
+        }
+
+        if (maxAmount > 0 && totalNewPrincipal > maxAmount) {
+          return res.status(400).json({
+            message: `Total loan amount (${totalNewPrincipal.toLocaleString()}) exceeds the maximum of ${maxAmount.toLocaleString()} for this loan type`
+          });
+        }
+
+        if (termMonths < minTerm) {
+          return res.status(400).json({
+            message: `Repayment period (${termMonths} months) is below the minimum of ${minTerm} months for this loan type`
+          });
+        }
+
+        if (termMonths > maxTerm) {
+          return res.status(400).json({
+            message: `Repayment period (${termMonths} months) exceeds the maximum of ${maxTerm} months for this loan type`
+          });
+        }
+      }
+
       const eligibilityResult = await businessRulesValidator.checkLoanEligibility(
         member.id,
         totalNewPrincipal
@@ -1443,7 +1478,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: periodValidation.message });
       }
 
-      const decimalInterestRate = parseFloat(interestRate) / 100;
+      const resolvedInterestRate = matchingLoanType ? matchingLoanType.interestRate : interestRate;
+      const decimalInterestRate = parseFloat(resolvedInterestRate) / 100;
       const topUpActiveLoanTypes = await storage.getActiveLoanTypes();
       const topUpLoanTypeConfig = topUpActiveLoanTypes.find(lt => lt.name === loanType);
       const topUpInterestMethod = topUpLoanTypeConfig?.interestType || 'reducing_balance';
