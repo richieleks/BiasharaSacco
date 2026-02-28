@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, UserPlus, DollarSign } from "lucide-react";
+import { Trash2, Plus, UserPlus, DollarSign, AlertCircle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { Member } from "@shared/schema";
 
@@ -36,6 +36,7 @@ export default function GuarantorSelection({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [guaranteeAmount, setGuaranteeAmount] = useState<string>("");
+  const [formError, setFormError] = useState<string | null>(null);
 
   const { data: members = [] } = useQuery<Member[]>({
     queryKey: ['/api/members'],
@@ -53,12 +54,23 @@ export default function GuarantorSelection({
   const guaranteeCoverage = amountToGuarantee > 0 ? (totalGuaranteed / amountToGuarantee) * 100 : 100;
 
   const addGuarantor = () => {
-    if (!selectedMemberId || !guaranteeAmount || parseFloat(guaranteeAmount) <= 0) {
+    setFormError(null);
+
+    if (!selectedMemberId) {
+      setFormError("Please select a member to add as guarantor");
+      return;
+    }
+
+    if (!guaranteeAmount || parseFloat(guaranteeAmount) <= 0) {
+      setFormError("Please enter a valid guarantee amount greater than 0");
       return;
     }
 
     const selectedMember = members.find(m => m.id === parseInt(selectedMemberId));
-    if (!selectedMember) return;
+    if (!selectedMember) {
+      setFormError("Selected member not found");
+      return;
+    }
 
     const newGuarantor: GuarantorData = {
       guarantorMemberId: parseInt(selectedMemberId),
@@ -69,9 +81,9 @@ export default function GuarantorSelection({
 
     onGuarantorsChange([...guarantors, newGuarantor]);
     
-    // Reset form
     setSelectedMemberId("");
     setGuaranteeAmount("");
+    setFormError(null);
     setIsDialogOpen(false);
   };
 
@@ -95,7 +107,7 @@ export default function GuarantorSelection({
             <UserPlus className="h-5 w-5" />
             Guarantors ({guarantors.length})
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (open) setFormError(null); }}>
             <DialogTrigger asChild>
               <Button 
                 size="sm" 
@@ -151,11 +163,18 @@ export default function GuarantorSelection({
                   />
                 </div>
 
+                {formError && (
+                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                    <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                    {formError}
+                  </div>
+                )}
+
                 <div className="flex gap-2">
-                  <Button onClick={addGuarantor} disabled={!selectedMemberId || !guaranteeAmount}>
+                  <Button onClick={addGuarantor}>
                     Add Guarantor
                   </Button>
-                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  <Button variant="outline" onClick={() => { setIsDialogOpen(false); setFormError(null); }}>
                     Cancel
                   </Button>
                 </div>
