@@ -141,11 +141,20 @@ export default function LoanDetails() {
     );
   }
 
+  const sortedTransactions = (transactions || []).slice().sort((a: any, b: any) => {
+    const dateA = new Date(a.createdAt || a.date || 0).getTime();
+    const dateB = new Date(b.createdAt || b.date || 0).getTime();
+    if (dateA !== dateB) return dateA - dateB;
+    const orderA = a.transactionType === 'loan_disbursement' ? 0 : 1;
+    const orderB = b.transactionType === 'loan_disbursement' ? 0 : 1;
+    return orderA - orderB;
+  });
+
   const handleExportStatement = () => {
-    if (!transactions || transactions.length === 0) return;
+    if (!sortedTransactions || sortedTransactions.length === 0) return;
 
     let runningBalance = 0;
-    const rows = transactions.map((txn: any) => {
+    const rows = sortedTransactions.map((txn: any) => {
       const amount = parseFloat(txn.amount || '0');
       if (txn.transactionType === 'loan_disbursement') runningBalance += amount;
       else if (txn.transactionType === 'loan_payment') runningBalance -= amount;
@@ -155,11 +164,10 @@ export default function LoanDetails() {
         txn.transactionType === 'loan_payment' ? amount : '',
         txn.transactionType === 'loan_disbursement' ? amount : '',
         runningBalance,
-        txn.status || 'completed',
       ];
     });
 
-    const csvData = [['Date', 'Description', 'Payment', 'Disbursement', 'Balance', 'Status'], ...rows];
+    const csvData = [['Date', 'Description', 'Debit', 'Credit', 'Balance'], ...rows];
     const csvContent = csvData.map(row => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -382,16 +390,15 @@ export default function LoanDetails() {
                       <TableRow>
                         <TableHead className="text-xs">Date</TableHead>
                         <TableHead className="text-xs">Description</TableHead>
-                        <TableHead className="text-xs text-right">Payment</TableHead>
-                        <TableHead className="text-xs text-right">Disbursement</TableHead>
+                        <TableHead className="text-xs text-right">Debit</TableHead>
+                        <TableHead className="text-xs text-right">Credit</TableHead>
                         <TableHead className="text-xs text-right">Balance</TableHead>
-                        <TableHead className="text-xs text-center">Status</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {(() => {
                         let runningBalance = 0;
-                        return transactions.map((txn: any) => {
+                        return sortedTransactions.map((txn: any) => {
                           const amount = parseFloat(txn.amount || '0');
                           if (txn.transactionType === 'loan_disbursement') runningBalance += amount;
                           else if (txn.transactionType === 'loan_payment') runningBalance -= amount;
@@ -401,18 +408,13 @@ export default function LoanDetails() {
                                 {txn.createdAt ? format(new Date(txn.createdAt), 'MMM dd, yyyy') : 'N/A'}
                               </TableCell>
                               <TableCell className="text-xs">{txn.description || txn.transactionType || 'N/A'}</TableCell>
-                              <TableCell className="text-xs text-right font-medium text-emerald-700">
+                              <TableCell className="text-xs text-right tabular-nums whitespace-nowrap">
                                 {txn.transactionType === 'loan_payment' ? formatCurrency(amount) : ''}
                               </TableCell>
-                              <TableCell className="text-xs text-right font-medium text-blue-700">
+                              <TableCell className="text-xs text-right tabular-nums whitespace-nowrap">
                                 {txn.transactionType === 'loan_disbursement' ? formatCurrency(amount) : ''}
                               </TableCell>
-                              <TableCell className="text-xs text-right font-semibold">{formatCurrency(runningBalance)}</TableCell>
-                              <TableCell className="text-center">
-                                <Badge variant="outline" className={txn.status === 'completed' ? 'bg-emerald-50 text-emerald-700 text-xs' : 'text-xs'}>
-                                  {txn.status || 'completed'}
-                                </Badge>
-                              </TableCell>
+                              <TableCell className="text-xs text-right font-semibold tabular-nums whitespace-nowrap">{formatCurrency(runningBalance)}</TableCell>
                             </TableRow>
                           );
                         });
