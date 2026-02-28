@@ -1,16 +1,16 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import AmortizationSchedule from "@/components/amortization-schedule";
 import { formatCurrency } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, addMonths } from "date-fns";
 import {
   ArrowLeft, DollarSign, FileText, Calendar, Download, CreditCard,
-  Percent, Hash, HandCoins, Clock, AlertCircle, ArrowUpCircle,
+  Percent, Hash, HandCoins, Clock, AlertCircle, ArrowUpCircle, Calculator,
 } from "lucide-react";
 
 const getStatusColor = (status: string) => {
@@ -85,16 +85,57 @@ export default function LoanDetails() {
     );
   }
 
-  const totalInterestAmount = (() => {
-    const principal = parseFloat(loan.principalAmount || '0');
-    const monthly = parseFloat(loan.monthlyPayment || '0');
-    const term = parseInt(loan.termMonths || '0');
-    return (monthly * term) - principal;
-  })();
+  const principal = parseFloat(loan.principalAmount || '0');
+  const monthlyPayment = parseFloat(loan.monthlyPayment || '0');
+  const termMonths = parseInt(loan.termMonths || '0');
+  const interestRate = parseFloat(loan.interestRate || '0');
 
-  const totalRepayable = parseFloat(loan.principalAmount || '0') + totalInterestAmount;
+  const totalInterestAmount = (monthlyPayment * termMonths) - principal;
+  const totalRepayable = principal + totalInterestAmount;
   const totalPaid = totalRepayable - parseFloat(loan.outstandingBalance || '0');
   const progressPercent = totalRepayable > 0 ? Math.min((totalPaid / totalRepayable) * 100, 100) : 0;
+
+  const repaymentSchedule = useMemo(() => {
+    if (!principal || !monthlyPayment || !termMonths) return [];
+
+    const startDate = loan.disbursedAt ? new Date(loan.disbursedAt) : 
+                      loan.approvedAt ? new Date(loan.approvedAt) : 
+                      loan.createdAt ? new Date(loan.createdAt) : new Date();
+    const monthlyRate = interestRate / 12;
+    const schedule: Array<{
+      month: number;
+      dueDate: Date;
+      payment: number;
+      principalPortion: number;
+      interestPortion: number;
+      balance: number;
+    }> = [];
+
+    let balance = principal;
+    const totalMonthlyPayment = monthlyPayment;
+
+    for (let i = 1; i <= termMonths; i++) {
+      const interestPortion = balance * monthlyRate;
+      const principalPortion = Math.min(totalMonthlyPayment - interestPortion, balance);
+      balance = Math.max(0, balance - principalPortion);
+      const dueDate = addMonths(startDate, i);
+
+      schedule.push({
+        month: i,
+        dueDate,
+        payment: i === termMonths ? principalPortion + interestPortion : totalMonthlyPayment,
+        principalPortion: i === termMonths ? balance + principalPortion : principalPortion,
+        interestPortion,
+        balance: i === termMonths ? 0 : balance,
+      });
+
+      if (i === termMonths) {
+        schedule[i - 1].balance = 0;
+      }
+    }
+
+    return schedule;
+  }, [principal, monthlyPayment, termMonths, interestRate, loan.disbursedAt, loan.approvedAt, loan.createdAt]);
 
   const handleExportStatement = () => {
     if (!transactions || transactions.length === 0) return;
@@ -386,8 +427,105 @@ export default function LoanDetails() {
         </TabsContent>
 
         <TabsContent value="schedule" className="mt-4">
-          {loan.uuid ? (
-            <AmortizationSchedule loan={loan} />
+          {repaymentSchedule.length > 0 ? (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Card className="border-slate-200/60">
+                  <CardContent className="pt-4 pb-3">
+                    <p className="text-xs font-medium text-slate-500 mb-1">Total Repayable</p>
+                    <p className="text-lg font-bold">{formatCurrency(totalRepayable)}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-slate-200/60">
+                  <CardContent className="pt-4 pb-3">
+                    <p className="text-xs font-medium text-slate-500 mb-1">Total Interest</p>
+                    <p className="text-lg font-bold text-amber-700">{formatCurrency(totalInterestAmount)}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-slate-200/60">
+                  <CardContent className="pt-4 pb-3">
+                    <p className="text-xs font-medium text-slate-500 mb-1">Monthly Payment</p>
+                    <p className="text-lg font-bold text-blue-700">{formatCurrency(monthlyPayment)}</p>
+                  </CardContent>
+                </Card>
+                <Card className="border-slate-200/60">
+                  <CardContent className="pt-4 pb-3">
+                    <p className="text-xs font-medium text-slate-500 mb-1">Term</p>
+                    <p className="text-lg font-bold">{termMonths} months</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="border-slate-200/60">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                        <Calculator className="h-4 w-4 text-blue-600" />
+                        Repayment Schedule
+                      </CardTitle>
+                      <CardDescription className="text-xs mt-1">
+                        Detailed breakdown of {termMonths} monthly payments at {(interestRate * 100).toFixed(1)}% per annum
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const rows = repaymentSchedule.map(p => [
+                          p.month,
+                          format(p.dueDate, 'yyyy-MM-dd'),
+                          Math.round(p.payment),
+                          Math.round(p.principalPortion),
+                          Math.round(p.interestPortion),
+                          Math.round(p.balance),
+                        ]);
+                        const csvData = [['#', 'Due Date', 'Payment', 'Principal', 'Interest', 'Balance'], ...rows];
+                        const csvContent = csvData.map(row => row.join(',')).join('\n');
+                        const blob = new Blob([csvContent], { type: 'text/csv' });
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `repayment-schedule-${loan.loanNumber || 'loan'}.csv`;
+                        link.click();
+                        window.URL.revokeObjectURL(url);
+                      }}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      Export CSV
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="text-xs w-12">#</TableHead>
+                          <TableHead className="text-xs">Due Date</TableHead>
+                          <TableHead className="text-xs text-right">Payment</TableHead>
+                          <TableHead className="text-xs text-right">Principal</TableHead>
+                          <TableHead className="text-xs text-right">Interest</TableHead>
+                          <TableHead className="text-xs text-right">Balance</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {repaymentSchedule.map((row) => (
+                          <TableRow key={row.month}>
+                            <TableCell className="text-xs font-medium">{row.month}</TableCell>
+                            <TableCell className="text-xs whitespace-nowrap">{format(row.dueDate, 'MMM dd, yyyy')}</TableCell>
+                            <TableCell className="text-xs text-right font-medium">{formatCurrency(row.payment)}</TableCell>
+                            <TableCell className="text-xs text-right text-blue-700">{formatCurrency(row.principalPortion)}</TableCell>
+                            <TableCell className="text-xs text-right text-amber-700">{formatCurrency(row.interestPortion)}</TableCell>
+                            <TableCell className="text-xs text-right font-semibold">{formatCurrency(row.balance)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           ) : (
             <Card className="border-slate-200/60">
               <CardContent className="py-8 text-center">
