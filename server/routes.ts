@@ -1259,10 +1259,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Convert percentage to decimal for storage (15% -> 0.15)
       const decimalInterestRate = parseFloat(interestRate) / 100;
       
-      // Calculate monthly payment (simple calculation)
-      const monthlyInterestRate = decimalInterestRate / 12;
-      const monthlyPayment = (parseFloat(principalAmount) * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, termMonths)) / 
-        (Math.pow(1 + monthlyInterestRate, termMonths) - 1);
+      // Look up loan type configuration for interest calculation method
+      const activeLoanTypes = await storage.getActiveLoanTypes();
+      const loanTypeConfig = activeLoanTypes.find(lt => lt.name === loanType);
+      const interestMethod = loanTypeConfig?.interestType || 'reducing_balance';
+      const principal = parseFloat(principalAmount);
+      const timeInYears = termMonths / 12;
+      
+      let monthlyPayment: number;
+      switch (interestMethod) {
+        case 'simple': {
+          const totalInterest = principal * decimalInterestRate * timeInYears;
+          monthlyPayment = (principal + totalInterest) / termMonths;
+          break;
+        }
+        case 'compound': {
+          const compFreq = loanTypeConfig?.compoundingFrequency || 'monthly';
+          let n = 12;
+          if (compFreq === 'quarterly') n = 4;
+          if (compFreq === 'annually') n = 1;
+          const compoundAmount = principal * Math.pow(1 + decimalInterestRate / n, n * timeInYears);
+          monthlyPayment = compoundAmount / termMonths;
+          break;
+        }
+        case 'reducing_balance':
+        default: {
+          const monthlyInterestRate = decimalInterestRate / 12;
+          monthlyPayment = (principal * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, termMonths)) / 
+            (Math.pow(1 + monthlyInterestRate, termMonths) - 1);
+          break;
+        }
+      }
 
       // Generate unique loan number
       const loanNumber = `LN${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
@@ -1417,9 +1444,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const decimalInterestRate = parseFloat(interestRate) / 100;
-      const monthlyInterestRate = decimalInterestRate / 12;
-      const monthlyPayment = (totalNewPrincipal * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, termMonths)) /
-        (Math.pow(1 + monthlyInterestRate, termMonths) - 1);
+      const topUpActiveLoanTypes = await storage.getActiveLoanTypes();
+      const topUpLoanTypeConfig = topUpActiveLoanTypes.find(lt => lt.name === loanType);
+      const topUpInterestMethod = topUpLoanTypeConfig?.interestType || 'reducing_balance';
+      const topUpTimeInYears = termMonths / 12;
+      
+      let monthlyPayment: number;
+      switch (topUpInterestMethod) {
+        case 'simple': {
+          const totalInterest = totalNewPrincipal * decimalInterestRate * topUpTimeInYears;
+          monthlyPayment = (totalNewPrincipal + totalInterest) / termMonths;
+          break;
+        }
+        case 'compound': {
+          const compFreq = topUpLoanTypeConfig?.compoundingFrequency || 'monthly';
+          let n = 12;
+          if (compFreq === 'quarterly') n = 4;
+          if (compFreq === 'annually') n = 1;
+          const compoundAmount = totalNewPrincipal * Math.pow(1 + decimalInterestRate / n, n * topUpTimeInYears);
+          monthlyPayment = compoundAmount / termMonths;
+          break;
+        }
+        case 'reducing_balance':
+        default: {
+          const monthlyInterestRate = decimalInterestRate / 12;
+          monthlyPayment = (totalNewPrincipal * monthlyInterestRate * Math.pow(1 + monthlyInterestRate, termMonths)) /
+            (Math.pow(1 + monthlyInterestRate, termMonths) - 1);
+          break;
+        }
+      }
 
       const loanNumber = `LN${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
