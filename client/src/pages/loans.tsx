@@ -532,7 +532,7 @@ export default function Loans() {
                             )}
                           </>
                         )}
-                        {(['active', 'disbursed'].includes(loan.status)) && parseFloat(loan.outstandingBalance || '0') > 0 && (
+                        {!isPersonalView && (['active', 'disbursed'].includes(loan.status)) && parseFloat(loan.outstandingBalance || '0') > 0 && (
                           <Button
                             size="sm"
                             onClick={() => openRepaymentModal(loan)}
