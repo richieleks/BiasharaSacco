@@ -99,9 +99,16 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
         if (currentTerm < loanTypeMinTerm || currentTerm > loanTypeMaxTerm) {
           form.setValue('termMonths', loanTypeMaxTerm.toString());
         }
+        const effectiveMaxTopUp = loanTypeMaxAmount > 0 ? Math.max(0, loanTypeMaxAmount - outstandingBalance) : 0;
+        if (effectiveMaxTopUp > 0) {
+          const savingsLimit = totalSavingsBalance * loanToSavingsRatio;
+          const maxBySavings = savingsLimit > 0 ? Math.max(0, savingsLimit - outstandingBalance) : effectiveMaxTopUp;
+          const defaultAmount = Math.floor(Math.min(effectiveMaxTopUp, maxBySavings));
+          form.setValue('topUpAmount', defaultAmount > 0 ? defaultAmount.toString() : '');
+        }
       }
     }
-  }, [selectedLoan, matchedLoanType, loanTypeInterestRate, loanTypeMinTerm, loanTypeMaxTerm, form]);
+  }, [selectedLoanId, matchedLoanType, loanTypeInterestRate, loanTypeMinTerm, loanTypeMaxTerm, loanTypeMaxAmount, outstandingBalance, totalSavingsBalance, loanToSavingsRatio, form]);
 
   const topUpAmount = parseFloat(form.watch('topUpAmount') || '0');
   const totalNewPrincipal = outstandingBalance + topUpAmount;
@@ -415,29 +422,31 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
             />
 
             {validationErrors.length > 0 && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <ul className="list-disc pl-4 space-y-1">
-                    {validationErrors.map((error, i) => (
-                      <li key={i} className="text-sm">{error}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
+              <div className="p-4 bg-red-50 border-2 border-red-400 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                  <h4 className="font-semibold text-red-700 text-sm">Validation Errors</h4>
+                </div>
+                <ul className="list-disc pl-6 space-y-1">
+                  {validationErrors.map((error, i) => (
+                    <li key={i} className="text-sm text-red-700 font-medium">{error}</li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             {serverErrors.length > 0 && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  <ul className="list-disc pl-4 space-y-1">
-                    {serverErrors.map((error, i) => (
-                      <li key={i} className="text-sm">{error}</li>
-                    ))}
-                  </ul>
-                </AlertDescription>
-              </Alert>
+              <div className="p-4 bg-red-50 border-2 border-red-400 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                  <h4 className="font-semibold text-red-700 text-sm">Submission Errors</h4>
+                </div>
+                <ul className="list-disc pl-6 space-y-1">
+                  {serverErrors.map((error, i) => (
+                    <li key={i} className="text-sm text-red-700 font-medium">{error}</li>
+                  ))}
+                </ul>
+              </div>
             )}
 
             {selectedLoan && topUpAmount > 0 && validationErrors.length === 0 && (
