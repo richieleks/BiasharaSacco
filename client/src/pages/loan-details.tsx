@@ -60,8 +60,9 @@ export default function LoanDetails() {
 
   const totalInterestAmount = (monthlyPayment * termMonths) - principal;
   const totalRepayable = principal + totalInterestAmount;
-  const totalPaid = totalRepayable - parseFloat(loan?.outstandingBalance || '0');
-  const progressPercent = totalRepayable > 0 ? Math.min((totalPaid / totalRepayable) * 100, 100) : 0;
+  const outstandingBalance = parseFloat(loan?.outstandingBalance || '0');
+  const principalPaid = principal - outstandingBalance;
+  const progressPercent = principal > 0 ? Math.min((principalPaid / principal) * 100, 100) : 0;
 
   const repaymentSchedule = useMemo(() => {
     if (!loan || !principal || !monthlyPayment || !termMonths) return [];
@@ -232,8 +233,8 @@ export default function LoanDetails() {
             />
           </div>
           <div className="flex justify-between text-xs text-slate-500 mt-2">
-            <span>Paid: {formatCurrency(totalPaid)}</span>
-            <span>Total: {formatCurrency(totalRepayable)}</span>
+            <span>Paid: {formatCurrency(principalPaid)}</span>
+            <span>Principal: {formatCurrency(principal)}</span>
           </div>
         </div>
       )}
