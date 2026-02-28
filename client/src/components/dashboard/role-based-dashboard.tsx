@@ -158,6 +158,10 @@ function MemberDashboard() {
     refetchInterval: 30000,
   });
 
+  const { data: systemConfig } = useQuery<any>({
+    queryKey: ['/api/system/settings/public'],
+  });
+
   const member = freshMemberData || authMember;
 
   const { data: savingsAccounts } = useQuery<any[]>({
@@ -194,7 +198,7 @@ function MemberDashboard() {
   const activeLoans = memberLoans?.filter((l: any) => ['active', 'approved', 'disbursed'].includes(l.status)) || [];
   const totalOutstanding = activeLoans.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
   const numberOfShares = member?.numberOfShares || 4;
-  const perSharePrice = parseFloat(member?.shareContribution || "20000");
+  const perSharePrice = systemConfig?.sharePrice ?? parseFloat(member?.shareContribution || "20000");
   const shareExpected = perSharePrice * numberOfShares;
   const sharePaid = parseFloat(member?.shareCapital || "0");
 

@@ -45,6 +45,12 @@ export default function ShareCapital() {
     queryKey: ['/api/transactions'],
   });
 
+  const { data: systemConfig } = useQuery<any>({
+    queryKey: ['/api/system/settings/public'],
+  });
+
+  const systemSharePrice = systemConfig?.sharePrice ?? 5000;
+
   const shareCapitalTransactions = (transactions || []).filter(
     (t: any) => t.transactionType === 'share_capital' && t.status === 'completed'
   );
@@ -83,7 +89,7 @@ export default function ShareCapital() {
   });
 
   const totalExpected = activeMembers.reduce((sum, m) =>
-    sum + (parseFloat(m.shareContribution || "20000") * (m.numberOfShares || 4)), 0);
+    sum + (systemSharePrice * (m.numberOfShares || 4)), 0);
   const totalPaid = activeMembers.reduce((sum, m) => sum + parseFloat(m.shareCapital || "0"), 0);
   const totalOutstanding = totalExpected - totalPaid;
   const fullyPaidCount = activeMembers.filter(m => m.isPaidUp).length;
@@ -201,7 +207,7 @@ export default function ShareCapital() {
                     </TableHeader>
                     <TableBody>
                       {filteredMembers.map((member) => {
-                        const perShare = parseFloat(member.shareContribution || "20000");
+                        const perShare = systemSharePrice;
                         const shares = member.numberOfShares || 4;
                         const expected = perShare * shares;
                         const paid = parseFloat(member.shareCapital || "0");
@@ -338,9 +344,9 @@ export default function ShareCapital() {
               Post a share capital payment for {selectedMember?.fullName || 'member'}.
               {selectedMember && (
                 <span className="block mt-2 text-xs">
-                  Expected: {formatCurrency(parseFloat(selectedMember.shareContribution || "20000") * (selectedMember.numberOfShares || 4))}
+                  Expected: {formatCurrency(systemSharePrice * (selectedMember.numberOfShares || 4))}
                   {" | "}Paid: {formatCurrency(selectedMember.shareCapital || "0")}
-                  {" | "}Balance: {formatCurrency(Math.max(0, (parseFloat(selectedMember.shareContribution || "20000") * (selectedMember.numberOfShares || 4)) - parseFloat(selectedMember.shareCapital || "0")))}
+                  {" | "}Balance: {formatCurrency(Math.max(0, (systemSharePrice * (selectedMember.numberOfShares || 4)) - parseFloat(selectedMember.shareCapital || "0")))}
                 </span>
               )}
             </DialogDescription>

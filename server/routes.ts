@@ -1036,7 +1036,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paymentAmount = parseFloat(amount);
       const currentShareCapital = parseFloat(member.shareCapital || "0");
       const newShareCapital = currentShareCapital + paymentAmount;
-      const expectedTotal = parseFloat(member.shareContribution || "20000") * (member.numberOfShares || 4);
+      const sharePriceSetting = await storage.getSystemSetting('sharePrice');
+      const perSharePrice = sharePriceSetting ? parseFloat(sharePriceSetting.settingValue) : 5000;
+      const expectedTotal = perSharePrice * (member.numberOfShares || 4);
       const isPaidUp = newShareCapital >= expectedTotal;
 
       const referenceNumber = `SHR${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;

@@ -156,6 +156,10 @@ export default function MemberDetails() {
     enabled: !!memberId,
   });
 
+  const { data: systemConfig } = useQuery<any>({
+    queryKey: ['/api/system/settings/public'],
+  });
+
   const form = useForm<UpdateMemberData>({
     resolver: zodResolver(updateMemberSchema),
   });
@@ -262,7 +266,8 @@ export default function MemberDetails() {
   const memberName = member.fullName || `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim() || 'Member';
   const initials = memberName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
   const totalSavings = Array.isArray(savingsAccounts) ? savingsAccounts.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0) : 0;
-  const shareExpected = parseFloat(member.shareContribution || "20000") * (member.numberOfShares || 4);
+  const perSharePrice = systemConfig?.sharePrice ?? parseFloat(member.shareContribution || "20000");
+  const shareExpected = perSharePrice * (member.numberOfShares || 4);
   const sharePaid = parseFloat(member.shareCapital || "0");
   const shareRemaining = Math.max(0, shareExpected - sharePaid);
 
@@ -504,7 +509,7 @@ export default function MemberDetails() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="rounded-lg bg-slate-50 p-3 text-center">
                       <p className="text-xs text-slate-500 mb-1">Per Share</p>
-                      <p className="text-sm font-bold text-slate-800">{formatCurrency(member.shareContribution || "20000")}</p>
+                      <p className="text-sm font-bold text-slate-800">{formatCurrency(perSharePrice)}</p>
                     </div>
                     <div className="rounded-lg bg-slate-50 p-3 text-center">
                       <p className="text-xs text-slate-500 mb-1">Shares</p>
