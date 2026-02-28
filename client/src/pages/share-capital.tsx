@@ -307,7 +307,7 @@ export default function ShareCapital() {
                             {tx.description || '-'}
                           </TableCell>
                           <TableCell className="text-right font-medium text-green-600">
-                            +{Math.round(parseFloat(tx.amount || '0')).toLocaleString()}
+                            +{formatCurrency(tx.amount || '0')}
                           </TableCell>
                           <TableCell className="text-center">
                             <Badge className="bg-green-100 text-green-800 text-xs">

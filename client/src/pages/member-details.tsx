@@ -667,7 +667,7 @@ export default function MemberDetails() {
                             </td>
                             <td className="py-3 px-3 text-slate-500 max-w-[200px] truncate hidden sm:table-cell">{tx.description || '-'}</td>
                             <td className={`py-3 px-3 text-right font-semibold whitespace-nowrap ${isCredit ? 'text-emerald-600' : 'text-red-500'}`}>
-                              {isCredit ? '+' : '-'}{Math.round(parseFloat(tx.amount || '0')).toLocaleString()}
+                              {isCredit ? '+' : '-'}{formatCurrency(tx.amount || '0')}
                             </td>
                             <td className="py-3 px-6 text-center">
                               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${

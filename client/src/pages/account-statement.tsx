@@ -343,14 +343,14 @@ export default function AccountStatement() {
                         <TableCell className="text-right text-xs sm:text-sm">
                           {(transaction.transactionType === 'withdrawal' || transaction.transactionType === 'fee_charge') && (
                             <span className="text-red-600 font-medium">
-                              {Math.round(parseFloat(transaction.amount || '0')).toLocaleString()}
+                              {formatCurrency(transaction.amount || '0')}
                             </span>
                           )}
                         </TableCell>
                         <TableCell className="text-right text-xs sm:text-sm">
                           {(transaction.transactionType === 'deposit' || transaction.transactionType === 'interest_credit') && (
                             <span className={transaction.transactionType === 'interest_credit' ? "text-blue-600 font-medium" : "text-green-600 font-medium"}>
-                              {Math.round(parseFloat(transaction.amount || '0')).toLocaleString()}
+                              {formatCurrency(transaction.amount || '0')}
                             </span>
                           )}
                         </TableCell>

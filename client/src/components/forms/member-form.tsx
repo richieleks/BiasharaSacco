@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/utils";
 
 const memberFormSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -451,13 +452,13 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
           <CardContent className="space-y-4">
             <div className="bg-muted p-4 rounded-lg">
               <p className="text-sm">
-                If my application is accepted, I agree to pay an Entrance Fee of <strong>Shs. {entranceFee.toLocaleString()}</strong>.
+                If my application is accepted, I agree to pay an Entrance Fee of <strong>{formatCurrency(entranceFee)}</strong>.
                 This is a one-time, non-refundable fee payable upon admission.
               </p>
             </div>
             <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
               <span className="text-sm font-medium text-slate-700">Entrance Fee</span>
-              <span className="text-sm font-bold text-slate-900">Shs. {entranceFee.toLocaleString()}</span>
+              <span className="text-sm font-bold text-slate-900">{formatCurrency(entranceFee)}</span>
             </div>
           </CardContent>
         </Card>
@@ -470,7 +471,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
           <CardContent className="space-y-4">
             <div className="bg-muted p-4 rounded-lg">
               <p className="text-sm">
-                I agree to purchase shares at <strong>Shs. {sharePrice.toLocaleString()}</strong> per share as indicated below.
+                I agree to purchase shares at <strong>{formatCurrency(sharePrice)}</strong> per share as indicated below.
               </p>
             </div>
 
@@ -494,7 +495,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                       />
                     </FormControl>
                     <FormDescription>
-                      Minimum 4 shares at Shs. {sharePrice.toLocaleString()} each
+                      Minimum 4 shares at {formatCurrency(sharePrice)} each
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -516,7 +517,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                       />
                     </FormControl>
                     <FormDescription>
-                      Total share capital: {form.watch('numberOfShares') || 4} shares × Shs. {sharePrice.toLocaleString()}
+                      Total share capital: {form.watch('numberOfShares') || 4} shares × {formatCurrency(sharePrice)}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

@@ -1002,11 +1002,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "User ID not provided" });
       }
       
-      const user = await storage.getUser(userId);
-      if (user?.role === 'admin') {
-        return res.status(404).json({ message: "Admin users do not have member profiles" });
-      }
-
       const member = await storage.getMemberByUserId(userId);
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
