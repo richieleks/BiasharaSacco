@@ -489,64 +489,63 @@ export default function Loans() {
                       </div>
                     )}
 
-                    {isPersonalView ? (
-                      <div className="flex items-center justify-between">
-                        <p className="text-sm text-slate-500">
-                          {loan.status === 'pending' && loan.isTopUp ? 'Your top-up request is under review.' :
-                           loan.status === 'pending' ? 'Your application is under review.' :
-                           loan.status === 'approved' ? 'Your loan has been approved and is awaiting disbursement.' :
-                           loan.status === 'active' || loan.status === 'disbursed' ? 'Your loan is active.' :
-                           loan.status === 'rejected' ? 'Your application was not approved.' :
-                           loan.status === 'completed' ? 'This loan has been fully repaid.' : ''}
-                        </p>
-                        <span className="text-xs text-blue-600 font-medium">View details →</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between">
-                        <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
-                          {loan.status === 'pending' && (
-                            <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap gap-2 items-center" onClick={(e) => e.stopPropagation()}>
+                        {isPersonalView ? (
+                          <p className="text-sm text-slate-500">
+                            {loan.status === 'pending' && loan.isTopUp ? 'Your top-up request is under review.' :
+                             loan.status === 'pending' ? 'Your application is under review.' :
+                             loan.status === 'approved' ? 'Your loan has been approved and is awaiting disbursement.' :
+                             loan.status === 'active' || loan.status === 'disbursed' ? 'Your loan is active.' :
+                             loan.status === 'rejected' ? 'Your application was not approved.' :
+                             loan.status === 'completed' ? 'This loan has been fully repaid.' : ''}
+                          </p>
+                        ) : (
+                          <>
+                            {loan.status === 'pending' && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() => approveLoanMutation.mutate(loan)}
+                                  disabled={approveLoanMutation.isPending}
+                                  className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
+                                >
+                                  <CheckCircle className="w-4 h-4 mr-1" />
+                                  Approve
+                                </Button>
+                                <Button size="sm" variant="outline" className="border-red-200/50 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
+                                  <XCircle className="w-4 h-4 mr-1" />
+                                  Reject
+                                </Button>
+                              </>
+                            )}
+                            {loan.status === 'approved' && (
                               <Button
                                 size="sm"
-                                onClick={() => approveLoanMutation.mutate(loan)}
-                                disabled={approveLoanMutation.isPending}
+                                onClick={() => disburseLoanMutation.mutate(loan)}
+                                disabled={disburseLoanMutation.isPending}
                                 className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
                               >
-                                <CheckCircle className="w-4 h-4 mr-1" />
-                                Approve
+                                <DollarSign className="w-4 h-4 mr-1" />
+                                Disburse
                               </Button>
-                              <Button size="sm" variant="outline" className="border-red-200/50 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
-                                <XCircle className="w-4 h-4 mr-1" />
-                                Reject
-                              </Button>
-                            </>
-                          )}
-                          {loan.status === 'approved' && (
-                            <Button
-                              size="sm"
-                              onClick={() => disburseLoanMutation.mutate(loan)}
-                              disabled={disburseLoanMutation.isPending}
-                              className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
-                            >
-                              <DollarSign className="w-4 h-4 mr-1" />
-                              Disburse
-                            </Button>
-                          )}
-                          {(['active', 'disbursed'].includes(loan.status)) && parseFloat(loan.outstandingBalance || '0') > 0 && (
-                            <Button
-                              size="sm"
-                              onClick={() => openRepaymentModal(loan)}
-                              variant="outline"
-                              className="border-emerald-200/50 text-emerald-700 hover:bg-emerald-50 rounded-xl shadow-sm"
-                            >
-                              <Banknote className="w-4 h-4 mr-1" />
-                              Record Repayment
-                            </Button>
-                          )}
-                        </div>
-                        <span className="text-xs text-blue-600 font-medium">View details →</span>
+                            )}
+                          </>
+                        )}
+                        {(['active', 'disbursed'].includes(loan.status)) && parseFloat(loan.outstandingBalance || '0') > 0 && (
+                          <Button
+                            size="sm"
+                            onClick={() => openRepaymentModal(loan)}
+                            variant="outline"
+                            className="border-emerald-200/50 text-emerald-700 hover:bg-emerald-50 rounded-xl shadow-sm"
+                          >
+                            <Banknote className="w-4 h-4 mr-1" />
+                            Record Repayment
+                          </Button>
+                        )}
                       </div>
-                    )}
+                      <span className="text-xs text-blue-600 font-medium">View details →</span>
+                    </div>
                   </div>
                 </div>
               ))}
