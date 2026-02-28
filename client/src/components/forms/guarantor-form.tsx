@@ -70,15 +70,27 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
     enabled: !!loanDetails?.memberId,
   });
 
+  const { data: existingGuarantors = [] } = useQuery<any[]>({
+    queryKey: ['/api/guarantors/loan', loanId],
+    queryFn: async () => {
+      const res = await fetch(`/api/guarantors/loan/${loanId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch guarantors');
+      return res.json();
+    },
+    enabled: !!loanId,
+  });
+
+  const existingGuarantorMemberIds = existingGuarantors.map((g: any) => g.guarantorMemberId);
+
   const loanAmount = parseFloat(loanDetails?.principalAmount || '0');
   const totalSavings = memberSavings?.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0) || 0;
   const amountToGuarantee = Math.max(0, loanAmount - totalSavings);
 
-  // Filter eligible guarantors (active members excluding the loan applicant and current user)
   const eligibleMembers = allMembers.filter(member => 
     member.status === 'active' && 
     member.id !== currentMember?.id &&
-    member.id !== loanDetails?.memberId
+    member.id !== loanDetails?.memberId &&
+    !existingGuarantorMemberIds.includes(member.id)
   );
 
   const mutation = useMutation({

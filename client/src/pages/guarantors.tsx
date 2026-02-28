@@ -67,6 +67,11 @@ export default function Guarantors() {
 
   const { data: providedGuarantees = [], isLoading: loadingProvided } = useQuery<GuarantorWithDetails[]>({
     queryKey: ['/api/guarantors/member', currentMember?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/guarantors/member/${currentMember!.id}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch provided guarantees');
+      return res.json();
+    },
     enabled: !!currentMember?.id,
   });
 

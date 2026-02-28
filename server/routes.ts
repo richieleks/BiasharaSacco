@@ -2073,6 +2073,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      const existingGuarantors = await storage.getGuarantorsByLoan(validatedData.loanId);
+      const alreadyGuarantor = existingGuarantors.find(
+        g => g.guarantorMemberId === validatedData.guarantorMemberId
+      );
+      if (alreadyGuarantor) {
+        return res.status(400).json({ 
+          message: `${guarantorMember.fullName || 'This member'} is already a guarantor for this loan` 
+        });
+      }
+
       const guaranteeAmount = parseFloat(validatedData.guaranteeAmount || '0');
       if (guaranteeAmount > 0) {
         const guarantorSavings = await storage.getSavingsAccountsByMember(validatedData.guarantorMemberId);

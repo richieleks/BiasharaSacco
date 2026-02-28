@@ -23,6 +23,12 @@ export default function GuarantorRequests({ memberId }: GuarantorRequestsProps) 
 
   const { data: pendingRequests = [], isLoading } = useQuery<GuarantorWithDetails[]>({
     queryKey: ['/api/guarantors/pending', memberId],
+    queryFn: async () => {
+      const res = await fetch(`/api/guarantors/pending/${memberId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch pending requests');
+      return res.json();
+    },
+    enabled: !!memberId,
   });
 
   const approveMutation = useMutation({

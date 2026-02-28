@@ -12,6 +12,12 @@ interface GuarantorListProps {
 export default function GuarantorList({ loanId }: GuarantorListProps) {
   const { data: guarantors = [], isLoading } = useQuery<GuarantorWithDetails[]>({
     queryKey: ['/api/guarantors/loan', loanId],
+    queryFn: async () => {
+      const res = await fetch(`/api/guarantors/loan/${loanId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch guarantors');
+      return res.json();
+    },
+    enabled: !!loanId,
   });
 
   if (isLoading) {
