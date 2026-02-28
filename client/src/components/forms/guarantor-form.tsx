@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronsUpDown, AlertCircle } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -34,6 +34,7 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const form = useForm<GuarantorFormData>({
     resolver: zodResolver(guarantorFormSchema),
@@ -85,6 +86,7 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
       await apiRequest('POST', '/api/guarantors', data);
     },
     onSuccess: () => {
+      setFormError(null);
       toast({
         title: "Success",
         description: "Guarantor request sent successfully",
@@ -93,15 +95,24 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
       onSuccess();
     },
     onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add guarantor",
-        variant: "destructive",
-      });
+      let errorMsg = "Failed to add guarantor";
+      try {
+        const parts = error.message?.split(': ');
+        if (parts && parts.length > 1) {
+          const parsed = JSON.parse(parts.slice(1).join(': '));
+          errorMsg = parsed.message || parsed.error || errorMsg;
+        } else if (error.message) {
+          errorMsg = error.message;
+        }
+      } catch {
+        if (error.message) errorMsg = error.message;
+      }
+      setFormError(errorMsg);
     },
   });
 
   const handleSubmit = (data: GuarantorFormData) => {
+    setFormError(null);
     mutation.mutate(data);
   };
 
@@ -233,6 +244,15 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
               </FormItem>
             )}
           />
+
+          {formError && (
+            <div className="p-4 bg-red-50 border-2 border-red-400 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 font-medium">{formError}</p>
+              </div>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <Button
