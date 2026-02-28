@@ -96,7 +96,13 @@ export default function ShareCapital() {
 
   const openPostDialog = (member: MemberWithDetails) => {
     setSelectedMember(member);
-    form.reset({ amount: "", description: "" });
+    const expected = systemSharePrice * (member.numberOfShares || 4);
+    const paid = parseFloat(member.shareCapital || "0");
+    const balance = Math.max(0, expected - paid);
+    form.reset({
+      amount: balance > 0 ? balance.toString() : "",
+      description: `Share capital payment - ${member.numberOfShares || 4} shares @ ${systemSharePrice.toLocaleString()} per share`,
+    });
     setIsPostDialogOpen(true);
   };
 
