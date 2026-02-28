@@ -41,6 +41,8 @@ export default function GuarantorRequests({ memberId }: GuarantorRequestsProps) 
         description: "Guarantor request approved",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending', memberId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/guarantors/member'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
       setActioningId(null);
       setComments("");
     },
@@ -63,6 +65,8 @@ export default function GuarantorRequests({ memberId }: GuarantorRequestsProps) 
         description: "Guarantor request rejected",
       });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending', memberId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/guarantors/member'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
       setActioningId(null);
       setComments("");
     },

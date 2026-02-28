@@ -85,6 +85,8 @@ export default function Guarantors() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/guarantors/member'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
       toast({
         title: "Success",
         description: "Guarantor request approved successfully!",
@@ -119,6 +121,8 @@ export default function Guarantors() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/guarantors/member'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
       toast({
         title: "Success",
         description: "Guarantor request rejected successfully!",
