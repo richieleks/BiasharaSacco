@@ -246,6 +246,18 @@ export default function Guarantors() {
     },
   });
 
+  const { data: loanMemberSavings } = useQuery<any[]>({
+    queryKey: ['/api/members', selectedLoanForGuarantors?.memberId, 'savings'],
+    queryFn: async () => {
+      const res = await fetch(`/api/members/${selectedLoanForGuarantors.memberId}/savings`);
+      if (!res.ok) throw new Error('Failed to fetch savings');
+      return res.json();
+    },
+    enabled: !!selectedLoanForGuarantors?.memberId,
+  });
+
+  const loanMemberTotalSavings = loanMemberSavings?.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0) || 0;
+
   const openGuarantorSelection = (loan: any) => {
     setSelectedLoanForGuarantors(loan);
     setSelectedGuarantors([{ memberId: 0, guaranteeAmount: '' }]);
@@ -807,12 +819,20 @@ export default function Guarantors() {
                 <h4 className="font-medium mb-2">Loan Details</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-slate-600">Amount:</span> 
+                    <span className="text-slate-600">Loan Amount:</span> 
                     <span className="font-medium ml-2">{formatCurrency(selectedLoanForGuarantors.principalAmount)}</span>
                   </div>
                   <div>
                     <span className="text-slate-600">Type:</span> 
                     <span className="font-medium ml-2">{selectedLoanForGuarantors.loanType}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-600">Member Savings:</span> 
+                    <span className="font-medium ml-2 text-emerald-700">{formatCurrency(loanMemberTotalSavings)}</span>
+                  </div>
+                  <div>
+                    <span className="text-blue-900 font-medium">Amount to Guarantee:</span> 
+                    <span className="font-bold ml-2 text-blue-900">{formatCurrency(Math.max(0, parseFloat(selectedLoanForGuarantors.principalAmount || '0') - loanMemberTotalSavings))}</span>
                   </div>
                 </div>
               </div>
@@ -878,12 +898,21 @@ export default function Guarantors() {
                     <DollarSign className="h-4 w-4 text-blue-600" />
                     <span className="font-medium text-blue-900">Total Guarantee Coverage</span>
                   </div>
-                  <div className="text-2xl font-bold text-blue-900">
-                    {formatCurrency(selectedGuarantors.reduce((total, g) => total + (parseFloat(g.guaranteeAmount) || 0), 0))}
-                  </div>
-                  <div className="text-sm text-blue-700 mt-1">
-                    Loan Amount: {formatCurrency(selectedLoanForGuarantors.principalAmount)}
-                  </div>
+                  {(() => {
+                    const totalGuaranteed = selectedGuarantors.reduce((total, g) => total + (parseFloat(g.guaranteeAmount) || 0), 0);
+                    const amountNeeded = Math.max(0, parseFloat(selectedLoanForGuarantors.principalAmount || '0') - loanMemberTotalSavings);
+                    const coverage = amountNeeded > 0 ? (totalGuaranteed / amountNeeded) * 100 : 100;
+                    return (
+                      <>
+                        <div className="text-2xl font-bold text-blue-900">
+                          {formatCurrency(totalGuaranteed)}
+                        </div>
+                        <div className="text-sm text-blue-700 mt-1">
+                          Amount to Guarantee: {formatCurrency(amountNeeded)} | Coverage: {Math.min(100, coverage).toFixed(1)}%
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 

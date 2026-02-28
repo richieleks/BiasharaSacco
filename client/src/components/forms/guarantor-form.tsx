@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertGuarantorSchema } from "@shared/schema";
@@ -54,10 +54,24 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
     enabled: !!user?.id,
   });
 
-  const { data: loanDetails } = useQuery({
+  const { data: loanDetails } = useQuery<any>({
     queryKey: [`/api/loans/${loanId}`],
     enabled: !!loanId,
   });
+
+  const { data: memberSavings } = useQuery<any[]>({
+    queryKey: ['/api/members', loanDetails?.memberId, 'savings'],
+    queryFn: async () => {
+      const res = await fetch(`/api/members/${loanDetails.memberId}/savings`);
+      if (!res.ok) throw new Error('Failed to fetch savings');
+      return res.json();
+    },
+    enabled: !!loanDetails?.memberId,
+  });
+
+  const loanAmount = parseFloat(loanDetails?.principalAmount || '0');
+  const totalSavings = memberSavings?.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0) || 0;
+  const amountToGuarantee = Math.max(0, loanAmount - totalSavings);
 
   // Filter eligible guarantors (active members excluding the loan applicant and current user)
   const eligibleMembers = allMembers.filter(member => 
@@ -101,6 +115,23 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
           Add a guarantor for this loan application. The guarantor must be an existing member and must approve the request.
         </p>
       </div>
+
+      {loanAmount > 0 && (
+        <div className="bg-blue-50 p-4 rounded-lg space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span className="text-slate-600">Loan Amount:</span>
+            <span className="font-medium">{formatCurrency(loanAmount)}</span>
+          </div>
+          <div className="flex justify-between">
+            <span className="text-slate-600">Member Savings:</span>
+            <span className="font-medium text-emerald-700">{formatCurrency(totalSavings)}</span>
+          </div>
+          <div className="flex justify-between border-t border-blue-200 pt-1 mt-1">
+            <span className="font-medium text-blue-900">Amount to Guarantee:</span>
+            <span className="font-bold text-blue-900">{formatCurrency(amountToGuarantee)}</span>
+          </div>
+        </div>
+      )}
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">

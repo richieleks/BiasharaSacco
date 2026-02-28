@@ -22,6 +22,7 @@ interface GuarantorSelectionProps {
   guarantors: GuarantorData[];
   onGuarantorsChange: (guarantors: GuarantorData[]) => void;
   loanAmount: number;
+  memberSavings?: number;
   disabled?: boolean;
 }
 
@@ -29,6 +30,7 @@ export default function GuarantorSelection({
   guarantors, 
   onGuarantorsChange, 
   loanAmount,
+  memberSavings = 0,
   disabled = false 
 }: GuarantorSelectionProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -47,7 +49,8 @@ export default function GuarantorSelection({
   );
 
   const totalGuaranteed = guarantors.reduce((sum, g) => sum + parseFloat(g.guaranteeAmount || '0'), 0);
-  const guaranteeCoverage = loanAmount > 0 ? (totalGuaranteed / loanAmount) * 100 : 0;
+  const amountToGuarantee = Math.max(0, loanAmount - memberSavings);
+  const guaranteeCoverage = amountToGuarantee > 0 ? (totalGuaranteed / amountToGuarantee) * 100 : 100;
 
   const addGuarantor = () => {
     if (!selectedMemberId || !guaranteeAmount || parseFloat(guaranteeAmount) <= 0) {
@@ -162,13 +165,20 @@ export default function GuarantorSelection({
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {/* Guarantee Summary */}
         {loanAmount > 0 && (
           <div className="mb-4 p-4 bg-slate-50 rounded-lg">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-slate-600">Loan Amount:</span>
                 <div className="font-medium">{formatCurrency(loanAmount)}</div>
+              </div>
+              <div>
+                <span className="text-slate-600">Member Savings:</span>
+                <div className="font-medium text-emerald-700">{formatCurrency(memberSavings)}</div>
+              </div>
+              <div>
+                <span className="text-blue-900 font-medium">Amount to Guarantee:</span>
+                <div className="font-bold text-blue-900">{formatCurrency(amountToGuarantee)}</div>
               </div>
               <div>
                 <span className="text-slate-600">Total Guaranteed:</span>
