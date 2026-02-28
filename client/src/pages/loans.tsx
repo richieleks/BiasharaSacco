@@ -22,6 +22,28 @@ import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
 import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, ArrowUpCircle, ChevronDown, ChevronUp, FileText, Calendar, Download, CreditCard, Percent, Hash, AlertCircle } from "lucide-react";
 
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200/50';
+    case 'approved': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+    case 'disbursed': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+    case 'active': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+    case 'completed': return 'bg-slate-50 text-slate-700 border-slate-200/50';
+    case 'defaulted': return 'bg-red-50 text-red-700 border-red-200/50';
+    default: return 'bg-slate-50 text-slate-700 border-slate-200/50';
+  }
+};
+
+const getLoanTypeColor = (type: string) => {
+  switch (type) {
+    case 'personal': return 'bg-blue-50 text-blue-700 border-blue-200/50';
+    case 'business': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+    case 'emergency': return 'bg-red-50 text-red-700 border-red-200/50';
+    case 'asset': return 'bg-purple-50 text-purple-700 border-purple-200/50';
+    default: return 'bg-slate-50 text-slate-700 border-slate-200/50';
+  }
+};
+
 export default function Loans() {
   const [location, setLocation] = useLocation();
   const { activeRole } = useRBAC();
@@ -109,28 +131,6 @@ export default function Loans() {
       toast({ title: "Error", description: "Failed to disburse loan. Please try again.", variant: "destructive" });
     },
   });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200/50';
-      case 'approved': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-      case 'disbursed': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-      case 'active': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-      case 'completed': return 'bg-slate-50 text-slate-700 border-slate-200/50';
-      case 'defaulted': return 'bg-red-50 text-red-700 border-red-200/50';
-      default: return 'bg-slate-50 text-slate-700 border-slate-200/50';
-    }
-  };
-
-  const getLoanTypeColor = (type: string) => {
-    switch (type) {
-      case 'personal': return 'bg-blue-50 text-blue-700 border-blue-200/50';
-      case 'business': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-      case 'emergency': return 'bg-red-50 text-red-700 border-red-200/50';
-      case 'asset': return 'bg-purple-50 text-purple-700 border-purple-200/50';
-      default: return 'bg-slate-50 text-slate-700 border-slate-200/50';
-    }
-  };
 
   const toggleLoanExpand = (loanId: number) => {
     setExpandedLoanId(expandedLoanId === loanId ? null : loanId);
