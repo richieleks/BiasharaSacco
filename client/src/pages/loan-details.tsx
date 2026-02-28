@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
+import { useRBAC } from "@/hooks/useRBAC";
 import { format, addMonths } from "date-fns";
 import {
   ArrowLeft, DollarSign, FileText, Calendar, Download, CreditCard,
@@ -28,7 +29,9 @@ const getStatusColor = (status: string) => {
 export default function LoanDetails() {
   const [, params] = useRoute("/loans/:id/details");
   const [, setLocation] = useLocation();
+  const { activeRole } = useRBAC();
   const loanId = params?.id;
+  const backPath = activeRole === 'member' ? '/my-loans' : '/loans';
 
   const { data: loan, isLoading } = useQuery<any>({
     queryKey: ['/api/loans', loanId],
@@ -76,7 +79,7 @@ export default function LoanDetails() {
           <AlertCircle className="h-12 w-12 text-slate-300 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-slate-900 mb-2">Loan not found</h3>
           <p className="text-slate-500 mb-4">The loan you're looking for doesn't exist or you don't have access to it.</p>
-          <Button onClick={() => setLocation("/loans")} variant="outline">
+          <Button onClick={() => setLocation(backPath)} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Loans
           </Button>
@@ -170,7 +173,7 @@ export default function LoanDetails() {
     <div className="space-y-6 page-container animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="outline" size="sm" onClick={() => setLocation("/loans")} className="rounded-xl">
+          <Button variant="outline" size="sm" onClick={() => setLocation(backPath)} className="rounded-xl">
             <ArrowLeft className="mr-1.5 h-4 w-4" />
             Back
           </Button>
