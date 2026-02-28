@@ -101,7 +101,7 @@ export default function ShareCapital() {
     const balance = Math.max(0, expected - paid);
     form.reset({
       amount: balance > 0 ? balance.toString() : "",
-      description: `Share capital payment - ${member.numberOfShares || 4} shares @ ${systemSharePrice.toLocaleString()} per share`,
+      description: `Share capital payment - ${member.numberOfShares || 4} shares @ ${formatCurrency(systemSharePrice)} per share`,
     });
     setIsPostDialogOpen(true);
   };

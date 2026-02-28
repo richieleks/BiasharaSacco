@@ -183,7 +183,7 @@ function Router() {
               </ProtectedRoute>
             </Route>
             <Route path="/loans/:id/details">
-              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'loans' }}>
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'personal-loans' }}>
                 <LoanDetails />
               </ProtectedRoute>
             </Route>

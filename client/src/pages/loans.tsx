@@ -248,7 +248,7 @@ export default function Loans() {
                 <div key={loan.id} className="border border-slate-200/60 rounded-lg hover:shadow-sm transition-all">
                   <div
                     className={`p-6 ${isPersonalView ? 'cursor-pointer' : ''}`}
-                    onClick={() => isPersonalView && setLocation(`/loans/${loan.id}/details`)}
+                    onClick={() => isPersonalView && loan.uuid && setLocation(`/loans/${loan.uuid}/details`)}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                       <div className="flex items-center space-x-4">
