@@ -12,6 +12,7 @@ import { format, addMonths } from "date-fns";
 import {
   ArrowLeft, DollarSign, FileText, Calendar, Download, CreditCard,
   Percent, Hash, HandCoins, Clock, AlertCircle, ArrowUpCircle, Calculator,
+  Users, CheckCircle, XCircle,
 } from "lucide-react";
 
 const getStatusColor = (status: string) => {
@@ -51,6 +52,16 @@ export default function LoanDetails() {
       return res.json();
     },
     enabled: !!loanId,
+  });
+
+  const { data: guarantors = [] } = useQuery<any[]>({
+    queryKey: ['/api/guarantors/loan', loan?.id],
+    queryFn: async () => {
+      const res = await fetch(`/api/guarantors/loan/${loan.id}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!loan?.id,
   });
 
   const principal = parseFloat(loan?.principalAmount || '0');
@@ -248,19 +259,25 @@ export default function LoanDetails() {
       )}
 
       <Tabs defaultValue="details" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className={`grid w-full ${guarantors.length > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <TabsTrigger value="details" className="text-xs sm:text-sm">
             <FileText className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
-            Loan Details
+            Details
           </TabsTrigger>
           <TabsTrigger value="statement" className="text-xs sm:text-sm">
             <CreditCard className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
-            Loan Statement
+            Statement
           </TabsTrigger>
           <TabsTrigger value="schedule" className="text-xs sm:text-sm">
             <Calendar className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
-            Repayment Schedule
+            Schedule
           </TabsTrigger>
+          {guarantors.length > 0 && (
+            <TabsTrigger value="guarantors" className="text-xs sm:text-sm">
+              <Users className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
+              Guarantors
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="details" className="mt-4">
@@ -541,6 +558,96 @@ export default function LoanDetails() {
             </Card>
           )}
         </TabsContent>
+
+        {guarantors.length > 0 && (
+          <TabsContent value="guarantors" className="mt-4">
+            <Card className="border-slate-200/60">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Guarantors ({guarantors.length})
+                </CardTitle>
+                <CardDescription>
+                  Members who guaranteed this loan
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <span className="text-slate-500">Total Guaranteed</span>
+                      <div className="font-semibold">
+                        {formatCurrency(guarantors.reduce((sum: number, g: any) => sum + parseFloat(g.guaranteeAmount || '0'), 0))}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Approved</span>
+                      <div className="font-semibold text-emerald-700">
+                        {guarantors.filter((g: any) => g.status === 'approved').length} of {guarantors.length}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="text-slate-500">Status</span>
+                      <div>
+                        <Badge variant={guarantors.every((g: any) => g.status === 'approved') ? 'default' : 'secondary'}>
+                          {guarantors.every((g: any) => g.status === 'approved') ? 'All Approved' : 'Pending Approvals'}
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {guarantors.map((guarantor: any) => {
+                    const statusIcon = guarantor.status === 'approved' 
+                      ? <CheckCircle className="h-4 w-4 text-emerald-600" />
+                      : guarantor.status === 'rejected'
+                      ? <XCircle className="h-4 w-4 text-red-600" />
+                      : <Clock className="h-4 w-4 text-amber-600" />;
+
+                    const statusColor = guarantor.status === 'approved'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50'
+                      : guarantor.status === 'rejected'
+                      ? 'bg-red-50 text-red-700 border-red-200/50'
+                      : 'bg-amber-50 text-amber-700 border-amber-200/50';
+
+                    return (
+                      <div key={guarantor.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                            <Users className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-sm">
+                              {guarantor.guarantorMember?.user?.firstName || ''} {guarantor.guarantorMember?.user?.lastName || ''}
+                            </div>
+                            <div className="text-xs text-slate-500">
+                              {guarantor.guarantorMember?.memberNumber}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 text-right">
+                          <div>
+                            <div className="font-semibold text-sm">{formatCurrency(guarantor.guaranteeAmount)}</div>
+                            {guarantor.comments && (
+                              <div className="text-xs text-slate-500 max-w-[150px] truncate">{guarantor.comments}</div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            {statusIcon}
+                            <Badge variant="outline" className={statusColor}>
+                              {guarantor.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
