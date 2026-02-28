@@ -46,40 +46,30 @@ export default function LoanStatement() {
       return;
     }
     
-    // Create CSV data with running balance calculation using original dates
-    const getDateFromDescription = (description: string, index: number) => {
-      const desc = description.toLowerCase();
-      const year = 2024;
-      
-      if (desc.includes('april')) return new Date(year, 3, 15);
-      if (desc.includes('may')) return new Date(year, 4, 15);
-      if (desc.includes('june')) return new Date(year, 5, 15);
-      if (desc.includes('july')) return new Date(year, 6, 15);
-      if (desc.includes('august')) return new Date(year, 7, 15);
-      if (desc.includes('september')) return new Date(year, 8, 15);
-      if (desc.includes('october')) return new Date(year, 9, 15);
-      if (desc.includes('november')) return new Date(year, 10, 15);
-      if (desc.includes('december')) return new Date(year, 11, 15);
-      if (desc.includes('january')) return new Date(year, 0, 15);
-      if (desc.includes('february')) return new Date(year, 1, 15);
-      if (desc.includes('march')) return new Date(year, 2, 15);
-      if (desc.includes('disbursed')) return new Date(year, 0, 1);
-      if (desc.includes('top up')) return new Date(year, 3 + Math.floor(index/2), 1);
-      
-      return new Date(year, index, 15);
+    const getTransactionDate = (transaction: any) => {
+      if (transaction.createdAt) return new Date(transaction.createdAt);
+      if (transaction.date) return new Date(transaction.date);
+      return new Date();
+    };
+
+    const getTypeSortOrder = (transaction: any) => {
+      if (transaction.transactionType === 'loan_disbursement' || 
+          transaction.description?.toLowerCase().includes('disburs')) return 0;
+      return 1;
     };
 
     let runningBalance = 0;
     const transactionsWithBalance = [...transactions]
-      .map((transaction, index) => ({
-        ...transaction,
-        originalDate: getDateFromDescription(transaction.description || '', index)
-      }))
-      .sort((a, b) => a.originalDate.getTime() - b.originalDate.getTime())
+      .sort((a, b) => {
+        const dateA = getTransactionDate(a).getTime();
+        const dateB = getTransactionDate(b).getTime();
+        if (dateA !== dateB) return dateA - dateB;
+        return getTypeSortOrder(a) - getTypeSortOrder(b);
+      })
       .map((transaction) => {
         const amount = parseFloat(transaction.amount || 0);
         if (transaction.transactionType === 'loan_disbursement' || 
-            transaction.description?.toLowerCase().includes('disbursed')) {
+            transaction.description?.toLowerCase().includes('disburs')) {
           runningBalance += amount;
         } else if (transaction.transactionType === 'loan_payment') {
           runningBalance -= amount;
@@ -88,12 +78,12 @@ export default function LoanStatement() {
         return {
           ...transaction,
           runningBalance,
-          displayDate: transaction.originalDate
+          displayDate: getTransactionDate(transaction)
         };
       });
     
     const csvData = [
-      ['Date', 'Description', 'Debit', 'Credit', 'Running Balance', 'Status'],
+      ['Date', 'Description', 'Payment', 'Disbursement', 'Balance', 'Status'],
       ...transactionsWithBalance.map((txn: any) => [
         format(txn.displayDate, 'yyyy-MM-dd'),
         txn.description || txn.transactionType || 'N/A',
@@ -187,66 +177,53 @@ export default function LoanStatement() {
                     <tr className="border-b">
                       <th className="text-left p-2 whitespace-nowrap">Date</th>
                       <th className="text-left p-2">Description</th>
-                      <th className="text-right p-2 whitespace-nowrap">Debit</th>
-                      <th className="text-right p-2 whitespace-nowrap">Credit</th>
-                      <th className="text-right p-2 whitespace-nowrap">Running Balance</th>
+                      <th className="text-right p-2 whitespace-nowrap">Payment</th>
+                      <th className="text-right p-2 whitespace-nowrap">Disbursement</th>
+                      <th className="text-right p-2 whitespace-nowrap">Balance</th>
                       <th className="text-center p-2">Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {(() => {
-                      // Function to extract date from description
-                      const getDateFromDescription = (description: string, index: number) => {
-                        const desc = description.toLowerCase();
-                        const year = 2024; // Base year for loan
-                        
-                        // Extract month from description
-                        if (desc.includes('april')) return new Date(year, 3, 15); // April 15
-                        if (desc.includes('may')) return new Date(year, 4, 15); // May 15
-                        if (desc.includes('june')) return new Date(year, 5, 15); // June 15
-                        if (desc.includes('july')) return new Date(year, 6, 15); // July 15
-                        if (desc.includes('august')) return new Date(year, 7, 15); // August 15
-                        if (desc.includes('september')) return new Date(year, 8, 15); // September 15
-                        if (desc.includes('october')) return new Date(year, 9, 15); // October 15
-                        if (desc.includes('november')) return new Date(year, 10, 15); // November 15
-                        if (desc.includes('december')) return new Date(year, 11, 15); // December 15
-                        if (desc.includes('january')) return new Date(year, 0, 15); // January 15
-                        if (desc.includes('february')) return new Date(year, 1, 15); // February 15
-                        if (desc.includes('march')) return new Date(year, 2, 15); // March 15
-                        if (desc.includes('disbursed')) return new Date(year, 0, 1); // Initial disbursement in January
-                        if (desc.includes('top up')) return new Date(year, 3 + Math.floor(index/2), 1); // Top-ups spread over months
-                        
-                        // Default: start from loan origination date and space out monthly
-                        return new Date(year, index, 15);
+                      const getTransactionDate = (transaction: any) => {
+                        if (transaction.createdAt) return new Date(transaction.createdAt);
+                        if (transaction.date) return new Date(transaction.date);
+                        return new Date();
                       };
 
-                      // Calculate running balance by processing transactions with proper dates
+                      const getTypeSortOrder = (transaction: any) => {
+                        if (transaction.transactionType === 'loan_disbursement' || 
+                            transaction.description?.toLowerCase().includes('disburs')) return 0;
+                        return 1;
+                      };
+
                       let runningBalance = 0;
                       const transactionsWithBalance = [...transactions]
-                        .map((transaction, index) => ({
-                          ...transaction,
-                          originalDate: getDateFromDescription(transaction.description || '', index)
-                        }))
-                        .sort((a, b) => a.originalDate.getTime() - b.originalDate.getTime())
+                        .sort((a, b) => {
+                          const dateA = getTransactionDate(a).getTime();
+                          const dateB = getTransactionDate(b).getTime();
+                          if (dateA !== dateB) return dateA - dateB;
+                          return getTypeSortOrder(a) - getTypeSortOrder(b);
+                        })
                         .map((transaction) => {
                           const amount = parseFloat(transaction.amount || 0);
                           if (transaction.transactionType === 'loan_disbursement' || 
-                              transaction.description?.toLowerCase().includes('disbursed')) {
-                            runningBalance += amount; // Disbursements increase the loan balance
+                              transaction.description?.toLowerCase().includes('disburs')) {
+                            runningBalance += amount;
                           } else if (transaction.transactionType === 'loan_payment') {
-                            runningBalance -= amount; // Payments reduce the loan balance
+                            runningBalance -= amount;
                           }
                           
                           return {
                             ...transaction,
                             runningBalance,
-                            displayDate: transaction.originalDate
+                            displayDate: getTransactionDate(transaction)
                           };
                         });
                       
                       return transactionsWithBalance.map((transaction: any) => (
                         <tr key={transaction.id} className="border-b hover:bg-gray-50">
-                          <td className="p-2">
+                          <td className="p-2 whitespace-nowrap">
                             {format(transaction.displayDate, 'MMM dd, yyyy')}
                           </td>
                           <td className="p-2">{transaction.description || transaction.transactionType || 'N/A'}</td>
