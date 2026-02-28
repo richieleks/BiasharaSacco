@@ -51,6 +51,19 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
     },
   });
 
+  const { data: savingsAccounts = [] } = useQuery<any[]>({
+    queryKey: ['/api/savings/my-accounts'],
+  });
+
+  const { data: systemConfig } = useQuery<any>({
+    queryKey: ['/api/system/settings/public'],
+  });
+
+  const loanToSavingsRatio = systemConfig?.loanToSavingsRatio || 2.5;
+  const activeSavings = savingsAccounts.find((acc: any) => acc.status === 'active');
+  const totalSavingsBalance = activeSavings ? parseFloat(activeSavings.balance || '0') : 0;
+  const maxLoanBySavings = totalSavingsBalance * loanToSavingsRatio;
+
   const form = useForm<TopUpFormData>({
     resolver: zodResolver(topUpSchema),
     defaultValues: {
@@ -109,6 +122,9 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
       if (loanTypeMinAmount > 0 && totalNewPrincipal < loanTypeMinAmount) {
         errors.push(`Total loan amount (${formatCurrency(totalNewPrincipal)}) is below the minimum of ${formatCurrency(loanTypeMinAmount)} for this loan type`);
       }
+      if (maxLoanBySavings > 0 && totalNewPrincipal > maxLoanBySavings) {
+        errors.push(`Total loan amount (${formatCurrency(totalNewPrincipal)}) exceeds your savings-based limit of ${formatCurrency(maxLoanBySavings)} (${loanToSavingsRatio}x your savings of ${formatCurrency(totalSavingsBalance)})`);
+      }
     }
 
     if (termMonths > 0) {
@@ -121,14 +137,34 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
     }
 
     setValidationErrors(errors);
-  }, [topUpAmount, totalNewPrincipal, termMonths, matchedLoanType, selectedLoan, loanTypeMinAmount, loanTypeMaxAmount, loanTypeMinTerm, loanTypeMaxTerm, maxTopUpAmount, outstandingBalance]);
+  }, [topUpAmount, totalNewPrincipal, termMonths, matchedLoanType, selectedLoan, loanTypeMinAmount, loanTypeMaxAmount, loanTypeMinTerm, loanTypeMaxTerm, maxTopUpAmount, outstandingBalance, maxLoanBySavings, loanToSavingsRatio, totalSavingsBalance]);
 
   const calculateMonthlyPayment = () => {
-    if (totalNewPrincipal > 0 && annualRate > 0 && termMonths > 0) {
-      const monthlyRate = annualRate / 100 / 12;
-      return totalNewPrincipal * (monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
+    if (totalNewPrincipal <= 0 || annualRate <= 0 || termMonths <= 0) return 0;
+
+    const interestMethod = matchedLoanType?.interestType || 'reducing_balance';
+    const decimalRate = annualRate / 100;
+    const timeInYears = termMonths / 12;
+
+    switch (interestMethod) {
+      case 'simple': {
+        const totalInterest = totalNewPrincipal * decimalRate * timeInYears;
+        return (totalNewPrincipal + totalInterest) / termMonths;
+      }
+      case 'compound': {
+        const compFreq = matchedLoanType?.compoundingFrequency || 'monthly';
+        let n = 12;
+        if (compFreq === 'quarterly') n = 4;
+        if (compFreq === 'annually') n = 1;
+        const compoundAmount = totalNewPrincipal * Math.pow(1 + decimalRate / n, n * timeInYears);
+        return compoundAmount / termMonths;
+      }
+      case 'reducing_balance':
+      default: {
+        const monthlyRate = decimalRate / 12;
+        return (totalNewPrincipal * monthlyRate * Math.pow(1 + monthlyRate, termMonths)) / (Math.pow(1 + monthlyRate, termMonths) - 1);
+      }
     }
-    return 0;
   };
 
   const monthlyPayment = calculateMonthlyPayment();
@@ -338,6 +374,12 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                     <div>
                       <span className="text-slate-500">Interest Method:</span>
                       <span className="ml-1 font-medium text-slate-800 capitalize">{matchedLoanType.interestType.replace('_', ' ')}</span>
+                    </div>
+                  )}
+                  {totalSavingsBalance > 0 && (
+                    <div>
+                      <span className="text-slate-500">Savings-Based Limit:</span>
+                      <span className="ml-1 font-medium text-slate-800">{formatCurrency(maxLoanBySavings)} ({loanToSavingsRatio}x savings)</span>
                     </div>
                   )}
                   {matchedLoanType.processingFee && parseFloat(matchedLoanType.processingFee) > 0 && (

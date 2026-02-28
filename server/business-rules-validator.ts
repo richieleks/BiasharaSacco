@@ -76,15 +76,25 @@ export class BusinessRulesValidator {
         violations.push(`❌ PENDING APPLICATIONS: You already have ${pendingLoans.length} pending loan application(s). Wait for current applications to be processed.`);
       }
 
-      // Calculate maximum loan amount based on BR-L010: 1:2.5 savings ratio
+      let loanToSavingsRatio = 2.5;
+      try {
+        const ratioSetting = await storage.getSystemSetting('loanToSavingsRatio');
+        if (ratioSetting?.settingValue) {
+          const parsed = parseFloat(ratioSetting.settingValue);
+          if (!isNaN(parsed) && parsed > 0) {
+            loanToSavingsRatio = parsed;
+          }
+        }
+      } catch {}
+
       let maxLoanAmount = 0;
       if (activeSavingsAccount) {
         const totalSavings = parseFloat(activeSavingsAccount.balance);
-        maxLoanAmount = totalSavings * 2.5; // 1:2.5 ratio
+        maxLoanAmount = totalSavings * loanToSavingsRatio;
         
         if (requestedAmount > maxLoanAmount) {
           const currentSavings = parseFloat(activeSavingsAccount.balance);
-          violations.push(`❌ LOAN AMOUNT LIMIT: Your requested UGX ${requestedAmount.toLocaleString()} exceeds the maximum UGX ${maxLoanAmount.toLocaleString()}. With current savings of UGX ${currentSavings.toLocaleString()}, you can borrow up to 2.5 times your savings balance.`);
+          violations.push(`❌ LOAN AMOUNT LIMIT: Your requested UGX ${requestedAmount.toLocaleString()} exceeds the maximum UGX ${Math.round(maxLoanAmount).toLocaleString()}. With current savings of UGX ${Math.round(currentSavings).toLocaleString()}, you can borrow up to ${loanToSavingsRatio} times your savings balance.`);
         }
 
         // BR-L011: Check if savings gradually built up

@@ -535,10 +535,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const entranceFeeSetting = await storage.getSystemSetting('entranceFee');
       const sharePriceSetting = await storage.getSystemSetting('sharePrice');
+      const loanToSavingsRatioSetting = await storage.getSystemSetting('loanToSavingsRatio');
 
       res.json({
         entranceFee: entranceFeeSetting ? parseFloat(entranceFeeSetting.settingValue) : 15000,
         sharePrice: sharePriceSetting ? parseFloat(sharePriceSetting.settingValue) : 5000,
+        loanToSavingsRatio: loanToSavingsRatioSetting ? parseFloat(loanToSavingsRatioSetting.settingValue) : 2.5,
       });
     } catch (error) {
       console.error("Error fetching public settings:", error);
