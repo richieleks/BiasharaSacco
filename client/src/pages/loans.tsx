@@ -15,7 +15,7 @@ import { Pagination } from "@/components/ui/pagination";
 import LoanApplicationForm from "@/components/forms/loan-application-form";
 import LoanTopUpForm from "@/components/forms/loan-topup-form";
 import { formatCurrency } from "@/lib/utils";
-import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, ArrowUpCircle, ChevronDown } from "lucide-react";
+import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, ArrowUpCircle } from "lucide-react";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -247,8 +247,8 @@ export default function Loans() {
               {pendingLoans.map((loan: any) => (
                 <div key={loan.id} className="border border-slate-200/60 rounded-lg hover:shadow-sm transition-all">
                   <div
-                    className={`p-6 ${isPersonalView ? 'cursor-pointer' : ''}`}
-                    onClick={() => isPersonalView && loan.uuid && setLocation(`/loans/${loan.uuid}/details`)}
+                    className="p-6 cursor-pointer"
+                    onClick={() => loan.uuid && setLocation(`/loans/${loan.uuid}/details`)}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                       <div className="flex items-center space-x-4">
@@ -283,11 +283,6 @@ export default function Loans() {
                         <Badge variant="outline" className={getLoanTypeColor(loan.loanType)}>
                           {loan.loanType}
                         </Badge>
-                        {isPersonalView && (
-                          <div className="ml-1 text-blue-400">
-                            <ChevronDown className="h-5 w-5" />
-                          </div>
-                        )}
                       </div>
                     </div>
 
@@ -332,35 +327,38 @@ export default function Loans() {
                         <span className="text-xs text-blue-600 font-medium">View details →</span>
                       </div>
                     ) : (
-                      <div className="flex flex-wrap gap-2">
-                        {loan.status === 'pending' && (
-                          <>
+                      <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap gap-2" onClick={(e) => e.stopPropagation()}>
+                          {loan.status === 'pending' && (
+                            <>
+                              <Button
+                                size="sm"
+                                onClick={() => approveLoanMutation.mutate(loan)}
+                                disabled={approveLoanMutation.isPending}
+                                className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
+                              >
+                                <CheckCircle className="w-4 h-4 mr-1" />
+                                Approve
+                              </Button>
+                              <Button size="sm" variant="outline" className="border-red-200/50 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
+                                <XCircle className="w-4 h-4 mr-1" />
+                                Reject
+                              </Button>
+                            </>
+                          )}
+                          {loan.status === 'approved' && (
                             <Button
                               size="sm"
-                              onClick={() => approveLoanMutation.mutate(loan)}
-                              disabled={approveLoanMutation.isPending}
+                              onClick={() => disburseLoanMutation.mutate(loan)}
+                              disabled={disburseLoanMutation.isPending}
                               className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
                             >
-                              <CheckCircle className="w-4 h-4 mr-1" />
-                              Approve
+                              <DollarSign className="w-4 h-4 mr-1" />
+                              Disburse
                             </Button>
-                            <Button size="sm" variant="outline" className="border-red-200/50 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
-                              <XCircle className="w-4 h-4 mr-1" />
-                              Reject
-                            </Button>
-                          </>
-                        )}
-                        {loan.status === 'approved' && (
-                          <Button
-                            size="sm"
-                            onClick={() => disburseLoanMutation.mutate(loan)}
-                            disabled={disburseLoanMutation.isPending}
-                            className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
-                          >
-                            <DollarSign className="w-4 h-4 mr-1" />
-                            Disburse
-                          </Button>
-                        )}
+                          )}
+                        </div>
+                        <span className="text-xs text-blue-600 font-medium">View details →</span>
                       </div>
                     )}
                   </div>
