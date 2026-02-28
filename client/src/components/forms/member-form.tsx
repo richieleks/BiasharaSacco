@@ -58,8 +58,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
   const sharePrice = systemConfig?.sharePrice ?? 5000;
 
   const calculateShareContribution = (numberOfShares: string) => {
-    const shares = parseInt(numberOfShares) || 0;
-    return (shares * sharePrice).toString();
+    return sharePrice.toString();
   };
 
   const form = useForm<MemberFormData>({
@@ -81,7 +80,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
       monthlySavings: member?.monthlySavings || "",
       accountNumber: member?.accountNumber || "",
       branch: member?.branch || "",
-      shareContribution: member?.shareContribution || (4 * sharePrice).toString(),
+      shareContribution: member?.shareContribution || sharePrice.toString(),
       numberOfShares: member?.numberOfShares?.toString() || "4",
       beneficiaryName: member?.beneficiaryName || "",
       beneficiaryRelationship: member?.beneficiaryRelationship || "",
@@ -489,8 +488,7 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                         {...field}
                         onChange={(e) => {
                           field.onChange(e);
-                          const shares = parseInt(e.target.value) || 0;
-                          form.setValue('shareContribution', calculateShareContribution(e.target.value));
+                          form.setValue('shareContribution', sharePrice.toString());
                         }}
                       />
                     </FormControl>
@@ -507,17 +505,17 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                 name="shareContribution"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Total Share Contribution (Shs) *</FormLabel>
+                    <FormLabel>Share Price (per share) *</FormLabel>
                     <FormControl>
                       <Input 
                         type="number" 
-                        placeholder="Automatically calculated" 
+                        placeholder="Price per share" 
                         {...field} 
                         disabled
                       />
                     </FormControl>
                     <FormDescription>
-                      Total share capital: {form.watch('numberOfShares') || 4} shares × {formatCurrency(sharePrice)}
+                      Total share capital: {form.watch('numberOfShares') || 4} shares × {formatCurrency(sharePrice)} = {formatCurrency((parseInt(form.watch('numberOfShares') || '4')) * sharePrice)}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

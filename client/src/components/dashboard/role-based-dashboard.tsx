@@ -145,7 +145,20 @@ function MemberDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
   const memberId = user?.member?.id;
-  const member = user?.member as any;
+  const authMember = user?.member as any;
+
+  const { data: freshMemberData } = useQuery<any>({
+    queryKey: ['/api/members', memberId],
+    queryFn: async () => {
+      const res = await fetch(`/api/members/${memberId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch member');
+      return res.json();
+    },
+    enabled: !!memberId,
+    refetchInterval: 30000,
+  });
+
+  const member = freshMemberData || authMember;
 
   const { data: savingsAccounts } = useQuery<any[]>({
     queryKey: ['/api/members', memberId, 'savings'],
@@ -180,7 +193,9 @@ function MemberDashboard() {
   const totalSavings = savingsAccounts?.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0) || 0;
   const activeLoans = memberLoans?.filter((l: any) => ['active', 'approved', 'disbursed'].includes(l.status)) || [];
   const totalOutstanding = activeLoans.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
-  const shareExpected = parseFloat(member?.shareContribution || "20000") * (member?.numberOfShares || 4);
+  const numberOfShares = member?.numberOfShares || 4;
+  const perSharePrice = parseFloat(member?.shareContribution || "20000");
+  const shareExpected = perSharePrice * numberOfShares;
   const sharePaid = parseFloat(member?.shareCapital || "0");
 
   const recentTransactions = Array.isArray(memberTransactions)
@@ -376,10 +391,13 @@ function MemberDashboard() {
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6">
-                  <MemberInfoRow icon={DollarSign} label="Number of Shares" value={member?.numberOfShares || 4} />
-                  <MemberInfoRow icon={Wallet} label="Per Share" value={member?.shareContribution ? formatCurrency(member.shareContribution) : formatCurrency(20000)} />
+                  <MemberInfoRow icon={DollarSign} label="Number of Shares" value={numberOfShares} />
+                  <MemberInfoRow icon={Wallet} label="Per Share" value={formatCurrency(perSharePrice)} />
                   <MemberInfoRow icon={TrendingUp} label="Total Paid" value={formatCurrency(sharePaid)} />
                   <MemberInfoRow icon={Banknote} label="Expected Total" value={formatCurrency(shareExpected)} />
+                  {shareExpected > sharePaid && (
+                    <MemberInfoRow icon={Banknote} label="Balance" value={formatCurrency(shareExpected - sharePaid)} />
+                  )}
                 </div>
               </CardContent>
             </Card>
