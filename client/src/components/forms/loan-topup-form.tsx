@@ -37,6 +37,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
+  const [serverErrors, setServerErrors] = useState<string[]>([]);
 
   const { data: activeLoans = [], isLoading: loadingLoans } = useQuery<any[]>({
     queryKey: ['/api/loans/active-for-topup'],
@@ -137,6 +138,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
     }
 
     setValidationErrors(errors);
+    if (errors.length > 0) setServerErrors([]);
   }, [topUpAmount, totalNewPrincipal, termMonths, matchedLoanType, selectedLoan, loanTypeMinAmount, loanTypeMaxAmount, loanTypeMinTerm, loanTypeMaxTerm, maxTopUpAmount, outstandingBalance, maxLoanBySavings, loanToSavingsRatio, totalSavingsBalance]);
 
   const calculateMonthlyPayment = () => {
@@ -186,6 +188,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
         title: "Success",
         description: "Loan top-up application submitted successfully. It will go through the standard approval process.",
       });
+      setServerErrors([]);
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/my-loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/active-for-topup'] });
@@ -193,40 +196,32 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
       onSuccess();
     },
     onError: async (error: any) => {
-      let errorMessage = "Failed to submit top-up application";
+      const errors: string[] = [];
       try {
         if (error.message) {
           const parts = error.message.split(': ');
           if (parts.length > 1) {
             const errorData = JSON.parse(parts.slice(1).join(': '));
-            errorMessage = errorData.message || errorMessage;
-            if (errorData.violations) {
-              errorMessage += ': ' + errorData.violations.join(', ');
+            if (errorData.violations && Array.isArray(errorData.violations)) {
+              errors.push(...errorData.violations);
+            }
+            if (errorData.message) {
+              errors.push(errorData.message);
             }
           } else {
-            errorMessage = error.message;
+            errors.push(error.message);
           }
         }
       } catch {
-        errorMessage = error.message || errorMessage;
+        errors.push(error.message || "Failed to submit top-up application");
       }
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+      setServerErrors(errors.length > 0 ? errors : ["Failed to submit top-up application"]);
     },
   });
 
   const handleSubmit = (data: TopUpFormData) => {
-    if (validationErrors.length > 0) {
-      toast({
-        title: "Validation Error",
-        description: validationErrors[0],
-        variant: "destructive",
-      });
-      return;
-    }
+    if (validationErrors.length > 0) return;
+    setServerErrors([]);
     mutation.mutate(data);
   };
 
@@ -425,6 +420,19 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                 <AlertDescription>
                   <ul className="list-disc pl-4 space-y-1">
                     {validationErrors.map((error, i) => (
+                      <li key={i} className="text-sm">{error}</li>
+                    ))}
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {serverErrors.length > 0 && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  <ul className="list-disc pl-4 space-y-1">
+                    {serverErrors.map((error, i) => (
                       <li key={i} className="text-sm">{error}</li>
                     ))}
                   </ul>
