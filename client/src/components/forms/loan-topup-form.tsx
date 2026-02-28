@@ -73,6 +73,8 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
   const loanTypeMinTerm = matchedLoanType?.minTerm || 1;
   const loanTypeMaxTerm = matchedLoanType?.maxTerm || 60;
   const loanTypeInterestRate = matchedLoanType?.interestRate || '12.00';
+  const outstandingBalance = selectedLoan ? parseFloat(selectedLoan.outstandingBalance || '0') : 0;
+  const maxTopUpAmount = loanTypeMaxAmount > 0 ? Math.max(0, loanTypeMaxAmount - outstandingBalance) : 0;
 
   useEffect(() => {
     if (selectedLoan) {
@@ -88,7 +90,6 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
   }, [selectedLoan, matchedLoanType, loanTypeInterestRate, loanTypeMinTerm, loanTypeMaxTerm, form]);
 
   const topUpAmount = parseFloat(form.watch('topUpAmount') || '0');
-  const outstandingBalance = selectedLoan ? parseFloat(selectedLoan.outstandingBalance || '0') : 0;
   const totalNewPrincipal = outstandingBalance + topUpAmount;
   const annualRate = parseFloat(form.watch('interestRate') || '0');
   const termMonths = parseInt(form.watch('termMonths') || '0');
@@ -102,11 +103,11 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
     const errors: string[] = [];
 
     if (topUpAmount > 0) {
+      if (maxTopUpAmount > 0 && topUpAmount > maxTopUpAmount) {
+        errors.push(`Top-up amount (${formatCurrency(topUpAmount)}) exceeds the maximum allowed of ${formatCurrency(maxTopUpAmount)} (loan limit ${formatCurrency(loanTypeMaxAmount)} minus outstanding balance ${formatCurrency(outstandingBalance)})`);
+      }
       if (loanTypeMinAmount > 0 && totalNewPrincipal < loanTypeMinAmount) {
         errors.push(`Total loan amount (${formatCurrency(totalNewPrincipal)}) is below the minimum of ${formatCurrency(loanTypeMinAmount)} for this loan type`);
-      }
-      if (loanTypeMaxAmount > 0 && totalNewPrincipal > loanTypeMaxAmount) {
-        errors.push(`Total loan amount (${formatCurrency(totalNewPrincipal)}) exceeds the maximum of ${formatCurrency(loanTypeMaxAmount)} for this loan type`);
       }
     }
 
@@ -120,7 +121,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
     }
 
     setValidationErrors(errors);
-  }, [topUpAmount, totalNewPrincipal, termMonths, matchedLoanType, selectedLoan, loanTypeMinAmount, loanTypeMaxAmount, loanTypeMinTerm, loanTypeMaxTerm]);
+  }, [topUpAmount, totalNewPrincipal, termMonths, matchedLoanType, selectedLoan, loanTypeMinAmount, loanTypeMaxAmount, loanTypeMinTerm, loanTypeMaxTerm, maxTopUpAmount, outstandingBalance]);
 
   const calculateMonthlyPayment = () => {
     if (totalNewPrincipal > 0 && annualRate > 0 && termMonths > 0) {
@@ -317,8 +318,20 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                   )}
                   {loanTypeMaxAmount > 0 && (
                     <div>
-                      <span className="text-slate-500">Max Amount:</span>
+                      <span className="text-slate-500">Max Loan Amount:</span>
                       <span className="ml-1 font-medium text-slate-800">{formatCurrency(loanTypeMaxAmount)}</span>
+                    </div>
+                  )}
+                  {maxTopUpAmount > 0 && (
+                    <div>
+                      <span className="text-slate-500">Max Top-Up Amount:</span>
+                      <span className="ml-1 font-bold text-emerald-700">{formatCurrency(maxTopUpAmount)}</span>
+                    </div>
+                  )}
+                  {loanTypeMaxAmount > 0 && maxTopUpAmount <= 0 && (
+                    <div className="sm:col-span-2 text-amber-700 font-medium">
+                      <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
+                      Outstanding balance already meets or exceeds the loan limit. No top-up available.
                     </div>
                   )}
                   {matchedLoanType.interestType && (
@@ -344,12 +357,18 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                 <FormItem>
                   <FormLabel>Additional Amount (UGX)</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="Enter additional amount" {...field} />
+                    <Input
+                      type="number"
+                      placeholder="Enter additional amount"
+                      min={1}
+                      max={maxTopUpAmount > 0 ? maxTopUpAmount : undefined}
+                      {...field}
+                    />
                   </FormControl>
                   {matchedLoanType && (
                     <p className="text-xs text-muted-foreground">
                       {loanTypeMaxAmount > 0
-                        ? `Maximum additional amount: ${formatCurrency(Math.max(0, loanTypeMaxAmount - outstandingBalance))}`
+                        ? `Maximum top-up amount: ${formatCurrency(maxTopUpAmount)} (loan limit ${formatCurrency(loanTypeMaxAmount)} - outstanding ${formatCurrency(outstandingBalance)})`
                         : 'No maximum amount limit for this loan type'}
                     </p>
                   )}

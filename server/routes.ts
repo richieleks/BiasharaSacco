@@ -1441,10 +1441,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        if (maxAmount > 0 && totalNewPrincipal > maxAmount) {
-          return res.status(400).json({
-            message: `Total loan amount (${totalNewPrincipal.toLocaleString()}) exceeds the maximum of ${maxAmount.toLocaleString()} for this loan type`
-          });
+        if (maxAmount > 0) {
+          const maxTopUpAllowed = maxAmount - outstandingBalance;
+          if (additionalAmount > maxTopUpAllowed) {
+            return res.status(400).json({
+              message: `Top-up amount (${additionalAmount.toLocaleString()}) exceeds the maximum allowed of ${Math.max(0, maxTopUpAllowed).toLocaleString()} (loan limit ${maxAmount.toLocaleString()} minus outstanding balance ${outstandingBalance.toLocaleString()})`
+            });
+          }
         }
 
         if (termMonths < minTerm) {
