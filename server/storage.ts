@@ -880,6 +880,33 @@ export class DatabaseStorage implements IStorage {
       .orderBy(loanApprovals.createdAt);
   }
 
+  async getLoanApprovalsByUser(userId: string): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(loanApprovals)
+      .leftJoin(loans, eq(loanApprovals.loanId, loans.id))
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .where(eq(loanApprovals.approvedBy, userId))
+      .orderBy(desc(loanApprovals.createdAt));
+    return results.map(r => ({
+      ...r.loan_approvals,
+      loan: r.loans ? { ...r.loans, member: r.members || undefined } : undefined,
+    }));
+  }
+
+  async getLoansRejectedByUser(userId: string): Promise<any[]> {
+    const results = await db
+      .select()
+      .from(loans)
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .where(eq(loans.rejectedBy, userId))
+      .orderBy(desc(loans.rejectedAt));
+    return results.map(r => ({
+      ...r.loans,
+      member: r.members || undefined,
+    }));
+  }
+
   async rejectLoan(loanId: number, rejectedBy: string, reason: string): Promise<Loan> {
     const [loan] = await db
       .update(loans)

@@ -1853,6 +1853,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/loans/my-approval-activity', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req)!;
+      const approvals = await storage.getLoanApprovalsByUser(userId);
+      const rejections = await storage.getLoansRejectedByUser(userId);
+
+      const approvedList = approvals.map((a: any) => ({
+        id: a.id,
+        loanNumber: a.loan?.loanNumber || '-',
+        memberName: a.loan?.member?.fullName || '-',
+        memberNumber: a.loan?.member?.memberNumber || '-',
+        principalAmount: a.loan?.principalAmount || '0',
+        stage: a.stage,
+        comments: a.comments || '',
+        date: a.createdAt,
+        action: 'approved',
+      }));
+
+      const rejectedList = rejections.map((l: any) => ({
+        id: l.id,
+        loanNumber: l.loanNumber || '-',
+        memberName: l.member?.fullName || '-',
+        memberNumber: l.member?.memberNumber || '-',
+        principalAmount: l.principalAmount || '0',
+        stage: 'committee',
+        comments: l.rejectionReason || '',
+        date: l.rejectedAt,
+        action: 'rejected',
+      }));
+
+      res.json({
+        approved: approvedList,
+        rejected: rejectedList,
+        summary: {
+          totalApproved: approvedList.length,
+          totalRejected: rejectedList.length,
+          totalReviewed: approvedList.length + rejectedList.length,
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching approval activity:", error);
+      res.status(500).json({ message: "Failed to fetch approval activity" });
+    }
+  });
+
   app.get('/api/loans/:loanId/approvals', isAuthenticated, async (req: any, res) => {
     try {
       const loanId = parseInt(req.params.loanId);

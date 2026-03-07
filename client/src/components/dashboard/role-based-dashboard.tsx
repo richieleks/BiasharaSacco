@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -18,7 +19,7 @@ import {
   PiggyBank, HandCoins, ArrowUp, ArrowDown, CreditCard, TrendingUp, 
   User, Phone, Mail, MapPin, Calendar, Building, Hash, Wallet, 
   Banknote, Shield, Briefcase, Heart, Users, Activity, Eye, FileText,
-  DollarSign
+  DollarSign, CheckCircle, XCircle, ClipboardList
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
@@ -60,11 +61,151 @@ function ManagerDashboard() {
   );
 }
 
+function CommitteeApprovalActivity() {
+  const { isAuthenticated } = useAuth();
+  const [activeTab, setActiveTab] = useState('all');
+
+  const { data: activityData, isLoading } = useQuery<any>({
+    queryKey: ['/api/loans/my-approval-activity'],
+    enabled: isAuthenticated,
+  });
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <ClipboardList className="h-5 w-5" />
+            My Approval Activity
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-12 bg-slate-100 rounded-lg animate-pulse" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const approved = activityData?.approved || [];
+  const rejected = activityData?.rejected || [];
+  const summary = activityData?.summary || { totalApproved: 0, totalRejected: 0, totalReviewed: 0 };
+
+  const allActivity = [...approved, ...rejected].sort((a: any, b: any) => {
+    const dateA = a.date ? new Date(a.date).getTime() : 0;
+    const dateB = b.date ? new Date(b.date).getTime() : 0;
+    return dateB - dateA;
+  });
+
+  const filteredActivity = activeTab === 'approved' ? approved :
+    activeTab === 'rejected' ? rejected : allActivity;
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ClipboardList className="h-5 w-5" />
+              My Approval Activity
+            </CardTitle>
+            <CardDescription>Loans you have reviewed as a committee member</CardDescription>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="bg-slate-50 border rounded-xl p-3 text-center">
+            <p className="text-xs font-medium text-slate-500">Total Reviewed</p>
+            <p className="text-xl font-bold mt-0.5">{summary.totalReviewed}</p>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
+            <p className="text-xs font-medium text-green-600">Approved</p>
+            <p className="text-xl font-bold text-green-700 mt-0.5">{summary.totalApproved}</p>
+          </div>
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
+            <p className="text-xs font-medium text-red-600">Declined</p>
+            <p className="text-xl font-bold text-red-700 mt-0.5">{summary.totalRejected}</p>
+          </div>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="grid grid-cols-3 w-full mb-4">
+            <TabsTrigger value="all">All ({allActivity.length})</TabsTrigger>
+            <TabsTrigger value="approved">Approved ({approved.length})</TabsTrigger>
+            <TabsTrigger value="rejected">Declined ({rejected.length})</TabsTrigger>
+          </TabsList>
+        </Tabs>
+
+        {filteredActivity.length > 0 ? (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Loan #</TableHead>
+                  <TableHead>Member</TableHead>
+                  <TableHead className="hidden sm:table-cell">Amount</TableHead>
+                  <TableHead>Decision</TableHead>
+                  <TableHead className="hidden md:table-cell">Comments</TableHead>
+                  <TableHead>Date</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredActivity.map((item: any, idx: number) => (
+                  <TableRow key={`${item.action}-${item.id}-${idx}`}>
+                    <TableCell className="font-medium text-xs">{item.loanNumber}</TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="text-sm font-medium">{item.memberName}</p>
+                        <p className="text-xs text-muted-foreground">{item.memberNumber}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{formatCurrency(item.principalAmount)}</TableCell>
+                    <TableCell>
+                      {item.action === 'approved' ? (
+                        <Badge className="bg-green-100 text-green-700 border-green-200 gap-1">
+                          <CheckCircle className="h-3 w-3" />
+                          Approved
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="gap-1">
+                          <XCircle className="h-3 w-3" />
+                          Declined
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-xs max-w-[200px] truncate">
+                      {item.comments || '-'}
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {item.date ? format(new Date(item.date), 'dd MMM yyyy') : '-'}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-50" />
+            <p className="font-medium">No approval activity yet</p>
+            <p className="text-sm mt-1">Loans you review will appear here</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function CommitteeDashboard() {
   return (
     <div className="space-y-6">
       <MetricsGrid />
       <LoanApprovalWorkflow />
+      <CommitteeApprovalActivity />
       <MemberApprovals />
     </div>
   );
