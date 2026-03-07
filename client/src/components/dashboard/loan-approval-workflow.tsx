@@ -33,7 +33,8 @@ export default function LoanApprovalWorkflow() {
   const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : (user?.role ? [user.role] : []));
   const mappedRoles = userRoles.map((role: any) => role === 'teller' ? 'treasurer' : role);
   const isAdmin = hasAnyRole(mappedRoles as any, ['admin']);
-  const canAccessTreasurer = hasAnyRole(mappedRoles as any, ['treasurer', 'admin']);
+  const canAccessTreasurer = hasAnyRole(mappedRoles as any, ['treasurer']);
+  const canViewTreasurer = hasAnyRole(mappedRoles as any, ['treasurer', 'admin']);
   const canAccessCommittee = hasAnyRole(mappedRoles as any, ['committee']);
   const canApproveCommittee = hasAnyRole(mappedRoles as any, ['committee']) && !isAdmin;
   const canViewCommittee = hasAnyRole(mappedRoles as any, ['committee', 'treasurer', 'admin']);
@@ -53,7 +54,7 @@ export default function LoanApprovalWorkflow() {
 
   const { data: treasurerLoans, isLoading: treasurerLoading } = useQuery<LoanWithDetails[]>({
     queryKey: ['/api/loans/approval/treasurer'],
-    enabled: canAccessTreasurer,
+    enabled: canViewTreasurer,
     refetchInterval: 30000,
   });
 
@@ -297,7 +298,7 @@ export default function LoanApprovalWorkflow() {
     );
   };
 
-  if (!canAccessTreasurer && !canViewCommittee) {
+  if (!canViewTreasurer && !canViewCommittee) {
     return (
       <Card>
         <CardHeader>
@@ -326,7 +327,7 @@ export default function LoanApprovalWorkflow() {
                 <Badge variant="secondary" className="ml-2">{committeeLoans.length}</Badge>
               )}
             </TabsTrigger>
-            <TabsTrigger value="treasurer" disabled={!canAccessTreasurer}>
+            <TabsTrigger value="treasurer" disabled={!canViewTreasurer}>
               Treasurer Disbursement
               {treasurerLoans && treasurerLoans.length > 0 && (
                 <Badge variant="secondary" className="ml-2">{treasurerLoans.length}</Badge>

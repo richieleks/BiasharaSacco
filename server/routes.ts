@@ -1953,8 +1953,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/loans/:id/disburse', isAuthenticated, async (req, res) => {
+  app.patch('/api/loans/:id/disburse', isAuthenticated, async (req: any, res) => {
     try {
+      const userId = getUserId(req)!;
+      const user = await storage.getUser(userId);
+      const member = await storage.getMemberByUserId(userId);
+      const roles = member ? await storage.getMemberRoles(member.id) : [];
+      if (roles.length === 0 && member?.role) roles.push(member.role);
+      if (roles.length === 0 && user?.role) roles.push(user.role);
+
+      const isTreasurer = roles.includes('treasurer') || roles.includes('teller');
+      if (!isTreasurer) {
+        return res.status(403).json({ message: "Only users with the treasurer role can disburse loans." });
+      }
+
       const loanId = await storage.resolveLoanId(req.params.id);
       const loanDetails = await storage.getLoan(loanId);
       const loan = await storage.updateLoanStatus(loanId, 'disbursed');

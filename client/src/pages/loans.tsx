@@ -43,8 +43,9 @@ const getLoanTypeColor = (type: string) => {
 
 export default function Loans() {
   const [location, setLocation] = useLocation();
-  const { activeRole } = useRBAC();
+  const { activeRole, userRoles } = useRBAC();
   const isPersonalView = location === '/my-loans' || activeRole === 'member';
+  const isTreasurer = userRoles?.includes('treasurer') || userRoles?.includes('teller');
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
   const [isRepaymentModalOpen, setIsRepaymentModalOpen] = useState(false);
@@ -507,7 +508,7 @@ export default function Loans() {
                                 Pending committee approval
                               </p>
                             )}
-                            {loan.status === 'approved' && (
+                            {loan.status === 'approved' && isTreasurer && (
                               <Button
                                 size="sm"
                                 onClick={() => disburseLoanMutation.mutate(loan)}
@@ -517,6 +518,11 @@ export default function Loans() {
                                 <DollarSign className="w-4 h-4 mr-1" />
                                 Disburse
                               </Button>
+                            )}
+                            {loan.status === 'approved' && !isTreasurer && (
+                              <p className="text-sm text-amber-600">
+                                Awaiting treasurer disbursement
+                              </p>
                             )}
                           </>
                         )}
