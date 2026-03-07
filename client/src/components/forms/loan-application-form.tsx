@@ -323,7 +323,9 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
       } else if (error.message.includes('400')) {
         try {
           const errorData = JSON.parse(error.message.split('400: ')[1]);
-          if (errorData.pendingLoans) {
+          if (errorData.violations && errorData.violations.length > 0) {
+            errorMessage = errorData.violations.join('\n');
+          } else if (errorData.pendingLoans) {
             errorMessage = `${errorData.message}${errorData.pendingLoanNumbers ? ` (Loan Numbers: ${errorData.pendingLoanNumbers.join(', ')})` : ''}`;
           } else {
             errorMessage = errorData.message || "Cannot apply for new loan";
@@ -343,7 +345,15 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     },
   });
 
-  const handleSubmit = (data: LoanApplicationData) => {
+  const handleSubmit = async (data: LoanApplicationData) => {
+    if (eligibilityResult && !eligibilityResult.isEligible) {
+      toast({
+        title: "Eligibility Check Failed",
+        description: "Please resolve all eligibility violations before submitting your loan application.",
+        variant: "destructive",
+      });
+      return;
+    }
     mutation.mutate(data);
   };
 

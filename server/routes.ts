@@ -1231,7 +1231,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Apply business rules validation
       const eligibilityResult = await businessRulesValidator.checkLoanEligibility(
         memberId, 
-        parseFloat(principalAmount)
+        parseFloat(principalAmount),
+        loanType
       );
       
       if (!eligibilityResult.isEligible) {
@@ -1429,6 +1430,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (additionalAmount <= 0) {
         return res.status(400).json({ message: "Top-up amount must be greater than zero" });
+      }
+
+      // Check savings-based eligibility for total new principal
+      let loanToSavingsRatio = 2.5;
+      try {
+        const ratioSetting = await storage.getSystemSetting('loanToSavingsRatio');
+        if (ratioSetting?.settingValue) {
+          const parsed = parseFloat(ratioSetting.settingValue);
+          if (!isNaN(parsed) && parsed > 0) {
+            loanToSavingsRatio = parsed;
+          }
+        }
+      } catch {}
+
+      const savingsAccounts = await storage.getSavingsAccountsByMember(member.id);
+      const activeSavingsAccount = savingsAccounts.find(acc => acc.status === 'active');
+      if (activeSavingsAccount) {
+        const totalSavings = parseFloat(activeSavingsAccount.balance);
+        const maxByRatio = totalSavings * loanToSavingsRatio;
+        if (totalNewPrincipal > maxByRatio) {
+          return res.status(400).json({
+            message: `Total loan amount (UGX ${Math.round(totalNewPrincipal).toLocaleString()}) exceeds your maximum borrowing limit of UGX ${Math.round(maxByRatio).toLocaleString()} (${loanToSavingsRatio}x your savings of UGX ${Math.round(totalSavings).toLocaleString()}).`
+          });
+        }
       }
 
       if (matchingLoanType) {
