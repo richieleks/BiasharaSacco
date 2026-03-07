@@ -1310,11 +1310,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         loanNumber,
         loanType,
         principalAmount,
-        interestRate: decimalInterestRate.toFixed(4), // Store as decimal
+        interestRate: decimalInterestRate.toFixed(4),
         termMonths,
         monthlyPayment: monthlyPayment.toFixed(2),
         outstandingBalance: principalAmount,
         status: 'pending',
+        approvalStage: 'committee',
       });
 
       // Create notification for loan application
@@ -1561,6 +1562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         monthlyPayment: monthlyPayment.toFixed(2),
         outstandingBalance: totalNewPrincipal.toFixed(2),
         status: 'pending',
+        approvalStage: 'committee',
         isTopUp: true,
         topUpOfLoanId: originalLoanId,
         previousLoanBalance: outstandingBalance.toFixed(2),
