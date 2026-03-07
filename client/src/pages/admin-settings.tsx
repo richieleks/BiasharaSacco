@@ -74,6 +74,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useRBAC } from "@/hooks/useRBAC";
 import { formatCurrency } from "@/lib/utils";
+import { RBACManagementTab } from "@/components/rbac-management";
 
 const adminSettingsSchema = z.object({
   // System Configuration
@@ -133,19 +134,13 @@ const userSettingsSchema = z.object({
 
 type UserSettingsData = z.infer<typeof userSettingsSchema>;
 
-interface RoleFormData {
-  name: string;
-  displayName: string;
-  description: string;
-}
-
 export default function AdminSettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const { hasPermission } = useRBAC();
-  const [activeTab, setActiveTab] = useState<'system' | 'security' | 'email' | 'notifications' | 'business' | 'maintenance' | 'loantypes' | 'users' | 'preferences' | 'rbac' | 'roleassign'>('business');
+  const [activeTab, setActiveTab] = useState<'system' | 'security' | 'email' | 'notifications' | 'business' | 'maintenance' | 'loantypes' | 'users' | 'preferences' | 'rbac'>('business');
 
   const settingsDefaults: AdminSettingsData = {
     maintenanceMode: false,
@@ -262,104 +257,6 @@ export default function AdminSettingsPage() {
 
   const handleUserSettingsSubmit = (data: UserSettingsData) => {
     updateUserSettingsMutation.mutate(data);
-  };
-
-  // RBAC Management states
-  const [selectedRole, setSelectedRole] = useState<any>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
-  const [roleFormData, setRoleFormData] = useState<RoleFormData>({
-    name: "",
-    displayName: "",
-    description: "",
-  });
-  const [selectedPermissions, setSelectedPermissions] = useState<number[]>([]);
-
-  // Role Management states
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedMember, setSelectedMember] = useState<any>(null);
-
-  // Fetch roles
-  const { data: roles = [], isLoading: rolesLoading } = useQuery({
-    queryKey: ["/api/rbac/roles"],
-  });
-
-  // Fetch permissions
-  const { data: permissions = [], isLoading: permissionsLoading } = useQuery({
-    queryKey: ["/api/rbac/permissions"],
-  });
-
-  // Fetch members for role management
-  const { data: members = [], isLoading: membersLoading } = useQuery({
-    queryKey: ['/api/members'],
-  });
-
-  // Filter members based on search term
-  const filteredMembers = (members as any[]).filter((member: any) =>
-    member.fullName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.memberNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    member.roles?.some((role: string) => role.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
-
-  // Create role mutation
-  const createRoleMutation = useMutation({
-    mutationFn: async (data: RoleFormData) => {
-      await apiRequest("POST", "/api/rbac/roles", data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/rbac/roles"] });
-      toast({
-        title: "Success",
-        description: "Role created successfully",
-      });
-      setIsCreateDialogOpen(false);
-      setRoleFormData({ name: "", displayName: "", description: "" });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Update member roles mutation
-  const updateMemberRolesMutation = useMutation({
-    mutationFn: async ({ memberId, roles }: { memberId: number; roles: string[] }) => {
-      return await apiRequest('PATCH', `/api/members/${memberId}/roles`, { roles });
-    },
-    onSuccess: () => {
-      toast({
-        title: "Roles Updated",
-        description: "Member roles have been updated successfully.",
-      });
-      queryClient.invalidateQueries({ queryKey: ['/api/members'] });
-      setSelectedMember(null);
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Update Failed",
-        description: error.message || "Failed to update member roles. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'admin':
-        return 'destructive' as const;
-      case 'committee':
-        return 'secondary' as const;
-      case 'treasurer':
-        return 'outline' as const;
-      case 'member':
-        return 'secondary' as const;
-      default:
-        return 'outline' as const;
-    }
   };
 
   // Load loan types for management
@@ -1302,7 +1199,7 @@ export default function AdminSettingsPage() {
                 <UserManagementTab />
               )}
 
-              {!['users', 'rbac', 'roleassign', 'preferences', 'loantypes'].includes(activeTab) && (
+              {!['users', 'rbac', 'preferences', 'loantypes'].includes(activeTab) && (
                 <div className="flex justify-end gap-4 pt-4 border-t">
                   <Button variant="outline" onClick={() => navigate('/')}>
                     Cancel
@@ -1664,102 +1561,7 @@ export default function AdminSettingsPage() {
 
           {/* RBAC Management Tab */}
           {activeTab === 'rbac' && (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
-                  <ShieldCheck className="h-5 w-5" />
-                  RBAC Management
-                </h3>
-                <p className="text-sm text-muted-foreground mb-6">
-                  Manage roles and permissions for system access control
-                </p>
-              </div>
-
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Lock className="h-4 w-4" />
-                      System Roles
-                    </CardTitle>
-                    <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-                      <Button
-                        size="sm"
-                        onClick={() => setIsCreateDialogOpen(true)}
-                      >
-                        <Plus className="h-4 w-4 mr-2" />
-                        Create Role
-                      </Button>
-                      <DialogContent className="max-h-[85vh] overflow-y-auto">
-                        <DialogHeader>
-                          <DialogTitle>Create New Role</DialogTitle>
-                          <DialogDescription>
-                            Create a new role with specific permissions
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="role-name">Role Name</Label>
-                            <Input
-                              id="role-name"
-                              value={roleFormData.name}
-                              onChange={(e) => setRoleFormData({ ...roleFormData, name: e.target.value })}
-                              placeholder="e.g., reviewer"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="display-name">Display Name</Label>
-                            <Input
-                              id="display-name"
-                              value={roleFormData.displayName}
-                              onChange={(e) => setRoleFormData({ ...roleFormData, displayName: e.target.value })}
-                              placeholder="e.g., Content Reviewer"
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="description">Description</Label>
-                            <Textarea
-                              id="description"
-                              value={roleFormData.description}
-                              onChange={(e) => setRoleFormData({ ...roleFormData, description: e.target.value })}
-                              placeholder="Describe the role's purpose"
-                            />
-                          </div>
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-                              Cancel
-                            </Button>
-                            <Button onClick={() => createRoleMutation.mutate(roleFormData)}>
-                              Create Role
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {rolesLoading ? (
-                      <div className="text-sm text-muted-foreground">Loading roles...</div>
-                    ) : (
-                      (roles as any[]).map((role: any) => (
-                        <div key={role.id} className="flex items-center justify-between p-3 border rounded-lg">
-                          <div>
-                            <p className="font-medium">{role.displayName}</p>
-                            <p className="text-sm text-muted-foreground">{role.description}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Badge variant="secondary">{role.name}</Badge>
-                            <Badge variant="outline">{role.permissions?.length || 0} permissions</Badge>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            <RBACManagementTab />
           )}
 
         </div>

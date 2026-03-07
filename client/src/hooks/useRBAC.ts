@@ -1,20 +1,20 @@
 import { useAuth } from "./useAuth";
 import { useQuery } from "@tanstack/react-query";
-import { useState, useEffect, useCallback, useSyncExternalStore } from "react";
+import { useEffect, useCallback, useSyncExternalStore } from "react";
 import { 
   hasPermission, 
   canAccessDashboardComponent, 
   getNavigationItems, 
   canAccessRoute,
   canApproveAtStage,
+  getHighestRole,
   type UserRole 
 } from "@/lib/rbac";
 
 const ACTIVE_ROLE_KEY = 'biashara_active_role';
-const ROLE_CHANGE_EVENT = 'biashara_role_change';
-
-let activeRoleSnapshot: UserRole = (localStorage.getItem(ACTIVE_ROLE_KEY) as UserRole) || 'member';
 const listeners = new Set<() => void>();
+
+let activeRoleSnapshot: UserRole = localStorage.getItem(ACTIVE_ROLE_KEY) || 'member';
 
 function getActiveRoleSnapshot() {
   return activeRoleSnapshot;
@@ -53,13 +53,6 @@ export function useRBAC() {
   } else if (user?.role) {
     userRoles = [user.role as UserRole];
   }
-  
-  const getHighestRole = (roles: UserRole[]): UserRole => {
-    const hierarchy: Record<UserRole, number> = { member: 1, teller: 2, treasurer: 2, committee: 3, manager: 4, admin: 5 };
-    return roles.reduce((highest, current) => 
-      hierarchy[current] > hierarchy[highest] ? current : highest
-    , 'member' as UserRole);
-  };
 
   const activeRole = useSyncExternalStore(subscribeToRoleChanges, getActiveRoleSnapshot);
 
@@ -80,6 +73,7 @@ export function useRBAC() {
 
   const effectiveRole = userRoles.includes(activeRole) ? activeRole : getHighestRole(userRoles);
   const effectiveRoles = [effectiveRole];
+  const isAdmin = userRoles.includes('admin') || effectiveRole === 'admin';
   
   return {
     userRole: effectiveRole,
@@ -90,19 +84,14 @@ export function useRBAC() {
     isLoading,
     
     hasPermission: (action: string, resource: string) => {
-      const hasDynamicPermission = dynamicPermissions.some(
+      if (isAdmin) return true;
+      return dynamicPermissions.some(
         (p: any) => p.action === action && p.resource === resource
       );
-      
-      if (dynamicPermissions.length > 0) {
-        return hasDynamicPermission;
-      }
-      
-      return hasPermission(effectiveRole, action, resource);
     },
     
     canAccessDashboardComponent: (component: string) => 
-      canAccessDashboardComponent(effectiveRole, component),
+      canAccessDashboardComponent(effectiveRole, component, dynamicPermissions),
     
     canAccessRoute: (route: string) => 
       canAccessRoute(effectiveRoles, route, dynamicPermissions),
@@ -121,8 +110,8 @@ export function useRBAC() {
     hasRole: (role: UserRole) => userRoles.includes(role),
     
     isHigherThan: (role: UserRole) => {
-      const hierarchy: Record<UserRole, number> = { member: 1, teller: 2, treasurer: 2, committee: 3, manager: 4, admin: 5 };
-      return hierarchy[effectiveRole] > hierarchy[role];
+      const hierarchy: Record<string, number> = { member: 1, treasurer: 2, committee: 3, admin: 5 };
+      return (hierarchy[effectiveRole] || 1) > (hierarchy[role] || 1);
     }
   };
 }
