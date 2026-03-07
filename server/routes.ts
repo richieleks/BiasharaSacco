@@ -659,7 +659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (roles.length === 0 && user?.role) roles.push(user.role);
     
     if (requiredRole === 'committee') {
-      return roles.includes('committee');
+      return roles.includes('committee') && !roles.includes('admin');
     }
     if (requiredRole === 'treasurer' || requiredRole === 'teller') {
       return roles.includes('treasurer') || roles.includes('teller') || roles.includes('admin');
