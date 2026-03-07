@@ -42,7 +42,7 @@ export default function DataImport() {
 
   const { data: loanTypes } = useQuery<LoanType[]>({
     queryKey: ['/api/loan-types/active'],
-    enabled: importType === 'loans',
+    enabled: importType === 'loans' || importType === 'loan-repayments',
   });
 
   const canImport = hasPermission('update', 'system-settings');
