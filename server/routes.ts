@@ -4164,10 +4164,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const savingsAccount = savingsAccounts.find((s: any) => s.accountType === 'regular') || savingsAccounts[0];
 
           const newBalance = Math.max(0, outstandingBalance - repaymentAmount);
-          await storage.updateLoan(loan.id, { outstandingBalance: newBalance.toFixed(2) });
+          await storage.updateLoanBalance(loan.id, newBalance.toFixed(2));
 
           if (newBalance <= 0) {
-            await storage.updateLoan(loan.id, { status: 'completed', outstandingBalance: '0.00' });
+            await storage.updateLoanBalance(loan.id, '0.00');
+            await storage.updateLoanStatus(loan.id, 'completed');
           }
 
           await storage.createTransaction({
