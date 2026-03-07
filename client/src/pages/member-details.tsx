@@ -119,7 +119,7 @@ export default function MemberDetails() {
   const { data: member, isLoading: memberLoading } = useQuery<MemberWithDetails>({
     queryKey: ['/api/members', memberId],
     queryFn: async () => {
-      const response = await fetch(`/api/members/${memberId}`);
+      const response = await fetch(`/api/members/${memberId}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch member details');
       return response.json();
     },
@@ -129,7 +129,7 @@ export default function MemberDetails() {
   const { data: savingsAccounts } = useQuery<any[]>({
     queryKey: ['/api/members', memberId, 'savings'],
     queryFn: async () => {
-      const response = await fetch(`/api/members/${memberId}/savings`);
+      const response = await fetch(`/api/members/${memberId}/savings`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch savings accounts');
       return response.json();
     },
@@ -139,22 +139,29 @@ export default function MemberDetails() {
   const { data: loans } = useQuery<any[]>({
     queryKey: ['/api/members', memberId, 'loans'],
     queryFn: async () => {
-      const response = await fetch(`/api/members/${memberId}/loans`);
+      const response = await fetch(`/api/members/${memberId}/loans`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch loans');
       return response.json();
     },
     enabled: !!memberId,
   });
 
-  const { data: transactions } = useQuery<any[]>({
-    queryKey: ['/api/members', memberId, 'transactions'],
+  const [txPage, setTxPage] = useState(1);
+  const txLimit = 25;
+
+  const { data: transactionsData, isLoading: txLoading } = useQuery<{ transactions: any[]; total: number; page: number; totalPages: number }>({
+    queryKey: ['/api/members', memberId, 'transactions', txPage],
     queryFn: async () => {
-      const response = await fetch(`/api/members/${memberId}/transactions`);
+      const response = await fetch(`/api/members/${memberId}/transactions?page=${txPage}&limit=${txLimit}`, { credentials: 'include' });
       if (!response.ok) throw new Error('Failed to fetch transactions');
       return response.json();
     },
     enabled: !!memberId,
   });
+
+  const transactions = transactionsData?.transactions || [];
+  const totalTransactions = transactionsData?.total || 0;
+  const totalTxPages = transactionsData?.totalPages || 1;
 
   const { data: systemConfig } = useQuery<any>({
     queryKey: ['/api/system/settings/public'],
@@ -271,9 +278,7 @@ export default function MemberDetails() {
   const sharePaid = parseFloat(member.shareCapital || "0");
   const shareRemaining = Math.max(0, shareExpected - sharePaid);
 
-  const recentTransactions = Array.isArray(transactions)
-    ? [...transactions].sort((a: any, b: any) => new Date(b.transactionDate || b.createdAt || 0).getTime() - new Date(a.transactionDate || a.createdAt || 0).getTime()).slice(0, 15)
-    : [];
+  const recentTransactions = transactions;
 
   return (
     <div className="space-y-6 page-container animate-fade-in">
@@ -360,7 +365,7 @@ export default function MemberDetails() {
         <StatCard
           icon={Activity}
           label="Transactions"
-          value={Array.isArray(transactions) ? transactions.length : 0}
+          value={totalTransactions}
           color="blue"
         />
         <StatCard
@@ -643,7 +648,7 @@ export default function MemberDetails() {
                 Recent Transactions
               </CardTitle>
               <p className="text-xs text-slate-400">
-                Showing last {recentTransactions.length} of {Array.isArray(transactions) ? transactions.length : 0} transactions
+                Page {txPage} of {totalTxPages} ({totalTransactions} transactions)
               </p>
             </CardHeader>
             <CardContent className="pt-0">
@@ -690,10 +695,37 @@ export default function MemberDetails() {
                     </tbody>
                   </table>
                 </div>
+              ) : txLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-sm text-slate-500">Loading transactions...</p>
+                </div>
               ) : (
                 <div className="text-center py-8">
                   <Activity className="h-10 w-10 text-slate-300 mx-auto mb-2" />
                   <p className="text-sm text-slate-500">No transactions found</p>
+                </div>
+              )}
+              {totalTxPages > 1 && (
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTxPage(p => Math.max(1, p - 1))}
+                    disabled={txPage <= 1}
+                  >
+                    Previous
+                  </Button>
+                  <span className="text-xs text-slate-500">
+                    Page {txPage} of {totalTxPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTxPage(p => Math.min(totalTxPages, p + 1))}
+                    disabled={txPage >= totalTxPages}
+                  >
+                    Next
+                  </Button>
                 </div>
               )}
             </CardContent>

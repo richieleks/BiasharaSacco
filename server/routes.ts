@@ -2196,8 +2196,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/members/:id/transactions', isAuthenticated, async (req, res) => {
     try {
-      const transactions = await storage.getTransactionsByMember(await storage.resolveMemberId(req.params.id));
-      res.json(transactions);
+      const memberId = await storage.resolveMemberId(req.params.id);
+      const page = parseInt(req.query.page as string) || 1;
+      const limit = Math.min(parseInt(req.query.limit as string) || 25, 100);
+
+      const allTransactions = await storage.getTransactionsByMember(memberId);
+      const total = allTransactions.length;
+      const totalPages = Math.ceil(total / limit);
+      const offset = (page - 1) * limit;
+      const paginatedTransactions = allTransactions.slice(offset, offset + limit);
+
+      res.json({
+        transactions: paginatedTransactions,
+        total,
+        page,
+        totalPages,
+      });
     } catch (error) {
       console.error("Error fetching member transactions:", error);
       res.status(500).json({ message: "Failed to fetch member transactions" });
