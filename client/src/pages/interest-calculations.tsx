@@ -114,10 +114,11 @@ export default function InterestCalculations() {
       setIsCreateDialogOpen(false);
       setNewFinancialYearData({ yearLabel: '', startDate: '', endDate: '', interestRate: '' });
     },
-    onError: (error) => {
+    onError: (error: any) => {
+      const msg = error?.message || 'Failed to create financial year';
       toast({
-        title: 'Error',
-        description: 'Failed to create financial year',
+        title: 'Duplicate or Overlap Detected',
+        description: msg,
         variant: 'destructive',
       });
     },
@@ -229,9 +230,37 @@ export default function InterestCalculations() {
       return;
     }
 
+    if (financialYears && Array.isArray(financialYears)) {
+      const labelExists = financialYears.some((fy: any) => fy.yearLabel === newFinancialYearData.yearLabel);
+      if (labelExists) {
+        toast({
+          title: 'Duplicate Financial Year',
+          description: `A financial year with the label "${newFinancialYearData.yearLabel}" already exists`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const newStart = new Date(newFinancialYearData.startDate);
+      const newEnd = new Date(newFinancialYearData.endDate);
+      const overlap = financialYears.find((fy: any) => {
+        const fyStart = new Date(fy.startDate);
+        const fyEnd = new Date(fy.endDate);
+        return newStart <= fyEnd && newEnd >= fyStart;
+      });
+      if (overlap) {
+        toast({
+          title: 'Overlapping Dates',
+          description: `Date range overlaps with "${(overlap as any).yearLabel}" (${(overlap as any).startDate} to ${(overlap as any).endDate})`,
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     createFinancialYearMutation.mutate({
       ...newFinancialYearData,
-      interestRate: (parseFloat(newFinancialYearData.interestRate) / 100).toString(), // Convert percentage to decimal
+      interestRate: (parseFloat(newFinancialYearData.interestRate) / 100).toString(),
       status: 'draft',
       isActive: false,
     });

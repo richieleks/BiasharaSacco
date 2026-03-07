@@ -4372,6 +4372,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/financial-years', isAuthenticated, async (req, res) => {
     try {
+      const { yearLabel, startDate, endDate } = req.body;
+
+      const existingYears = await storage.getAllFinancialYears();
+
+      const labelMatch = existingYears.find((fy: any) => fy.yearLabel === yearLabel);
+      if (labelMatch) {
+        return res.status(400).json({ message: `A financial year with the label "${yearLabel}" already exists` });
+      }
+
+      const newStart = new Date(startDate);
+      const newEnd = new Date(endDate);
+      const overlapMatch = existingYears.find((fy: any) => {
+        const fyStart = new Date(fy.startDate);
+        const fyEnd = new Date(fy.endDate);
+        return newStart <= fyEnd && newEnd >= fyStart;
+      });
+      if (overlapMatch) {
+        return res.status(400).json({ message: `Date range overlaps with existing financial year "${overlapMatch.yearLabel}" (${overlapMatch.startDate} to ${overlapMatch.endDate})` });
+      }
+
       const financialYear = await storage.createFinancialYear(req.body);
       res.status(201).json(financialYear);
     } catch (error) {
