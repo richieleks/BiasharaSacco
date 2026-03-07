@@ -4142,7 +4142,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           const activeLoans = await storage.getMemberActiveLoans(member.id);
-          const matchingLoan = activeLoans.find((l: any) => l.loanTypeId === loanTypeId);
+          const matchingLoan = activeLoans.find((l: any) => 
+            l.loanType === loanType.name || l.loanType === loanType.displayName || l.loanTypeId === loanTypeId
+          );
           if (!matchingLoan) {
             skippedNoLoan++;
             errors.push({ row: i + 1, error: `No active ${loanType.displayName} loan for member: ${member.fullName} (${member.memberNumber})`, data: { remitterAccount, amount } });
