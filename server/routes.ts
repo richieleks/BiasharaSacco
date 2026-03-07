@@ -3822,16 +3822,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
         return res.send(buf);
       } else if (format === 'pdf') {
-        const escapeCsv = (val: any) => {
-          const str = String(val ?? '');
-          if (str.includes(',') || str.includes('"') || str.includes('\n')) return `"${str.replace(/"/g, '""')}"`;
-          return str;
+        const PDFDocument = (await import('pdfkit')).default;
+        const doc = new PDFDocument({ size: 'A4', layout: headers.length > 5 ? 'landscape' : 'portrait', margin: 40 });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.pdf"`);
+        doc.pipe(res);
+
+        const reportTitle = reportType.charAt(0).toUpperCase() + reportType.slice(1) + ' Report';
+        doc.fontSize(18).font('Helvetica-Bold').text('Biashara SACCO', { align: 'center' });
+        doc.moveDown(0.3);
+        doc.fontSize(14).font('Helvetica').text(reportTitle, { align: 'center' });
+        doc.moveDown(0.2);
+        doc.fontSize(9).fillColor('#666666').text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+        doc.moveDown(0.5);
+        doc.fillColor('#000000');
+
+        const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+        const colCount = headers.length;
+        const colWidth = pageWidth / colCount;
+        const startX = doc.page.margins.left;
+        let y = doc.y;
+
+        const drawHeaderRow = () => {
+          const rowHeight = 22;
+          doc.rect(startX, y, pageWidth, rowHeight).fill('#1a365d');
+          doc.fillColor('#ffffff').font('Helvetica-Bold').fontSize(8);
+          for (let i = 0; i < headers.length; i++) {
+            const text = headers[i].length > 30 ? headers[i].substring(0, 28) + '..' : headers[i];
+            doc.text(text, startX + (i * colWidth) + 3, y + 6, { width: colWidth - 6, lineBreak: false });
+          }
+          doc.fillColor('#000000');
+          y += rowHeight;
         };
-        const csvLines = [headers.map(escapeCsv).join(',')];
-        for (const row of rows) csvLines.push(headers.map(h => escapeCsv(row[h])).join(','));
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
-        return res.send(csvLines.join('\n'));
+
+        drawHeaderRow();
+        for (let i = 0; i < rows.length; i++) {
+          const values = headers.map(h => String(rows[i][h] ?? ''));
+          const rowHeight = 22;
+          if (y + rowHeight > doc.page.height - doc.page.margins.bottom - 20) {
+            doc.addPage();
+            y = doc.page.margins.top;
+            drawHeaderRow();
+          }
+          const bgColor = i % 2 === 0 ? '#f8fafc' : '#ffffff';
+          doc.rect(startX, y, pageWidth, rowHeight).fill(bgColor);
+          doc.fillColor('#333333').font('Helvetica').fontSize(7.5);
+          for (let j = 0; j < values.length; j++) {
+            const text = values[j];
+            const truncated = text.length > 30 ? text.substring(0, 28) + '..' : text;
+            doc.text(truncated, startX + (j * colWidth) + 3, y + 6, { width: colWidth - 6, lineBreak: false });
+          }
+          doc.fillColor('#000000');
+          y += rowHeight;
+        }
+
+        doc.moveDown(1);
+        y = doc.y;
+        if (y > doc.page.height - 60) { doc.addPage(); y = doc.page.margins.top; }
+        doc.fontSize(8).fillColor('#999999').text(`Total Records: ${rows.length}`, startX, y);
+
+        doc.end();
+        return;
       }
 
       res.status(400).json({ message: "Unsupported format" });
