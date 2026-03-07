@@ -769,6 +769,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         balance: req.body.initialDeposit || '0.00',
       });
 
+      broadcastDataUpdate(['/api/members', '/api/dashboard']);
       res.status(201).json(member);
     } catch (error) {
       console.error("Error creating member:", error);
@@ -1122,6 +1123,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      broadcastDataUpdate(['/api/members', '/api/dashboard']);
       res.json(updatedMember);
     } catch (error) {
       console.error("Error updating member:", error);
@@ -1166,6 +1168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
+      broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard']);
       res.status(201).json(transaction);
     } catch (error) {
       console.error("Error processing deposit:", error);
@@ -1190,6 +1193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
+      broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard']);
       res.status(201).json(transaction);
     } catch (error) {
       console.error("Error processing withdrawal:", error);
@@ -1350,6 +1354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      broadcastDataUpdate(['/api/loans', '/api/loans/approval', '/api/dashboard', '/api/loans/my-loans']);
       res.status(201).json(loan);
     } catch (error) {
       console.error("Error creating loan:", error);
@@ -1777,6 +1782,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
 
+          broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans']);
+
           res.json({ 
             message: `Loan fully approved at committee stage (${approvalCount}/${minApprovers} approvals)`, 
             loan,
@@ -1784,6 +1791,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             minApprovers
           });
         } else {
+          broadcastDataUpdate(['/api/loans/approval', '/api/loans']);
+
           res.json({ 
             message: `Your approval has been recorded (${approvalCount}/${minApprovers} approvals needed). Waiting for more committee approvals.`, 
             loan: loanByUuid,
@@ -1808,6 +1817,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
+        broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans']);
         res.json({ message: `Loan approved at ${stage} stage`, loan });
       }
     } catch (error) {
@@ -1833,6 +1843,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const loan = await storage.rejectLoan(loanByUuid.id, userId, reason);
+      broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans']);
       res.json({ message: "Loan rejected", loan });
     } catch (error) {
       console.error("Error rejecting loan:", error);
@@ -1967,6 +1978,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
+      broadcastDataUpdate(['/api/loans', '/api/loans/approval', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans']);
       res.json(loan);
     } catch (error) {
       console.error("Error disbursing loan:", error);
@@ -2001,6 +2013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
+      broadcastDataUpdate(['/api/loans', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans']);
       res.status(201).json(transaction);
     } catch (error) {
       console.error("Error processing loan payment:", error);
@@ -2222,6 +2235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const guarantor = await storage.createGuarantor(validatedData);
+      broadcastDataUpdate(['/api/guarantors', '/api/loans']);
       res.status(201).json(guarantor);
     } catch (error: any) {
       console.error("Error creating guarantor:", error);
@@ -2293,6 +2307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdGuarantors.push(guarantor);
       }
 
+      broadcastDataUpdate(['/api/guarantors', '/api/loans']);
       res.status(201).json(createdGuarantors);
     } catch (error) {
       console.error("Error adding guarantors to loan:", error);
@@ -2346,6 +2361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.headers['user-agent']
       });
 
+      broadcastDataUpdate(['/api/guarantors', '/api/loans', '/api/loans/approval']);
       res.json(updatedGuarantor);
     } catch (error) {
       console.error("Error approving guarantor:", error);
@@ -2391,6 +2407,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.headers['user-agent']
       });
 
+      broadcastDataUpdate(['/api/guarantors', '/api/loans']);
       res.json(updatedGuarantor);
     } catch (error) {
       console.error("Error rejecting guarantor:", error);
@@ -2434,6 +2451,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.headers['user-agent']
       });
 
+      broadcastDataUpdate(['/api/guarantors', '/api/loans']);
       res.json(updatedGuarantor);
     } catch (error) {
       console.error("Error resending guarantor request:", error);
@@ -2490,6 +2508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const guarantorId = await storage.resolveGuarantorId(req.params.id);
       const { comments } = req.body;
       const guarantor = await storage.updateGuarantorStatus(guarantorId, 'approved', comments);
+      broadcastDataUpdate(['/api/guarantors', '/api/loans', '/api/loans/approval']);
       res.json(guarantor);
     } catch (error) {
       console.error("Error approving guarantor:", error);
@@ -2502,6 +2521,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const guarantorId = await storage.resolveGuarantorId(req.params.id);
       const { comments } = req.body;
       const guarantor = await storage.updateGuarantorStatus(guarantorId, 'rejected', comments);
+      broadcastDataUpdate(['/api/guarantors', '/api/loans']);
       res.json(guarantor);
     } catch (error) {
       console.error("Error rejecting guarantor:", error);
@@ -3100,6 +3120,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
     }
   }
+
+  // Function to broadcast data changes to ALL connected clients for real-time updates
+  function broadcastDataUpdate(queryKeys: string[], excludeUserId?: string) {
+    for (const [userId, client] of clients.entries()) {
+      if (excludeUserId && userId === excludeUserId) continue;
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify({
+          type: 'data_update',
+          queryKeys
+        }));
+      }
+    }
+  }
   
   // Helper function to create and broadcast notifications
   async function createAndBroadcastNotification(notificationData: any) {
@@ -3112,8 +3145,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
   
-  // Make broadcastNotification available globally for use in other parts of the application
+  // Make functions available globally
   (global as any).broadcastNotification = broadcastNotification;
+  (global as any).broadcastDataUpdate = broadcastDataUpdate;
 
   // Loan Types API endpoints
   app.get('/api/loan-types', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
@@ -3475,6 +3509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
       });
 
+      broadcastDataUpdate(['/api/members', '/api/savings', '/api/transactions', '/api/dashboard']);
       res.json(result);
     } catch (error) {
       console.error('Error importing savings data:', error);
@@ -3511,6 +3546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
       });
 
+      broadcastDataUpdate(['/api/members', '/api/savings', '/api/dashboard']);
       res.json(result);
     } catch (error) {
       console.error('Error importing member data:', error);
@@ -3553,6 +3589,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: `Imported ${result.importedLoans || 0} loans. ${result.errors?.length || 0} errors.`,
       });
 
+      broadcastDataUpdate(['/api/loans', '/api/dashboard']);
       res.json(result);
     } catch (error) {
       console.error('Error importing loan data:', error);

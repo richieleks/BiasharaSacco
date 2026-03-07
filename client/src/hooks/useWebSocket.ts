@@ -56,21 +56,22 @@ export function useWebSocket() {
           if (data.type === "authenticated") {
             console.log("WebSocket authenticated");
           } else if (data.type === "notification") {
-            // Handle incoming notification
             const notification: Notification = data.data;
-            console.log("Received notification:", notification);
             
-            // Invalidate notification queries to refresh the UI
             queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
             queryClient.invalidateQueries({ queryKey: ["/api/notifications/count"] });
             
-            // Show browser notification if permission is granted
             if (Notification.permission === "granted") {
               new Notification(notification.title, {
                 body: notification.message,
                 icon: "/favicon.ico",
                 tag: `notification-${notification.id}`,
               });
+            }
+          } else if (data.type === "data_update") {
+            const queryKeys: string[] = data.queryKeys || [];
+            for (const key of queryKeys) {
+              queryClient.invalidateQueries({ queryKey: [key] });
             }
           }
         } catch (error) {
