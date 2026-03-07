@@ -2694,7 +2694,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/rbac/roles', isAuthenticated, requirePermission('read', 'roles'), async (req: AuthRequest, res) => {
     try {
       const roles = await storage.getAllRoles();
-      res.json(roles);
+      const rolesWithPermissions = await Promise.all(
+        roles.map(async (role) => {
+          const permissions = await storage.getPermissionsByRole(role.id);
+          return { ...role, permissions };
+        })
+      );
+      res.json(rolesWithPermissions);
     } catch (error) {
       console.error("Error fetching roles:", error);
       res.status(500).json({ message: "Failed to fetch roles" });
