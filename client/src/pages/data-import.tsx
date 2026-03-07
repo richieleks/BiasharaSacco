@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Users, PiggyBank, Shield } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Users, PiggyBank, Shield, Banknote, CreditCard } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -31,7 +31,7 @@ interface ImportResult {
 export default function DataImport() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [importType, setImportType] = useState<'members' | 'savings' | 'loans'>('members');
+  const [importType, setImportType] = useState<'members' | 'savings' | 'loans' | 'loan-repayments' | 'bulk-savings'>('members');
   const [createNewMembers, setCreateNewMembers] = useState(true);
   const [updateExistingMembers, setUpdateExistingMembers] = useState(false);
   const [selectedLoanTypeId, setSelectedLoanTypeId] = useState<string>('');
@@ -73,7 +73,11 @@ export default function DataImport() {
         formData.append('loanTypeId', selectedLoanTypeId);
       }
       
-      const endpoint = importType === 'members' ? '/api/import/members' : importType === 'savings' ? '/api/import/savings' : '/api/import/loans';
+      const endpoint = importType === 'members' ? '/api/import/members' 
+        : importType === 'savings' ? '/api/import/savings' 
+        : importType === 'loans' ? '/api/import/loans'
+        : importType === 'loan-repayments' ? '/api/import/loan-repayments'
+        : '/api/import/bulk-savings';
       const response = await fetch(endpoint, {
         method: 'POST',
         body: formData,
@@ -93,6 +97,10 @@ export default function DataImport() {
           ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
           : importType === 'savings' 
           ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
+          : importType === 'loan-repayments'
+          ? `Successfully processed ${data.successfulImports} loan repayments totaling UGX ${(data as any).totalAmount?.toLocaleString() || 0}.`
+          : importType === 'bulk-savings'
+          ? `Successfully processed ${data.successfulImports} savings deposits totaling UGX ${(data as any).totalAmount?.toLocaleString() || 0}.`
           : `Successfully imported ${data.importedLoans || 0} loans.`;
         
         toast({
@@ -122,16 +130,30 @@ export default function DataImport() {
     },
   });
 
+  const isCsvImportType = importType === 'loan-repayments' || importType === 'bulk-savings';
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (!file.name.toLowerCase().endsWith('.xlsx') && !file.name.toLowerCase().endsWith('.xls')) {
-        toast({
-          title: "Invalid File Type",
-          description: "Please select an Excel file (.xlsx or .xls)",
-          variant: "destructive",
-        });
-        return;
+      const name = file.name.toLowerCase();
+      if (isCsvImportType) {
+        if (!name.endsWith('.csv')) {
+          toast({
+            title: "Invalid File Type",
+            description: "Please select a CSV file (.csv)",
+            variant: "destructive",
+          });
+          return;
+        }
+      } else {
+        if (!name.endsWith('.xlsx') && !name.endsWith('.xls')) {
+          toast({
+            title: "Invalid File Type",
+            description: "Please select an Excel file (.xlsx or .xls)",
+            variant: "destructive",
+          });
+          return;
+        }
       }
       setSelectedFile(file);
       setImportResult(null);
@@ -166,7 +188,7 @@ export default function DataImport() {
     }
   };
 
-  const handleImportTypeChange = (type: 'members' | 'savings' | 'loans') => {
+  const handleImportTypeChange = (type: 'members' | 'savings' | 'loans' | 'loan-repayments' | 'bulk-savings') => {
     setImportType(type);
     setSelectedLoanTypeId('');
     handleReset();
@@ -209,7 +231,7 @@ export default function DataImport() {
           </p>
         </div>
         <div className="p-6">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             <button
               onClick={() => handleImportTypeChange('members')}
               className={`p-4 rounded-lg border-2 transition-all ${
@@ -221,8 +243,8 @@ export default function DataImport() {
               <div className="flex items-center gap-3">
                 <Users className={`h-6 w-6 ${importType === 'members' ? 'text-blue-600' : 'text-gray-500'}`} />
                 <div className="text-left">
-                  <div className="font-semibold">Members</div>
-                  <div className="text-sm text-muted-foreground">Import member registration data</div>
+                  <div className="font-semibold text-sm">Members</div>
+                  <div className="text-xs text-muted-foreground">Member registration data</div>
                 </div>
               </div>
             </button>
@@ -238,8 +260,8 @@ export default function DataImport() {
               <div className="flex items-center gap-3">
                 <PiggyBank className={`h-6 w-6 ${importType === 'savings' ? 'text-blue-600' : 'text-gray-500'}`} />
                 <div className="text-left">
-                  <div className="font-semibold">Savings Accounts</div>
-                  <div className="text-sm text-muted-foreground">Import savings data and transactions</div>
+                  <div className="font-semibold text-sm">Savings Accounts</div>
+                  <div className="text-xs text-muted-foreground">Savings statement data</div>
                 </div>
               </div>
             </button>
@@ -255,8 +277,42 @@ export default function DataImport() {
               <div className="flex items-center gap-3">
                 <FileSpreadsheet className={`h-6 w-6 ${importType === 'loans' ? 'text-blue-600' : 'text-gray-500'}`} />
                 <div className="text-left">
-                  <div className="font-semibold">Loan Statements</div>
-                  <div className="text-sm text-muted-foreground">Import loan data and information</div>
+                  <div className="font-semibold text-sm">Loan Statements</div>
+                  <div className="text-xs text-muted-foreground">Loan data and information</div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleImportTypeChange('loan-repayments')}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                importType === 'loan-repayments'
+                  ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Banknote className={`h-6 w-6 ${importType === 'loan-repayments' ? 'text-green-600' : 'text-gray-500'}`} />
+                <div className="text-left">
+                  <div className="font-semibold text-sm">Loan Repayments</div>
+                  <div className="text-xs text-muted-foreground">Bulk CSV repayments</div>
+                </div>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleImportTypeChange('bulk-savings')}
+              className={`p-4 rounded-lg border-2 transition-all ${
+                importType === 'bulk-savings'
+                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <CreditCard className={`h-6 w-6 ${importType === 'bulk-savings' ? 'text-emerald-600' : 'text-gray-500'}`} />
+                <div className="text-left">
+                  <div className="font-semibold text-sm">Bulk Savings</div>
+                  <div className="text-xs text-muted-foreground">CSV savings deposits</div>
                 </div>
               </div>
             </button>
@@ -277,23 +333,27 @@ export default function DataImport() {
                 ? 'Select an Excel file containing member registration data'
                 : importType === 'savings' 
                 ? 'Select an Excel file containing customer savings account data'
+                : importType === 'loan-repayments'
+                ? 'Select a CSV file from the bank with loan repayment deductions'
+                : importType === 'bulk-savings'
+                ? 'Select a CSV file from the bank with savings deposit deductions'
                 : 'Select an Excel file containing loan statement data'
               }
             </p>
           </div>
           <div className="p-6 space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="file-upload">Select Excel File</Label>
+              <Label htmlFor="file-upload">Select {isCsvImportType ? 'CSV' : 'Excel'} File</Label>
               <Input
                 id="file-upload"
                 type="file"
-                accept=".xlsx,.xls"
+                accept={isCsvImportType ? '.csv' : '.xlsx,.xls'}
                 onChange={handleFileSelect}
                 ref={fileInputRef}
                 className="cursor-pointer"
               />
               <p className="text-sm text-muted-foreground">
-                Supported formats: .xlsx, .xls
+                {isCsvImportType ? 'Supported format: .csv (bank statement export)' : 'Supported formats: .xlsx, .xls'}
               </p>
             </div>
             
@@ -415,7 +475,11 @@ export default function DataImport() {
           <div className="p-6 space-y-4">
             <div>
               <h4 className="font-medium mb-2">
-                {importType === 'members' ? 'Members Import Format:' : importType === 'savings' ? 'Savings Import Format:' : 'Loan Import Format:'}
+                {importType === 'members' ? 'Members Import Format:' 
+                  : importType === 'savings' ? 'Savings Import Format:' 
+                  : importType === 'loan-repayments' ? 'Loan Repayments CSV Format:'
+                  : importType === 'bulk-savings' ? 'Bulk Savings CSV Format:'
+                  : 'Loan Import Format:'}
               </h4>
               <ul className="text-sm text-muted-foreground space-y-1">
                 {importType === 'members' ? (
@@ -434,6 +498,15 @@ export default function DataImport() {
                     <li>• Full Name, ID Number, Phone Number</li>
                     <li>• Email, Department (optional)</li>
                     <li>• Account Balance, Account Type</li>
+                  </>
+                ) : importType === 'loan-repayments' || importType === 'bulk-savings' ? (
+                  <>
+                    <li>• Bank statement CSV export format</li>
+                    <li>• Row 1: Title/header (skipped)</li>
+                    <li>• Row 2: Column headers (Line, Request Type, etc.)</li>
+                    <li>• Key columns: Remitter Account (col 11), Transaction Amount (col 10)</li>
+                    <li>• Transaction Reference (col 8), Payment Details (col 12)</li>
+                    <li>• Only "Success" transactions are processed</li>
                   </>
                 ) : (
                   <>
@@ -462,6 +535,22 @@ export default function DataImport() {
                     <li>• Savings accounts are set up with imported balances</li>
                     <li>• Duplicate ID numbers are automatically handled</li>
                     <li>• Invalid data rows are reported for review</li>
+                  </>
+                ) : importType === 'loan-repayments' ? (
+                  <>
+                    <li>• Members are matched by Remitter Account (staff account or bank account)</li>
+                    <li>• Payment is applied to the member's first active loan</li>
+                    <li>• Outstanding balance is reduced by the repayment amount</li>
+                    <li>• Loans fully paid off are automatically marked as completed</li>
+                    <li>• Duplicate references are skipped to prevent double-posting</li>
+                  </>
+                ) : importType === 'bulk-savings' ? (
+                  <>
+                    <li>• Members are matched by Remitter Account (staff account or bank account)</li>
+                    <li>• Amount is deposited into the member's regular savings account</li>
+                    <li>• Savings account balance is updated automatically</li>
+                    <li>• Duplicate references are skipped to prevent double-posting</li>
+                    <li>• Unmatched accounts are reported for review</li>
                   </>
                 ) : (
                   <>
