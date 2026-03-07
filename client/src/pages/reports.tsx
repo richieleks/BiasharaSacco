@@ -70,7 +70,8 @@ export default function Reports() {
       if (filters.memberNumber) params.append('memberNumber', filters.memberNumber);
       if (filters.status) params.append('status', filters.status);
       
-      return await apiRequest('GET', `/api/reports/${reportEndpoint}?${params.toString()}`);
+      const res = await apiRequest('GET', `/api/reports/${reportEndpoint}?${params.toString()}`);
+      return await res.json();
     },
     enabled: isAuthenticated && activeTab !== 'overview' && !!reportEndpoint,
   });
