@@ -4469,6 +4469,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put('/api/interest-calculations/approve-all', isAuthenticated, async (req: any, res) => {
+    try {
+      const { financialYearId } = req.body;
+      if (!financialYearId) {
+        return res.status(400).json({ message: 'Financial year is required' });
+      }
+      const approvedBy = getUserId(req)!;
+      const calculations = await storage.getInterestCalculations(financialYearId);
+      const pending = calculations.filter((c: any) => c.status === 'calculated');
+      let approved = 0;
+      for (const calc of pending) {
+        await storage.approveInterestCalculation(calc.id, approvedBy);
+        approved++;
+      }
+      res.json({ approved, total: calculations.length });
+    } catch (error) {
+      console.error('Error approving all interest calculations:', error);
+      res.status(500).json({ message: 'Failed to approve all interest calculations' });
+    }
+  });
+
+  app.put('/api/interest-calculations/post-all', isAuthenticated, async (req: any, res) => {
+    try {
+      const { financialYearId } = req.body;
+      if (!financialYearId) {
+        return res.status(400).json({ message: 'Financial year is required' });
+      }
+      const calculations = await storage.getInterestCalculations(financialYearId);
+      const approved = calculations.filter((c: any) => c.status === 'approved');
+      let posted = 0;
+      for (const calc of approved) {
+        await storage.postInterestCalculation(calc.id);
+        posted++;
+      }
+      res.json({ posted, total: calculations.length });
+    } catch (error) {
+      console.error('Error posting all interest calculations:', error);
+      res.status(500).json({ message: 'Failed to post all interest calculations' });
+    }
+  });
+
   app.put('/api/interest-calculations/:id/post', isAuthenticated, async (req, res) => {
     try {
       const id = parseInt(req.params.id);

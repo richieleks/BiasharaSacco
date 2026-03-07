@@ -224,6 +224,44 @@ export default function InterestCalculations() {
     },
   });
 
+  const approveAllMutation = useMutation({
+    mutationFn: (financialYearId: number) => apiRequest('PUT', '/api/interest-calculations/approve-all', { financialYearId }),
+    onSuccess: (data: any) => {
+      toast({
+        title: 'Success',
+        description: `Approved ${data.approved} interest calculations`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/interest-calculations'] });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to approve all calculations',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const postAllMutation = useMutation({
+    mutationFn: (financialYearId: number) => apiRequest('PUT', '/api/interest-calculations/post-all', { financialYearId }),
+    onSuccess: (data: any) => {
+      toast({
+        title: 'Success',
+        description: `Posted ${data.posted} interest calculations and credited member accounts`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['/api/interest-calculations'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/interest-payments'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/savings'] });
+    },
+    onError: () => {
+      toast({
+        title: 'Error',
+        description: 'Failed to post all calculations',
+        variant: 'destructive',
+      });
+    },
+  });
+
   const handleCreateFinancialYear = () => {
     if (!newFinancialYearData.yearLabel || !newFinancialYearData.startDate || !newFinancialYearData.endDate || !newFinancialYearData.interestRate) {
       toast({
@@ -518,7 +556,7 @@ export default function InterestCalculations() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                   <Select
                     value={selectedFinancialYear?.toString() || ""}
                     onValueChange={(value) => setSelectedFinancialYear(parseInt(value))}
@@ -534,6 +572,31 @@ export default function InterestCalculations() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedFinancialYear && calculations.length > 0 && (
+                    <div className="flex gap-2">
+                      {calculations.some((c: InterestCalculation) => c.status === 'calculated') && (
+                        <Button
+                          size="sm"
+                          onClick={() => approveAllMutation.mutate(selectedFinancialYear)}
+                          disabled={approveAllMutation.isPending}
+                        >
+                          <CheckCircle className="w-4 h-4 mr-1" />
+                          {approveAllMutation.isPending ? 'Approving...' : `Approve All (${calculations.filter((c: InterestCalculation) => c.status === 'calculated').length})`}
+                        </Button>
+                      )}
+                      {calculations.some((c: InterestCalculation) => c.status === 'approved') && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => postAllMutation.mutate(selectedFinancialYear)}
+                          disabled={postAllMutation.isPending}
+                        >
+                          <DollarSign className="w-4 h-4 mr-1" />
+                          {postAllMutation.isPending ? 'Posting...' : `Post All (${calculations.filter((c: InterestCalculation) => c.status === 'approved').length})`}
+                        </Button>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 {calculationsLoading ? (
