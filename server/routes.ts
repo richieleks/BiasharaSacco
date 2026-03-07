@@ -1771,6 +1771,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const loan = await storage.approveLoanAtStage(loanByUuid.id, stage, userId, comments);
           
           const member = await storage.getMember(loan.memberId);
+
+          // Auto-debit acceptance fee and application/processing fee from member's savings
+          try {
+            const loanTypeInfo = await storage.getLoanTypeByName(loan.loanType || '');
+            if (loanTypeInfo) {
+              const acceptanceFee = parseFloat(loanTypeInfo.acceptanceFee || '0');
+              const processingFeeRate = parseFloat(loanTypeInfo.processingFee || '0');
+              const principalAmount = parseFloat(loan.principalAmount || '0');
+              const applicationFee = processingFeeRate > 0 ? (processingFeeRate / 100) * principalAmount : 0;
+
+              const savingsAccounts = await storage.getSavingsAccountsByMember(loan.memberId);
+              const primarySavings = savingsAccounts.find((s: any) => s.accountType === 'regular') || savingsAccounts[0];
+
+              if (primarySavings) {
+                if (acceptanceFee > 0) {
+                  await storage.updateSavingsAccountBalance(primarySavings.id, acceptanceFee.toFixed(2), 'subtract');
+                  await storage.createTransaction({
+                    memberId: loan.memberId,
+                    savingsAccountId: primarySavings.id,
+                    loanId: loan.id,
+                    transactionType: 'withdrawal',
+                    amount: acceptanceFee.toFixed(2),
+                    description: `Loan acceptance fee for ${loan.loanNumber}`,
+                    referenceNumber: `ACCFEE-${loan.loanNumber}`,
+                    transactionDate: new Date(),
+                    status: 'completed',
+                    performedBy: userId,
+                  });
+                }
+
+                if (applicationFee > 0) {
+                  await storage.updateSavingsAccountBalance(primarySavings.id, applicationFee.toFixed(2), 'subtract');
+                  await storage.createTransaction({
+                    memberId: loan.memberId,
+                    savingsAccountId: primarySavings.id,
+                    loanId: loan.id,
+                    transactionType: 'withdrawal',
+                    amount: applicationFee.toFixed(2),
+                    description: `Loan processing fee (${processingFeeRate}%) for ${loan.loanNumber}`,
+                    referenceNumber: `PROCFEE-${loan.loanNumber}`,
+                    transactionDate: new Date(),
+                    status: 'completed',
+                    performedBy: userId,
+                  });
+                }
+              }
+            }
+          } catch (feeError) {
+            console.error('Error auto-debiting loan fees:', feeError);
+          }
+
           if (member) {
             await createAndBroadcastNotification({
               type: 'loan_approval',
@@ -1784,7 +1835,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
 
-          broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans']);
+          broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/savings', '/api/transactions']);
 
           res.json({ 
             message: `Loan fully approved at committee stage (${approvalCount}/${minApprovers} approvals)`, 
