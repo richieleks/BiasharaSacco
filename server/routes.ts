@@ -4157,7 +4157,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           const activeLoans = await storage.getMemberActiveLoans(member.id);
           const matchingLoan = activeLoans.find((l: any) => 
-            l.loanType === loanType.name || l.loanType === loanType.displayName || l.loanTypeId === loanTypeId
+            (l.loanType === loanType.name || l.loanType === loanType.displayName || l.loanTypeId === loanTypeId)
+            && (l.status === 'active' || l.status === 'disbursed')
           );
           if (!matchingLoan) {
             skippedNoLoan++;
