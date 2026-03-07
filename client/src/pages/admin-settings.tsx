@@ -1941,13 +1941,17 @@ function UserManagementTab() {
     queryKey: ['/api/auth/users'],
   });
 
+  const { data: dynamicRoles = [] } = useQuery<any[]>({
+    queryKey: ['/api/rbac/roles'],
+  });
+
   const createUserSchema = z.object({
     username: z.string().min(3, "Username must be at least 3 characters"),
     password: z.string().min(6, "Password must be at least 6 characters"),
     email: z.string().email("Invalid email address"),
     firstName: z.string().min(1, "First name is required"),
     lastName: z.string().min(1, "Last name is required"),
-    role: z.enum(["admin", "manager", "committee", "teller", "member"]),
+    roles: z.array(z.string()).min(1, "At least one role must be selected"),
   });
 
   const editUserSchema = z.object({
@@ -1967,7 +1971,7 @@ function UserManagementTab() {
       email: "",
       firstName: "",
       lastName: "",
-      role: "member",
+      roles: ["member"],
     },
   });
 
@@ -2138,21 +2142,34 @@ function UserManagementTab() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={createForm.control} name="role" render={({ field }) => (
+                  <FormField control={createForm.control} name="roles" render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Role</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
-                          <SelectTrigger><SelectValue /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="manager">Manager</SelectItem>
-                          <SelectItem value="committee">Committee</SelectItem>
-                          <SelectItem value="teller">Teller</SelectItem>
-                          <SelectItem value="member">Member</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      <FormLabel>Roles</FormLabel>
+                      <div className="space-y-2">
+                        {dynamicRoles.length > 0 ? dynamicRoles.map((roleOption: any) => (
+                          <div key={roleOption.id} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`create-role-${roleOption.name}`}
+                              checked={field.value?.includes(roleOption.name)}
+                              onCheckedChange={(checked) => {
+                                const current = field.value || [];
+                                if (checked) {
+                                  field.onChange([...current, roleOption.name]);
+                                } else {
+                                  const updated = current.filter((r: string) => r !== roleOption.name);
+                                  field.onChange(updated.length > 0 ? updated : current);
+                                }
+                              }}
+                            />
+                            <label htmlFor={`create-role-${roleOption.name}`} className="text-sm font-medium cursor-pointer">
+                              {roleOption.displayName}
+                            </label>
+                          </div>
+                        )) : (
+                          <p className="text-sm text-muted-foreground">Loading roles...</p>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Select one or more roles. The first selected role will be the primary role.</p>
                       <FormMessage />
                     </FormItem>
                   )} />
@@ -2290,32 +2307,28 @@ function UserManagementTab() {
                 <FormItem>
                   <FormLabel>Roles</FormLabel>
                   <div className="space-y-2">
-                    {[
-                      { value: "admin", label: "Admin" },
-                      { value: "manager", label: "Manager" },
-                      { value: "committee", label: "Committee" },
-                      { value: "teller", label: "Teller" },
-                      { value: "member", label: "Member" },
-                    ].map((roleOption) => (
-                      <div key={roleOption.value} className="flex items-center space-x-2">
+                    {dynamicRoles.length > 0 ? dynamicRoles.map((roleOption: any) => (
+                      <div key={roleOption.id} className="flex items-center space-x-2">
                         <Checkbox
-                          id={`edit-role-${roleOption.value}`}
-                          checked={field.value?.includes(roleOption.value)}
+                          id={`edit-role-${roleOption.name}`}
+                          checked={field.value?.includes(roleOption.name)}
                           onCheckedChange={(checked) => {
                             const current = field.value || [];
                             if (checked) {
-                              field.onChange([...current, roleOption.value]);
+                              field.onChange([...current, roleOption.name]);
                             } else {
-                              const updated = current.filter((r: string) => r !== roleOption.value);
+                              const updated = current.filter((r: string) => r !== roleOption.name);
                               field.onChange(updated.length > 0 ? updated : current);
                             }
                           }}
                         />
-                        <label htmlFor={`edit-role-${roleOption.value}`} className="text-sm font-medium cursor-pointer">
-                          {roleOption.label}
+                        <label htmlFor={`edit-role-${roleOption.name}`} className="text-sm font-medium cursor-pointer">
+                          {roleOption.displayName}
                         </label>
                       </div>
-                    ))}
+                    )) : (
+                      <p className="text-sm text-muted-foreground">Loading roles...</p>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">Select one or more roles. The first selected role will be the primary role.</p>
                   <FormMessage />

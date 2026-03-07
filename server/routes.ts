@@ -227,7 +227,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create admin user endpoint (protected - only existing admins can create new users)
   app.post('/api/auth/create-user', isAuthenticated, requirePermission('create', 'users'), async (req: AuthRequest, res) => {
     try {
-      const { username, password, email, firstName, lastName, role } = req.body;
+      const { username, password, email, firstName, lastName, role, roles } = req.body;
+      const assignedRoles: string[] = Array.isArray(roles) && roles.length > 0 ? roles : (role ? [role] : ['member']);
+      const primaryRole = assignedRoles[0];
       
       // Validate input
       if (!username || !password || !email) {
@@ -255,12 +257,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName,
         lastName,
         authMethod: 'local',
-        role: role || 'member'
+        role: primaryRole
       });
 
-      // If role is 'member', also create a member profile with member number
+      // If roles include 'member', also create a member profile with member number
       let memberProfile = null;
-      if (role === 'member') {
+      if (assignedRoles.includes('member')) {
         const allMembers = await storage.getAllMembers();
         const pendingMembers = await storage.getPendingMembers();
         const totalCount = allMembers.length + pendingMembers.length;
@@ -283,7 +285,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           membershipStartDate: new Date(),
         } as any);
 
-        await storage.addMemberRole(memberProfile.id, 'member', getUserId(req) || userId);
+        for (const r of assignedRoles) {
+          await storage.addMemberRole(memberProfile.id, r, getUserId(req) || userId);
+        }
 
         const accountNumber = `SAV${String(memberProfile.id).padStart(8, '0')}`;
         await storage.createSavingsAccount({
