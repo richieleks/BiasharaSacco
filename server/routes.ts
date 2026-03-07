@@ -1196,13 +1196,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Loan eligibility check endpoint  
   app.post('/api/loans/check-eligibility', isAuthenticated, async (req: any, res) => {
     try {
-      const { memberId, requestedAmount } = req.body;
+      const { memberId, requestedAmount, loanType } = req.body;
       
       if (!memberId || !requestedAmount) {
         return res.status(400).json({ message: "Member ID and requested amount are required" });
       }
       
-      const eligibilityResult = await businessRulesValidator.checkLoanEligibility(memberId, requestedAmount);
+      const eligibilityResult = await businessRulesValidator.checkLoanEligibility(memberId, requestedAmount, loanType);
       res.json(eligibilityResult);
     } catch (error) {
       console.error("Error checking loan eligibility:", error);

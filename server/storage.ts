@@ -245,6 +245,7 @@ export interface IStorage {
   // Loan Types operations
   createLoanType(loanType: InsertLoanType): Promise<LoanType>;
   getLoanType(id: number): Promise<LoanTypeWithTerms | undefined>;
+  getLoanTypeByName(name: string): Promise<LoanTypeWithTerms | undefined>;
   getAllLoanTypes(): Promise<LoanTypeWithTerms[]>;
   getActiveLoanTypes(): Promise<LoanTypeWithTerms[]>;
   updateLoanType(id: number, updates: Partial<InsertLoanType>): Promise<LoanType>;
@@ -2093,6 +2094,22 @@ export class DatabaseStorage implements IStorage {
     if (!loanType) return undefined;
 
     const terms = await this.getLoanTermsByType(id);
+    
+    return {
+      ...loanType,
+      terms,
+    };
+  }
+
+  async getLoanTypeByName(name: string): Promise<LoanTypeWithTerms | undefined> {
+    const [loanType] = await db
+      .select()
+      .from(loanTypes)
+      .where(eq(loanTypes.name, name));
+
+    if (!loanType) return undefined;
+
+    const terms = await this.getLoanTermsByType(loanType.id);
     
     return {
       ...loanType,

@@ -13,7 +13,7 @@ export class BusinessRulesValidator {
   /**
    * BR-L001 to BR-L007: Comprehensive loan eligibility check
    */
-  async checkLoanEligibility(memberId: number, requestedAmount: number): Promise<LoanEligibilityResult> {
+  async checkLoanEligibility(memberId: number, requestedAmount: number, loanType?: string): Promise<LoanEligibilityResult> {
     const violations: string[] = [];
     const warnings: string[] = [];
     
@@ -92,14 +92,39 @@ export class BusinessRulesValidator {
         const totalSavings = parseFloat(activeSavingsAccount.balance);
         maxLoanAmount = totalSavings * loanToSavingsRatio;
         
-        if (requestedAmount > maxLoanAmount) {
-          const currentSavings = parseFloat(activeSavingsAccount.balance);
-          violations.push(`❌ LOAN AMOUNT LIMIT: Your requested UGX ${requestedAmount.toLocaleString()} exceeds the maximum UGX ${Math.round(maxLoanAmount).toLocaleString()}. With current savings of UGX ${Math.round(currentSavings).toLocaleString()}, you can borrow up to ${loanToSavingsRatio} times your savings balance.`);
-        }
-
         // BR-L011: Check if savings gradually built up
         if (!activeSavingsAccount.isGraduallyBuiltUp) {
           warnings.push("Large lump sum deposits may require committee discretion for loan approval");
+        }
+      }
+
+      // Check loan type limits if a loan type is selected
+      let loanTypeMaxAmount: number | null = null;
+      if (loanType) {
+        try {
+          const loanTypeConfig = await storage.getLoanTypeByName(loanType);
+          if (loanTypeConfig) {
+            if (loanTypeConfig.maxAmount) {
+              loanTypeMaxAmount = parseFloat(loanTypeConfig.maxAmount);
+              if (maxLoanAmount > 0) {
+                maxLoanAmount = Math.min(maxLoanAmount, loanTypeMaxAmount);
+              } else {
+                maxLoanAmount = loanTypeMaxAmount;
+              }
+            }
+            if (loanTypeConfig.minAmount && requestedAmount < parseFloat(loanTypeConfig.minAmount)) {
+              violations.push(`❌ MINIMUM AMOUNT: The minimum loan amount for ${loanTypeConfig.displayName || loanType} is UGX ${Math.round(parseFloat(loanTypeConfig.minAmount)).toLocaleString()}.`);
+            }
+          }
+        } catch {}
+      }
+
+      if (requestedAmount > maxLoanAmount && maxLoanAmount > 0) {
+        if (loanTypeMaxAmount && maxLoanAmount === loanTypeMaxAmount) {
+          violations.push(`❌ LOAN TYPE LIMIT: Your requested UGX ${requestedAmount.toLocaleString()} exceeds the maximum UGX ${Math.round(maxLoanAmount).toLocaleString()} allowed for this loan type.`);
+        } else if (activeSavingsAccount) {
+          const currentSavings = parseFloat(activeSavingsAccount.balance);
+          violations.push(`❌ LOAN AMOUNT LIMIT: Your requested UGX ${requestedAmount.toLocaleString()} exceeds the maximum UGX ${Math.round(maxLoanAmount).toLocaleString()}. With current savings of UGX ${Math.round(currentSavings).toLocaleString()}, you can borrow up to ${loanToSavingsRatio} times your savings balance.`);
         }
       }
 

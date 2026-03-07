@@ -205,14 +205,15 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
   const monthlyPayment = calculateMonthlyPayment();
 
   // Check loan eligibility function
-  const checkEligibility = async (memberId: number, amount: number) => {
+  const checkEligibility = async (memberId: number, amount: number, loanType?: string) => {
     if (!memberId || !amount || amount <= 0) return;
     
     setCheckingEligibility(true);
     try {
       const response = await apiRequest('POST', '/api/loans/check-eligibility', {
         memberId,
-        requestedAmount: amount
+        requestedAmount: amount,
+        loanType: loanType || undefined
       });
       
       const eligibilityData = await response.json();
@@ -225,21 +226,22 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     }
   };
 
-  // Auto-check eligibility when amount changes
+  // Auto-check eligibility when amount or loan type changes
   useEffect(() => {
     const amount = parseFloat(form.watch('principalAmount') || '0');
     const memberId = (currentMember as any)?.id;
+    const selectedLoanType = form.watch('loanType');
     
     if (memberId && amount > 0) {
       const timer = setTimeout(() => {
-        checkEligibility(memberId, amount);
-      }, 1000); // Debounce for 1 second
+        checkEligibility(memberId, amount, selectedLoanType);
+      }, 1000);
       
       return () => clearTimeout(timer);
     } else {
       setEligibilityResult(null);
     }
-  }, [form.watch('principalAmount'), currentMember]);
+  }, [form.watch('principalAmount'), form.watch('loanType'), currentMember]);
 
   const mutation = useMutation({
     mutationFn: async (data: LoanApplicationData) => {
