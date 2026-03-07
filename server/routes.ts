@@ -3555,6 +3555,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const totalDisbursements = allTxns
             .filter((t: any) => t.transactionType === 'loan_disbursement')
             .reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
+
+          const now = new Date();
+          const activeLoans = allLoansData.filter((l: any) => ['active', 'disbursed'].includes(l.status));
+          const delinquentLoans = activeLoans.filter((l: any) => {
+            const balance = parseFloat(l.outstandingBalance || '0');
+            if (balance <= 0) return false;
+            if (l.dueDate && new Date(l.dueDate) < now) return true;
+            if (l.disbursementDate && l.termMonths) {
+              const maturity = new Date(l.disbursementDate);
+              maturity.setMonth(maturity.getMonth() + l.termMonths);
+              if (maturity < now) return true;
+            }
+            return false;
+          });
+          const delinquentList = delinquentLoans.map((l: any) => {
+            const balance = parseFloat(l.outstandingBalance || '0');
+            const principal = parseFloat(l.principalAmount || '0');
+            let daysOverdue = 0;
+            if (l.dueDate) {
+              daysOverdue = Math.max(0, Math.floor((now.getTime() - new Date(l.dueDate).getTime()) / (1000 * 60 * 60 * 24)));
+            } else if (l.disbursementDate && l.termMonths) {
+              const maturity = new Date(l.disbursementDate);
+              maturity.setMonth(maturity.getMonth() + l.termMonths);
+              daysOverdue = Math.max(0, Math.floor((now.getTime() - maturity.getTime()) / (1000 * 60 * 60 * 24)));
+            }
+            let riskLevel: 'low' | 'medium' | 'high' | 'critical' = 'low';
+            if (daysOverdue > 180) riskLevel = 'critical';
+            else if (daysOverdue > 90) riskLevel = 'high';
+            else if (daysOverdue > 30) riskLevel = 'medium';
+
+            return {
+              loanNumber: l.loanNumber,
+              memberName: l.member?.fullName || `${l.member?.user?.firstName || ''} ${l.member?.user?.lastName || ''}`.trim() || '-',
+              memberNumber: l.member?.memberNumber || '-',
+              principalAmount: principal.toFixed(2),
+              outstandingBalance: balance.toFixed(2),
+              dueDate: l.dueDate || null,
+              disbursementDate: l.disbursementDate || null,
+              daysOverdue,
+              riskLevel,
+              loanType: l.loanType || 'personal',
+              interestRate: l.interestRate ? (parseFloat(l.interestRate) * 100).toFixed(1) + '%' : '-',
+            };
+          }).sort((a: any, b: any) => b.daysOverdue - a.daysOverdue);
+
+          const totalDelinquentAmount = delinquentLoans.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
+
           reportData = {
             revenue: totalInterestIncome.toFixed(2),
             expenses: totalDisbursements.toFixed(2),
@@ -3562,9 +3609,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             loanPortfolio: loanPortfolio.toFixed(2),
             savingsTotal: totalSavings.toFixed(2),
             totalMembers: (await storage.getAllMembers()).length,
-            activeLoans: allLoansData.filter((l: any) => ['active', 'disbursed'].includes(l.status)).length,
+            activeLoans: activeLoans.length,
             totalDeposits: allTxns.filter((t: any) => t.transactionType === 'deposit').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0).toFixed(2),
             totalWithdrawals: allTxns.filter((t: any) => t.transactionType === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0).toFixed(2),
+            delinquent: {
+              count: delinquentLoans.length,
+              totalAmount: totalDelinquentAmount.toFixed(2),
+              delinquencyRate: activeLoans.length > 0 ? ((delinquentLoans.length / activeLoans.length) * 100).toFixed(1) : '0.0',
+              loans: delinquentList,
+            },
           };
           break;
         }

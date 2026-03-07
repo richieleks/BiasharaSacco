@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Download, FileText, TrendingUp, Users, PiggyBank, HandCoins, Calendar, Filter, Printer, Mail, FileSpreadsheet } from "lucide-react";
+import { BarChart3, Download, FileText, TrendingUp, Users, PiggyBank, HandCoins, Calendar, Filter, Printer, Mail, FileSpreadsheet, AlertTriangle } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface ReportFilter {
@@ -531,6 +531,112 @@ export default function Reports() {
                   </Table>
                 </div>
               </div>
+
+              {reportData.delinquent && (
+                <div className="section-card border-t-4 border-t-red-500">
+                  <div className="px-6 py-4 border-b border-slate-100">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5 text-red-500" />
+                        <div>
+                          <h3 className="text-sm font-semibold text-slate-900">Delinquent Loans Report</h3>
+                          <p className="text-sm text-slate-500 mt-0.5">Loans that are past their due date with outstanding balances</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button variant="outline" size="sm" onClick={() => window.print()}>
+                          <Printer className="w-4 h-4 mr-2" />
+                          Print
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="p-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                        <p className="text-xs font-medium text-red-600">Delinquent Loans</p>
+                        <p className="text-xl font-bold text-red-700 mt-1">{reportData.delinquent.count}</p>
+                      </div>
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                        <p className="text-xs font-medium text-red-600">Total Overdue Amount</p>
+                        <p className="text-xl font-bold text-red-700 mt-1">{formatCurrency(reportData.delinquent.totalAmount)}</p>
+                      </div>
+                      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                        <p className="text-xs font-medium text-red-600">Delinquency Rate</p>
+                        <p className="text-xl font-bold text-red-700 mt-1">{reportData.delinquent.delinquencyRate}%</p>
+                      </div>
+                    </div>
+
+                    {reportData.delinquent.loans.length > 0 ? (
+                      <div className="overflow-x-auto">
+                        <Table className="table-modern">
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Loan #</TableHead>
+                              <TableHead>Member</TableHead>
+                              <TableHead className="hidden md:table-cell">Type</TableHead>
+                              <TableHead>Principal</TableHead>
+                              <TableHead>Outstanding</TableHead>
+                              <TableHead className="hidden md:table-cell">Due Date</TableHead>
+                              <TableHead>Days Overdue</TableHead>
+                              <TableHead>Risk</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {reportData.delinquent.loans.map((loan: any, idx: number) => (
+                              <TableRow key={idx}>
+                                <TableCell className="font-medium text-xs">{loan.loanNumber}</TableCell>
+                                <TableCell>
+                                  <div>
+                                    <p className="font-medium text-sm">{loan.memberName}</p>
+                                    <p className="text-xs text-slate-500">{loan.memberNumber}</p>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="hidden md:table-cell">
+                                  <Badge variant="outline" className="text-xs">{loan.loanType}</Badge>
+                                </TableCell>
+                                <TableCell>{formatCurrency(loan.principalAmount)}</TableCell>
+                                <TableCell className="font-semibold text-red-600">{formatCurrency(loan.outstandingBalance)}</TableCell>
+                                <TableCell className="hidden md:table-cell text-xs">
+                                  {loan.dueDate ? new Date(loan.dueDate).toLocaleDateString() : '-'}
+                                </TableCell>
+                                <TableCell>
+                                  <span className={`font-bold ${
+                                    loan.daysOverdue > 90 ? 'text-red-600' :
+                                    loan.daysOverdue > 30 ? 'text-orange-600' : 'text-yellow-600'
+                                  }`}>
+                                    {loan.daysOverdue}
+                                  </span>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={
+                                    loan.riskLevel === 'critical' ? 'destructive' :
+                                    loan.riskLevel === 'high' ? 'destructive' :
+                                    loan.riskLevel === 'medium' ? 'default' : 'secondary'
+                                  } className={`text-xs ${
+                                    loan.riskLevel === 'critical' ? 'bg-red-700' :
+                                    loan.riskLevel === 'high' ? 'bg-red-500' :
+                                    loan.riskLevel === 'medium' ? 'bg-orange-500' : ''
+                                  }`}>
+                                    {loan.riskLevel}
+                                  </Badge>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-slate-500">
+                        <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-green-500" />
+                        <p className="font-medium text-green-700">No delinquent loans</p>
+                        <p className="text-sm text-slate-500 mt-1">All active loans are within their repayment terms</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="section-card">
