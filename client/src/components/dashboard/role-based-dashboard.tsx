@@ -66,17 +66,6 @@ function CommitteeDashboard() {
       <MetricsGrid />
       <LoanApprovalWorkflow />
       <MemberApprovals />
-      <Card>
-        <CardHeader>
-          <CardTitle>Committee Queue</CardTitle>
-          <CardDescription>Items requiring committee review</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-muted-foreground">
-            Review and approve member applications and loan requests assigned to the committee.
-          </p>
-        </CardContent>
-      </Card>
     </div>
   );
 }
