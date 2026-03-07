@@ -32,9 +32,10 @@ export default function LoanApprovalWorkflow() {
 
   const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : (user?.role ? [user.role] : []));
   const mappedRoles = userRoles.map((role: any) => role === 'teller' ? 'treasurer' : role);
+  const isAdmin = hasAnyRole(mappedRoles as any, ['admin']);
   const canAccessTreasurer = hasAnyRole(mappedRoles as any, ['treasurer', 'admin']);
   const canAccessCommittee = hasAnyRole(mappedRoles as any, ['committee']);
-  const canApproveCommittee = hasAnyRole(mappedRoles as any, ['committee']);
+  const canApproveCommittee = hasAnyRole(mappedRoles as any, ['committee']) && !isAdmin;
   const canViewCommittee = hasAnyRole(mappedRoles as any, ['committee', 'treasurer', 'admin']);
 
   useState(() => {
