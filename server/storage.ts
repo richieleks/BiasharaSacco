@@ -2377,29 +2377,33 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Financial year not found');
     }
 
-    // Get member's savings accounts
+    const existingCalcs = await db
+      .select()
+      .from(interestCalculations)
+      .where(and(
+        eq(interestCalculations.memberId, memberId),
+        eq(interestCalculations.financialYearId, financialYearId)
+      ));
+    if (existingCalcs.length > 0) {
+      throw new Error(`Interest already calculated for this member in financial year ${financialYear.yearLabel}`);
+    }
+
     const accounts = await this.getSavingsAccountsByMember(memberId);
     if (accounts.length === 0) {
       throw new Error('No savings accounts found for member');
     }
 
-    // Calculate for the first account (or combine multiple accounts)
     const account = accounts[0];
     
-    // Get balance snapshots for the financial year
     const snapshots = await this.getBalanceSnapshots(account.id, financialYearId);
     
-    // Calculate average balance
     const totalBalance = snapshots.reduce((sum, snapshot) => 
       sum + parseFloat(snapshot.balance), 0);
     const averageBalance = snapshots.length > 0 ? totalBalance / snapshots.length : parseFloat(account.balance ?? '0');
 
-    // Calculate interest
     const interestRate = parseFloat(financialYear.interestRate ?? '0.0500');
     const grossInterest = averageBalance * interestRate;
-    const taxRate = 0.15; // 15% withholding tax
-    const taxAmount = grossInterest * taxRate;
-    const netInterest = grossInterest - taxAmount;
+    const netInterest = grossInterest;
 
     const calculation = {
       financialYearId,
@@ -2411,7 +2415,7 @@ export class DatabaseStorage implements IStorage {
       averageBalance: averageBalance.toString(),
       interestRate: financialYear.interestRate ?? '0.0500',
       grossInterest: grossInterest.toString(),
-      taxAmount: taxAmount.toString(),
+      taxAmount: '0',
       netInterest: netInterest.toString(),
       status: 'calculated' as const,
       calculationMethod: 'simple' as const,
@@ -2444,14 +2448,25 @@ export class DatabaseStorage implements IStorage {
     return calculations;
   }
 
-  async getInterestCalculations(financialYearId?: number): Promise<InterestCalculation[]> {
-    const query = db.select().from(interestCalculations);
+  async getInterestCalculations(financialYearId?: number): Promise<any[]> {
+    const baseQuery = db
+      .select({
+        calculation: interestCalculations,
+        memberName: members.fullName,
+        memberNumber: members.memberNumber,
+      })
+      .from(interestCalculations)
+      .leftJoin(members, eq(interestCalculations.memberId, members.id));
     
-    if (financialYearId) {
-      return await query.where(eq(interestCalculations.financialYearId, financialYearId));
-    }
-    
-    return await query.orderBy(desc(interestCalculations.createdAt));
+    const results = financialYearId
+      ? await baseQuery.where(eq(interestCalculations.financialYearId, financialYearId))
+      : await baseQuery.orderBy(desc(interestCalculations.createdAt));
+
+    return results.map(r => ({
+      ...r.calculation,
+      memberName: r.memberName,
+      memberNumber: r.memberNumber,
+    }));
   }
 
   async getInterestCalculationsByMember(memberId: number): Promise<InterestCalculation[]> {
@@ -2487,7 +2502,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(interestCalculations.id, id))
       .returning();
 
-    if (calculation && parseFloat(calculation.netInterest) > 0) {
+    if (calculation && parseFloat(calculation.grossInterest) > 0) {
       const today = new Date().toISOString().split('T')[0];
       const refNumber = `INT${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
@@ -2497,7 +2512,7 @@ export class DatabaseStorage implements IStorage {
           interestCalculationId: calculation.id,
           memberId: calculation.memberId,
           savingsAccountId: calculation.savingsAccountId,
-          paymentAmount: calculation.netInterest,
+          paymentAmount: calculation.grossInterest,
           paymentMethod: 'credit_to_account',
           paymentDate: today,
           transactionReference: refNumber,
@@ -2509,7 +2524,7 @@ export class DatabaseStorage implements IStorage {
       await db
         .update(savingsAccounts)
         .set({
-          balance: sql`${savingsAccounts.balance} + ${calculation.netInterest}`,
+          balance: sql`${savingsAccounts.balance} + ${calculation.grossInterest}`,
           updatedAt: new Date()
         })
         .where(eq(savingsAccounts.id, calculation.savingsAccountId));
@@ -2518,7 +2533,7 @@ export class DatabaseStorage implements IStorage {
         memberId: calculation.memberId,
         savingsAccountId: calculation.savingsAccountId,
         transactionType: 'interest_credit',
-        amount: calculation.netInterest,
+        amount: calculation.grossInterest,
         referenceNumber: refNumber,
         description: `Interest credit - ${calculation.calculationMethod} method`,
         status: 'completed',
@@ -2537,32 +2552,44 @@ export class DatabaseStorage implements IStorage {
     return result;
   }
 
-  async getInterestPayments(financialYearId?: number): Promise<InterestPayment[]> {
+  async getInterestPayments(financialYearId?: number): Promise<any[]> {
     if (financialYearId) {
       const results = await db
         .select({
           payment: interestPayments,
           calculation: interestCalculations,
+          memberName: members.fullName,
+          memberNumber: members.memberNumber,
         })
         .from(interestPayments)
         .leftJoin(interestCalculations, eq(interestPayments.interestCalculationId, interestCalculations.id))
+        .leftJoin(members, eq(interestPayments.memberId, members.id))
         .where(eq(interestCalculations.financialYearId, financialYearId))
         .orderBy(desc(interestPayments.createdAt));
       
       return results.map(r => ({
         ...r.payment,
-        transactionReference: r.payment.transactionReference
+        transactionReference: r.payment.transactionReference,
+        memberName: r.memberName,
+        memberNumber: r.memberNumber,
       }));
     }
     
     const results = await db
-      .select()
+      .select({
+        payment: interestPayments,
+        memberName: members.fullName,
+        memberNumber: members.memberNumber,
+      })
       .from(interestPayments)
+      .leftJoin(members, eq(interestPayments.memberId, members.id))
       .orderBy(desc(interestPayments.createdAt));
 
     return results.map(r => ({
-      ...r,
-      transactionReference: r.transactionReference
+      ...r.payment,
+      transactionReference: r.payment.transactionReference,
+      memberName: r.memberName,
+      memberNumber: r.memberNumber,
     }));
   }
 

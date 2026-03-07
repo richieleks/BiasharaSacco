@@ -31,6 +31,8 @@ interface InterestCalculation {
   financialYearId: number;
   savingsAccountId: number;
   memberId: number;
+  memberName?: string;
+  memberNumber?: string;
   calculationDate: string;
   periodStartDate: string;
   periodEndDate: string;
@@ -53,6 +55,8 @@ interface InterestPayment {
   id: number;
   interestCalculationId: number;
   memberId: number;
+  memberName?: string;
+  memberNumber?: string;
   savingsAccountId: number;
   paymentAmount: string;
   paymentMethod: 'credit_to_account' | 'cash' | 'bank_transfer';
@@ -547,12 +551,11 @@ export default function InterestCalculations() {
                     <Table>
                       <TableHeader>
                         <TableRow>
-                          <TableHead>Member ID</TableHead>
+                          <TableHead>Member</TableHead>
+                          <TableHead>Member No.</TableHead>
                           <TableHead>Average Balance</TableHead>
                           <TableHead>Interest Rate</TableHead>
-                          <TableHead>Gross Interest</TableHead>
-                          <TableHead>Tax Amount</TableHead>
-                          <TableHead>Net Interest</TableHead>
+                          <TableHead>Interest Amount</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Actions</TableHead>
                         </TableRow>
@@ -560,12 +563,11 @@ export default function InterestCalculations() {
                       <TableBody>
                         {calculations.map((calc: InterestCalculation) => (
                           <TableRow key={calc.id}>
-                            <TableCell>{calc.memberId}</TableCell>
+                            <TableCell className="font-medium">{calc.memberName || 'Unknown'}</TableCell>
+                            <TableCell>{calc.memberNumber || calc.memberId}</TableCell>
                             <TableCell>{formatCurrency(calc.averageBalance)}</TableCell>
                             <TableCell>{formatPercentage(calc.interestRate)}</TableCell>
                             <TableCell>{formatCurrency(calc.grossInterest)}</TableCell>
-                            <TableCell>{formatCurrency(calc.taxAmount)}</TableCell>
-                            <TableCell>{formatCurrency(calc.netInterest)}</TableCell>
                             <TableCell>{getStatusBadge(calc.status)}</TableCell>
                             <TableCell>
                               <div className="flex gap-2">
@@ -624,17 +626,19 @@ export default function InterestCalculations() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Member ID</TableHead>
+                        <TableHead>Member</TableHead>
+                        <TableHead>Member No.</TableHead>
                         <TableHead>Payment Amount</TableHead>
                         <TableHead>Payment Method</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead>Created At</TableHead>
+                        <TableHead>Date</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {payments.map((payment: InterestPayment) => (
                         <TableRow key={payment.id}>
-                          <TableCell>{payment.memberId}</TableCell>
+                          <TableCell className="font-medium">{payment.memberName || 'Unknown'}</TableCell>
+                          <TableCell>{payment.memberNumber || payment.memberId}</TableCell>
                           <TableCell>{formatCurrency(payment.paymentAmount)}</TableCell>
                           <TableCell className="capitalize">{payment.paymentMethod.replace('_', ' ')}</TableCell>
                           <TableCell>
