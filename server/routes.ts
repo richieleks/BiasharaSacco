@@ -1905,11 +1905,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/loans/:id/approve', isAuthenticated, async (req, res) => {
+  app.patch('/api/loans/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
       const loanId = await storage.resolveLoanId(req.params.id);
+      const userId = getUserId(req)!;
       
-      // Check if all guarantors have approved before allowing formal approval
+      const loanDetails = await storage.getLoan(loanId);
+      if (!loanDetails) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      if (loanDetails.status === 'pending') {
+        return res.status(403).json({ 
+          message: "Pending loans must be approved through the committee approval workflow on the dashboard." 
+        });
+      }
+
+      if (!await hasApprovalRole(userId, loanDetails.approvalStage || 'committee')) {
+        return res.status(403).json({ message: "You do not have permission to approve this loan." });
+      }
+
       const guarantors = await storage.getGuarantorsByLoan(loanId);
       if (guarantors.length > 0) {
         const allApproved = guarantors.every(g => g.status === 'approved');

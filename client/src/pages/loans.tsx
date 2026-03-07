@@ -503,21 +503,9 @@ export default function Loans() {
                         ) : (
                           <>
                             {loan.status === 'pending' && (
-                              <>
-                                <Button
-                                  size="sm"
-                                  onClick={() => approveLoanMutation.mutate(loan)}
-                                  disabled={approveLoanMutation.isPending}
-                                  className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-1" />
-                                  Approve
-                                </Button>
-                                <Button size="sm" variant="outline" className="border-red-200/50 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
-                                  <XCircle className="w-4 h-4 mr-1" />
-                                  Reject
-                                </Button>
-                              </>
+                              <p className="text-sm text-amber-600">
+                                Pending committee approval
+                              </p>
                             )}
                             {loan.status === 'approved' && (
                               <Button
