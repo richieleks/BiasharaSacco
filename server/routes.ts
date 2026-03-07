@@ -3646,28 +3646,198 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Generate and export reports
-  app.post('/api/reports/generate', isAuthenticated, async (req: any, res) => {
+  app.get('/api/reports/download/:reportType', isAuthenticated, async (req: any, res) => {
     try {
-      const { reportType, filters, format } = req.body;
+      const { reportType } = req.params;
+      const format = (req.query.format as string) || 'csv';
+      const { startDate, endDate, memberNumber, status } = req.query;
       const userId = getUserId(req);
-      const genReportUser = await storage.getUser(userId!);
-      const genReportMember = await storage.getMemberByUserId(userId!);
-      const genReportRoles = genReportMember ? await storage.getMemberRoles(genReportMember.id) : (genReportUser?.role ? [genReportUser.role] : []);
-      const canGenReport = genReportRoles.some((r: string) => ['admin', 'manager', 'committee', 'teller'].includes(r));
-      if (!canGenReport) {
-        return res.status(403).json({ message: "Access denied" });
+      const dlUser = await storage.getUser(userId!);
+      const dlMember = await storage.getMemberByUserId(userId!);
+      const dlRoles = dlMember ? await storage.getMemberRoles(dlMember.id) : (dlUser?.role ? [dlUser.role] : []);
+      const canDl = dlRoles.some((r: string) => ['admin', 'manager', 'committee', 'teller'].includes(r));
+      if (!canDl) return res.status(403).json({ message: "Access denied" });
+
+      let rows: Record<string, any>[] = [];
+      let headers: string[] = [];
+      const filename = `${reportType}_report_${new Date().toISOString().slice(0,10)}`;
+
+      switch (reportType) {
+        case 'members': {
+          const allMembers = await storage.getAllMembers();
+          let filtered = allMembers;
+          if (status && status !== 'all') filtered = filtered.filter((m: any) => m.status === status);
+          if (startDate) { const s = new Date(startDate as string); filtered = filtered.filter((m: any) => new Date(m.joinDate || m.createdAt) >= s); }
+          if (endDate) { const e = new Date(endDate as string); filtered = filtered.filter((m: any) => new Date(m.joinDate || m.createdAt) <= e); }
+          headers = ['Member Number', 'Full Name', 'Status', 'Department', 'Join Date', 'Total Savings'];
+          for (const m of filtered) {
+            const savings = await storage.getSavingsAccountsByMember(m.id);
+            const totalSavings = savings.reduce((sum: number, s: any) => sum + parseFloat(s.balance || '0'), 0);
+            rows.push({
+              'Member Number': m.memberNumber,
+              'Full Name': m.fullName || `${m.user?.firstName || ''} ${m.user?.lastName || ''}`.trim(),
+              'Status': m.status,
+              'Department': m.department || '',
+              'Join Date': m.joinDate ? new Date(m.joinDate).toLocaleDateString() : '',
+              'Total Savings': totalSavings.toFixed(2),
+            });
+          }
+          break;
+        }
+        case 'savings': {
+          const allSavings = await storage.getAllSavingsAccounts();
+          headers = ['Account Number', 'Member Name', 'Account Type', 'Balance', 'Last Transaction'];
+          for (const s of allSavings) {
+            const member = await storage.getMember(s.memberId);
+            const txns = await storage.getTransactionsBySavingsAccount(s.id);
+            rows.push({
+              'Account Number': s.accountNumber,
+              'Member Name': member?.fullName || '',
+              'Account Type': s.accountType || 'regular',
+              'Balance': s.balance,
+              'Last Transaction': txns.length > 0 && txns[0].createdAt ? new Date(txns[0].createdAt).toLocaleDateString() : '',
+            });
+          }
+          break;
+        }
+        case 'loans': {
+          const allLoans = await storage.getAllLoans();
+          let filtered = allLoans;
+          if (status && status !== 'all') filtered = filtered.filter((l: any) => l.status === status);
+          headers = ['Loan Number', 'Member Name', 'Principal Amount', 'Outstanding Balance', 'Interest Rate', 'Term (Months)', 'Status', 'Created Date'];
+          rows = filtered.map((l: any) => ({
+            'Loan Number': l.loanNumber,
+            'Member Name': l.member?.fullName || '',
+            'Principal Amount': l.principalAmount,
+            'Outstanding Balance': l.outstandingBalance,
+            'Interest Rate': l.interestRate ? (parseFloat(l.interestRate) * 100).toFixed(1) + '%' : '',
+            'Term (Months)': l.termMonths,
+            'Status': l.status,
+            'Created Date': l.createdAt ? new Date(l.createdAt).toLocaleDateString() : '',
+          }));
+          break;
+        }
+        case 'transactions': {
+          let txns = await storage.getRecentTransactions(500);
+          if (startDate) { const s = new Date(startDate as string); txns = txns.filter((t: any) => new Date(t.createdAt) >= s); }
+          if (endDate) { const e = new Date(endDate as string); txns = txns.filter((t: any) => new Date(t.createdAt) <= e); }
+          headers = ['Date', 'Reference Number', 'Transaction Type', 'Member Name', 'Amount', 'Description'];
+          rows = txns.map((t: any) => ({
+            'Date': t.createdAt ? new Date(t.createdAt).toLocaleDateString() : '',
+            'Reference Number': t.referenceNumber || '',
+            'Transaction Type': t.transactionType,
+            'Member Name': t.member?.fullName || '',
+            'Amount': t.amount,
+            'Description': t.description || '',
+          }));
+          break;
+        }
+        case 'financial': {
+          const allSavingsAccts = await storage.getAllSavingsAccounts();
+          const totalSavings = allSavingsAccts.reduce((sum: number, s: any) => sum + parseFloat(s.balance || '0'), 0);
+          const allLoansData = await storage.getAllLoans();
+          const activeLoansData = allLoansData.filter((l: any) => ['active', 'disbursed'].includes(l.status));
+          const loanPortfolio = allLoansData.filter((l: any) => ['active', 'disbursed', 'approved'].includes(l.status)).reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
+          const allTxns = await storage.getRecentTransactions(10000);
+          const totalRepayments = allTxns.filter((t: any) => t.transactionType === 'loan_payment').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
+          const totalDisbursements = allTxns.filter((t: any) => t.transactionType === 'loan_disbursement').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
+          const totalDeposits = allTxns.filter((t: any) => t.transactionType === 'deposit').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
+          const totalWithdrawals = allTxns.filter((t: any) => t.transactionType === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
+          headers = ['Metric', 'Value'];
+          rows = [
+            { 'Metric': 'Total Members', 'Value': (await storage.getAllMembers()).length },
+            { 'Metric': 'Active Loans', 'Value': activeLoansData.length },
+            { 'Metric': 'Total Savings', 'Value': totalSavings.toFixed(2) },
+            { 'Metric': 'Loan Portfolio', 'Value': loanPortfolio.toFixed(2) },
+            { 'Metric': 'Loan Repayments', 'Value': totalRepayments.toFixed(2) },
+            { 'Metric': 'Disbursements', 'Value': totalDisbursements.toFixed(2) },
+            { 'Metric': 'Net Position', 'Value': (totalRepayments - totalDisbursements).toFixed(2) },
+            { 'Metric': 'Total Deposits', 'Value': totalDeposits.toFixed(2) },
+            { 'Metric': 'Total Withdrawals', 'Value': totalWithdrawals.toFixed(2) },
+          ];
+
+          const now = new Date();
+          const delinquentLoans = activeLoansData.filter((l: any) => {
+            const bal = parseFloat(l.outstandingBalance || '0');
+            if (bal <= 0) return false;
+            if (l.dueDate && new Date(l.dueDate) < now) return true;
+            if (l.disbursementDate && l.termMonths) { const m = new Date(l.disbursementDate); m.setMonth(m.getMonth() + l.termMonths); if (m < now) return true; }
+            return false;
+          });
+          if (delinquentLoans.length > 0) {
+            rows.push({ 'Metric': '', 'Value': '' });
+            rows.push({ 'Metric': 'DELINQUENT LOANS', 'Value': '' });
+            rows.push({ 'Metric': 'Delinquent Count', 'Value': delinquentLoans.length });
+            rows.push({ 'Metric': 'Total Delinquent Amount', 'Value': delinquentLoans.reduce((s: number, l: any) => s + parseFloat(l.outstandingBalance || '0'), 0).toFixed(2) });
+            rows.push({ 'Metric': 'Delinquency Rate', 'Value': activeLoansData.length > 0 ? ((delinquentLoans.length / activeLoansData.length) * 100).toFixed(1) + '%' : '0%' });
+          }
+          break;
+        }
+        case 'audit': {
+          const auditLogs = await storage.getAuditLogs({ limit: 200 });
+          headers = ['Timestamp', 'User', 'Action', 'Resource', 'Details', 'IP Address'];
+          rows = auditLogs.map((log: any) => ({
+            'Timestamp': log.timestamp ? new Date(log.timestamp).toLocaleString() : '',
+            'User': log.user?.username || log.userId || '',
+            'Action': log.action,
+            'Resource': log.resource,
+            'Details': log.details || '',
+            'IP Address': log.ipAddress || '',
+          }));
+          break;
+        }
+        default:
+          return res.status(400).json({ message: "Invalid report type" });
       }
 
-      // For now, return a placeholder response
-      // In a real implementation, this would generate the actual report file
-      res.json({
-        message: `${reportType} report generated in ${format} format`,
-        downloadUrl: `/api/reports/download/${reportType}.${format}`
-      });
+      if (format === 'csv') {
+        const escapeCsv = (val: any) => {
+          const str = String(val ?? '');
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        };
+        const csvLines = [headers.map(escapeCsv).join(',')];
+        for (const row of rows) {
+          csvLines.push(headers.map(h => escapeCsv(row[h])).join(','));
+        }
+        const csvContent = csvLines.join('\n');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+        return res.send(csvContent);
+      } else if (format === 'excel') {
+        const XLSX = await import('xlsx');
+        const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
+        const colWidths = headers.map(h => {
+          let maxLen = h.length;
+          for (const row of rows) { const val = String(row[h] ?? ''); if (val.length > maxLen) maxLen = val.length; }
+          return { wch: Math.min(maxLen + 2, 40) };
+        });
+        ws['!cols'] = colWidths;
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, reportType.charAt(0).toUpperCase() + reportType.slice(1));
+        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
+        return res.send(buf);
+      } else if (format === 'pdf') {
+        const escapeCsv = (val: any) => {
+          const str = String(val ?? '');
+          if (str.includes(',') || str.includes('"') || str.includes('\n')) return `"${str.replace(/"/g, '""')}"`;
+          return str;
+        };
+        const csvLines = [headers.map(escapeCsv).join(',')];
+        for (const row of rows) csvLines.push(headers.map(h => escapeCsv(row[h])).join(','));
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+        return res.send(csvLines.join('\n'));
+      }
+
+      res.status(400).json({ message: "Unsupported format" });
     } catch (error) {
-      console.error("Error generating report:", error);
-      res.status(500).json({ message: "Failed to generate report" });
+      console.error("Error downloading report:", error);
+      res.status(500).json({ message: "Failed to download report" });
     }
   });
 

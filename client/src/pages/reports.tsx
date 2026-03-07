@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
-import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -127,44 +126,6 @@ export default function Reports() {
     },
   ];
 
-  const generateReportMutation = useMutation({
-    mutationFn: async (reportType: string) => {
-      return await apiRequest('POST', '/api/reports/generate', {
-        reportType,
-        filters,
-        format: 'pdf'
-      });
-    },
-    onSuccess: (data: any) => {
-      toast({
-        title: "Report Generated",
-        description: "Your report has been generated successfully. Downloading now...",
-      });
-      // Trigger download
-      if (data?.downloadUrl) {
-        window.open(data.downloadUrl, '_blank');
-      }
-    },
-    onError: (error) => {
-      if (isUnauthorizedError(error as Error)) {
-        toast({
-          title: "Unauthorized",
-          description: "You are logged out. Logging in again...",
-          variant: "destructive",
-        });
-        setTimeout(() => {
-          window.location.href = "/api/login";
-        }, 500);
-        return;
-      }
-      toast({
-        title: "Error",
-        description: "Failed to generate report. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const handleGenerateReport = (reportType: string) => {
     setSelectedReport(reportType);
     setIsReportModalOpen(true);
@@ -173,7 +134,25 @@ export default function Reports() {
   const handleExportReport = (format: 'pdf' | 'excel' | 'csv') => {
     if (!selectedReport) return;
     
-    generateReportMutation.mutate(selectedReport);
+    const params = new URLSearchParams();
+    params.append('format', format);
+    if (filters.startDate) params.append('startDate', filters.startDate.toISOString());
+    if (filters.endDate) params.append('endDate', filters.endDate.toISOString());
+    if (filters.memberNumber) params.append('memberNumber', filters.memberNumber);
+    if (filters.status) params.append('status', filters.status);
+    
+    const downloadUrl = `/api/reports/download/${selectedReport}?${params.toString()}`;
+    const link = document.createElement('a');
+    link.href = downloadUrl;
+    link.download = '';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: "Downloading Report",
+      description: `Your ${selectedReport} report is being downloaded as ${format.toUpperCase()}.`,
+    });
     setIsReportModalOpen(false);
   };
 
@@ -385,7 +364,7 @@ export default function Reports() {
                       <Printer className="w-4 h-4 mr-2" />
                       Print
                     </Button>
-                    <Button size="sm" className="rounded-xl" onClick={() => handleGenerateReport('members')}>
+                    <Button size="sm" className="rounded-xl" onClick={() => { setSelectedReport('members'); handleGenerateReport('members'); }}>
                       <FileSpreadsheet className="w-4 h-4 mr-2" />
                       Export
                     </Button>
