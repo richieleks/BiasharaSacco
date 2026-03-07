@@ -3448,35 +3448,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       let reportData;
       switch (reportType) {
-        case 'members':
-          reportData = [];
+        case 'members': {
+          const allMembers = await storage.getAllMembers();
+          let filtered = allMembers;
+          if (status && status !== 'all') {
+            filtered = filtered.filter((m: any) => m.status === status);
+          }
+          if (startDate) {
+            const start = new Date(startDate as string);
+            filtered = filtered.filter((m: any) => new Date(m.joinDate || m.createdAt) >= start);
+          }
+          if (endDate) {
+            const end = new Date(endDate as string);
+            filtered = filtered.filter((m: any) => new Date(m.joinDate || m.createdAt) <= end);
+          }
+          const memberReports = [];
+          for (const m of filtered) {
+            const savings = await storage.getSavingsAccountsByMember(m.id);
+            const totalSavings = savings.reduce((sum: number, s: any) => sum + parseFloat(s.balance || '0'), 0);
+            memberReports.push({
+              memberNumber: m.memberNumber,
+              fullName: m.fullName || `${m.user?.firstName || ''} ${m.user?.lastName || ''}`.trim(),
+              status: m.status,
+              department: m.department || '-',
+              joinDate: m.joinDate || m.createdAt,
+              totalSavings: totalSavings.toFixed(2),
+            });
+          }
+          reportData = memberReports;
           break;
+        }
           
-        case 'savings':
-          reportData = [];
+        case 'savings': {
+          const allSavings = await storage.getAllSavingsAccounts();
+          const savingsReports = [];
+          for (const s of allSavings) {
+            const member = await storage.getMember(s.memberId);
+            const txns = await storage.getTransactionsBySavingsAccount(s.id);
+            const lastTxn = txns.length > 0 ? txns[0] : null;
+            savingsReports.push({
+              accountNumber: s.accountNumber,
+              memberName: member?.fullName || `${member?.user?.firstName || ''} ${member?.user?.lastName || ''}`.trim() || '-',
+              accountType: s.accountType || 'regular',
+              balance: s.balance,
+              interestEarned: '0.00',
+              lastTransaction: lastTxn ? lastTxn.createdAt : null,
+            });
+          }
+          reportData = savingsReports;
           break;
+        }
           
-        case 'loans':
-          reportData = [];
+        case 'loans': {
+          const allLoans = await storage.getAllLoans();
+          let filtered = allLoans;
+          if (status && status !== 'all') {
+            filtered = filtered.filter((l: any) => l.status === status);
+          }
+          const loanReports = filtered.map((l: any) => ({
+            loanNumber: l.loanNumber,
+            memberName: l.member?.fullName || `${l.member?.user?.firstName || ''} ${l.member?.user?.lastName || ''}`.trim() || '-',
+            principalAmount: l.principalAmount,
+            outstandingBalance: l.outstandingBalance,
+            interestRate: l.interestRate ? (parseFloat(l.interestRate) * 100).toFixed(1) + '%' : '-',
+            status: l.status,
+            termMonths: l.termMonths,
+            createdAt: l.createdAt,
+          }));
+          reportData = loanReports;
           break;
+        }
           
-        case 'transactions':
-          reportData = [];
+        case 'transactions': {
+          let txns = await storage.getRecentTransactions(500);
+          if (startDate) {
+            const start = new Date(startDate as string);
+            txns = txns.filter((t: any) => new Date(t.createdAt) >= start);
+          }
+          if (endDate) {
+            const end = new Date(endDate as string);
+            txns = txns.filter((t: any) => new Date(t.createdAt) <= end);
+          }
+          reportData = txns.map((t: any) => ({
+            date: t.createdAt,
+            referenceNumber: t.referenceNumber || '-',
+            transactionType: t.transactionType,
+            memberName: t.member?.fullName || `${t.member?.user?.firstName || ''} ${t.member?.user?.lastName || ''}`.trim() || '-',
+            amount: t.amount,
+            status: t.status,
+            description: t.description || '-',
+          }));
           break;
+        }
           
-        case 'financial':
+        case 'financial': {
+          const allSavingsAccts = await storage.getAllSavingsAccounts();
+          const totalSavings = allSavingsAccts.reduce((sum: number, s: any) => sum + parseFloat(s.balance || '0'), 0);
+          const allLoansData = await storage.getAllLoans();
+          const loanPortfolio = allLoansData
+            .filter((l: any) => ['active', 'disbursed', 'approved'].includes(l.status))
+            .reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
+          const allTxns = await storage.getRecentTransactions(10000);
+          const totalInterestIncome = allTxns
+            .filter((t: any) => t.transactionType === 'loan_payment')
+            .reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
+          const totalDisbursements = allTxns
+            .filter((t: any) => t.transactionType === 'loan_disbursement')
+            .reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0);
           reportData = {
-            revenue: 0,
-            expenses: 0,
-            netIncome: 0,
-            loanPortfolio: 0,
-            savingsTotal: 0
+            revenue: totalInterestIncome.toFixed(2),
+            expenses: totalDisbursements.toFixed(2),
+            netIncome: (totalInterestIncome - totalDisbursements).toFixed(2),
+            loanPortfolio: loanPortfolio.toFixed(2),
+            savingsTotal: totalSavings.toFixed(2),
+            totalMembers: (await storage.getAllMembers()).length,
+            activeLoans: allLoansData.filter((l: any) => ['active', 'disbursed'].includes(l.status)).length,
+            totalDeposits: allTxns.filter((t: any) => t.transactionType === 'deposit').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0).toFixed(2),
+            totalWithdrawals: allTxns.filter((t: any) => t.transactionType === 'withdrawal').reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0).toFixed(2),
           };
           break;
+        }
           
-        case 'audit':
-          reportData = [];
+        case 'audit': {
+          const auditLogs = await storage.getAuditLogs({ limit: 200 });
+          reportData = auditLogs.map((log: any) => ({
+            timestamp: log.timestamp,
+            user: log.user?.username || log.userId || '-',
+            action: log.action,
+            resource: log.resource,
+            details: log.details || '-',
+            ipAddress: log.ipAddress || '-',
+          }));
           break;
+        }
           
         default:
           return res.status(400).json({ message: "Invalid report type" });

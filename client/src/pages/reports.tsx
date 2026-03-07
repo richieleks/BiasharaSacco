@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Download, FileText, TrendingUp, Users, PiggyBank, HandCoins, Calendar, Filter, Printer, Mail, FileSpreadsheet, Plus } from "lucide-react";
+import { BarChart3, Download, FileText, TrendingUp, Users, PiggyBank, HandCoins, Calendar, Filter, Printer, Mail, FileSpreadsheet } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface ReportFilter {
@@ -58,19 +58,21 @@ export default function Reports() {
     enabled: isAuthenticated,
   });
 
-  // Fetch report data based on active tab
+  const reportEndpoint = activeTab === 'custom' ? selectedReport : activeTab;
+
   const { data: reportData, isLoading: reportLoading, refetch } = useQuery({
-    queryKey: ['/api/reports', activeTab, filters],
+    queryKey: ['/api/reports', reportEndpoint, filters],
     queryFn: async () => {
+      if (!reportEndpoint) return null;
       const params = new URLSearchParams();
       if (filters.startDate) params.append('startDate', filters.startDate.toISOString());
       if (filters.endDate) params.append('endDate', filters.endDate.toISOString());
       if (filters.memberNumber) params.append('memberNumber', filters.memberNumber);
       if (filters.status) params.append('status', filters.status);
       
-      return await apiRequest('GET', `/api/reports/${activeTab}?${params.toString()}`);
+      return await apiRequest('GET', `/api/reports/${reportEndpoint}?${params.toString()}`);
     },
-    enabled: isAuthenticated && activeTab !== 'overview',
+    enabled: isAuthenticated && activeTab !== 'overview' && !!reportEndpoint,
   });
 
   const reportTypes = [
@@ -360,7 +362,6 @@ export default function Reports() {
             </div>
           </div>
 
-          {/* Report Results */}
           {reportLoading ? (
             <div className="section-card">
               <div className="p-6">
@@ -371,21 +372,19 @@ export default function Reports() {
                 </div>
               </div>
             </div>
-          ) : reportData ? (
+          ) : Array.isArray(reportData) && reportData.length > 0 ? (
             <div className="section-card">
               <div className="px-6 py-4 border-b border-slate-100">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                  <h3 className="text-sm font-semibold text-slate-900">Report Results</h3>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Report Results ({reportData.length} records)
+                  </h3>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" size="sm">
+                    <Button variant="outline" size="sm" onClick={() => window.print()}>
                       <Printer className="w-4 h-4 mr-2" />
                       Print
                     </Button>
-                    <Button variant="outline" size="sm">
-                      <Mail className="w-4 h-4 mr-2" />
-                      Email
-                    </Button>
-                    <Button size="sm" className="rounded-xl">
+                    <Button size="sm" className="rounded-xl" onClick={() => handleGenerateReport('members')}>
                       <FileSpreadsheet className="w-4 h-4 mr-2" />
                       Export
                     </Button>
@@ -405,14 +404,30 @@ export default function Reports() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {/* Report data would be mapped here */}
-                    <TableRow>
-                      <TableCell colSpan={6} className="text-center py-8 text-slate-500">
-                        No data available for the selected criteria
-                      </TableCell>
-                    </TableRow>
+                    {reportData.map((row: any, idx: number) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{row.memberNumber}</TableCell>
+                        <TableCell>{row.fullName}</TableCell>
+                        <TableCell>
+                          <Badge variant={row.status === 'active' ? 'default' : 'secondary'}>
+                            {row.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell">{row.department}</TableCell>
+                        <TableCell className="hidden md:table-cell">
+                          {row.joinDate ? new Date(row.joinDate).toLocaleDateString() : '-'}
+                        </TableCell>
+                        <TableCell>{formatCurrency(row.totalSavings)}</TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
+              </div>
+            </div>
+          ) : reportData !== undefined ? (
+            <div className="section-card">
+              <div className="p-6 text-center py-8 text-slate-500">
+                No data available for the selected criteria
               </div>
             </div>
           ) : null}
@@ -420,51 +435,303 @@ export default function Reports() {
 
         {/* Financial Reports Tab */}
         <TabsContent value="financial" className="space-y-6">
-          <div className="section-card">
-            <div className="px-6 py-4 border-b border-slate-100">
-              <h3 className="text-sm font-semibold text-slate-900">Financial Reports</h3>
-              <p className="text-sm text-slate-500 mt-0.5">Comprehensive financial analysis and reporting</p>
-            </div>
-            <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <Button variant="outline" className="h-24 flex flex-col items-center justify-center rounded-xl">
-                  <BarChart3 className="w-8 h-8 mb-2" />
-                  <span>Income Statement</span>
-                </Button>
-                <Button variant="outline" className="h-24 flex flex-col items-center justify-center rounded-xl">
-                  <PiggyBank className="w-8 h-8 mb-2" />
-                  <span>Balance Sheet</span>
-                </Button>
-                <Button variant="outline" className="h-24 flex flex-col items-center justify-center rounded-xl">
-                  <TrendingUp className="w-8 h-8 mb-2" />
-                  <span>Cash Flow</span>
-                </Button>
+          {reportLoading ? (
+            <div className="section-card">
+              <div className="p-6">
+                <div className="space-y-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Skeleton key={i} className="h-20 w-full bg-slate-100 rounded-lg" />
+                  ))}
+                </div>
               </div>
             </div>
-          </div>
+          ) : reportData && !Array.isArray(reportData) ? (
+            <>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+                <div className="section-card border-l-4 border-l-green-500">
+                  <div className="p-4 sm:p-6">
+                    <p className="text-xs sm:text-sm font-medium text-slate-600">Total Savings</p>
+                    <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.savingsTotal)}</p>
+                  </div>
+                </div>
+                <div className="section-card border-l-4 border-l-purple-500">
+                  <div className="p-4 sm:p-6">
+                    <p className="text-xs sm:text-sm font-medium text-slate-600">Loan Portfolio</p>
+                    <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.loanPortfolio)}</p>
+                  </div>
+                </div>
+                <div className="section-card border-l-4 border-l-blue-500">
+                  <div className="p-4 sm:p-6">
+                    <p className="text-xs sm:text-sm font-medium text-slate-600">Loan Repayments</p>
+                    <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.revenue)}</p>
+                  </div>
+                </div>
+                <div className="section-card border-l-4 border-l-red-500">
+                  <div className="p-4 sm:p-6">
+                    <p className="text-xs sm:text-sm font-medium text-slate-600">Disbursements</p>
+                    <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.expenses)}</p>
+                  </div>
+                </div>
+                <div className="section-card border-l-4 border-l-emerald-500">
+                  <div className="p-4 sm:p-6">
+                    <p className="text-xs sm:text-sm font-medium text-slate-600">Total Deposits</p>
+                    <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.totalDeposits)}</p>
+                  </div>
+                </div>
+                <div className="section-card border-l-4 border-l-amber-500">
+                  <div className="p-4 sm:p-6">
+                    <p className="text-xs sm:text-sm font-medium text-slate-600">Total Withdrawals</p>
+                    <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.totalWithdrawals)}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="section-card">
+                <div className="px-6 py-4 border-b border-slate-100">
+                  <h3 className="text-sm font-semibold text-slate-900">Summary</h3>
+                </div>
+                <div className="p-6">
+                  <Table className="table-modern">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Metric</TableHead>
+                        <TableHead className="text-right">Value</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      <TableRow>
+                        <TableCell className="font-medium">Total Members</TableCell>
+                        <TableCell className="text-right">{reportData.totalMembers}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Active Loans</TableCell>
+                        <TableCell className="text-right">{reportData.activeLoans}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Total Savings Held</TableCell>
+                        <TableCell className="text-right">{formatCurrency(reportData.savingsTotal)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Outstanding Loan Portfolio</TableCell>
+                        <TableCell className="text-right">{formatCurrency(reportData.loanPortfolio)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Total Loan Repayments</TableCell>
+                        <TableCell className="text-right">{formatCurrency(reportData.revenue)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Total Disbursements</TableCell>
+                        <TableCell className="text-right">{formatCurrency(reportData.expenses)}</TableCell>
+                      </TableRow>
+                      <TableRow>
+                        <TableCell className="font-medium">Net Position (Repayments - Disbursements)</TableCell>
+                        <TableCell className="text-right font-bold">{formatCurrency(reportData.netIncome)}</TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="section-card">
+              <div className="p-6 text-center py-8 text-slate-500">
+                No financial data available
+              </div>
+            </div>
+          )}
         </TabsContent>
 
-        {/* Custom Reports Tab */}
+        {/* Custom/Detail Reports Tab */}
         <TabsContent value="custom" className="space-y-6">
           <div className="section-card">
             <div className="px-6 py-4 border-b border-slate-100">
-              <h3 className="text-sm font-semibold text-slate-900">Custom Report Builder</h3>
-              <p className="text-sm text-slate-500 mt-0.5">Create custom reports based on your specific needs</p>
-            </div>
-            <div className="p-6">
-              <div className="py-16 text-center">
-                <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">Custom Report Builder</h3>
-                <p className="text-slate-600 mb-4">
-                  Select data fields and filters to create your custom report
-                </p>
-                <Button className="rounded-xl">
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create New Report
-                </Button>
+              <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    {selectedReport ? reportTypes.find(r => r.id === selectedReport)?.title || 'Report' : 'Select a Report'}
+                  </h3>
+                  <p className="text-sm text-slate-500 mt-0.5">
+                    {selectedReport ? reportTypes.find(r => r.id === selectedReport)?.description : 'Choose a report from the overview tab'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Select value={selectedReport || ''} onValueChange={(v) => { setSelectedReport(v); setActiveTab('custom'); }}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue placeholder="Select report..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {reportTypes.map(r => (
+                        <SelectItem key={r.id} value={r.id}>{r.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </div>
+
+          {reportLoading ? (
+            <div className="section-card">
+              <div className="p-6">
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Skeleton key={i} className="h-12 w-full bg-slate-100 rounded-lg" />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : Array.isArray(reportData) && reportData.length > 0 ? (
+            <div className="section-card">
+              <div className="px-6 py-4 border-b border-slate-100">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                  <h3 className="text-sm font-semibold text-slate-900">
+                    Results ({reportData.length} records)
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" size="sm" onClick={() => window.print()}>
+                      <Printer className="w-4 h-4 mr-2" />
+                      Print
+                    </Button>
+                    <Button size="sm" className="rounded-xl" onClick={() => selectedReport && handleGenerateReport(selectedReport)}>
+                      <FileSpreadsheet className="w-4 h-4 mr-2" />
+                      Export
+                    </Button>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 overflow-x-auto">
+                {selectedReport === 'savings' && (
+                  <Table className="table-modern">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Account Number</TableHead>
+                        <TableHead>Member Name</TableHead>
+                        <TableHead>Account Type</TableHead>
+                        <TableHead>Balance</TableHead>
+                        <TableHead className="hidden md:table-cell">Last Transaction</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reportData.map((row: any, idx: number) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">{row.accountNumber}</TableCell>
+                          <TableCell>{row.memberName}</TableCell>
+                          <TableCell><Badge variant="secondary">{row.accountType}</Badge></TableCell>
+                          <TableCell>{formatCurrency(row.balance)}</TableCell>
+                          <TableCell className="hidden md:table-cell">
+                            {row.lastTransaction ? new Date(row.lastTransaction).toLocaleDateString() : '-'}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+                {selectedReport === 'loans' && (
+                  <Table className="table-modern">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Loan Number</TableHead>
+                        <TableHead>Member</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Balance</TableHead>
+                        <TableHead className="hidden md:table-cell">Interest Rate</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reportData.map((row: any, idx: number) => (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium">{row.loanNumber}</TableCell>
+                          <TableCell>{row.memberName}</TableCell>
+                          <TableCell>{formatCurrency(row.principalAmount)}</TableCell>
+                          <TableCell>{formatCurrency(row.outstandingBalance)}</TableCell>
+                          <TableCell className="hidden md:table-cell">{row.interestRate}</TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              row.status === 'active' || row.status === 'disbursed' ? 'default' :
+                              row.status === 'completed' ? 'secondary' :
+                              row.status === 'rejected' ? 'destructive' : 'outline'
+                            }>
+                              {row.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+                {selectedReport === 'transactions' && (
+                  <Table className="table-modern">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Reference</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead className="hidden md:table-cell">Member</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead className="hidden md:table-cell">Description</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reportData.map((row: any, idx: number) => (
+                        <TableRow key={idx}>
+                          <TableCell>{row.date ? new Date(row.date).toLocaleDateString() : '-'}</TableCell>
+                          <TableCell className="font-medium text-xs">{row.referenceNumber}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{row.transactionType}</Badge>
+                          </TableCell>
+                          <TableCell className="hidden md:table-cell">{row.memberName}</TableCell>
+                          <TableCell>{formatCurrency(row.amount)}</TableCell>
+                          <TableCell className="hidden md:table-cell text-xs">{row.description}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+                {selectedReport === 'audit' && (
+                  <Table className="table-modern">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Timestamp</TableHead>
+                        <TableHead>User</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Resource</TableHead>
+                        <TableHead className="hidden md:table-cell">Details</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {reportData.map((row: any, idx: number) => (
+                        <TableRow key={idx}>
+                          <TableCell className="text-xs">{row.timestamp ? new Date(row.timestamp).toLocaleString() : '-'}</TableCell>
+                          <TableCell>{row.user}</TableCell>
+                          <TableCell><Badge variant="outline">{row.action}</Badge></TableCell>
+                          <TableCell>{row.resource}</TableCell>
+                          <TableCell className="hidden md:table-cell text-xs max-w-xs truncate">{row.details}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </div>
+            </div>
+          ) : selectedReport ? (
+            <div className="section-card">
+              <div className="p-6 text-center py-8 text-slate-500">
+                No data available for this report
+              </div>
+            </div>
+          ) : (
+            <div className="section-card">
+              <div className="p-6">
+                <div className="py-16 text-center">
+                  <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Select a Report</h3>
+                  <p className="text-slate-600 mb-4">
+                    Choose a report type from the dropdown above or from the Overview tab
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
