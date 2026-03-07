@@ -76,6 +76,18 @@ export class BusinessRulesValidator {
         violations.push(`❌ PENDING APPLICATIONS: You already have ${pendingLoans.length} pending loan application(s). Wait for current applications to be processed.`);
       }
 
+      // BR-L007: Cannot have outstanding active/disbursed loans
+      const memberLoans = await storage.getLoansByMember(memberId);
+      const outstandingLoans = memberLoans.filter(loan => 
+        ['active', 'disbursed', 'approved'].includes(loan.status || '') && 
+        parseFloat(loan.outstandingBalance || '0') > 0
+      );
+      if (outstandingLoans.length > 0) {
+        const loanNumbers = outstandingLoans.map(l => l.loanNumber).join(', ');
+        const totalOutstanding = outstandingLoans.reduce((sum, l) => sum + parseFloat(l.outstandingBalance || '0'), 0);
+        violations.push(`❌ OUTSTANDING LOANS: You have ${outstandingLoans.length} active loan(s) with an outstanding balance of UGX ${Math.round(totalOutstanding).toLocaleString()} (${loanNumbers}). Repay or settle existing loans before applying for a new one. Use the Loan Top-Up option if you need additional funds on an existing loan.`);
+      }
+
       let loanToSavingsRatio = 2.5;
       try {
         const ratioSetting = await storage.getSystemSetting('loanToSavingsRatio');
