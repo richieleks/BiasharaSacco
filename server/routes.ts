@@ -4067,12 +4067,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!filePath) return res.status(400).json({ message: 'No file uploaded' });
 
       const fs = await import('fs');
-      const csvContent = await fs.promises.readFile(filePath, 'utf-8');
-      const lines = csvContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      let csvContent = await fs.promises.readFile(filePath, 'utf-8');
+      csvContent = csvContent.replace(/^\uFEFF/, '');
+      const lines = csvContent.split('\n').map(l => l.replace(/\r$/, '').trim()).filter(l => l.length > 0);
 
       if (lines.length < 3) {
         return res.status(400).json({ message: 'CSV file has insufficient rows' });
       }
+
+      const sanitize = (val: string | undefined) =>
+        (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF]/g, '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+      const sanitizeAmount = (val: string | undefined) =>
+        (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF"'\s]/g, '').replace(/,/g, '');
 
       const allMembers = await storage.getAllMembers();
       const existingTxns = await storage.getRecentTransactions(10000);
@@ -4085,19 +4091,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (let i = 2; i < lines.length; i++) {
         try {
-          const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+          const cols = lines[i].split(',').map(c => sanitize(c));
           if (cols.length < 12) { errors.push({ row: i + 1, error: 'Insufficient columns' }); continue; }
 
-          const txStatus = cols[6]?.trim();
-          if (txStatus && txStatus.toLowerCase() !== 'success') {
+          const txStatus = cols[6].toLowerCase();
+          if (txStatus && txStatus !== 'success') {
             errors.push({ row: i + 1, error: `Transaction status: ${txStatus}`, data: { account: cols[10] } });
             continue;
           }
 
-          const remitterAccount = cols[10]?.replace(/\t/g, '').trim();
-          const amount = parseFloat(cols[9]?.replace(/,/g, '') || '0');
-          const reference = cols[7]?.trim() || '';
-          const description = cols[11]?.replace(/\t/g, '').trim() || 'Loan Repayment';
+          const remitterAccount = cols[10];
+          const amount = parseFloat(sanitizeAmount(cols[9]) || '0');
+          const reference = cols[7];
+          const description = cols[11] || 'Loan Repayment';
 
           if (!remitterAccount || amount <= 0) {
             errors.push({ row: i + 1, error: 'Missing account number or invalid amount' });
@@ -4109,11 +4115,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          const member = allMembers.find((m: any) =>
-            (m.staffAccountNumber && m.staffAccountNumber.trim() === remitterAccount) ||
-            (m.accountNumber && m.accountNumber.trim() === remitterAccount) ||
-            (m.idNumber && m.idNumber.trim() === remitterAccount)
-          );
+          const member = allMembers.find((m: any) => {
+            const staffAcc = sanitize(m.staffAccountNumber);
+            const accNum = sanitize(m.accountNumber);
+            const idNum = sanitize(m.idNumber);
+            return (staffAcc && staffAcc === remitterAccount) ||
+              (accNum && accNum === remitterAccount) ||
+              (idNum && idNum === remitterAccount);
+          });
 
           if (!member) {
             skippedNoMember++;
@@ -4203,12 +4212,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!filePath) return res.status(400).json({ message: 'No file uploaded' });
 
       const fs = await import('fs');
-      const csvContent = await fs.promises.readFile(filePath, 'utf-8');
-      const lines = csvContent.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      let csvContent = await fs.promises.readFile(filePath, 'utf-8');
+      csvContent = csvContent.replace(/^\uFEFF/, '');
+      const lines = csvContent.split('\n').map(l => l.replace(/\r$/, '').trim()).filter(l => l.length > 0);
 
       if (lines.length < 3) {
         return res.status(400).json({ message: 'CSV file has insufficient rows' });
       }
+
+      const sanitize = (val: string | undefined) =>
+        (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF]/g, '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+      const sanitizeAmount = (val: string | undefined) =>
+        (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF"'\s]/g, '').replace(/,/g, '');
 
       const allMembers = await storage.getAllMembers();
       const existingTxns = await storage.getRecentTransactions(10000);
@@ -4221,19 +4236,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (let i = 2; i < lines.length; i++) {
         try {
-          const cols = lines[i].split(',').map(c => c.replace(/^"|"$/g, '').trim());
+          const cols = lines[i].split(',').map(c => sanitize(c));
           if (cols.length < 12) { errors.push({ row: i + 1, error: 'Insufficient columns' }); continue; }
 
-          const txStatus = cols[6]?.trim();
-          if (txStatus && txStatus.toLowerCase() !== 'success') {
+          const txStatus = cols[6].toLowerCase();
+          if (txStatus && txStatus !== 'success') {
             errors.push({ row: i + 1, error: `Transaction status: ${txStatus}`, data: { account: cols[10] } });
             continue;
           }
 
-          const remitterAccount = cols[10]?.replace(/\t/g, '').trim();
-          const amount = parseFloat(cols[9]?.replace(/,/g, '') || '0');
-          const reference = cols[7]?.trim() || '';
-          const description = cols[11]?.replace(/\t/g, '').trim() || 'Savings Deposit';
+          const remitterAccount = cols[10];
+          const amount = parseFloat(sanitizeAmount(cols[9]) || '0');
+          const reference = cols[7];
+          const description = cols[11] || 'Savings Deposit';
 
           if (!remitterAccount || amount <= 0) {
             errors.push({ row: i + 1, error: 'Missing account number or invalid amount' });
@@ -4245,11 +4260,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             continue;
           }
 
-          const member = allMembers.find((m: any) =>
-            (m.staffAccountNumber && m.staffAccountNumber.trim() === remitterAccount) ||
-            (m.accountNumber && m.accountNumber.trim() === remitterAccount) ||
-            (m.idNumber && m.idNumber.trim() === remitterAccount)
-          );
+          const member = allMembers.find((m: any) => {
+            const staffAcc = sanitize(m.staffAccountNumber);
+            const accNum = sanitize(m.accountNumber);
+            const idNum = sanitize(m.idNumber);
+            return (staffAcc && staffAcc === remitterAccount) ||
+              (accNum && accNum === remitterAccount) ||
+              (idNum && idNum === remitterAccount);
+          });
 
           if (!member) {
             skippedNoMember++;
