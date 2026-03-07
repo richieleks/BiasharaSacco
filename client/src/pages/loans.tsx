@@ -404,14 +404,14 @@ export default function Loans() {
             {isPersonalView ? (
               <HandCoins className="w-5 h-5 text-blue-600" />
             ) : (
-              <Clock className="w-5 h-5 text-amber-600" />
+              <HandCoins className="w-5 h-5 text-blue-600" />
             )}
             <h3 className="text-lg font-semibold text-slate-900">
-              {isPersonalView ? 'My Loan Applications' : 'Pending Loan Applications'}
+              {isPersonalView ? 'My Loan Applications' : 'Loan Applications'}
             </h3>
             {pendingLoans && (
-              <Badge className={isPersonalView ? "bg-blue-50 text-blue-700 border-blue-200/50" : "bg-amber-50 text-amber-700 border-amber-200/50"}>
-                {pendingLoans.length}
+              <Badge className="bg-blue-50 text-blue-700 border-blue-200/50">
+                {totalItems}
               </Badge>
             )}
           </div>
