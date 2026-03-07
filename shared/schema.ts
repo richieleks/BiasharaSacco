@@ -799,6 +799,24 @@ export const loanTermsRelations = relations(loanTerms, ({ one }) => ({
   }),
 }));
 
+// Loan Approvals table for tracking individual committee approvals
+export const loanApprovals = pgTable("loan_approvals", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").notNull().references(() => loans.id),
+  approvedBy: varchar("approved_by").notNull().references(() => users.id),
+  stage: varchar("stage", { enum: ["committee", "treasurer"] }).notNull(),
+  comments: text("comments"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertLoanApprovalSchema = createInsertSchema(loanApprovals).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type LoanApproval = typeof loanApprovals.$inferSelect;
+export type InsertLoanApproval = typeof loanApprovals.$inferInsert;
+
 // System Settings table for persisting configuration
 export const systemSettings = pgTable("system_settings", {
   id: serial("id").primaryKey(),

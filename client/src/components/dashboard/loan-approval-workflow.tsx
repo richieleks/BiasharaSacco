@@ -33,7 +33,9 @@ export default function LoanApprovalWorkflow() {
   const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : (user?.role ? [user.role] : []));
   const mappedRoles = userRoles.map((role: any) => role === 'teller' ? 'treasurer' : role);
   const canAccessTreasurer = hasAnyRole(mappedRoles as any, ['treasurer', 'admin']);
-  const canAccessCommittee = hasAnyRole(mappedRoles as any, ['committee', 'treasurer', 'admin']);
+  const canAccessCommittee = hasAnyRole(mappedRoles as any, ['committee']);
+  const canApproveCommittee = hasAnyRole(mappedRoles as any, ['committee']);
+  const canViewCommittee = hasAnyRole(mappedRoles as any, ['committee', 'treasurer', 'admin']);
 
   useState(() => {
     const primaryRole = (user?.member?.role || user?.role) as string | undefined;
@@ -44,7 +46,7 @@ export default function LoanApprovalWorkflow() {
   // Fetch loans for each approval stage
   const { data: committeeLoans, isLoading: committeeLoading } = useQuery<LoanWithDetails[]>({
     queryKey: ['/api/loans/approval/committee'],
-    enabled: canAccessCommittee,
+    enabled: canViewCommittee,
     refetchInterval: 30000,
   });
 
@@ -56,16 +58,18 @@ export default function LoanApprovalWorkflow() {
 
   const approveMutation = useMutation({
     mutationFn: async ({ loan, stage, comments }: { loan: any; stage: string; comments?: string }) => {
-      await apiRequest('POST', `/api/loans/${loan.uuid}/approve/${stage}`, { comments });
+      const response = await apiRequest('POST', `/api/loans/${loan.uuid}/approve/${stage}`, { comments });
+      return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans/approval'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
       setIsDialogOpen(false);
       setComments("");
       toast({
-        title: "Loan Approved",
-        description: `Loan has been approved at ${selectedAction?.stage} stage.`,
+        title: "Approval Recorded",
+        description: data.message || `Loan has been approved at ${selectedAction?.stage} stage.`,
       });
     },
     onError: (error: any) => {
@@ -164,91 +168,135 @@ export default function LoanApprovalWorkflow() {
     );
   };
 
-  const LoanCard = ({ loan, stage, canApprove }: { loan: LoanWithDetails; stage: string; canApprove: boolean }) => (
-    <div key={loan.id} className="border rounded-lg p-4 space-y-3">
-      <div className="flex items-start justify-between">
-        <div className="space-y-2 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold">{loan.member?.fullName}</h3>
-            {getStatusBadge(loan.status!, loan.approvalStage!)}
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <FileText className="h-4 w-4" />
-              Loan #{loan.loanNumber}
+  const LoanCard = ({ loan, stage, canApprove }: { loan: LoanWithDetails; stage: string; canApprove: boolean }) => {
+    const { data: approvalData } = useQuery<{ approvals: any[]; approvalCount: number; minApprovers: number; isFullyApproved: boolean }>({
+      queryKey: ['/api/loans', loan.id, 'approvals'],
+      queryFn: async () => {
+        const res = await fetch(`/api/loans/${loan.id}/approvals`, { credentials: 'include' });
+        return res.json();
+      },
+      enabled: stage === 'committee',
+      refetchInterval: 15000,
+    });
+
+    const currentUserAlreadyApproved = approvalData?.approvals?.some(
+      (a: any) => a.approvedBy === user?.id
+    );
+
+    return (
+      <div key={loan.id} className="border rounded-lg p-4 space-y-3">
+        <div className="flex items-start justify-between">
+          <div className="space-y-2 flex-1">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold">{loan.member?.fullName}</h3>
+              {getStatusBadge(loan.status!, loan.approvalStage!)}
             </div>
-            <div className="flex items-center gap-1">
-              <DollarSign className="h-4 w-4" />
-              {formatCurrency(loan.principalAmount)}
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <FileText className="h-4 w-4" />
+                Loan #{loan.loanNumber}
+              </div>
+              <div className="flex items-center gap-1">
+                <DollarSign className="h-4 w-4" />
+                {formatCurrency(loan.principalAmount)}
+              </div>
+              <div className="flex items-center gap-1">
+                <User className="h-4 w-4" />
+                {loan.loanType} ({loan.termMonths} months)
+              </div>
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                Applied: {new Date(loan.applicationDate!).toLocaleDateString()}
+              </div>
             </div>
-            <div className="flex items-center gap-1">
-              <User className="h-4 w-4" />
-              {loan.loanType} ({loan.termMonths} months)
+
+            <div className="text-sm">
+              <p><strong>Purpose:</strong> {loan.purpose || 'Not specified'}</p>
+              <p><strong>Monthly Payment:</strong> {formatCurrency(loan.monthlyPayment)}</p>
+              {loan.averageNetPay && (
+                <p><strong>Average Net Pay:</strong> {formatCurrency(loan.averageNetPay)}</p>
+              )}
             </div>
-            <div className="flex items-center gap-1">
-              <Calendar className="h-4 w-4" />
-              Applied: {new Date(loan.applicationDate!).toLocaleDateString()}
+
+            {stage === 'committee' && approvalData && (
+              <div className="p-2 bg-blue-50 border border-blue-200 rounded">
+                <div className="flex items-center gap-2 text-sm text-blue-800">
+                  <Users className="h-4 w-4" />
+                  <span className="font-medium">
+                    Committee Approvals: {approvalData.approvalCount}/{approvalData.minApprovers}
+                  </span>
+                </div>
+                {approvalData.approvals.length > 0 && (
+                  <div className="mt-1 text-xs text-blue-700 space-y-0.5">
+                    {approvalData.approvals.map((a: any, i: number) => (
+                      <p key={i}>✓ {a.approverName} — {new Date(a.createdAt).toLocaleDateString()}</p>
+                    ))}
+                  </div>
+                )}
+                {currentUserAlreadyApproved && (
+                  <p className="text-xs text-blue-600 mt-1 font-medium">You have already approved this loan.</p>
+                )}
+              </div>
+            )}
+
+            <div className="text-xs text-muted-foreground space-y-1">
+              {loan.committeeApprovedAt && (
+                <p>✓ Committee reviewed: {new Date(loan.committeeApprovedAt).toLocaleDateString()}</p>
+              )}
+              {loan.tellerApprovedAt && (
+                <p>✓ Treasurer approved: {new Date(loan.tellerApprovedAt).toLocaleDateString()}</p>
+              )}
+              {loan.managerApprovedAt && (
+                <p>✓ Admin approved: {new Date(loan.managerApprovedAt).toLocaleDateString()}</p>
+              )}
             </div>
           </div>
 
-          <div className="text-sm">
-            <p><strong>Purpose:</strong> {loan.purpose || 'Not specified'}</p>
-            <p><strong>Monthly Payment:</strong> {formatCurrency(loan.monthlyPayment)}</p>
-            {loan.averageNetPay && (
-              <p><strong>Average Net Pay:</strong> {formatCurrency(loan.averageNetPay)}</p>
-            )}
-          </div>
+          {canApprove && !currentUserAlreadyApproved && (
+            <div className="flex gap-2 ml-4">
+              <Button
+                size="sm"
+                onClick={() => handleAction(loan, stage, 'approve')}
+                className="bg-green-600 hover:bg-green-700"
+                disabled={approveMutation.isPending || rejectMutation.isPending}
+              >
+                <CheckCircle className="h-4 w-4 mr-1" />
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => handleAction(loan, stage, 'reject')}
+                disabled={approveMutation.isPending || rejectMutation.isPending}
+              >
+                <XCircle className="h-4 w-4 mr-1" />
+                Reject
+              </Button>
+            </div>
+          )}
 
-          {/* Show approval history */}
-          <div className="text-xs text-muted-foreground space-y-1">
-            {loan.committeeApprovedAt && (
-              <p>✓ Committee reviewed: {new Date(loan.committeeApprovedAt).toLocaleDateString()}</p>
-            )}
-            {loan.tellerApprovedAt && (
-              <p>✓ Treasurer approved: {new Date(loan.tellerApprovedAt).toLocaleDateString()}</p>
-            )}
-            {loan.managerApprovedAt && (
-              <p>✓ Admin approved: {new Date(loan.managerApprovedAt).toLocaleDateString()}</p>
-            )}
-          </div>
+          {canApprove && currentUserAlreadyApproved && (
+            <div className="ml-4">
+              <Badge variant="outline" className="text-green-700 border-green-300">
+                <CheckCircle className="h-3 w-3 mr-1" />
+                Approved
+              </Badge>
+            </div>
+          )}
         </div>
 
-        {canApprove && (
-          <div className="flex gap-2 ml-4">
-            <Button
-              size="sm"
-              onClick={() => handleAction(loan, stage, 'approve')}
-              className="bg-green-600 hover:bg-green-700"
-              disabled={approveMutation.isPending || rejectMutation.isPending}
-            >
-              <CheckCircle className="h-4 w-4 mr-1" />
-              Approve
-            </Button>
-            <Button
-              size="sm"
-              variant="destructive"
-              onClick={() => handleAction(loan, stage, 'reject')}
-              disabled={approveMutation.isPending || rejectMutation.isPending}
-            >
-              <XCircle className="h-4 w-4 mr-1" />
-              Reject
-            </Button>
+        {parseFloat(loan.principalAmount) > 500000 && (
+          <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
+            <AlertTriangle className="h-4 w-4" />
+            <span className="text-sm">High-value loan - requires careful risk assessment</span>
           </div>
         )}
       </div>
+    );
+  };
 
-      {/* Risk indicators */}
-      {parseFloat(loan.principalAmount) > 500000 && (
-        <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
-          <AlertTriangle className="h-4 w-4" />
-          <span className="text-sm">High-value loan - requires careful risk assessment</span>
-        </div>
-      )}
-    </div>
-  );
-
-  if (!canAccessTreasurer && !canAccessCommittee) {
+  if (!canAccessTreasurer && !canViewCommittee) {
     return (
       <Card>
         <CardHeader>
@@ -271,7 +319,7 @@ export default function LoanApprovalWorkflow() {
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="committee" disabled={!canAccessCommittee}>
+            <TabsTrigger value="committee" disabled={!canViewCommittee}>
               Committee Review
               {committeeLoans && committeeLoans.length > 0 && (
                 <Badge variant="secondary" className="ml-2">{committeeLoans.length}</Badge>
@@ -302,7 +350,7 @@ export default function LoanApprovalWorkflow() {
                       key={loan.id} 
                       loan={loan} 
                       stage="committee" 
-                      canApprove={canAccessCommittee} 
+                      canApprove={canApproveCommittee} 
                     />
                   ))}
                 </div>

@@ -108,6 +108,7 @@ const adminSettingsSchema = z.object({
   minimumSavingsBalance: z.number().min(0).default(10000),
   loanToSavingsRatio: z.number().min(1).max(10).default(2.5),
   membershipDurationMonths: z.number().min(1).max(12).default(3),
+  minLoanApprovers: z.number().min(1).max(10).default(2),
   
   // Backup and Maintenance
   autoBackupEnabled: z.boolean().default(true),
@@ -168,6 +169,7 @@ export default function AdminSettingsPage() {
     minimumSavingsBalance: 10000,
     loanToSavingsRatio: 2.5,
     membershipDurationMonths: 3,
+    minLoanApprovers: 2,
     autoBackupEnabled: true,
     backupFrequency: "daily",
     logRetentionDays: 90,
@@ -1100,6 +1102,29 @@ export default function AdminSettingsPage() {
                               </FormControl>
                               <FormDescription>
                                 Required membership duration for loan eligibility
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="minLoanApprovers"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Minimum Loan Approvers</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="1" 
+                                  max="10"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Number of committee members required to approve a loan before it moves to disbursement
                               </FormDescription>
                               <FormMessage />
                             </FormItem>

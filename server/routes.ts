@@ -481,6 +481,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         minimumSavingsBalance: 10000,
         loanToSavingsRatio: 2.5,
         membershipDurationMonths: 3,
+        minLoanApprovers: 2,
         autoBackupEnabled: true,
         backupFrequency: "daily",
         logRetentionDays: 90,
@@ -512,7 +513,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settings = req.body;
       const userId = getUserId(req);
 
-      const numberFields = ['maxLoanAmount', 'maxLoanTerm', 'defaultInterestRate', 'sessionTimeout', 'maxLoginAttempts', 'smtpPort', 'minimumSavingsBalance', 'loanToSavingsRatio', 'membershipDurationMonths', 'logRetentionDays', 'entranceFee', 'sharePrice'];
+      const numberFields = ['maxLoanAmount', 'maxLoanTerm', 'defaultInterestRate', 'sessionTimeout', 'maxLoginAttempts', 'smtpPort', 'minimumSavingsBalance', 'loanToSavingsRatio', 'membershipDurationMonths', 'minLoanApprovers', 'logRetentionDays', 'entranceFee', 'sharePrice'];
       const booleanFields = ['maintenanceMode', 'twoFactorRequired', 'emailEnabled', 'systemNotifications', 'memberNotifications', 'loanNotifications', 'autoBackupEnabled'];
 
       for (const [key, value] of Object.entries(settings)) {
@@ -536,11 +537,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const entranceFeeSetting = await storage.getSystemSetting('entranceFee');
       const sharePriceSetting = await storage.getSystemSetting('sharePrice');
       const loanToSavingsRatioSetting = await storage.getSystemSetting('loanToSavingsRatio');
+      const minLoanApproversSetting = await storage.getSystemSetting('minLoanApprovers');
 
       res.json({
         entranceFee: entranceFeeSetting ? parseFloat(entranceFeeSetting.settingValue) : 15000,
         sharePrice: sharePriceSetting ? parseFloat(sharePriceSetting.settingValue) : 5000,
         loanToSavingsRatio: loanToSavingsRatioSetting ? parseFloat(loanToSavingsRatioSetting.settingValue) : 2.5,
+        minLoanApprovers: minLoanApproversSetting ? parseInt(minLoanApproversSetting.settingValue) : 2,
       });
     } catch (error) {
       console.error("Error fetching public settings:", error);
@@ -649,20 +652,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const hasApprovalRole = async (userId: string, requiredRole: string): Promise<boolean> => {
     const user = await storage.getUser(userId);
-    if (user?.role === 'admin') return true;
-    if (user?.role === requiredRole) return true;
     
     const member = await storage.getMemberByUserId(userId);
-    if (!member) return false;
+    const roles = member ? await storage.getMemberRoles(member.id) : [];
+    if (roles.length === 0 && member?.role) roles.push(member.role);
+    if (roles.length === 0 && user?.role) roles.push(user.role);
     
-    const roles = await storage.getMemberRoles(member.id);
-    
-    if (roles.includes('admin')) return true;
-    
-    if (requiredRole === 'committee' && roles.includes('committee')) return true;
-    if (requiredRole === 'treasurer' && (roles.includes('treasurer') || roles.includes('teller'))) return true;
-    if (requiredRole === 'teller' && (roles.includes('teller') || roles.includes('treasurer'))) return true;
-    if (requiredRole === 'manager' && roles.includes('manager')) return true;
+    if (requiredRole === 'committee') {
+      return roles.includes('committee');
+    }
+    if (requiredRole === 'treasurer' || requiredRole === 'teller') {
+      return roles.includes('treasurer') || roles.includes('teller') || roles.includes('admin');
+    }
+    if (requiredRole === 'manager') {
+      return roles.includes('manager') || roles.includes('admin');
+    }
     
     return false;
   };
@@ -1691,7 +1695,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not found" });
       }
 
-      // Get user's member record to access roles - also check user.role for staff without member profiles
       const member = await storage.getMemberByUserId(userId);
       let userRoles: string[];
       if (member) {
@@ -1701,6 +1704,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userRoles = [user.role];
       } else {
         return res.status(403).json({ message: "No role found" });
+      }
+
+      const canViewCommittee = userRoles.includes('committee') || userRoles.includes('treasurer') || userRoles.includes('teller') || userRoles.includes('admin');
+      const canViewTreasurer = userRoles.includes('treasurer') || userRoles.includes('teller') || userRoles.includes('admin');
+
+      if (stage === 'committee' && !canViewCommittee) {
+        return res.status(403).json({ message: "Committee, treasurer, or admin role required to view committee loans" });
+      }
+      if (stage === 'treasurer' && !canViewTreasurer) {
+        return res.status(403).json({ message: "Treasurer or admin role required to view treasurer loans" });
       }
       
       const loans = await storage.getLoansForApproval(stage, userRoles[0] || 'member');
@@ -1718,33 +1731,85 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = getUserId(req)!;
 
       if (!await hasApprovalRole(userId, stage)) {
-        return res.status(403).json({ message: `Access denied. ${stage} role required.` });
+        return res.status(403).json({ message: `Access denied. Only users with the ${stage} role can approve loans at this stage.` });
       }
 
-      // Get loan by UUID first to get the ID for legacy methods
       const loanByUuid = await storage.getLoanByUuid(uuid);
       if (!loanByUuid) {
         return res.status(404).json({ message: "Loan not found" });
       }
 
-      const loan = await storage.approveLoanAtStage(loanByUuid.id, stage, userId, comments);
-      
-      // Create notification for loan approval
-      const member = await storage.getMember(loan.memberId);
-      if (member) {
-        await createAndBroadcastNotification({
-          type: 'loan_approval',
-          title: `Loan Approved at ${stage.charAt(0).toUpperCase() + stage.slice(1)} Stage`,
-          message: `Your loan application ${loan.loanNumber} has been approved at the ${stage} stage. ${loan.status === 'approved' ? 'Loan is now fully approved!' : 'Moving to next approval stage.'}`,
-          priority: loan.status === 'approved' ? 'high' : 'medium',
-          actionUrl: `/loans/${loan.uuid}`,
-          memberId: loan.memberId,
-          userId: member.userId,
-          isRead: false
-        });
+      if (stage === 'committee') {
+        const existingApprovals = await storage.getLoanApprovals(loanByUuid.id, 'committee');
+        const alreadyApproved = existingApprovals.find(a => a.approvedBy === userId);
+        if (alreadyApproved) {
+          return res.status(400).json({ message: "You have already approved this loan." });
+        }
+
+        await storage.addLoanApproval(loanByUuid.id, userId, 'committee', comments);
+
+        let minApprovers = 2;
+        try {
+          const setting = await storage.getSystemSetting('minLoanApprovers');
+          if (setting?.settingValue) {
+            const parsed = parseInt(setting.settingValue);
+            if (!isNaN(parsed) && parsed > 0) minApprovers = parsed;
+          }
+        } catch {}
+
+        const updatedApprovals = await storage.getLoanApprovals(loanByUuid.id, 'committee');
+        const approvalCount = updatedApprovals.length;
+
+        if (approvalCount >= minApprovers) {
+          const loan = await storage.approveLoanAtStage(loanByUuid.id, stage, userId, comments);
+          
+          const member = await storage.getMember(loan.memberId);
+          if (member) {
+            await createAndBroadcastNotification({
+              type: 'loan_approval',
+              title: `Loan Approved by Committee`,
+              message: `Your loan application ${loan.loanNumber} has been approved by the committee (${approvalCount}/${minApprovers} approvals). It is now pending treasurer disbursement.`,
+              priority: 'high',
+              actionUrl: `/loans/${loan.uuid}`,
+              memberId: loan.memberId,
+              userId: member.userId,
+              isRead: false
+            });
+          }
+
+          res.json({ 
+            message: `Loan fully approved at committee stage (${approvalCount}/${minApprovers} approvals)`, 
+            loan,
+            approvalCount,
+            minApprovers
+          });
+        } else {
+          res.json({ 
+            message: `Your approval has been recorded (${approvalCount}/${minApprovers} approvals needed). Waiting for more committee approvals.`, 
+            loan: loanByUuid,
+            approvalCount,
+            minApprovers
+          });
+        }
+      } else {
+        const loan = await storage.approveLoanAtStage(loanByUuid.id, stage, userId, comments);
+
+        const member = await storage.getMember(loan.memberId);
+        if (member) {
+          await createAndBroadcastNotification({
+            type: 'loan_approval',
+            title: `Loan Approved at ${stage.charAt(0).toUpperCase() + stage.slice(1)} Stage`,
+            message: `Your loan application ${loan.loanNumber} has been approved at the ${stage} stage. ${loan.status === 'approved' ? 'Loan is now fully approved!' : 'Moving to next approval stage.'}`,
+            priority: loan.status === 'approved' ? 'high' : 'medium',
+            actionUrl: `/loans/${loan.uuid}`,
+            memberId: loan.memberId,
+            userId: member.userId,
+            isRead: false
+          });
+        }
+        
+        res.json({ message: `Loan approved at ${stage} stage`, loan });
       }
-      
-      res.json({ message: `Loan approved at ${stage} stage`, loan });
     } catch (error) {
       console.error(`Error approving loan at ${req.params.stage} stage:`, error);
       res.status(500).json({ message: "Failed to approve loan" });
@@ -1775,10 +1840,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/loans/:loanId/approvals', isAuthenticated, async (req: any, res) => {
+    try {
+      const loanId = parseInt(req.params.loanId);
+      const approvals = await storage.getLoanApprovals(loanId, 'committee');
+      
+      let minApprovers = 2;
+      try {
+        const setting = await storage.getSystemSetting('minLoanApprovers');
+        if (setting?.settingValue) {
+          const parsed = parseInt(setting.settingValue);
+          if (!isNaN(parsed) && parsed > 0) minApprovers = parsed;
+        }
+      } catch {}
+
+      const approvalsWithUsers = await Promise.all(
+        approvals.map(async (a) => {
+          const user = await storage.getUser(a.approvedBy);
+          return {
+            ...a,
+            approverName: user ? `${user.firstName} ${user.lastName}` : 'Unknown',
+          };
+        })
+      );
+
+      res.json({
+        approvals: approvalsWithUsers,
+        approvalCount: approvals.length,
+        minApprovers,
+        isFullyApproved: approvals.length >= minApprovers,
+      });
+    } catch (error) {
+      console.error("Error fetching loan approvals:", error);
+      res.status(500).json({ message: "Failed to fetch loan approvals" });
+    }
+  });
+
   app.get('/api/loans/:uuid/approval-history', isAuthenticated, async (req, res) => {
     try {
       const { uuid } = req.params;
-      // Get loan by UUID first to get the ID for legacy methods
       const loan = await storage.getLoanByUuid(uuid);
       if (!loan) {
         return res.status(404).json({ message: "Loan not found" });

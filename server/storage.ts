@@ -64,6 +64,8 @@ import {
   type RolePermission,
   type InsertRolePermission,
   type SystemSetting,
+  loanApprovals,
+  type LoanApproval,
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
@@ -113,6 +115,8 @@ export interface IStorage {
   approveLoanAtStage(loanId: number, stage: string, approvedBy: string, comments?: string): Promise<Loan>;
   rejectLoan(loanId: number, rejectedBy: string, reason: string): Promise<Loan>;
   getLoanApprovalHistory(loanId: number): Promise<any>;
+  addLoanApproval(loanId: number, approvedBy: string, stage: string, comments?: string): Promise<LoanApproval>;
+  getLoanApprovals(loanId: number, stage: string): Promise<LoanApproval[]>;
   calculateRequiredApprovalStage(loanAmount: number, loanType: string): Promise<string>;
 
   getMemberActiveLoans(memberId: number): Promise<LoanWithDetails[]>;
@@ -858,6 +862,22 @@ export class DatabaseStorage implements IStorage {
       .returning();
     
     return loan;
+  }
+
+  async addLoanApproval(loanId: number, approvedBy: string, stage: string, comments?: string): Promise<LoanApproval> {
+    const [approval] = await db
+      .insert(loanApprovals)
+      .values({ loanId, approvedBy, stage, comments })
+      .returning();
+    return approval;
+  }
+
+  async getLoanApprovals(loanId: number, stage: string): Promise<LoanApproval[]> {
+    return await db
+      .select()
+      .from(loanApprovals)
+      .where(and(eq(loanApprovals.loanId, loanId), eq(loanApprovals.stage, stage)))
+      .orderBy(loanApprovals.createdAt);
   }
 
   async rejectLoan(loanId: number, rejectedBy: string, reason: string): Promise<Loan> {
