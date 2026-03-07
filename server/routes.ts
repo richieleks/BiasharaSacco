@@ -4075,6 +4075,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'CSV file has insufficient rows' });
       }
 
+      const loanTypeId = req.body?.loanTypeId ? parseInt(req.body.loanTypeId) : null;
+      if (!loanTypeId) {
+        return res.status(400).json({ message: 'Loan type is required for loan repayment imports' });
+      }
+
+      const loanType = await storage.getLoanType(loanTypeId);
+      if (!loanType) {
+        return res.status(400).json({ message: 'Invalid loan type selected' });
+      }
+
       const sanitize = (val: string | undefined) =>
         (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF]/g, '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
       const sanitizeAmount = (val: string | undefined) =>
@@ -4088,6 +4098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let successCount = 0;
       let totalAmount = 0;
       let skippedNoMember = 0;
+      let skippedNoLoan = 0;
 
       for (let i = 2; i < lines.length; i++) {
         try {
@@ -4131,12 +4142,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           const activeLoans = await storage.getMemberActiveLoans(member.id);
-          if (activeLoans.length === 0) {
-            errors.push({ row: i + 1, error: `No active loan for member: ${member.fullName} (${member.memberNumber})`, data: { remitterAccount, amount } });
+          const matchingLoan = activeLoans.find((l: any) => l.loanTypeId === loanTypeId);
+          if (!matchingLoan) {
+            skippedNoLoan++;
+            errors.push({ row: i + 1, error: `No active ${loanType.displayName} loan for member: ${member.fullName} (${member.memberNumber})`, data: { remitterAccount, amount } });
             continue;
           }
 
-          const loan = activeLoans[0];
+          const loan = matchingLoan;
           const outstandingBalance = parseFloat(loan.outstandingBalance || '0');
           const repaymentAmount = Math.min(amount, outstandingBalance);
 
@@ -4179,7 +4192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId,
         action: 'import',
         resource: 'loan_repayments',
-        details: `Bulk loan repayment import: ${successCount} payments totaling UGX ${totalAmount.toLocaleString()}. ${errors.length} errors. ${skippedNoMember} unmatched accounts.`,
+        details: `Bulk loan repayment import (${loanType.displayName}): ${successCount} payments totaling UGX ${totalAmount.toLocaleString()}. ${errors.length} errors. ${skippedNoMember} unmatched accounts. ${skippedNoLoan} no matching loan.`,
       });
 
       broadcastDataUpdate(['/api/loans', '/api/transactions', '/api/dashboard', '/api/savings']);
