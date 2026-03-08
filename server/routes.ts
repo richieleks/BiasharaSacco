@@ -115,6 +115,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: string;
     };
   }
+  async function recordJournalEntry(mappingKey: string, amount: string | number, description: string, reference: string, userId: string) {
+    try {
+      const numericAmount = typeof amount === 'number' ? amount : parseFloat(amount);
+      if (!numericAmount || isNaN(numericAmount) || numericAmount <= 0) return;
+
+      const mappings = await storage.getSaccoAccountMappings();
+      const mapping = mappings.find((m: any) => m.mappingKey === mappingKey);
+      if (!mapping) {
+        console.warn(`[JournalEntry] No mapping found for key: ${mappingKey}`);
+        return;
+      }
+
+      const debitId = (mapping as any).debitAccountId;
+      const creditId = (mapping as any).creditAccountId;
+      if (!debitId || !creditId) {
+        console.warn(`[JournalEntry] Mapping ${mappingKey} missing debit/credit account IDs`);
+        return;
+      }
+
+      const entryNumber = `JE-${Date.now()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+      await storage.createSaccoJournalEntry({
+        entryNumber,
+        entryDate: new Date().toISOString().split('T')[0],
+        description,
+        reference,
+        debitAccountId: debitId,
+        creditAccountId: creditId,
+        amount: numericAmount.toFixed(2),
+        createdBy: userId,
+        status: 'posted',
+      });
+    } catch (err) {
+      console.error(`[JournalEntry] Failed to record ${mappingKey}:`, err);
+    }
+  }
+
   // Auth middleware
   await setupAuth(app);
   await setupLocalAuth();
@@ -1172,6 +1208,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
+      await recordJournalEntry('share_capital_contribution', amount, `Share capital payment - ${member.memberNumber}`, referenceNumber, getUserId(req)!);
+
       await storage.updateMember(memberId, {
         shareCapital: newShareCapital.toString(),
         isPaidUp,
@@ -1292,6 +1330,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
+      await recordJournalEntry('member_deposit', amount, `Savings deposit - ${account.accountNumber}`, referenceNumber, getUserId(req)!);
+
       const member = await storage.getMember(account.memberId);
       if (member?.userId) {
         await createAndBroadcastNotification({
@@ -1306,7 +1346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard']);
+      broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard', '/api/sacco-accounts', '/api/sacco-journal-entries']);
       res.status(201).json(transaction);
     } catch (error) {
       console.error("Error processing deposit:", error);
@@ -2020,6 +2060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     status: 'completed',
                     performedBy: userId,
                   });
+                  await recordJournalEntry('loan_processing_fee', acceptanceFee, `Loan acceptance fee - ${loan.loanNumber}`, `ACCFEE-${loan.loanNumber}`, userId);
                 }
 
                 if (applicationFee > 0) {
@@ -2036,6 +2077,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     status: 'completed',
                     performedBy: userId,
                   });
+                  await recordJournalEntry('loan_processing_fee', applicationFee, `Loan processing fee (${processingFeeRate}%) - ${loan.loanNumber}`, `PROCFEE-${loan.loanNumber}`, userId);
                 }
               }
             }
@@ -2326,6 +2368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'completed',
           processedBy: getUserId(req),
         });
+        await recordJournalEntry('loan_repayment_principal', previousBalance, `Loan settlement via top-up - ${originalLoan?.loanNumber || 'N/A'}`, settleRef, userId);
       }
 
       await storage.createTransaction({
@@ -2338,6 +2381,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'completed',
         processedBy: getUserId(req),
       });
+
+      await recordJournalEntry('loan_disbursement', loan.principalAmount, `Loan disbursement - ${loan.loanNumber}`, referenceNumber, userId);
 
       const disburseMember = await storage.getMember(loan.memberId);
       if (disburseMember?.userId) {
@@ -2353,7 +2398,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      broadcastDataUpdate(['/api/loans', '/api/loans/approval', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans']);
+      broadcastDataUpdate(['/api/loans', '/api/loans/approval', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans', '/api/sacco-accounts', '/api/sacco-journal-entries']);
       res.json(loan);
     } catch (error) {
       console.error("Error disbursing loan:", error);
@@ -2388,6 +2433,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
+      await recordJournalEntry('loan_repayment_principal', amount, `Loan repayment - ${loan.loanNumber}`, referenceNumber, getUserId(req)!);
+
       const paymentMember = await storage.getMember(loan.memberId!);
       if (paymentMember?.userId) {
         await createAndBroadcastNotification({
@@ -2402,7 +2449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      broadcastDataUpdate(['/api/loans', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans']);
+      broadcastDataUpdate(['/api/loans', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans', '/api/sacco-accounts', '/api/sacco-journal-entries']);
       res.status(201).json(transaction);
     } catch (error) {
       console.error("Error processing loan payment:", error);
@@ -2626,12 +2673,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (transaction.transactionType === 'withdrawal' && transaction.savingsAccountId) {
-        // Process withdrawal
         await storage.updateSavingsAccountBalance(
           transaction.savingsAccountId, 
           transaction.amount, 
           'subtract'
         );
+        await recordJournalEntry('member_withdrawal', transaction.amount, `Savings withdrawal approved - Ref: ${transaction.referenceNumber}`, transaction.referenceNumber || `WDR-${transactionId}`, getUserId(req)!);
       }
 
       const updatedTransaction = await storage.updateTransactionStatus(transactionId, 'completed');
