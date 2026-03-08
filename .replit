@@ -42,3 +42,4 @@ externalPort = 3000
 
 [agent]
 integrations = ["javascript_websocket:1.0.0"]
+expertMode = true
