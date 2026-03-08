@@ -1439,13 +1439,13 @@ export class DatabaseStorage implements IStorage {
       ));
 
     const [totalExpected] = await db
-      .select({ total: sql<string>`COALESCE(sum(principal_amount), '0')` })
+      .select({ total: sql<string>`COALESCE(sum(principal_amount::numeric * (1 + COALESCE(interest_rate::numeric, 0) / 100 * COALESCE(term_months, 12) / 12)), '0')` })
       .from(loans)
       .where(sql`${loans.status} IN ('approved', 'active', 'disbursed', 'completed')`);
 
     const repaid = parseFloat(totalRepayments?.total || '0');
     const expected = parseFloat(totalExpected?.total || '0');
-    const repaymentRate = expected > 0 ? ((repaid / expected) * 100).toFixed(1) : '0';
+    const repaymentRate = expected > 0 ? Math.min((repaid / expected) * 100, 100).toFixed(1) : '0';
 
     const currentMembers = memberCount?.count || 0;
     const prevMembers = lastMonthMembers?.count || 0;
