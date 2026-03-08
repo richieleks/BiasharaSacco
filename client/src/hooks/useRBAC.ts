@@ -52,13 +52,14 @@ export function useRBAC() {
   const activeRole = useSyncExternalStore(subscribeToRoleChanges, getActiveRoleSnapshot);
 
   useEffect(() => {
+    if (isLoading || !user) return;
     if (userRoles.length > 0) {
       if (!userRoles.includes(activeRole)) {
         const highest = getHighestRole(userRoles);
         setSharedActiveRole(highest);
       }
     }
-  }, [JSON.stringify(userRoles)]);
+  }, [JSON.stringify(userRoles), isLoading, !!user]);
 
   const switchRole = useCallback((role: UserRole) => {
     if (userRoles.includes(role)) {

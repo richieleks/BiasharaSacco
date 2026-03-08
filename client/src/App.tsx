@@ -42,7 +42,11 @@ import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 
 function ProtectedRoute({ children, requiredPermission }: { children: React.ReactNode, requiredPermission?: { action: string, resource: string } }) {
-  const { hasPermission } = useRBAC();
+  const { hasPermission, isLoading } = useRBAC();
+  
+  if (isLoading) {
+    return null;
+  }
   
   if (requiredPermission && !hasPermission(requiredPermission.action, requiredPermission.resource)) {
     return <Forbidden />;
