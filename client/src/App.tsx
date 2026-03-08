@@ -180,7 +180,7 @@ function Router() {
               </ProtectedRoute>
             </Route>
             <Route path="/savings">
-              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'savings' }}>
+              <ProtectedRoute>
                 <Savings />
               </ProtectedRoute>
             </Route>

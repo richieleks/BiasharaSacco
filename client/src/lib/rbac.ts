@@ -9,6 +9,7 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Dashboard', path: '/', icon: 'LayoutDashboard', group: 'Main', permission: { action: 'read', resource: 'dashboard' } },
   { name: 'Members', path: '/members', icon: 'Users', group: 'Main', permission: { action: 'read', resource: 'members' } },
   { name: 'Savings', path: '/savings', icon: 'PiggyBank', group: 'Finance', permission: { action: 'read', resource: 'savings' } },
+  { name: 'My Savings', path: '/savings', icon: 'PiggyBank', group: 'Finance', permission: { action: 'read', resource: 'personal-savings' } },
   { name: 'Loans', path: '/loans', icon: 'CreditCard', group: 'Finance', permission: { action: 'read', resource: 'loans' } },
   { name: 'Loan Workflow', path: '/loan-workflow', icon: 'GitBranch', group: 'Finance', permission: { action: 'approve', resource: 'loans' } },
   { name: 'My Loans', path: '/my-loans', icon: 'CreditCard', group: 'Finance', permission: { action: 'read', resource: 'personal-loans' } },

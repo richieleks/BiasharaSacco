@@ -1314,14 +1314,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/savings/withdraw', isAuthenticated, async (req, res) => {
+  app.post('/api/savings/withdraw', isAuthenticated, async (req: any, res) => {
     try {
       const { accountId, amount, description } = req.body;
+
+      const withdrawalAccount = await storage.getSavingsAccount(accountId);
+      if (!withdrawalAccount) {
+        return res.status(404).json({ message: "Savings account not found" });
+      }
+
+      const userId = getUserId(req)!;
+      const userRecord = await storage.getUser(userId);
+      const isStaff = userRecord && ['admin', 'treasurer', 'teller'].includes(userRecord.role);
+
+      if (!isStaff) {
+        const member = await storage.getMemberByUserId(userId);
+        if (!member || withdrawalAccount.memberId !== member.id) {
+          return res.status(403).json({ message: "You can only request withdrawals from your own accounts" });
+        }
+      }
       
       const referenceNumber = `WDR${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
       const transaction = await storage.createTransaction({
-        memberId: (await storage.getSavingsAccount(accountId))!.memberId,
+        memberId: withdrawalAccount.memberId,
         savingsAccountId: accountId,
         transactionType: 'withdrawal',
         amount,
@@ -1331,8 +1347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
-      const withdrawAccount = await storage.getSavingsAccount(accountId);
-      const withdrawMember = withdrawAccount ? await storage.getMember(withdrawAccount.memberId) : null;
+      const withdrawMember = await storage.getMember(withdrawalAccount.memberId);
       if (withdrawMember?.userId) {
         await createAndBroadcastNotification({
           type: 'transaction_completed',
@@ -1340,7 +1355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           message: `Your withdrawal request of UGX ${parseFloat(amount).toLocaleString()} has been submitted and is pending approval.`,
           priority: 'medium',
           actionUrl: '/savings',
-          memberId: withdrawAccount!.memberId,
+          memberId: withdrawalAccount.memberId,
           userId: withdrawMember.userId,
           isRead: false
         });

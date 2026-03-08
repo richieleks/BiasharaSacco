@@ -546,10 +546,16 @@ function MemberDashboard() {
                   <div className="rounded-md bg-green-50 dark:bg-green-950/50 p-1.5"><PiggyBank className="h-3.5 w-3.5 text-green-600" /></div>
                   Savings Accounts
                 </CardTitle>
-                <Button variant="outline" size="sm" onClick={() => setLocation('/savings')}>
-                  <Eye className="mr-1.5 h-3.5 w-3.5" />
-                  View All
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/50" onClick={() => setLocation('/savings')} data-testid="button-request-withdrawal-dashboard">
+                    <ArrowDown className="mr-1.5 h-3.5 w-3.5" />
+                    Request Withdrawal
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setLocation('/savings')}>
+                    <Eye className="mr-1.5 h-3.5 w-3.5" />
+                    View All
+                  </Button>
+                </div>
               </div>
             </CardHeader>
             <CardContent>

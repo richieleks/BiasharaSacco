@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Pagination } from "@/components/ui/pagination";
 import DepositForm from "@/components/forms/deposit-form";
 import WithdrawalForm from "@/components/forms/withdrawal-form";
+import MemberWithdrawalForm from "@/components/forms/member-withdrawal-form";
 import { formatCurrency } from "@/lib/utils";
 import { Search, Plus, ArrowUp, ArrowDown, Wallet, PiggyBank, FileText } from "lucide-react";
 
@@ -125,6 +126,27 @@ export default function Savings() {
               }
             </p>
           </div>
+          {isPersonalView && (
+            <div className="mt-4 sm:mt-0">
+              <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
+                <DialogTrigger asChild>
+                  <Button data-testid="button-request-withdrawal" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950/50 rounded-xl shadow-sm">
+                    <ArrowDown className="w-4 h-4 mr-2" />
+                    Request Withdrawal
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-h-[85vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle>Request Withdrawal</DialogTitle>
+                    <DialogDescription>
+                      Submit a withdrawal request from your savings account. Requests require approval before processing.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <MemberWithdrawalForm onSuccess={() => setIsWithdrawModalOpen(false)} />
+                </DialogContent>
+              </Dialog>
+            </div>
+          )}
           {!isPersonalView && (
             <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3">
               <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
