@@ -22,6 +22,7 @@ import Transactions from "@/pages/transactions";
 import ShareCapital from "@/pages/share-capital";
 import Reports from "@/pages/reports";
 import Guarantors from "@/pages/guarantors";
+import GuarantorRequestsPage from "@/pages/guarantor-requests";
 import DataImport from "@/pages/data-import";
 
 
@@ -227,6 +228,11 @@ function Router() {
             <Route path="/guarantors">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'guarantors' }}>
                 <Guarantors />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/guarantor-requests">
+              <ProtectedRoute>
+                <GuarantorRequestsPage />
               </ProtectedRoute>
             </Route>
 

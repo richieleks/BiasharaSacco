@@ -70,6 +70,7 @@ const SYSTEM_PERMISSIONS = [
   { resource: "audit-logs", action: "read", displayName: "View Audit Logs", category: "Administration" },
   { resource: "personal-dashboard", action: "read", displayName: "View Personal Dashboard", category: "Main" },
   { resource: "personal-savings", action: "read", displayName: "View Personal Savings", category: "Finance" },
+  { resource: "personal-guarantors", action: "read", displayName: "View Guarantor Requests", category: "Finance" },
   { resource: "sacco-accounts", action: "read", displayName: "View SACCO Accounts", category: "Finance" },
   { resource: "sacco-accounts", action: "update", displayName: "Manage SACCO Accounts", category: "Finance" },
 ];
@@ -169,6 +170,7 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "personal-loans" },
     { action: "read", resource: "personal-savings" },
     { action: "read", resource: "personal-transactions" },
+    { action: "read", resource: "personal-guarantors" },
     { action: "read", resource: "notifications" },
     { action: "read", resource: "guarantors" },
   ],
