@@ -101,7 +101,7 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
         ) : (
           <div className="space-y-4">
             {/* Summary */}
-            <div className="bg-slate-50 p-3 rounded-lg">
+            <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm font-medium">Approval Status</span>
                 <Badge variant={guarantors.every(g => g.status === 'approved') ? 'default' : 'secondary'}>

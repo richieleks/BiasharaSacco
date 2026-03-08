@@ -363,8 +363,8 @@ export default function Guarantors() {
     <div className="space-y-6 page-container animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Guarantor Management</h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Guarantor Management</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Manage guarantor requests and view guarantees you've provided
           </p>
         </div>
@@ -404,8 +404,8 @@ export default function Guarantors() {
       {/* Tab Content */}
       {activeTab === 'my-loans' && (
         <div className="section-card">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               My Loan Applications Awaiting Guarantors ({loansNeedingGuarantors.length})
             </h3>
@@ -433,11 +433,11 @@ export default function Guarantors() {
                   
                   return (
                     <div key={loan.id} className="section-card border-l-4 border-l-blue-400">
-                      <div className="px-6 py-4 border-b border-slate-100">
+                      <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                           <div className="flex items-center gap-3">
                             <CreditCard className="h-5 w-5 text-blue-600 shrink-0" />
-                            <h3 className="text-sm font-semibold text-slate-900">Loan Application #{loan.loanNumber}</h3>
+                            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Application #{loan.loanNumber}</h3>
                           </div>
                           <Badge variant={getStatusVariant(loan.status)} className={getStatusColor(loan.status)}>
                             {loan.status}
@@ -448,26 +448,26 @@ export default function Guarantors() {
                         <div className="grid md:grid-cols-2 gap-6">
                           {/* Loan Details */}
                           <div className="space-y-3">
-                            <h4 className="font-medium text-slate-900">Loan Details</h4>
+                            <h4 className="font-medium text-slate-900 dark:text-slate-100">Loan Details</h4>
                             <div className="space-y-2 text-sm">
                               <div className="flex justify-between">
-                                <span className="text-slate-600">Amount:</span>
+                                <span className="text-slate-600 dark:text-slate-300">Amount:</span>
                                 <span className="font-medium">{formatCurrency(loan.principalAmount || 0)}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-slate-600">Type:</span>
+                                <span className="text-slate-600 dark:text-slate-300">Type:</span>
                                 <span className="font-medium">{loan.loanType}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-slate-600">Term:</span>
+                                <span className="text-slate-600 dark:text-slate-300">Term:</span>
                                 <span className="font-medium">{loan.termMonths} months</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-slate-600">Purpose:</span>
+                                <span className="text-slate-600 dark:text-slate-300">Purpose:</span>
                                 <span className="font-medium">{loan.purpose}</span>
                               </div>
                               <div className="flex justify-between">
-                                <span className="text-slate-600">Applied:</span>
+                                <span className="text-slate-600 dark:text-slate-300">Applied:</span>
                                 <span className="font-medium">{new Date(loan.createdAt).toLocaleDateString()}</span>
                               </div>
                             </div>
@@ -475,15 +475,15 @@ export default function Guarantors() {
 
                           {/* Guarantor Status */}
                           <div className="space-y-3">
-                            <h4 className="font-medium text-slate-900">Guarantor Status</h4>
-                            <div className="bg-slate-50 p-4 rounded-lg">
+                            <h4 className="font-medium text-slate-900 dark:text-slate-100">Guarantor Status</h4>
+                            <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
                               <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm font-medium">Progress</span>
-                                <span className="text-sm text-slate-600">
+                                <span className="text-sm text-slate-600 dark:text-slate-300">
                                   {approvedGuarantors} of {guarantors.length} approved
                                 </span>
                               </div>
-                              <div className="w-full bg-slate-200 rounded-full h-2">
+                              <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
                                 <div 
                                   className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
                                   style={{ width: `${guarantors.length ? (approvedGuarantors / guarantors.length) * 100 : 0}%` }}
@@ -501,10 +501,10 @@ export default function Guarantors() {
                         {/* Guarantor Details */}
                         {guarantors.length > 0 && (
                           <div className="mt-6 pt-4 border-t">
-                            <h4 className="font-medium text-slate-900 mb-3">Guarantor Details</h4>
+                            <h4 className="font-medium text-slate-900 dark:text-slate-100 mb-3">Guarantor Details</h4>
                             <div className="space-y-3">
                               {guarantors.map((guarantor: any) => (
-                                <div key={guarantor.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 rounded-lg">
+                                <div key={guarantor.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                                   <div className="flex items-center gap-3">
                                     <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
                                       <UserCheck className="h-4 w-4 text-blue-600" />
@@ -513,12 +513,12 @@ export default function Guarantors() {
                                       <div className="font-medium">
                                         {guarantor.guarantorMember?.user?.firstName} {guarantor.guarantorMember?.user?.lastName}
                                       </div>
-                                      <div className="text-sm text-slate-600">
+                                      <div className="text-sm text-slate-600 dark:text-slate-300">
                                         {guarantor.guarantorMember?.memberNumber} | 
                                         {formatCurrency(guarantor.guaranteeAmount)}
                                       </div>
                                       {guarantor.comments && (
-                                        <div className="text-xs text-slate-500 mt-1">
+                                        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                                           Comment: {guarantor.comments}
                                         </div>
                                       )}
@@ -550,8 +550,8 @@ export default function Guarantors() {
 
                         {guarantors.length === 0 && (
                           <div className="mt-6 pt-4 border-t">
-                            <div className="py-16 text-center text-slate-500">
-                              <UserCheck className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                            <div className="py-16 text-center text-slate-500 dark:text-slate-400">
+                              <UserCheck className="h-8 w-8 mx-auto mb-2 text-slate-400 dark:text-slate-500" />
                               <p>No guarantors assigned yet</p>
                               <Button 
                                 onClick={() => openGuarantorSelection(loan)}
@@ -589,8 +589,8 @@ export default function Guarantors() {
 
       {activeTab === 'requests' && (
         <div className="section-card">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <Clock className="h-4 w-4" />
               Requests for Me to Guarantee ({guarantorRequests.length})
             </h3>
@@ -612,11 +612,11 @@ export default function Guarantors() {
               <div className="space-y-6">
                 {guarantorRequests.map((request: any) => (
                   <div key={request.id} className="section-card border-l-4 border-l-amber-400">
-                    <div className="px-6 py-4 border-b border-slate-100">
+                    <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <FileText className="h-5 w-5 text-amber-600" />
-                          <h3 className="text-sm font-semibold text-slate-900">Loan Guarantee Request</h3>
+                          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Guarantee Request</h3>
                         </div>
                         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/50">
                           <Clock className="h-3 w-3 mr-1" />
@@ -628,32 +628,32 @@ export default function Guarantors() {
                       <div className="grid md:grid-cols-2 gap-6">
                         {/* Loan Details */}
                         <div className="space-y-3">
-                          <h4 className="font-medium text-slate-900">Loan Details</h4>
+                          <h4 className="font-medium text-slate-900 dark:text-slate-100">Loan Details</h4>
                           <div className="space-y-2 text-sm">
                             <div className="flex justify-between">
-                              <span className="text-slate-600">Loan Number:</span>
+                              <span className="text-slate-600 dark:text-slate-300">Loan Number:</span>
                               <span className="font-medium">{request.loan?.loanNumber}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-600">Applicant:</span>
+                              <span className="text-slate-600 dark:text-slate-300">Applicant:</span>
                               <span className="font-medium">
                                 {request.loan?.member?.user?.firstName} {request.loan?.member?.user?.lastName}
                               </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-600">Member Number:</span>
+                              <span className="text-slate-600 dark:text-slate-300">Member Number:</span>
                               <span className="font-medium">{request.loan?.member?.memberNumber}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-600">Loan Amount:</span>
+                              <span className="text-slate-600 dark:text-slate-300">Loan Amount:</span>
                               <span className="font-medium">{formatCurrency(request.loan?.principalAmount || 0)}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-600">Loan Type:</span>
+                              <span className="text-slate-600 dark:text-slate-300">Loan Type:</span>
                               <span className="font-medium capitalize">{request.loan?.loanType}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-slate-600">Term:</span>
+                              <span className="text-slate-600 dark:text-slate-300">Term:</span>
                               <span className="font-medium">{request.loan?.termMonths} months</span>
                             </div>
                           </div>
@@ -661,7 +661,7 @@ export default function Guarantors() {
 
                         {/* Guarantee Details */}
                         <div className="space-y-3">
-                          <h4 className="font-medium text-slate-900">Your Guarantee</h4>
+                          <h4 className="font-medium text-slate-900 dark:text-slate-100">Your Guarantee</h4>
                           <div className="bg-blue-50 p-4 rounded-lg">
                             <div className="flex items-center gap-2 mb-2">
                               <DollarSign className="h-4 w-4 text-blue-600" />
@@ -675,7 +675,7 @@ export default function Guarantors() {
                             </div>
                           </div>
                           
-                          <div className="text-sm text-slate-600">
+                          <div className="text-sm text-slate-600 dark:text-slate-300">
                             <p><strong>Request Date:</strong> {new Date(request.createdAt).toLocaleDateString()}</p>
                           </div>
                         </div>
@@ -710,8 +710,8 @@ export default function Guarantors() {
 
       {activeTab === 'provided' && (
         <div className="section-card">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <Users className="h-4 w-4" />
               Guarantees I've Provided ({providedGuarantees.length})
             </h3>
@@ -794,11 +794,11 @@ export default function Guarantors() {
           </DialogHeader>
           {selectedGuarantor && (
             <div className="space-y-4">
-              <div className="bg-slate-50 p-3 rounded-lg">
-                <p className="text-sm text-slate-600">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
                   <strong>Applicant:</strong> {selectedGuarantor.loan?.member?.user?.firstName} {selectedGuarantor.loan?.member?.user?.lastName}
                 </p>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-slate-600 dark:text-slate-300">
                   <strong>Guarantee Amount:</strong> {formatCurrency(selectedGuarantor.guaranteeAmount)}
                 </p>
               </div>
@@ -850,19 +850,19 @@ export default function Guarantors() {
           </DialogHeader>
           {selectedLoanForGuarantors && (
             <div className="space-y-6">
-              <div className="bg-slate-50 p-4 rounded-lg">
+              <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
                 <h4 className="font-medium mb-2">Loan Details</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <span className="text-slate-600">Loan Amount:</span> 
+                    <span className="text-slate-600 dark:text-slate-300">Loan Amount:</span> 
                     <span className="font-medium ml-2">{formatCurrency(selectedLoanForGuarantors.principalAmount)}</span>
                   </div>
                   <div>
-                    <span className="text-slate-600">Type:</span> 
+                    <span className="text-slate-600 dark:text-slate-300">Type:</span> 
                     <span className="font-medium ml-2">{selectedLoanForGuarantors.loanType}</span>
                   </div>
                   <div>
-                    <span className="text-slate-600">Member Savings:</span> 
+                    <span className="text-slate-600 dark:text-slate-300">Member Savings:</span> 
                     <span className="font-medium ml-2 text-emerald-700">{formatCurrency(loanMemberTotalSavings)}</span>
                   </div>
                   <div>

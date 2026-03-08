@@ -27,7 +27,7 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-white border-slate-200 text-slate-900 shadow-lg dark:bg-slate-900 dark:border-slate-700 dark:text-slate-100",
+        default: "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 shadow-lg",
         success: "bg-emerald-50 border-emerald-200 text-emerald-900 shadow-lg dark:bg-emerald-950 dark:border-emerald-800 dark:text-emerald-100",
         destructive: "bg-red-50 border-red-200 text-red-900 shadow-lg dark:bg-red-950 dark:border-red-800 dark:text-red-100",
         warning: "bg-amber-50 border-amber-200 text-amber-900 shadow-lg dark:bg-amber-950 dark:border-amber-800 dark:text-amber-100",
@@ -77,7 +77,7 @@ const ToastClose = React.forwardRef<
     ref={ref}
     className={cn(
       "absolute right-2 top-2 rounded-md p-1 opacity-0 transition-opacity hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 group-hover:opacity-100",
-      "text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
+      "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100",
       "group-[.bg-emerald-50]:text-emerald-600 group-[.bg-emerald-50]:hover:text-emerald-900",
       "group-[.bg-red-50]:text-red-600 group-[.bg-red-50]:hover:text-red-900",
       "group-[.bg-amber-50]:text-amber-600 group-[.bg-amber-50]:hover:text-amber-900",

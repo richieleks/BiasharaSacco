@@ -64,7 +64,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
               </div>
               <div>
                 <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-none">Biashara SACCO</h2>
-                <p className="text-[11px] text-slate-400 capitalize mt-0.5 font-medium">
+                <p className="text-[11px] text-slate-400 dark:text-slate-500 capitalize mt-0.5 font-medium">
                   {userRole} Portal
                 </p>
               </div>
@@ -84,7 +84,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-none">Biashara SACCO</h2>
-            <p className="text-[11px] text-slate-400 capitalize mt-0.5 font-medium">
+            <p className="text-[11px] text-slate-400 dark:text-slate-500 capitalize mt-0.5 font-medium">
               {userRole} Portal
             </p>
           </div>
@@ -97,7 +97,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
             <>
               {(!isCollapsed || mobile) ? (
                 <div className={cn("px-3 pt-5 pb-1.5", groupIndex > 0 && "mt-1")}>
-                  <span className={cn("text-[10px] font-bold uppercase tracking-[0.08em]", GROUP_COLORS[group] || 'text-slate-400')}>
+                  <span className={cn("text-[10px] font-bold uppercase tracking-[0.08em]", GROUP_COLORS[group] || 'text-slate-400 dark:text-slate-500')}>
                     {group}
                   </span>
                 </div>
@@ -121,7 +121,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
                       "w-full justify-start transition-all duration-150 h-9 rounded-lg text-[13px] font-medium",
                       isActive 
                         ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
-                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white",
+                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-800 hover:text-slate-900 dark:text-slate-100 dark:hover:text-white",
                       isCollapsed && !mobile && "px-2 justify-center",
                       mobile && "justify-start"
                     )}
@@ -130,7 +130,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
                     <Icon className={cn(
                       "h-4 w-4 shrink-0 transition-all duration-150",
                       isCollapsed && !mobile ? "mr-0" : "mr-2.5",
-                      isActive ? "" : "text-slate-400"
+                      isActive ? "" : "text-slate-400 dark:text-slate-500"
                     )} />
                     {(!isCollapsed || mobile) && (
                       <span>{item.name}</span>
@@ -179,14 +179,14 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
           className={cn(
-            "absolute -right-3 top-6 z-10 h-6 w-6 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow",
+            "absolute -right-3 top-6 z-10 h-6 w-6 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-700 hover:shadow",
             "flex items-center justify-center p-0"
           )}
         >
           {isCollapsed ? (
-            <ChevronRight className="h-3 w-3 text-slate-500" />
+            <ChevronRight className="h-3 w-3 text-slate-500 dark:text-slate-400" />
           ) : (
-            <ChevronLeft className="h-3 w-3 text-slate-500" />
+            <ChevronLeft className="h-3 w-3 text-slate-500 dark:text-slate-400" />
           )}
         </Button>
 

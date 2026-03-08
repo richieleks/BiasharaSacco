@@ -348,7 +348,7 @@ export default function AdminSettingsPage() {
       <div className="flex flex-col md:flex-row gap-6">
         {/* Sidebar Navigation */}
         <div className="w-full md:w-64 flex md:flex-col gap-1 md:gap-0 md:space-y-1 overflow-x-auto pb-2 md:pb-0">
-          <p className="hidden md:block text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 pt-1 pb-1">SACCO Settings</p>
+          <p className="hidden md:block text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 pt-1 pb-1">SACCO Settings</p>
           <TabButton
             tab="business"
             icon={CreditCard}
@@ -362,7 +362,7 @@ export default function AdminSettingsPage() {
             isActive={activeTab === 'loantypes'}
           />
           <Separator className="hidden md:block my-2" />
-          <p className="hidden md:block text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 pt-1 pb-1">System Settings</p>
+          <p className="hidden md:block text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 pt-1 pb-1">System Settings</p>
           <TabButton
             tab="system"
             icon={Server}
@@ -400,7 +400,7 @@ export default function AdminSettingsPage() {
             isActive={activeTab === 'maintenance'}
           />
           <Separator className="hidden md:block my-2" />
-          <p className="hidden md:block text-[11px] font-semibold text-slate-400 uppercase tracking-wider px-3 pt-1 pb-1">Personal</p>
+          <p className="hidden md:block text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider px-3 pt-1 pb-1">Personal</p>
           <TabButton
             tab="preferences"
             icon={User}
@@ -1702,7 +1702,7 @@ function UserManagementTab() {
       case 'manager': return 'bg-purple-100 text-purple-800';
       case 'committee': return 'bg-blue-100 text-blue-800';
       case 'teller': return 'bg-green-100 text-green-800';
-      default: return 'bg-slate-100 text-slate-800';
+      default: return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200';
     }
   };
 

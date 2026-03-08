@@ -83,8 +83,8 @@ export default function PendingApprovals() {
 
   return (
     <div className="section-card">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-        <h3 className="text-sm font-semibold text-slate-900">Pending Approvals</h3>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Pending Approvals</h3>
         {totalPending > 0 && (
           <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200/50 text-xs font-semibold">
             {totalPending}
@@ -96,13 +96,13 @@ export default function PendingApprovals() {
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="border border-slate-200 rounded-lg p-3">
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3">
                   <div className="flex items-center justify-between">
                     <div className="flex-1">
-                      <div className="h-4 bg-slate-200 rounded w-2/3 mb-1"></div>
-                      <div className="h-3 bg-slate-200 rounded w-1/2"></div>
+                      <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-2/3 mb-1"></div>
+                      <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
                     </div>
-                    <div className="h-5 bg-slate-200 rounded w-16"></div>
+                    <div className="h-5 bg-slate-200 dark:bg-slate-700 rounded w-16"></div>
                   </div>
                 </div>
               </div>
@@ -112,11 +112,11 @@ export default function PendingApprovals() {
           <div className="space-y-3">
             {/* Loan Applications */}
             {approvals?.loanApplications?.map((loan: any) => (
-              <div key={`loan-${loan.id}`} className="border border-slate-200 rounded-lg p-3 hover:bg-slate-50">
+              <div key={`loan-${loan.id}`} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">Loan Application</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Loan Application</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {loan.member?.user?.firstName} {loan.member?.user?.lastName} - {formatCurrency(loan.principalAmount)}
                     </p>
                   </div>
@@ -135,11 +135,11 @@ export default function PendingApprovals() {
 
             {/* Withdrawal Requests */}
             {approvals?.withdrawalRequests?.map((withdrawal: any) => (
-              <div key={`withdrawal-${withdrawal.id}`} className="border border-slate-200 rounded-lg p-3 hover:bg-slate-50">
+              <div key={`withdrawal-${withdrawal.id}`} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <p className="text-sm font-medium text-slate-900">Withdrawal Request</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">Withdrawal Request</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       {withdrawal.member?.user?.firstName} {withdrawal.member?.user?.lastName} - {formatCurrency(withdrawal.amount)}
                     </p>
                   </div>
@@ -158,7 +158,7 @@ export default function PendingApprovals() {
           </div>
         ) : (
           <div className="text-center py-4">
-            <p className="text-sm text-slate-500">No pending approvals</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">No pending approvals</p>
           </div>
         )}
 

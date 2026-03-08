@@ -158,8 +158,8 @@ export default function Reports() {
     <div className="space-y-6 page-container animate-fade-in">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Reports & Analytics</h1>
-        <p className="text-sm text-slate-500 mt-0.5">Generate comprehensive reports and analyze SACCO performance</p>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Reports & Analytics</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Generate comprehensive reports and analyze SACCO performance</p>
       </div>
 
       {/* Tabs for different report sections */}
@@ -179,8 +179,8 @@ export default function Reports() {
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="section-card">
                   <div className="p-6">
-                    <Skeleton className="h-4 w-24 mb-2 bg-slate-100 rounded-lg" />
-                    <Skeleton className="h-8 w-32 bg-slate-100 rounded-lg" />
+                    <Skeleton className="h-4 w-24 mb-2 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+                    <Skeleton className="h-8 w-32 bg-slate-100 dark:bg-slate-800 rounded-lg" />
                   </div>
                 </div>
               ))}
@@ -191,7 +191,7 @@ export default function Reports() {
                 <div className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm font-medium text-slate-600">Total Members</p>
+                      <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Total Members</p>
                       <p className="text-lg sm:text-2xl font-bold mt-1">{metrics.totalMembers}</p>
                     </div>
                     <Users className="h-6 w-6 sm:h-8 sm:w-8 text-blue-500 shrink-0" />
@@ -203,7 +203,7 @@ export default function Reports() {
                 <div className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm font-medium text-slate-600">Total Savings</p>
+                      <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Total Savings</p>
                       <p className="text-lg sm:text-2xl font-bold mt-1 truncate">
                         {formatCurrency(metrics.totalSavings)}
                       </p>
@@ -217,7 +217,7 @@ export default function Reports() {
                 <div className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm font-medium text-slate-600">Active Loans</p>
+                      <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Active Loans</p>
                       <p className="text-lg sm:text-2xl font-bold mt-1 truncate">
                         {formatCurrency(metrics.activeLoans)}
                       </p>
@@ -231,7 +231,7 @@ export default function Reports() {
                 <div className="p-4 sm:p-6">
                   <div className="flex items-center justify-between">
                     <div className="min-w-0 flex-1">
-                      <p className="text-xs sm:text-sm font-medium text-slate-600">Repayment Rate</p>
+                      <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Repayment Rate</p>
                       <p className="text-lg sm:text-2xl font-bold mt-1">{metrics.repaymentRate}%</p>
                     </div>
                     <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-500 shrink-0" />
@@ -245,18 +245,18 @@ export default function Reports() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {reportTypes.map((report) => (
               <div key={report.id} className="section-card hover:shadow-lg transition-all hover:-translate-y-1">
-                <div className="px-6 py-4 border-b border-slate-100">
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
                   <div className="flex items-center space-x-3">
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${report.color}`}>
                       <report.icon className="w-6 h-6" />
                     </div>
                     <div>
-                      <h3 className="text-sm font-semibold text-slate-900">{report.title}</h3>
+                      <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{report.title}</h3>
                     </div>
                   </div>
                 </div>
                 <div className="p-5">
-                  <p className="text-sm text-slate-500 mb-4">{report.description}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{report.description}</p>
                   <div className="flex gap-2">
                     <Button
                       onClick={() => {
@@ -286,9 +286,9 @@ export default function Reports() {
         {/* Members Reports Tab */}
         <TabsContent value="members" className="space-y-6">
           <div className="section-card">
-            <div className="px-6 py-4 border-b border-slate-100">
-              <h3 className="text-sm font-semibold text-slate-900">Member Reports</h3>
-              <p className="text-sm text-slate-500 mt-0.5">Generate reports for member data and activities</p>
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Member Reports</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Generate reports for member data and activities</p>
             </div>
             <div className="p-6">
               <div className="space-y-4">
@@ -345,16 +345,16 @@ export default function Reports() {
               <div className="p-6">
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full bg-slate-100 rounded-lg" />
+                    <Skeleton key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800 rounded-lg" />
                   ))}
                 </div>
               </div>
             </div>
           ) : Array.isArray(reportData) && reportData.length > 0 ? (
             <div className="section-card">
-              <div className="px-6 py-4 border-b border-slate-100">
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                  <h3 className="text-sm font-semibold text-slate-900">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     Report Results ({reportData.length} records)
                   </h3>
                   <div className="flex flex-wrap gap-2">
@@ -404,7 +404,7 @@ export default function Reports() {
             </div>
           ) : reportData !== undefined ? (
             <div className="section-card">
-              <div className="p-6 text-center py-8 text-slate-500">
+              <div className="p-6 text-center py-8 text-slate-500 dark:text-slate-400">
                 No data available for the selected criteria
               </div>
             </div>
@@ -418,7 +418,7 @@ export default function Reports() {
               <div className="p-6">
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, i) => (
-                    <Skeleton key={i} className="h-20 w-full bg-slate-100 rounded-lg" />
+                    <Skeleton key={i} className="h-20 w-full bg-slate-100 dark:bg-slate-800 rounded-lg" />
                   ))}
                 </div>
               </div>
@@ -428,44 +428,44 @@ export default function Reports() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
                 <div className="section-card border-l-4 border-l-green-500">
                   <div className="p-4 sm:p-6">
-                    <p className="text-xs sm:text-sm font-medium text-slate-600">Total Savings</p>
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Total Savings</p>
                     <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.savingsTotal)}</p>
                   </div>
                 </div>
                 <div className="section-card border-l-4 border-l-purple-500">
                   <div className="p-4 sm:p-6">
-                    <p className="text-xs sm:text-sm font-medium text-slate-600">Loan Portfolio</p>
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Loan Portfolio</p>
                     <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.loanPortfolio)}</p>
                   </div>
                 </div>
                 <div className="section-card border-l-4 border-l-blue-500">
                   <div className="p-4 sm:p-6">
-                    <p className="text-xs sm:text-sm font-medium text-slate-600">Loan Repayments</p>
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Loan Repayments</p>
                     <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.revenue)}</p>
                   </div>
                 </div>
                 <div className="section-card border-l-4 border-l-red-500">
                   <div className="p-4 sm:p-6">
-                    <p className="text-xs sm:text-sm font-medium text-slate-600">Disbursements</p>
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Disbursements</p>
                     <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.expenses)}</p>
                   </div>
                 </div>
                 <div className="section-card border-l-4 border-l-emerald-500">
                   <div className="p-4 sm:p-6">
-                    <p className="text-xs sm:text-sm font-medium text-slate-600">Total Deposits</p>
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Total Deposits</p>
                     <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.totalDeposits)}</p>
                   </div>
                 </div>
                 <div className="section-card border-l-4 border-l-amber-500">
                   <div className="p-4 sm:p-6">
-                    <p className="text-xs sm:text-sm font-medium text-slate-600">Total Withdrawals</p>
+                    <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Total Withdrawals</p>
                     <p className="text-lg sm:text-2xl font-bold mt-1">{formatCurrency(reportData.totalWithdrawals)}</p>
                   </div>
                 </div>
               </div>
               <div className="section-card">
-                <div className="px-6 py-4 border-b border-slate-100">
-                  <h3 className="text-sm font-semibold text-slate-900">Summary</h3>
+                <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Summary</h3>
                 </div>
                 <div className="p-6">
                   <Table className="table-modern">
@@ -511,13 +511,13 @@ export default function Reports() {
 
               {reportData.delinquent && (
                 <div className="section-card border-t-4 border-t-red-500">
-                  <div className="px-6 py-4 border-b border-slate-100">
+                  <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
                     <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-5 h-5 text-red-500" />
                         <div>
-                          <h3 className="text-sm font-semibold text-slate-900">Delinquent Loans Report</h3>
-                          <p className="text-sm text-slate-500 mt-0.5">Loans that are past their due date with outstanding balances</p>
+                          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Delinquent Loans Report</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Loans that are past their due date with outstanding balances</p>
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
@@ -567,7 +567,7 @@ export default function Reports() {
                                 <TableCell>
                                   <div>
                                     <p className="font-medium text-sm">{loan.memberName}</p>
-                                    <p className="text-xs text-slate-500">{loan.memberNumber}</p>
+                                    <p className="text-xs text-slate-500 dark:text-slate-400">{loan.memberNumber}</p>
                                   </div>
                                 </TableCell>
                                 <TableCell className="hidden md:table-cell">
@@ -605,10 +605,10 @@ export default function Reports() {
                         </Table>
                       </div>
                     ) : (
-                      <div className="text-center py-8 text-slate-500">
+                      <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                         <AlertTriangle className="w-10 h-10 mx-auto mb-3 text-green-500" />
                         <p className="font-medium text-green-700">No delinquent loans</p>
-                        <p className="text-sm text-slate-500 mt-1">All active loans are within their repayment terms</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">All active loans are within their repayment terms</p>
                       </div>
                     )}
                   </div>
@@ -617,7 +617,7 @@ export default function Reports() {
             </>
           ) : (
             <div className="section-card">
-              <div className="p-6 text-center py-8 text-slate-500">
+              <div className="p-6 text-center py-8 text-slate-500 dark:text-slate-400">
                 No financial data available
               </div>
             </div>
@@ -627,13 +627,13 @@ export default function Reports() {
         {/* Custom/Detail Reports Tab */}
         <TabsContent value="custom" className="space-y-6">
           <div className="section-card">
-            <div className="px-6 py-4 border-b border-slate-100">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
               <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {selectedReport ? reportTypes.find(r => r.id === selectedReport)?.title || 'Report' : 'Select a Report'}
                   </h3>
-                  <p className="text-sm text-slate-500 mt-0.5">
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
                     {selectedReport ? reportTypes.find(r => r.id === selectedReport)?.description : 'Choose a report from the overview tab'}
                   </p>
                 </div>
@@ -658,16 +658,16 @@ export default function Reports() {
               <div className="p-6">
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
-                    <Skeleton key={i} className="h-12 w-full bg-slate-100 rounded-lg" />
+                    <Skeleton key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800 rounded-lg" />
                   ))}
                 </div>
               </div>
             </div>
           ) : Array.isArray(reportData) && reportData.length > 0 ? (
             <div className="section-card">
-              <div className="px-6 py-4 border-b border-slate-100">
+              <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-                  <h3 className="text-sm font-semibold text-slate-900">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     Results ({reportData.length} records)
                   </h3>
                   <div className="flex flex-wrap gap-2">
@@ -799,7 +799,7 @@ export default function Reports() {
             </div>
           ) : selectedReport ? (
             <div className="section-card">
-              <div className="p-6 text-center py-8 text-slate-500">
+              <div className="p-6 text-center py-8 text-slate-500 dark:text-slate-400">
                 No data available for this report
               </div>
             </div>
@@ -807,9 +807,9 @@ export default function Reports() {
             <div className="section-card">
               <div className="p-6">
                 <div className="py-16 text-center">
-                  <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                  <FileText className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">Select a Report</h3>
-                  <p className="text-slate-600 mb-4">
+                  <p className="text-slate-600 dark:text-slate-300 mb-4">
                     Choose a report type from the dropdown above or from the Overview tab
                   </p>
                 </div>

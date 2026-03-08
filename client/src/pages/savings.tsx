@@ -85,7 +85,7 @@ export default function Savings() {
       case 'group':
         return 'bg-purple-50 text-purple-700 border-purple-200/50';
       default:
-        return 'bg-slate-50 text-slate-700 border-slate-200/50';
+        return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
   };
 
@@ -94,11 +94,11 @@ export default function Savings() {
       case 'active':
         return 'bg-green-50 text-green-700 border-green-200/50';
       case 'closed':
-        return 'bg-slate-50 text-slate-700 border-slate-200/50';
+        return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
       case 'frozen':
         return 'bg-red-50 text-red-700 border-red-200/50';
       default:
-        return 'bg-slate-50 text-slate-700 border-slate-200/50';
+        return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
   };
 
@@ -115,10 +115,10 @@ export default function Savings() {
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               {isPersonalView ? 'My Savings' : 'Savings Accounts'}
             </h2>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               {isPersonalView 
                 ? 'View your savings accounts and balance history' 
                 : 'Manage member savings accounts and transactions'
@@ -169,7 +169,7 @@ export default function Savings() {
 
       <div className="section-card p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4" />
           <Input
             data-testid="input-search-savings"
             placeholder="Search members or account numbers..."
@@ -187,13 +187,13 @@ export default function Savings() {
               <div className="p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="w-10 h-10 bg-slate-100 rounded-lg"></div>
+                    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>
                     <div>
-                      <div className="h-4 bg-slate-100 rounded w-32 mb-2"></div>
-                      <div className="h-3 bg-slate-100 rounded w-24"></div>
+                      <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-32 mb-2"></div>
+                      <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-24"></div>
                     </div>
                   </div>
-                  <div className="h-8 bg-slate-100 rounded w-24"></div>
+                  <div className="h-8 bg-slate-100 dark:bg-slate-800 rounded w-24"></div>
                 </div>
               </div>
             </div>
@@ -203,64 +203,64 @@ export default function Savings() {
         <>
           <div className="space-y-4">
             {savingsAccounts.map((account: any) => (
-              <div key={account.id} className="section-card hover:shadow-md hover:border-slate-300/60 transition-all duration-200" data-testid={`card-savings-${account.id}`}>
+              <div key={account.id} className="section-card hover:shadow-md hover:border-slate-300 dark:border-slate-600/60 transition-all duration-200" data-testid={`card-savings-${account.id}`}>
                 <div className="p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center shrink-0">
-                        <span className="text-slate-600 text-sm font-medium">
+                        <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">
                           {account.member?.fullName ? account.member.fullName.split(' ').map((n: string) => n.charAt(0)).slice(0, 2).join('').toUpperCase() : `${account.member?.user?.firstName?.charAt(0) || ''}${account.member?.user?.lastName?.charAt(0) || ''}`}
                         </span>
                       </div>
                       <div>
-                        <h3 className="font-medium text-slate-900">
+                        <h3 className="font-medium text-slate-900 dark:text-slate-100">
                           Member: {account.member?.memberNumber}
                         </h3>
-                        <p className="text-sm text-slate-500">{account.member?.fullName || `${account.member?.user?.firstName || ''} ${account.member?.user?.lastName || ''}`.trim() || 'N/A'}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{account.member?.fullName || `${account.member?.user?.firstName || ''} ${account.member?.user?.lastName || ''}`.trim() || 'N/A'}</p>
                       </div>
                     </div>
                     <div className="sm:text-right">
-                      <div className="text-lg font-semibold text-slate-900" data-testid={`text-balance-${account.id}`}>
+                      <div className="text-lg font-semibold text-slate-900 dark:text-slate-100" data-testid={`text-balance-${account.id}`}>
                         {formatCurrency(account.balance || '0')}
                       </div>
-                      <div className="text-sm text-slate-500">Current Balance</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">Current Balance</div>
                     </div>
                   </div>
                   
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="space-y-1">
-                      <div className="text-sm text-slate-500">Account Number</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">Account Number</div>
                       <div className="flex items-center space-x-2">
-                        <Wallet className="w-4 h-4 text-slate-400" />
-                        <span className="text-sm font-medium text-slate-900">
+                        <Wallet className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                           {account.accountNumber}
                         </span>
                       </div>
                     </div>
                     
                     <div className="space-y-1">
-                      <div className="text-sm text-slate-500">Account Type</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">Account Type</div>
                       <Badge variant="outline" className={`border ${getAccountTypeColor(account.accountType)}`}>
                         {account.accountType?.replace('_', ' ') || 'Regular'}
                       </Badge>
                     </div>
                     
                     <div className="space-y-1">
-                      <div className="text-sm text-slate-500">Status</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400">Status</div>
                       <Badge variant="outline" className={`border ${getStatusColor(account.status)}`}>
                         {account.status || 'active'}
                       </Badge>
                     </div>
                     
                     <div className="space-y-1">
-                      <div className="text-sm text-slate-500">Opened</div>
-                      <div className="text-sm text-slate-900">
+                      <div className="text-sm text-slate-500 dark:text-slate-400">Opened</div>
+                      <div className="text-sm text-slate-900 dark:text-slate-100">
                         {account.createdAt ? new Date(account.createdAt).toLocaleDateString() : 'N/A'}
                       </div>
                     </div>
                   </div>
 
-                  <div className="mt-4 pt-4 border-t border-slate-100">
+                  <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
                     <Button
                       variant="outline"
                       size="sm"
@@ -291,9 +291,9 @@ export default function Savings() {
       ) : (
         <div className="section-card">
           <div className="py-16 text-center">
-            <PiggyBank className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No savings accounts found</h3>
-            <p className="text-slate-500 mb-4">
+            <PiggyBank className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">No savings accounts found</h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-4">
               {search ? "No accounts match your search criteria." : "Savings accounts will appear here once members are added."}
             </p>
           </div>

@@ -93,11 +93,11 @@ export default function NotificationsPage() {
     <div className="space-y-6 page-container animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Bell className="h-6 sm:h-7 w-6 sm:w-7" />
             Notifications
           </h1>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Stay updated with your SACCO activities and important alerts
           </p>
         </div>
@@ -118,12 +118,12 @@ export default function NotificationsPage() {
       </div>
 
       <div className="section-card">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
             <Filter className="h-4 w-4" />
             Filter & Search
           </h3>
-          <p className="text-sm text-slate-500 mt-0.5">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Find specific notifications using filters and search
           </p>
         </div>

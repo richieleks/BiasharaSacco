@@ -251,8 +251,8 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
   if (loadingLoans) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-        <span className="ml-2 text-slate-500">Loading your active loans...</span>
+        <Loader2 className="h-6 w-6 animate-spin text-slate-400 dark:text-slate-500" />
+        <span className="ml-2 text-slate-500 dark:text-slate-400">Loading your active loans...</span>
       </div>
     );
   }
@@ -301,7 +301,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Application Complete
                 </h3>
                 <p className="text-gray-600 mb-4">
@@ -330,9 +330,9 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
     return (
       <Card>
         <CardContent className="p-8 text-center">
-          <AlertCircle className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 mb-2">No Eligible Loans</h3>
-          <p className="text-slate-500">
+          <AlertCircle className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">No Eligible Loans</h3>
+          <p className="text-slate-500 dark:text-slate-400">
             You don't have any active or disbursed loans that can be topped up.
             Only loans with an active status are eligible for a top-up.
           </p>
@@ -419,35 +419,35 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
             )}
 
             {matchedLoanType && (
-              <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
-                <h4 className="font-medium text-sm text-slate-700 flex items-center gap-1.5">
+              <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg space-y-2">
+                <h4 className="font-medium text-sm text-slate-700 dark:text-slate-200 flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5" />
                   Loan Type Rules ({matchedLoanType.displayName || matchedLoanType.name})
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                   <div>
-                    <span className="text-slate-500">Interest Rate:</span>
-                    <span className="ml-1 font-medium text-slate-800">{parseFloat(loanTypeInterestRate).toFixed(1)}% p.a.</span>
+                    <span className="text-slate-500 dark:text-slate-400">Interest Rate:</span>
+                    <span className="ml-1 font-medium text-slate-800 dark:text-slate-200">{parseFloat(loanTypeInterestRate).toFixed(1)}% p.a.</span>
                   </div>
                   <div>
-                    <span className="text-slate-500">Term Range:</span>
-                    <span className="ml-1 font-medium text-slate-800">{loanTypeMinTerm} - {loanTypeMaxTerm} months</span>
+                    <span className="text-slate-500 dark:text-slate-400">Term Range:</span>
+                    <span className="ml-1 font-medium text-slate-800 dark:text-slate-200">{loanTypeMinTerm} - {loanTypeMaxTerm} months</span>
                   </div>
                   {loanTypeMinAmount > 0 && (
                     <div>
-                      <span className="text-slate-500">Min Amount:</span>
-                      <span className="ml-1 font-medium text-slate-800">{formatCurrency(loanTypeMinAmount)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">Min Amount:</span>
+                      <span className="ml-1 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(loanTypeMinAmount)}</span>
                     </div>
                   )}
                   {loanTypeMaxAmount > 0 && (
                     <div>
-                      <span className="text-slate-500">Max Loan Amount:</span>
-                      <span className="ml-1 font-medium text-slate-800">{formatCurrency(loanTypeMaxAmount)}</span>
+                      <span className="text-slate-500 dark:text-slate-400">Max Loan Amount:</span>
+                      <span className="ml-1 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(loanTypeMaxAmount)}</span>
                     </div>
                   )}
                   {maxTopUpAmount > 0 && (
                     <div>
-                      <span className="text-slate-500">Max Top-Up Amount:</span>
+                      <span className="text-slate-500 dark:text-slate-400">Max Top-Up Amount:</span>
                       <span className="ml-1 font-bold text-emerald-700">{formatCurrency(maxTopUpAmount)}</span>
                     </div>
                   )}
@@ -459,20 +459,20 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                   )}
                   {matchedLoanType.interestType && (
                     <div>
-                      <span className="text-slate-500">Interest Method:</span>
-                      <span className="ml-1 font-medium text-slate-800 capitalize">{matchedLoanType.interestType.replace('_', ' ')}</span>
+                      <span className="text-slate-500 dark:text-slate-400">Interest Method:</span>
+                      <span className="ml-1 font-medium text-slate-800 dark:text-slate-200 capitalize">{matchedLoanType.interestType.replace('_', ' ')}</span>
                     </div>
                   )}
                   {totalSavingsBalance > 0 && (
                     <div>
-                      <span className="text-slate-500">Savings-Based Limit:</span>
-                      <span className="ml-1 font-medium text-slate-800">{formatCurrency(maxLoanBySavings)} ({loanToSavingsRatio}x savings)</span>
+                      <span className="text-slate-500 dark:text-slate-400">Savings-Based Limit:</span>
+                      <span className="ml-1 font-medium text-slate-800 dark:text-slate-200">{formatCurrency(maxLoanBySavings)} ({loanToSavingsRatio}x savings)</span>
                     </div>
                   )}
                   {matchedLoanType.processingFee && parseFloat(matchedLoanType.processingFee) > 0 && (
                     <div>
-                      <span className="text-slate-500">Processing Fee:</span>
-                      <span className="ml-1 font-medium text-slate-800">{parseFloat(matchedLoanType.processingFee).toFixed(1)}%</span>
+                      <span className="text-slate-500 dark:text-slate-400">Processing Fee:</span>
+                      <span className="ml-1 font-medium text-slate-800 dark:text-slate-200">{parseFloat(matchedLoanType.processingFee).toFixed(1)}%</span>
                     </div>
                   )}
                 </div>
@@ -568,7 +568,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                   <FormItem>
                     <FormLabel>Interest Rate (%)</FormLabel>
                     <FormControl>
-                      <Input type="number" step="0.01" {...field} readOnly disabled className="bg-slate-100 cursor-not-allowed" />
+                      <Input type="number" step="0.01" {...field} readOnly disabled className="bg-slate-100 dark:bg-slate-800 cursor-not-allowed" />
                     </FormControl>
                     <p className="text-xs text-muted-foreground">Set by loan type, cannot be changed</p>
                     <FormMessage />

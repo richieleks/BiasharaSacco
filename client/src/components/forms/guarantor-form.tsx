@@ -140,11 +140,11 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
       {loanAmount > 0 && (
         <div className="bg-blue-50 p-4 rounded-lg space-y-1 text-sm">
           <div className="flex justify-between">
-            <span className="text-slate-600">Loan Amount:</span>
+            <span className="text-slate-600 dark:text-slate-300">Loan Amount:</span>
             <span className="font-medium">{formatCurrency(loanAmount)}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-600">Member Savings:</span>
+            <span className="text-slate-600 dark:text-slate-300">Member Savings:</span>
             <span className="font-medium text-emerald-700">{formatCurrency(totalSavings)}</span>
           </div>
           <div className="flex justify-between border-t border-blue-200 pt-1 mt-1">

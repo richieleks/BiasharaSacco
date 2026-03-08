@@ -121,11 +121,11 @@ export default function Members() {
       case 'pending':
         return 'bg-amber-50 text-amber-700 border-amber-200/50';
       case 'inactive':
-        return 'bg-slate-50 text-slate-700 border-slate-200/50';
+        return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
       case 'suspended':
         return 'bg-red-50 text-red-700 border-red-200/50';
       default:
-        return 'bg-slate-50 text-slate-700 border-slate-200/50';
+        return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
   };
 
@@ -138,7 +138,7 @@ export default function Members() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
           <Users className="h-7 w-7" />
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Members</h1>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Members</h1>
         </div>
         {hasPermission('create', 'members') && (
           <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
@@ -166,7 +166,7 @@ export default function Members() {
 
       <div className="section-card p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 h-4 w-4" />
           <Input
             data-testid="input-search-members"
             placeholder="Search members by name, ID, or phone number..."
@@ -182,14 +182,14 @@ export default function Members() {
           <div className="animate-pulse space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-slate-100 rounded-lg"></div>
+                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>
                 <div className="flex-1">
-                  <div className="h-4 bg-slate-100 rounded-lg w-1/4 mb-2"></div>
-                  <div className="h-3 bg-slate-100 rounded-lg w-1/6"></div>
+                  <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-1/4 mb-2"></div>
+                  <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-lg w-1/6"></div>
                 </div>
-                <div className="h-4 bg-slate-100 rounded-lg w-1/8"></div>
-                <div className="h-4 bg-slate-100 rounded-lg w-1/8"></div>
-                <div className="h-4 bg-slate-100 rounded-lg w-1/8"></div>
+                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-1/8"></div>
+                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-1/8"></div>
+                <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-1/8"></div>
               </div>
             ))}
           </div>
@@ -212,11 +212,11 @@ export default function Members() {
             </TableHeader>
             <TableBody>
               {members.map((member: MemberWithDetails) => (
-                <TableRow key={member.id} className="hover:bg-slate-50" data-testid={`row-member-${member.id}`}>
+                <TableRow key={member.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50" data-testid={`row-member-${member.id}`}>
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
-                        <span className="text-slate-600 text-sm font-medium">
+                        <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">
                           {member.fullName ? getInitials(
                             member.fullName.split(' ')[0] || '', 
                             member.fullName.split(' ')[1] || ''
@@ -224,21 +224,21 @@ export default function Members() {
                         </span>
                       </div>
                       <div>
-                        <div className="font-medium text-slate-900" data-testid={`text-member-name-${member.id}`}>
+                        <div className="font-medium text-slate-900 dark:text-slate-100" data-testid={`text-member-name-${member.id}`}>
                           {member.fullName || 'No Name'}
                         </div>
-                        <div className="text-sm text-slate-500">ID: {member.memberNumber}</div>
+                        <div className="text-sm text-slate-500 dark:text-slate-400">ID: {member.memberNumber}</div>
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell text-slate-900">{member.phoneNumber}</TableCell>
-                  <TableCell className="hidden lg:table-cell text-slate-900 capitalize">{member.gender || 'Not specified'}</TableCell>
-                  <TableCell className="hidden lg:table-cell text-slate-900">{member.department || 'Not specified'}</TableCell>
-                  <TableCell className="hidden xl:table-cell text-slate-900">
+                  <TableCell className="hidden sm:table-cell text-slate-900 dark:text-slate-100">{member.phoneNumber}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-slate-900 dark:text-slate-100 capitalize">{member.gender || 'Not specified'}</TableCell>
+                  <TableCell className="hidden lg:table-cell text-slate-900 dark:text-slate-100">{member.department || 'Not specified'}</TableCell>
+                  <TableCell className="hidden xl:table-cell text-slate-900 dark:text-slate-100">
                     {member.averageNetPay ? formatCurrency(member.averageNetPay) : 'Not specified'}
                   </TableCell>
-                  <TableCell className="hidden xl:table-cell text-slate-900">{member.nextOfKinName || 'Not specified'}</TableCell>
-                  <TableCell className="hidden md:table-cell text-slate-900">
+                  <TableCell className="hidden xl:table-cell text-slate-900 dark:text-slate-100">{member.nextOfKinName || 'Not specified'}</TableCell>
+                  <TableCell className="hidden md:table-cell text-slate-900 dark:text-slate-100">
                     {member.joinDate ? new Date(member.joinDate).toLocaleDateString() : 'N/A'}
                   </TableCell>
                   <TableCell>
@@ -272,9 +272,9 @@ export default function Members() {
       ) : (
         <div className="section-card">
           <div className="py-16 text-center">
-            <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No members found</h3>
-            <p className="text-slate-500 mb-4">
+            <Users className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">No members found</h3>
+            <p className="text-slate-500 dark:text-slate-400 mb-4">
               {search ? "No members match your search criteria." : "Get started by adding your first member."}
             </p>
             {hasPermission('create', 'members') && (

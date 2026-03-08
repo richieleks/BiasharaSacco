@@ -21,9 +21,9 @@ const getStatusColor = (status: string) => {
     case 'approved': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
     case 'disbursed': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
     case 'active': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-    case 'completed': return 'bg-slate-50 text-slate-700 border-slate-200/50';
+    case 'completed': return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     case 'defaulted': return 'bg-red-50 text-red-700 border-red-200/50';
-    default: return 'bg-slate-50 text-slate-700 border-slate-200/50';
+    default: return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
   }
 };
 
@@ -121,13 +121,13 @@ export default function LoanDetails() {
     return (
       <div className="space-y-6 page-container animate-fade-in">
         <div className="section-card p-6 animate-pulse">
-          <div className="h-6 bg-slate-100 rounded w-48 mb-4"></div>
-          <div className="h-4 bg-slate-100 rounded w-32 mb-6"></div>
+          <div className="h-6 bg-slate-100 dark:bg-slate-800 rounded w-48 mb-4"></div>
+          <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded w-32 mb-6"></div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i}>
-                <div className="h-3 bg-slate-100 rounded w-20 mb-2"></div>
-                <div className="h-5 bg-slate-100 rounded w-28"></div>
+                <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded w-20 mb-2"></div>
+                <div className="h-5 bg-slate-100 dark:bg-slate-800 rounded w-28"></div>
               </div>
             ))}
           </div>
@@ -141,8 +141,8 @@ export default function LoanDetails() {
       <div className="space-y-6 page-container animate-fade-in">
         <div className="section-card p-6 text-center py-16">
           <AlertCircle className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 mb-2">Loan not found</h3>
-          <p className="text-slate-500 mb-4">The loan you're looking for doesn't exist or you don't have access to it.</p>
+          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">Loan not found</h3>
+          <p className="text-slate-500 dark:text-slate-400 mb-4">The loan you're looking for doesn't exist or you don't have access to it.</p>
           <Button onClick={() => setLocation(backPath)} variant="outline">
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Loans
@@ -198,10 +198,10 @@ export default function LoanDetails() {
             Back
           </Button>
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               Loan Details
             </h2>
-            <p className="text-sm text-slate-500 mt-0.5">{loan.loanNumber}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{loan.loanNumber}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -214,7 +214,7 @@ export default function LoanDetails() {
           <Badge variant="outline" className={getStatusColor(loan.status)}>
             {loan.status}
           </Badge>
-          <Badge variant="outline" className="bg-slate-50 text-slate-700 border-slate-200/50 capitalize">
+          <Badge variant="outline" className="bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50 capitalize">
             {loan.loanType?.replace('_', ' ') || 'Loan'}
           </Badge>
         </div>
@@ -222,36 +222,36 @@ export default function LoanDetails() {
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="section-card p-4">
-          <p className="text-xs text-slate-500 font-medium">Principal Amount</p>
-          <p className="text-lg font-bold text-slate-900 mt-1">{formatCurrency(loan.principalAmount)}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Principal Amount</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">{formatCurrency(loan.principalAmount)}</p>
         </div>
         <div className="section-card p-4">
-          <p className="text-xs text-slate-500 font-medium">Outstanding Balance</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Outstanding Balance</p>
           <p className="text-lg font-bold text-red-700 mt-1">{formatCurrency(loan.outstandingBalance)}</p>
         </div>
         <div className="section-card p-4">
-          <p className="text-xs text-slate-500 font-medium">Monthly Payment</p>
-          <p className="text-lg font-bold text-slate-900 mt-1">{formatCurrency(loan.monthlyPayment)}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Monthly Payment</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">{formatCurrency(loan.monthlyPayment)}</p>
         </div>
         <div className="section-card p-4">
-          <p className="text-xs text-slate-500 font-medium">Term</p>
-          <p className="text-lg font-bold text-slate-900 mt-1">{loan.termMonths} months</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">Term</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-1">{loan.termMonths} months</p>
         </div>
       </div>
 
       {(loan.status === 'active' || loan.status === 'disbursed') && (
         <div className="section-card p-4">
-          <div className="flex justify-between text-sm text-slate-600 mb-2">
+          <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300 mb-2">
             <span>Repayment Progress</span>
             <span className="font-semibold">{progressPercent.toFixed(0)}%</span>
           </div>
-          <div className="w-full bg-slate-200 rounded-full h-3">
+          <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3">
             <div
               className="bg-emerald-500 h-3 rounded-full transition-all"
               style={{ width: `${progressPercent}%` }}
             />
           </div>
-          <div className="flex justify-between text-xs text-slate-500 mt-2">
+          <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
             <span>Paid: {formatCurrency(principalPaid)}</span>
             <span>Principal: {formatCurrency(principal)}</span>
           </div>
@@ -282,28 +282,28 @@ export default function LoanDetails() {
 
         <TabsContent value="details" className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border-slate-200/60">
+            <Card className="border-slate-200 dark:border-slate-700/60">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <DollarSign className="h-4 w-4 text-blue-600" />
                   Financial Summary
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-500">Principal Amount</span>
-                  <span className="font-semibold text-slate-900">{formatCurrency(loan.principalAmount)}</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">Principal Amount</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(loan.principalAmount)}</span>
                 </div>
                 {loan.isTopUp && loan.previousLoanBalance && (
                   <>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                      <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                         <ArrowUpCircle className="h-3.5 w-3.5" /> Previous Loan Balance
                       </span>
-                      <span className="font-semibold text-slate-600">{formatCurrency(loan.previousLoanBalance)}</span>
+                      <span className="font-semibold text-slate-600 dark:text-slate-300">{formatCurrency(loan.previousLoanBalance)}</span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                      <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                         <ArrowUpCircle className="h-3.5 w-3.5" /> Top-Up Amount
                       </span>
                       <span className="font-semibold text-blue-700">
@@ -313,58 +313,58 @@ export default function LoanDetails() {
                   </>
                 )}
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-500">Total Interest</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">Total Interest</span>
                   <span className="font-semibold text-amber-700">{formatCurrency(totalInterestAmount)}</span>
                 </div>
-                <div className="border-t border-slate-200 pt-2 flex justify-between items-center">
-                  <span className="text-sm font-medium text-slate-700">Total Repayable</span>
-                  <span className="font-bold text-slate-900">{formatCurrency(totalRepayable)}</span>
+                <div className="border-t border-slate-200 dark:border-slate-700 pt-2 flex justify-between items-center">
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Total Repayable</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{formatCurrency(totalRepayable)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-500">Outstanding Balance</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">Outstanding Balance</span>
                   <span className="font-semibold text-red-700">{formatCurrency(loan.outstandingBalance)}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-500">Monthly Payment</span>
-                  <span className="font-semibold text-slate-900">{formatCurrency(loan.monthlyPayment)}</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">Monthly Payment</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{formatCurrency(loan.monthlyPayment)}</span>
                 </div>
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/60">
+            <Card className="border-slate-200 dark:border-slate-700/60">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <FileText className="h-4 w-4 text-blue-600" />
                   Loan Information
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                  <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <Hash className="h-3.5 w-3.5" /> Loan Number
                   </span>
-                  <span className="font-mono text-sm text-slate-900">{loan.loanNumber}</span>
+                  <span className="font-mono text-sm text-slate-900 dark:text-slate-100">{loan.loanNumber}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                  <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <HandCoins className="h-3.5 w-3.5" /> Loan Type
                   </span>
-                  <span className="capitalize text-sm text-slate-900">{loan.loanType?.replace('_', ' ') || 'N/A'}</span>
+                  <span className="capitalize text-sm text-slate-900 dark:text-slate-100">{loan.loanType?.replace('_', ' ') || 'N/A'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                  <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <Percent className="h-3.5 w-3.5" /> Interest Rate
                   </span>
-                  <span className="text-sm text-slate-900">{(parseFloat(loan.interestRate) * 100).toFixed(1)}% per annum</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{(parseFloat(loan.interestRate) * 100).toFixed(1)}% per annum</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                  <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <Calendar className="h-3.5 w-3.5" /> Term
                   </span>
-                  <span className="text-sm text-slate-900">{loan.termMonths} months</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{loan.termMonths} months</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                  <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <Clock className="h-3.5 w-3.5" /> Status
                   </span>
                   <Badge variant="outline" className={getStatusColor(loan.status)}>
@@ -373,16 +373,16 @@ export default function LoanDetails() {
                 </div>
                 {loan.createdAt && (
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-500 flex items-center gap-1.5">
+                    <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5" /> Application Date
                     </span>
-                    <span className="text-sm text-slate-900">{format(new Date(loan.createdAt), 'MMM dd, yyyy')}</span>
+                    <span className="text-sm text-slate-900 dark:text-slate-100">{format(new Date(loan.createdAt), 'MMM dd, yyyy')}</span>
                   </div>
                 )}
                 {loan.purpose && (
-                  <div className="pt-2 border-t border-slate-200">
-                    <span className="text-sm text-slate-500">Purpose</span>
-                    <p className="text-sm text-slate-900 mt-1">{loan.purpose}</p>
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <span className="text-sm text-slate-500 dark:text-slate-400">Purpose</span>
+                    <p className="text-sm text-slate-900 dark:text-slate-100 mt-1">{loan.purpose}</p>
                   </div>
                 )}
               </CardContent>
@@ -400,10 +400,10 @@ export default function LoanDetails() {
         </TabsContent>
 
         <TabsContent value="statement" className="mt-4">
-          <Card className="border-slate-200/60">
+          <Card className="border-slate-200 dark:border-slate-700/60">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-blue-600" />
                   Transaction History
                 </CardTitle>
@@ -417,7 +417,7 @@ export default function LoanDetails() {
             </CardHeader>
             <CardContent>
               {txnLoading ? (
-                <div className="text-center py-8 text-slate-500">Loading transactions...</div>
+                <div className="text-center py-8 text-slate-500 dark:text-slate-400">Loading transactions...</div>
               ) : transactions && transactions.length > 0 ? (
                 <div className="overflow-x-auto">
                   <Table>
@@ -460,7 +460,7 @@ export default function LoanDetails() {
               ) : (
                 <div className="text-center py-8">
                   <CreditCard className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">No transactions recorded for this loan yet.</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No transactions recorded for this loan yet.</p>
                 </div>
               )}
             </CardContent>
@@ -471,37 +471,37 @@ export default function LoanDetails() {
           {repaymentSchedule.length > 0 ? (
             <div className="space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="border-slate-200/60">
+                <Card className="border-slate-200 dark:border-slate-700/60">
                   <CardContent className="pt-4 pb-3">
-                    <p className="text-xs font-medium text-slate-500 mb-1">Total Repayable</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Total Repayable</p>
                     <p className="text-lg font-bold">{formatCurrency(totalRepayable)}</p>
                   </CardContent>
                 </Card>
-                <Card className="border-slate-200/60">
+                <Card className="border-slate-200 dark:border-slate-700/60">
                   <CardContent className="pt-4 pb-3">
-                    <p className="text-xs font-medium text-slate-500 mb-1">Total Interest</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Total Interest</p>
                     <p className="text-lg font-bold text-amber-700">{formatCurrency(totalInterestAmount)}</p>
                   </CardContent>
                 </Card>
-                <Card className="border-slate-200/60">
+                <Card className="border-slate-200 dark:border-slate-700/60">
                   <CardContent className="pt-4 pb-3">
-                    <p className="text-xs font-medium text-slate-500 mb-1">Monthly Payment</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Monthly Payment</p>
                     <p className="text-lg font-bold text-blue-700">{formatCurrency(monthlyPayment)}</p>
                   </CardContent>
                 </Card>
-                <Card className="border-slate-200/60">
+                <Card className="border-slate-200 dark:border-slate-700/60">
                   <CardContent className="pt-4 pb-3">
-                    <p className="text-xs font-medium text-slate-500 mb-1">Term</p>
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">Term</p>
                     <p className="text-lg font-bold">{termMonths} months</p>
                   </CardContent>
                 </Card>
               </div>
 
-              <Card className="border-slate-200/60">
+              <Card className="border-slate-200 dark:border-slate-700/60">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                      <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                         <Calculator className="h-4 w-4 text-blue-600" />
                         Repayment Schedule
                       </CardTitle>
@@ -568,10 +568,10 @@ export default function LoanDetails() {
               </Card>
             </div>
           ) : (
-            <Card className="border-slate-200/60">
+            <Card className="border-slate-200 dark:border-slate-700/60">
               <CardContent className="py-8 text-center">
                 <AlertCircle className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm text-slate-500">Repayment schedule will be available once the loan is processed.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">Repayment schedule will be available once the loan is processed.</p>
               </CardContent>
             </Card>
           )}
@@ -579,7 +579,7 @@ export default function LoanDetails() {
 
         {guarantors.length > 0 && (
           <TabsContent value="guarantors" className="mt-4">
-            <Card className="border-slate-200/60">
+            <Card className="border-slate-200 dark:border-slate-700/60">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <Users className="h-4 w-4" />
@@ -590,22 +590,22 @@ export default function LoanDetails() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-4 p-3 bg-slate-50 rounded-lg">
+                <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
                     <div>
-                      <span className="text-slate-500">Total Guaranteed</span>
+                      <span className="text-slate-500 dark:text-slate-400">Total Guaranteed</span>
                       <div className="font-semibold">
                         {formatCurrency(guarantors.reduce((sum: number, g: any) => sum + parseFloat(g.guaranteeAmount || '0'), 0))}
                       </div>
                     </div>
                     <div>
-                      <span className="text-slate-500">Approved</span>
+                      <span className="text-slate-500 dark:text-slate-400">Approved</span>
                       <div className="font-semibold text-emerald-700">
                         {guarantors.filter((g: any) => g.status === 'approved').length} of {guarantors.length}
                       </div>
                     </div>
                     <div>
-                      <span className="text-slate-500">Status</span>
+                      <span className="text-slate-500 dark:text-slate-400">Status</span>
                       <div>
                         <Badge variant={guarantors.every((g: any) => g.status === 'approved') ? 'default' : 'secondary'}>
                           {guarantors.every((g: any) => g.status === 'approved') ? 'All Approved' : 'Pending Approvals'}
@@ -639,7 +639,7 @@ export default function LoanDetails() {
                             <div className="font-medium text-sm">
                               {guarantor.guarantorMember?.user?.firstName || ''} {guarantor.guarantorMember?.user?.lastName || ''}
                             </div>
-                            <div className="text-xs text-slate-500">
+                            <div className="text-xs text-slate-500 dark:text-slate-400">
                               {guarantor.guarantorMember?.memberNumber}
                             </div>
                           </div>
@@ -648,7 +648,7 @@ export default function LoanDetails() {
                           <div>
                             <div className="font-semibold text-sm">{formatCurrency(guarantor.guaranteeAmount)}</div>
                             {guarantor.comments && (
-                              <div className="text-xs text-slate-500 max-w-[150px] truncate">{guarantor.comments}</div>
+                              <div className="text-xs text-slate-500 dark:text-slate-400 max-w-[150px] truncate">{guarantor.comments}</div>
                             )}
                           </div>
                           <div className="flex items-center gap-1.5">

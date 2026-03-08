@@ -135,7 +135,7 @@ export default function GuarantorSelection({
                     </SelectTrigger>
                     <SelectContent>
                       {availableMembers.length === 0 ? (
-                        <div className="p-2 text-sm text-slate-500">
+                        <div className="p-2 text-sm text-slate-500 dark:text-slate-400">
                           No approved members available as guarantors
                         </div>
                       ) : (
@@ -185,14 +185,14 @@ export default function GuarantorSelection({
       </CardHeader>
       <CardContent>
         {loanAmount > 0 && (
-          <div className="mb-4 p-4 bg-slate-50 rounded-lg">
+          <div className="mb-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-slate-600">Loan Amount:</span>
+                <span className="text-slate-600 dark:text-slate-300">Loan Amount:</span>
                 <div className="font-medium">{formatCurrency(loanAmount)}</div>
               </div>
               <div>
-                <span className="text-slate-600">Member Savings:</span>
+                <span className="text-slate-600 dark:text-slate-300">Member Savings:</span>
                 <div className="font-medium text-emerald-700">{formatCurrency(memberSavings)}</div>
               </div>
               <div>
@@ -200,11 +200,11 @@ export default function GuarantorSelection({
                 <div className="font-bold text-blue-900">{formatCurrency(amountToGuarantee)}</div>
               </div>
               <div>
-                <span className="text-slate-600">Total Guaranteed:</span>
+                <span className="text-slate-600 dark:text-slate-300">Total Guaranteed:</span>
                 <div className="font-medium">{formatCurrency(totalGuaranteed)}</div>
               </div>
               <div className="sm:col-span-2">
-                <span className="text-slate-600">Coverage:</span>
+                <span className="text-slate-600 dark:text-slate-300">Coverage:</span>
                 <div className="flex items-center gap-2">
                   <div className="font-medium">{guaranteeCoverage.toFixed(1)}%</div>
                   <Badge variant={guaranteeCoverage >= 100 ? "default" : "secondary"}>
@@ -218,7 +218,7 @@ export default function GuarantorSelection({
 
         {/* Guarantors List */}
         {guarantors.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
+          <div className="text-center py-8 text-slate-500 dark:text-slate-400">
             <UserPlus className="h-12 w-12 mx-auto mb-3 text-slate-300" />
             <p>No guarantors added yet</p>
             <p className="text-sm">Add guarantors to proceed with loan application</p>
@@ -234,14 +234,14 @@ export default function GuarantorSelection({
                   <div className="font-medium">
                     {guarantor.memberName || 'Unknown Member'}
                   </div>
-                  <div className="text-sm text-slate-600">
+                  <div className="text-sm text-slate-600 dark:text-slate-300">
                     Member: {guarantor.memberNumber}
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-2">
-                    <DollarSign className="h-4 w-4 text-slate-400" />
+                    <DollarSign className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                     <Input
                       type="number"
                       value={guarantor.guaranteeAmount}

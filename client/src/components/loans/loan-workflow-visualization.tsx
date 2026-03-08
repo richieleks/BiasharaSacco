@@ -266,7 +266,7 @@ export default function LoanWorkflowVisualization({
                       "flex items-start gap-4 p-4 rounded-lg border-2 transition-all duration-500 cursor-pointer",
                       isActive && "border-primary bg-primary/5 shadow-md",
                       isCompleted && "border-green-500 bg-green-50",
-                      isPending && "border-gray-200 bg-gray-50"
+                      isPending && "border-gray-200 dark:border-gray-700 bg-gray-50"
                     )}
                     onClick={() => handleStepClick(index)}
                   >
@@ -274,7 +274,7 @@ export default function LoanWorkflowVisualization({
                       "w-12 h-12 rounded-full flex items-center justify-center transition-all duration-500",
                       isActive && "bg-primary text-primary-foreground scale-110",
                       isCompleted && "bg-green-500 text-white",
-                      isPending && "bg-gray-200 text-gray-500"
+                      isPending && "bg-gray-200 text-gray-500 dark:text-gray-400 dark:text-gray-500"
                     )}>
                       {isCompleted ? (
                         <CheckCircle className="h-6 w-6" />
@@ -338,7 +338,7 @@ export default function LoanWorkflowVisualization({
                         "text-xs font-medium",
                         isCompleted && "text-green-600",
                         isActive && "text-primary",
-                        isPending && "text-gray-400"
+                        isPending && "text-gray-400 dark:text-gray-500"
                       )}>
                         {isCompleted ? "Complete" : isActive ? "In Progress" : "Pending"}
                       </span>

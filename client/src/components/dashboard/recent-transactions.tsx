@@ -25,7 +25,7 @@ export default function RecentTransactions() {
       case 'loan_disbursement':
         return <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center"><DollarSign className="w-4 h-4 text-purple-600" /></div>;
       default:
-        return <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center"><DollarSign className="w-4 h-4 text-slate-600" /></div>;
+        return <div className="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800/50 flex items-center justify-center"><DollarSign className="w-4 h-4 text-slate-600 dark:text-slate-300" /></div>;
     }
   };
 
@@ -40,7 +40,7 @@ export default function RecentTransactions() {
       case 'loan_disbursement':
         return 'bg-purple-50 text-purple-700 border-purple-200/50';
       default:
-        return 'bg-slate-50 text-slate-700 border-slate-200/50';
+        return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
   };
 
@@ -53,7 +53,7 @@ export default function RecentTransactions() {
       case 'failed':
         return 'bg-red-50 text-red-700 border-red-200/50';
       default:
-        return 'bg-slate-50 text-slate-700 border-slate-200/50';
+        return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
   };
 
@@ -63,8 +63,8 @@ export default function RecentTransactions() {
 
   return (
     <div className="section-card">
-      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-        <h3 className="text-base font-semibold text-slate-900">Recent Transactions</h3>
+      <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">Recent Transactions</h3>
         <Link href="/transactions">
           <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80 gap-1.5 rounded-lg text-xs font-medium">
             View all
@@ -77,12 +77,12 @@ export default function RecentTransactions() {
           <div className="p-6 space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="animate-pulse flex items-center gap-4 py-3">
-                <div className="w-8 h-8 bg-slate-100 rounded-lg"></div>
+                <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>
                 <div className="flex-1">
-                  <div className="h-3.5 bg-slate-100 rounded-full w-1/3 mb-2"></div>
-                  <div className="h-3 bg-slate-100 rounded-full w-1/4"></div>
+                  <div className="h-3.5 bg-slate-100 dark:bg-slate-800 rounded-full w-1/3 mb-2"></div>
+                  <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-full w-1/4"></div>
                 </div>
-                <div className="h-5 bg-slate-100 rounded-full w-16"></div>
+                <div className="h-5 bg-slate-100 dark:bg-slate-800 rounded-full w-16"></div>
               </div>
             ))}
           </div>
@@ -90,30 +90,30 @@ export default function RecentTransactions() {
           <div className="overflow-x-auto">
             <Table className="table-modern">
               <TableHeader>
-                <TableRow className="border-b border-slate-100">
-                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider pl-6">Member</TableHead>
-                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</TableHead>
-                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</TableHead>
-                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Date</TableHead>
-                  <TableHead className="text-xs font-semibold text-slate-500 uppercase tracking-wider pr-6 hidden sm:table-cell">Status</TableHead>
+                <TableRow className="border-b border-slate-100 dark:border-slate-700">
+                  <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-6">Member</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Amount</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden sm:table-cell">Date</TableHead>
+                  <TableHead className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pr-6 hidden sm:table-cell">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {transactions.slice(0, 5).map((transaction: TransactionWithDetails) => (
-                  <TableRow key={transaction.id} className="hover:bg-slate-50/60 border-b border-slate-50 last:border-0">
+                  <TableRow key={transaction.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50/60 border-b border-slate-50 last:border-0">
                     <TableCell className="py-3.5 pl-6">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                          <span className="text-slate-600 text-[11px] font-bold">
+                          <span className="text-slate-600 dark:text-slate-300 text-[11px] font-bold">
                             {transaction.member?.user?.firstName?.charAt(0)}
                             {transaction.member?.user?.lastName?.charAt(0)}
                           </span>
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-slate-900">
+                          <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                             {transaction.member?.user?.firstName} {transaction.member?.user?.lastName}
                           </p>
-                          <p className="text-[11px] text-slate-400">ID: {transaction.member?.memberNumber}</p>
+                          <p className="text-[11px] text-slate-400 dark:text-slate-500">ID: {transaction.member?.memberNumber}</p>
                         </div>
                       </div>
                     </TableCell>
@@ -125,10 +125,10 @@ export default function RecentTransactions() {
                         </Badge>
                       </div>
                     </TableCell>
-                    <TableCell className="text-sm font-semibold text-slate-900">
+                    <TableCell className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                       {formatCurrency(transaction.amount)}
                     </TableCell>
-                    <TableCell className="text-sm text-slate-500 hidden sm:table-cell">
+                    <TableCell className="text-sm text-slate-500 dark:text-slate-400 hidden sm:table-cell">
                       {new Date(transaction.transactionDate!).toLocaleDateString()}
                     </TableCell>
                     <TableCell className="pr-6 hidden sm:table-cell">
@@ -144,7 +144,7 @@ export default function RecentTransactions() {
         ) : (
           <div className="p-12 text-center">
             <DollarSign className="h-8 w-8 text-slate-300 mx-auto mb-2" />
-            <p className="text-sm text-slate-400 font-medium">No recent transactions</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500 font-medium">No recent transactions</p>
           </div>
         )}
       </div>

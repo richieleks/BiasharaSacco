@@ -82,7 +82,7 @@ function CommitteeApprovalActivity() {
         <CardContent>
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-12 bg-slate-100 rounded-lg animate-pulse" />
+              <div key={i} className="h-12 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />
             ))}
           </div>
         </CardContent>
@@ -118,8 +118,8 @@ function CommitteeApprovalActivity() {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-3 gap-3 mb-4">
-          <div className="bg-slate-50 border rounded-xl p-3 text-center">
-            <p className="text-xs font-medium text-slate-500">Total Reviewed</p>
+          <div className="bg-slate-50 dark:bg-slate-800/50 border rounded-xl p-3 text-center">
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Reviewed</p>
             <p className="text-xl font-bold mt-0.5">{summary.totalReviewed}</p>
           </div>
           <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
@@ -234,10 +234,10 @@ function TellerDashboard() {
 function MemberInfoRow({ icon: Icon, label, value, className = "" }: { icon?: any; label: string; value: string | number | null | undefined; className?: string }) {
   return (
     <div className={`flex items-start gap-3 py-2.5 ${className}`}>
-      {Icon && <Icon className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />}
+      {Icon && <Icon className="h-4 w-4 text-slate-400 dark:text-slate-500 mt-0.5 shrink-0" />}
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{label}</p>
-        <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">{value || 'Not provided'}</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5 truncate">{value || 'Not provided'}</p>
       </div>
     </div>
   );
@@ -251,15 +251,15 @@ function MemberStatCard({ icon: Icon, label, value, color, subtext }: { icon: an
     purple: "from-violet-500 to-violet-600 shadow-violet-200",
   };
   return (
-    <div className="relative overflow-hidden rounded-xl bg-white border border-slate-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3">
         <div className={`rounded-lg bg-gradient-to-br ${colorMap[color] || colorMap.blue} p-2.5 shadow-lg`}>
           <Icon className="h-4 w-4 text-white" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{label}</p>
-          <p className="text-lg font-bold text-slate-900 mt-0.5 truncate">{value}</p>
-          {subtext && <p className="text-xs text-slate-400 mt-0.5">{subtext}</p>}
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate">{value}</p>
+          {subtext && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{subtext}</p>}
         </div>
       </div>
     </div>
@@ -341,7 +341,7 @@ function MemberDashboard() {
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 via-slate-700 to-blue-800 p-6 sm:p-8 text-white shadow-xl">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIxIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+PC9zdmc+')] opacity-60" />
         <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
-          <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-2xl sm:text-3xl font-bold border border-white/20 shrink-0">
+          <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-white dark:bg-slate-900/15 backdrop-blur-sm flex items-center justify-center text-2xl sm:text-3xl font-bold border border-white/20 shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
@@ -414,20 +414,20 @@ function MemberDashboard() {
 
       <Tabs defaultValue="personal" className="w-full">
         <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="w-full inline-flex sm:grid sm:grid-cols-5 h-auto gap-1 bg-slate-100/80 p-1 rounded-xl min-w-max sm:min-w-0">
-            <TabsTrigger value="personal" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Personal</TabsTrigger>
-            <TabsTrigger value="financial" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Financial</TabsTrigger>
-            <TabsTrigger value="savings" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Savings</TabsTrigger>
-            <TabsTrigger value="loans" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Loans</TabsTrigger>
-            <TabsTrigger value="transactions" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 px-4 sm:px-3">History</TabsTrigger>
+          <TabsList className="w-full inline-flex sm:grid sm:grid-cols-5 h-auto gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl min-w-max sm:min-w-0">
+            <TabsTrigger value="personal" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Personal</TabsTrigger>
+            <TabsTrigger value="financial" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Financial</TabsTrigger>
+            <TabsTrigger value="savings" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Savings</TabsTrigger>
+            <TabsTrigger value="loans" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Loans</TabsTrigger>
+            <TabsTrigger value="transactions" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm py-2 px-4 sm:px-3">History</TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent value="personal" className="mt-4 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-blue-50 p-1.5"><User className="h-3.5 w-3.5 text-blue-600" /></div>
                   Basic Information
                 </CardTitle>
@@ -444,9 +444,9 @@ function MemberDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-green-50 p-1.5"><Phone className="h-3.5 w-3.5 text-green-600" /></div>
                   Contact Information
                 </CardTitle>
@@ -460,9 +460,9 @@ function MemberDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-amber-50 p-1.5"><Briefcase className="h-3.5 w-3.5 text-amber-600" /></div>
                   Employment Details
                 </CardTitle>
@@ -478,9 +478,9 @@ function MemberDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-rose-50 p-1.5"><Heart className="h-3.5 w-3.5 text-rose-600" /></div>
                   Next of Kin & Beneficiary
                 </CardTitle>
@@ -500,9 +500,9 @@ function MemberDashboard() {
 
         <TabsContent value="financial" className="mt-4 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-green-50 p-1.5"><Wallet className="h-3.5 w-3.5 text-green-600" /></div>
                   Savings Information
                 </CardTitle>
@@ -516,9 +516,9 @@ function MemberDashboard() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-violet-50 p-1.5"><TrendingUp className="h-3.5 w-3.5 text-violet-600" /></div>
                   Share Capital
                 </CardTitle>
@@ -539,10 +539,10 @@ function MemberDashboard() {
         </TabsContent>
 
         <TabsContent value="savings" className="mt-4">
-          <Card className="border-slate-200/60 shadow-sm">
+          <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-green-50 p-1.5"><PiggyBank className="h-3.5 w-3.5 text-green-600" /></div>
                   Savings Accounts
                 </CardTitle>
@@ -572,7 +572,7 @@ function MemberDashboard() {
                           <TableCell><Badge variant="outline" className="capitalize">{acc.accountType}</Badge></TableCell>
                           <TableCell className="font-semibold text-green-600">{formatCurrency(acc.balance || '0')}</TableCell>
                           <TableCell>
-                            <Badge className={acc.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}>
+                            <Badge className={acc.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'}>
                               {acc.status}
                             </Badge>
                           </TableCell>
@@ -598,10 +598,10 @@ function MemberDashboard() {
         </TabsContent>
 
         <TabsContent value="loans" className="mt-4">
-          <Card className="border-slate-200/60 shadow-sm">
+          <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-amber-50 p-1.5"><HandCoins className="h-3.5 w-3.5 text-amber-600" /></div>
                   My Loans
                 </CardTitle>
@@ -637,7 +637,7 @@ function MemberDashboard() {
                               loan.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
                               loan.status === 'completed' ? 'bg-blue-100 text-blue-800' :
                               loan.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                              'bg-slate-100 text-slate-800'
+                              'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
                             }>
                               {loan.status}
                             </Badge>
@@ -658,10 +658,10 @@ function MemberDashboard() {
         </TabsContent>
 
         <TabsContent value="transactions" className="mt-4">
-          <Card className="border-slate-200/60 shadow-sm">
+          <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-blue-50 p-1.5"><CreditCard className="h-3.5 w-3.5 text-blue-600" /></div>
                   Transaction History
                 </CardTitle>
@@ -706,7 +706,7 @@ function MemberDashboard() {
                             <Badge className={
                               txn.status === 'completed' ? 'bg-green-100 text-green-800' :
                               txn.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-slate-100 text-slate-800'
+                              'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
                             }>
                               {txn.status}
                             </Badge>

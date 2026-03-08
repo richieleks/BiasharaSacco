@@ -220,7 +220,7 @@ export default function LoanStatement() {
                         });
                       
                       return transactionsWithBalance.map((transaction: any) => (
-                        <tr key={transaction.id} className="border-b hover:bg-gray-50">
+                        <tr key={transaction.id} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
                           <td className="p-2 whitespace-nowrap">
                             {format(transaction.displayDate, 'MMM dd, yyyy')}
                           </td>

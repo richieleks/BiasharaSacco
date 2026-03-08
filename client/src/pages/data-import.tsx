@@ -201,8 +201,8 @@ export default function DataImport() {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
         <Shield className="h-16 w-16 text-red-500" />
-        <h1 className="text-2xl font-bold text-slate-900">Access Denied</h1>
-        <p className="text-slate-500 text-center max-w-md">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Access Denied</h1>
+        <p className="text-slate-500 dark:text-slate-400 text-center max-w-md">
           Only administrators have permission to access the data import functionality. 
           Contact your system administrator if you need access.
         </p>
@@ -214,19 +214,19 @@ export default function DataImport() {
     <div className="space-y-6 page-container animate-fade-in">
       {/* Page Header */}
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 flex items-center flex-wrap gap-2">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center flex-wrap gap-2">
           <Shield className="h-6 w-6 text-blue-600" />
           Data Import
           <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/50">Admin Only</Badge>
         </h1>
-        <p className="text-sm text-slate-500 mt-0.5">Import customer data from Excel files</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Import customer data from Excel files</p>
       </div>
 
       {/* Import Type Selection */}
       <div className="section-card">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-900">Import Type</h3>
-          <p className="text-sm text-slate-500 mt-0.5">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Import Type</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Choose the type of data you want to import
           </p>
         </div>
@@ -237,11 +237,11 @@ export default function DataImport() {
               className={`p-4 rounded-lg border-2 transition-all ${
                 importType === 'members'
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Users className={`h-6 w-6 ${importType === 'members' ? 'text-blue-600' : 'text-gray-500'}`} />
+                <Users className={`h-6 w-6 ${importType === 'members' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
                 <div className="text-left">
                   <div className="font-semibold text-sm">Members</div>
                   <div className="text-xs text-muted-foreground">Member registration data</div>
@@ -254,11 +254,11 @@ export default function DataImport() {
               className={`p-4 rounded-lg border-2 transition-all ${
                 importType === 'savings'
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               <div className="flex items-center gap-3">
-                <PiggyBank className={`h-6 w-6 ${importType === 'savings' ? 'text-blue-600' : 'text-gray-500'}`} />
+                <PiggyBank className={`h-6 w-6 ${importType === 'savings' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
                 <div className="text-left">
                   <div className="font-semibold text-sm">Savings Accounts</div>
                   <div className="text-xs text-muted-foreground">Savings statement data</div>
@@ -271,11 +271,11 @@ export default function DataImport() {
               className={`p-4 rounded-lg border-2 transition-all ${
                 importType === 'loans'
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               <div className="flex items-center gap-3">
-                <FileSpreadsheet className={`h-6 w-6 ${importType === 'loans' ? 'text-blue-600' : 'text-gray-500'}`} />
+                <FileSpreadsheet className={`h-6 w-6 ${importType === 'loans' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
                 <div className="text-left">
                   <div className="font-semibold text-sm">Loan Statements</div>
                   <div className="text-xs text-muted-foreground">Loan data and information</div>
@@ -288,11 +288,11 @@ export default function DataImport() {
               className={`p-4 rounded-lg border-2 transition-all ${
                 importType === 'loan-repayments'
                   ? 'border-green-500 bg-green-50 dark:bg-green-950'
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               <div className="flex items-center gap-3">
-                <Banknote className={`h-6 w-6 ${importType === 'loan-repayments' ? 'text-green-600' : 'text-gray-500'}`} />
+                <Banknote className={`h-6 w-6 ${importType === 'loan-repayments' ? 'text-green-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
                 <div className="text-left">
                   <div className="font-semibold text-sm">Loan Repayments</div>
                   <div className="text-xs text-muted-foreground">Bulk CSV repayments</div>
@@ -305,11 +305,11 @@ export default function DataImport() {
               className={`p-4 rounded-lg border-2 transition-all ${
                 importType === 'bulk-savings'
                   ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950'
-                  : 'border-gray-200 hover:border-gray-300'
+                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
               }`}
             >
               <div className="flex items-center gap-3">
-                <CreditCard className={`h-6 w-6 ${importType === 'bulk-savings' ? 'text-emerald-600' : 'text-gray-500'}`} />
+                <CreditCard className={`h-6 w-6 ${importType === 'bulk-savings' ? 'text-emerald-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
                 <div className="text-left">
                   <div className="font-semibold text-sm">Bulk Savings</div>
                   <div className="text-xs text-muted-foreground">CSV savings deposits</div>
@@ -323,12 +323,12 @@ export default function DataImport() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* File Upload Card */}
         <div className="section-card">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <Upload className="h-4 w-4" />
               Upload Excel File
             </h3>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               {importType === 'members'
                 ? 'Select an Excel file containing member registration data'
                 : importType === 'savings' 
@@ -372,7 +372,7 @@ export default function DataImport() {
             )}
 
             {importType === 'members' && (
-              <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="flex items-start space-x-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 <Checkbox
                   id="updateExistingMembers"
                   checked={updateExistingMembers}
@@ -393,7 +393,7 @@ export default function DataImport() {
             )}
 
             {importType === 'savings' && (
-              <div className="flex items-start space-x-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="flex items-start space-x-3 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 <Checkbox
                   id="createNewMembers"
                   checked={createNewMembers}
@@ -414,7 +414,7 @@ export default function DataImport() {
             )}
 
             {(importType === 'loans' || importType === 'loan-repayments') && (
-              <div className="space-y-2 p-4 bg-slate-50 rounded-lg border border-slate-200">
+              <div className="space-y-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 <Label htmlFor="loanType" className="text-sm font-medium">
                   Loan Type <span className="text-red-500">*</span>
                 </Label>
@@ -467,12 +467,12 @@ export default function DataImport() {
 
         {/* Instructions Card */}
         <div className="section-card">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
               Import Instructions
             </h3>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               Follow these guidelines for successful data import
             </p>
           </div>
@@ -573,8 +573,8 @@ export default function DataImport() {
       {/* Import Results */}
       {importResult && (
         <div className="section-card">
-          <div className="px-6 py-4 border-b border-slate-100">
-            <h3 className="text-sm font-semibold text-slate-900 flex items-center gap-2">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               {importResult.success ? (
                 <CheckCircle className="h-4 w-4 text-green-600" />
               ) : (
@@ -582,7 +582,7 @@ export default function DataImport() {
               )}
               Import Results
             </h3>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               Results from importing savings account data
             </p>
           </div>

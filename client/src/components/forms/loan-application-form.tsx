@@ -400,7 +400,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FileText className="w-8 h-8 text-green-600" />
                 </div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Application Complete
                 </h3>
                 <p className="text-gray-600 mb-4">
@@ -438,7 +438,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
             <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <FileText className="w-8 h-8 text-red-600" />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Membership Not Yet Approved
             </h3>
             <p className="text-gray-600 mb-4">
@@ -550,7 +550,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                         <div className="font-semibold text-red-800 mb-3">You must meet the following requirements before applying:</div>
                         <div className="space-y-3">
                           {eligibilityResult.violations?.map((violation: string, index: number) => (
-                            <div key={index} className="p-4 bg-white border border-red-200 rounded-md shadow-sm">
+                            <div key={index} className="p-4 bg-white dark:bg-slate-900 border border-red-200 rounded-md shadow-sm">
                               <div className="text-sm font-medium text-red-900">{violation}</div>
                             </div>
                           )) || <div className="text-red-600">No violations data available</div>}

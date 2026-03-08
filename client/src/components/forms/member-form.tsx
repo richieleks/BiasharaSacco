@@ -455,9 +455,9 @@ export default function MemberForm({ onSubmit, isLoading, member }: MemberFormPr
                 This is a one-time, non-refundable fee payable upon admission.
               </p>
             </div>
-            <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50">
-              <span className="text-sm font-medium text-slate-700">Entrance Fee</span>
-              <span className="text-sm font-bold text-slate-900">{formatCurrency(entranceFee)}</span>
+            <div className="flex items-center justify-between p-3 border rounded-lg bg-slate-50 dark:bg-slate-800/50">
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Entrance Fee</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{formatCurrency(entranceFee)}</span>
             </div>
           </CardContent>
         </Card>

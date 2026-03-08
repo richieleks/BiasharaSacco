@@ -25,9 +25,9 @@ const getStatusColor = (status: string) => {
     case 'approved': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
     case 'disbursed': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
     case 'active': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-    case 'completed': return 'bg-slate-50 text-slate-700 border-slate-200/50';
+    case 'completed': return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     case 'defaulted': return 'bg-red-50 text-red-700 border-red-200/50';
-    default: return 'bg-slate-50 text-slate-700 border-slate-200/50';
+    default: return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
   }
 };
 
@@ -37,7 +37,7 @@ const getLoanTypeColor = (type: string) => {
     case 'business': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
     case 'emergency': return 'bg-red-50 text-red-700 border-red-200/50';
     case 'asset': return 'bg-purple-50 text-purple-700 border-purple-200/50';
-    default: return 'bg-slate-50 text-slate-700 border-slate-200/50';
+    default: return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
   }
 };
 
@@ -214,13 +214,13 @@ export default function Loans() {
           <div key={i} className="section-card p-6 animate-pulse">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="w-10 h-10 bg-slate-100 rounded-lg"></div>
+                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>
                 <div>
-                  <div className="h-4 bg-slate-100 rounded-lg w-32 mb-2"></div>
-                  <div className="h-3 bg-slate-100 rounded-lg w-24"></div>
+                  <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-32 mb-2"></div>
+                  <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-lg w-24"></div>
                 </div>
               </div>
-              <div className="h-8 bg-slate-100 rounded-lg w-24"></div>
+              <div className="h-8 bg-slate-100 dark:bg-slate-800 rounded-lg w-24"></div>
             </div>
           </div>
         ))}
@@ -233,10 +233,10 @@ export default function Loans() {
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+            <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               {isPersonalView ? 'My Loans' : 'Loan Management'}
             </h2>
-            <p className="text-sm text-slate-500 mt-0.5">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
               {isPersonalView 
                 ? 'View your loan applications, statements and repayment schedules' 
                 : 'Process loan applications and manage disbursements'
@@ -245,7 +245,7 @@ export default function Loans() {
           </div>
           <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0 w-full sm:w-auto">
             <div className="section-card p-4 relative flex items-center w-full sm:w-auto">
-              <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
+              <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 h-4 w-4" />
               <Input
                 data-testid="input-search-loans"
                 placeholder="Search loans..."
@@ -427,14 +427,14 @@ export default function Loans() {
       </div>
 
       <div className="section-card">
-        <div className="p-6 border-b border-slate-200/60">
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700/60">
           <div className="flex items-center space-x-2">
             {isPersonalView ? (
               <HandCoins className="w-5 h-5 text-blue-600" />
             ) : (
               <HandCoins className="w-5 h-5 text-blue-600" />
             )}
-            <h3 className="text-lg font-semibold text-slate-900">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
               {isPersonalView ? 'My Loan Applications' : 'Loan Applications'}
             </h3>
             {pendingLoans && (
@@ -448,7 +448,7 @@ export default function Loans() {
           {pendingLoans && pendingLoans.length > 0 ? (
             <div className="space-y-4">
               {pendingLoans.map((loan: any) => (
-                <div key={loan.id} className="border border-slate-200/60 rounded-lg hover:shadow-sm transition-all" data-testid={`card-loan-${loan.id}`}>
+                <div key={loan.id} className="border border-slate-200 dark:border-slate-700/60 rounded-lg hover:shadow-sm transition-all" data-testid={`card-loan-${loan.id}`}>
                   <div
                     className="p-6 cursor-pointer"
                     onClick={() => loan.uuid && setLocation(`/loans/${loan.uuid}/details`)}
@@ -456,7 +456,7 @@ export default function Loans() {
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                       <div className="flex items-center space-x-4">
                         <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <span className="text-slate-600 text-sm font-medium">
+                          <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">
                             {isPersonalView 
                               ? loan.loanNumber?.slice(-2) || 'LN'
                               : `${loan.member?.user?.firstName?.charAt(0) || ''}${loan.member?.user?.lastName?.charAt(0) || ''}`
@@ -464,13 +464,13 @@ export default function Loans() {
                           </span>
                         </div>
                         <div>
-                          <h3 className="font-medium text-slate-900">
+                          <h3 className="font-medium text-slate-900 dark:text-slate-100">
                             {isPersonalView 
                               ? `${loan.loanType || 'Loan'} Application`
                               : `${loan.member?.user?.firstName || ''} ${loan.member?.user?.lastName || ''}`
                             }
                           </h3>
-                          <p className="text-sm text-slate-500">Loan: {loan.loanNumber}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Loan: {loan.loanNumber}</p>
                         </div>
                       </div>
                       <div className="flex items-center flex-wrap gap-2">
@@ -491,20 +491,20 @@ export default function Loans() {
 
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                       <div>
-                        <p className="text-sm text-slate-500">Amount</p>
-                        <p className="font-medium text-slate-900">{formatCurrency(loan.principalAmount)}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Amount</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(loan.principalAmount)}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-slate-500">Interest Rate</p>
-                        <p className="font-medium text-slate-900">{(parseFloat(loan.interestRate) * 100).toFixed(1)}%</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Interest Rate</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{(parseFloat(loan.interestRate) * 100).toFixed(1)}%</p>
                       </div>
                       <div>
-                        <p className="text-sm text-slate-500">Term</p>
-                        <p className="font-medium text-slate-900">{loan.termMonths} months</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Term</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{loan.termMonths} months</p>
                       </div>
                       <div>
-                        <p className="text-sm text-slate-500">Monthly Payment</p>
-                        <p className="font-medium text-slate-900">{formatCurrency(loan.monthlyPayment)}</p>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Monthly Payment</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(loan.monthlyPayment)}</p>
                       </div>
                     </div>
 
@@ -520,7 +520,7 @@ export default function Loans() {
                     <div className="flex items-center justify-between">
                       <div className="flex flex-wrap gap-2 items-center" onClick={(e) => e.stopPropagation()}>
                         {isPersonalView ? (
-                          <p className="text-sm text-slate-500">
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
                             {loan.status === 'pending' && loan.isTopUp ? 'Your top-up request is under review.' :
                              loan.status === 'pending' ? 'Your application is under review.' :
                              loan.status === 'approved' ? 'Your loan has been approved and is awaiting disbursement.' :
@@ -575,18 +575,18 @@ export default function Loans() {
             </div>
           ) : (
             <div className="py-16 text-center">
-              <HandCoins className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">
+              <HandCoins className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
                 {isPersonalView ? 'No loan applications' : 'No pending applications'}
               </h3>
-              <p className="text-slate-500">
+              <p className="text-slate-500 dark:text-slate-400">
                 {isPersonalView ? 'You have not applied for any loans yet.' : 'All loan applications have been processed.'}
               </p>
             </div>
           )}
         </div>
         {totalItems > 0 && (
-          <div className="p-6 border-t border-slate-200/60">
+          <div className="p-6 border-t border-slate-200 dark:border-slate-700/60">
             <Pagination
               totalItems={totalItems}
               itemsPerPage={limit}
@@ -604,10 +604,10 @@ export default function Loans() {
             <div key={i} className="section-card p-4 sm:p-6 animate-pulse">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <div className="h-4 w-24 bg-slate-200 rounded" />
-                  <div className="h-7 w-16 bg-slate-200 rounded mt-2" />
+                  <div className="h-4 w-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                  <div className="h-7 w-16 bg-slate-200 dark:bg-slate-700 rounded mt-2" />
                 </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-100 rounded-lg" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-100 dark:bg-slate-800 rounded-lg" />
               </div>
             </div>
           ))}
@@ -617,8 +617,8 @@ export default function Loans() {
           <div className="section-card p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-slate-500 text-xs sm:text-sm font-medium">Total Active Loans</p>
-                <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1" data-testid="text-active-loans-count">{loanStats.activeCount}</p>
+                <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">Total Active Loans</p>
+                <p className="text-lg sm:text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1" data-testid="text-active-loans-count">{loanStats.activeCount}</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
                 <HandCoins className="text-blue-600 h-5 w-5 sm:h-6 sm:w-6" />
@@ -629,8 +629,8 @@ export default function Loans() {
           <div className="section-card p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-slate-500 text-xs sm:text-sm font-medium">Outstanding Amount</p>
-                <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1 truncate" data-testid="text-outstanding-amount">{formatCurrency(loanStats.totalOutstanding)}</p>
+                <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">Outstanding Amount</p>
+                <p className="text-lg sm:text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1 truncate" data-testid="text-outstanding-amount">{formatCurrency(loanStats.totalOutstanding)}</p>
               </div>
               <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
                 <DollarSign className="text-emerald-600 h-5 w-5 sm:h-6 sm:w-6" />
@@ -641,8 +641,8 @@ export default function Loans() {
           <div className="section-card p-4 sm:p-6">
             <div className="flex items-center justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-slate-500 text-xs sm:text-sm font-medium">Default Rate</p>
-                <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1" data-testid="text-default-rate">
+                <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">Default Rate</p>
+                <p className="text-lg sm:text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1" data-testid="text-default-rate">
                   {loanStats.totalCount > 0 ? ((loanStats.defaultedCount / loanStats.totalCount) * 100).toFixed(1) : '0'}%
                 </p>
               </div>

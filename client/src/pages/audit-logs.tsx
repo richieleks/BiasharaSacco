@@ -58,7 +58,7 @@ export default function AuditLogs() {
         <div className="section-card max-w-md">
           <div className="p-6">
             <div className="py-16 text-center">
-              <Shield className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+              <Shield className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
               <h3 className="text-lg font-semibold">Access Denied</h3>
               <p className="text-gray-600 mt-2">You don't have permission to view audit logs.</p>
             </div>
@@ -119,23 +119,23 @@ export default function AuditLogs() {
   return (
     <div className="space-y-6 page-container animate-fade-in">
       <div>
-        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">Audit Logs</h1>
-        <p className="text-sm text-slate-500 mt-0.5">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">Audit Logs</h1>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
           Track all system activities and user actions
         </p>
       </div>
 
       <div className="section-card">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-900">Filters</h3>
-          <p className="text-sm text-slate-500 mt-0.5">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Filters</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Search and filter audit logs by user, action, resource, or details
           </p>
         </div>
         <div className="p-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 h-4 w-4" />
               <Input
                 data-testid="input-search-audit-logs"
                 placeholder="Search by user, details, or resource..."
@@ -178,9 +178,9 @@ export default function AuditLogs() {
       </div>
 
       <div className="section-card">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-900">Activity Log</h3>
-          <p className="text-sm text-slate-500 mt-0.5">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Activity Log</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Recent system activities and user actions
           </p>
         </div>
@@ -214,7 +214,7 @@ export default function AuditLogs() {
                   <TableRow key={log.id} data-testid={`row-audit-log-${log.id}`}>
                     <TableCell className="font-medium hidden sm:table-cell">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-gray-400" />
+                        <Calendar className="h-4 w-4 text-gray-400 dark:text-gray-500" />
                         {formatTimestamp(log.timestamp)}
                       </div>
                     </TableCell>

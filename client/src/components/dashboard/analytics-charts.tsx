@@ -32,12 +32,12 @@ export default function AnalyticsCharts() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="section-card animate-pulse">
-            <div className="px-6 py-4 border-b border-slate-100">
-              <div className="h-5 bg-slate-100 rounded-lg w-3/4 mb-2"></div>
-              <div className="h-3.5 bg-slate-100 rounded-lg w-1/2"></div>
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+              <div className="h-5 bg-slate-100 dark:bg-slate-800 rounded-lg w-3/4 mb-2"></div>
+              <div className="h-3.5 bg-slate-100 dark:bg-slate-800 rounded-lg w-1/2"></div>
             </div>
             <div className="p-6">
-              <div className="h-64 bg-slate-50 rounded-xl"></div>
+              <div className="h-64 bg-slate-50 dark:bg-slate-800/50 rounded-xl"></div>
             </div>
           </div>
         ))}
@@ -53,7 +53,7 @@ export default function AnalyticsCharts() {
   };
 
   const chartCardClass = "section-card";
-  const chartHeaderClass = "flex items-center gap-2.5 px-6 py-4 border-b border-slate-100";
+  const chartHeaderClass = "flex items-center gap-2.5 px-6 py-4 border-b border-slate-100 dark:border-slate-700";
   const chartContentClass = "p-5";
 
   return (
@@ -64,8 +64,8 @@ export default function AnalyticsCharts() {
             <DollarSign className="h-4 w-4 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Loan Distribution by Type</h3>
-            <p className="text-xs text-slate-400">Current loan portfolio breakdown</p>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Distribution by Type</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Current loan portfolio breakdown</p>
           </div>
         </div>
         <div className={chartContentClass}>
@@ -97,8 +97,8 @@ export default function AnalyticsCharts() {
           ) : (
             <div className="flex flex-col items-center justify-center h-[280px] text-center">
               <DollarSign className="h-10 w-10 text-slate-300 mb-3" />
-              <p className="text-sm font-medium text-slate-500">No loan data available</p>
-              <p className="text-xs text-slate-400 mt-1">Loan distribution will appear once loans are approved and active</p>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No loan data available</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Loan distribution will appear once loans are approved and active</p>
             </div>
           )}
         </div>
@@ -110,8 +110,8 @@ export default function AnalyticsCharts() {
             <TrendingUp className="h-4 w-4 text-emerald-600" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Monthly Transaction Trends</h3>
-            <p className="text-xs text-slate-400">Transaction volume over the last 6 months</p>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Monthly Transaction Trends</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Transaction volume over the last 6 months</p>
           </div>
         </div>
         <div className={chartContentClass}>
@@ -136,8 +136,8 @@ export default function AnalyticsCharts() {
             <Users className="h-4 w-4 text-violet-600" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Member Growth</h3>
-            <p className="text-xs text-slate-400">New members joined over time</p>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Member Growth</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500">New members joined over time</p>
           </div>
         </div>
         <div className={chartContentClass}>
@@ -165,8 +165,8 @@ export default function AnalyticsCharts() {
             <Activity className="h-4 w-4 text-amber-600" />
           </div>
           <div>
-            <h3 className="text-sm font-semibold text-slate-900">Savings vs Loans Balance</h3>
-            <p className="text-xs text-slate-400">Monthly comparison of balances</p>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Savings vs Loans Balance</h3>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Monthly comparison of balances</p>
           </div>
         </div>
         <div className={chartContentClass}>

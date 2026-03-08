@@ -475,9 +475,9 @@ export default function InterestCalculations() {
                   <div>Loading financial years...</div>
                 ) : financialYears.length === 0 ? (
                   <div className="text-center py-8">
-                    <Calendar className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-semibold text-gray-900">No financial years</h3>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <Calendar className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+                    <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">No financial years</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
                       Get started by creating a new financial year.
                     </p>
                   </div>
@@ -587,9 +587,9 @@ export default function InterestCalculations() {
                   <div>Loading calculations...</div>
                 ) : calculations.length === 0 ? (
                   <div className="text-center py-8">
-                    <Calculator className="mx-auto h-12 w-12 text-gray-400" />
-                    <h3 className="mt-2 text-sm font-semibold text-gray-900">No calculations found</h3>
-                    <p className="mt-1 text-sm text-gray-500">
+                    <Calculator className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+                    <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">No calculations found</h3>
+                    <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
                       {selectedFinancialYear ? 'No calculations for this financial year.' : 'Select a financial year to view calculations.'}
                     </p>
                   </div>
@@ -662,9 +662,9 @@ export default function InterestCalculations() {
                 <div>Loading payments...</div>
               ) : payments.length === 0 ? (
                 <div className="text-center py-8">
-                  <DollarSign className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-semibold text-gray-900">No payments found</h3>
-                  <p className="mt-1 text-sm text-gray-500">
+                  <DollarSign className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
+                  <h3 className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">No payments found</h3>
+                  <p className="mt-1 text-sm text-gray-500 dark:text-gray-400 dark:text-gray-500">
                     Interest payments will appear here once calculations are posted.
                   </p>
                 </div>

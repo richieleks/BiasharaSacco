@@ -177,7 +177,7 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
           )}
         />
 
-        <div className="flex items-center space-x-4 pt-6 border-t border-slate-200">
+        <div className="flex items-center space-x-4 pt-6 border-t border-slate-200 dark:border-slate-700">
           <Button type="button" variant="outline" className="flex-1" onClick={onSuccess}>
             Cancel
           </Button>

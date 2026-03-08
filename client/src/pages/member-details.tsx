@@ -71,10 +71,10 @@ function formatDate(dateStr: string | null | undefined, formatStr: string = 'PP'
 function InfoRow({ icon: Icon, label, value, className = "" }: { icon?: any; label: string; value: string | number | null | undefined; className?: string }) {
   return (
     <div className={`flex items-start gap-3 py-2.5 ${className}`}>
-      {Icon && <Icon className="h-4 w-4 text-slate-400 mt-0.5 shrink-0" />}
+      {Icon && <Icon className="h-4 w-4 text-slate-400 dark:text-slate-500 mt-0.5 shrink-0" />}
       <div className="min-w-0 flex-1">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{label}</p>
-        <p className="text-sm font-semibold text-slate-800 mt-0.5 truncate">{value || 'Not provided'}</p>
+        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+        <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 mt-0.5 truncate">{value || 'Not provided'}</p>
       </div>
     </div>
   );
@@ -88,15 +88,15 @@ function StatCard({ icon: Icon, label, value, color, subtext }: { icon: any; lab
     purple: "from-violet-500 to-violet-600 shadow-violet-200",
   };
   return (
-    <div className="relative overflow-hidden rounded-xl bg-white border border-slate-100 p-4 shadow-sm hover:shadow-md transition-shadow">
+    <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 p-4 shadow-sm hover:shadow-md transition-shadow">
       <div className="flex items-center gap-3">
         <div className={`rounded-lg bg-gradient-to-br ${colorMap[color] || colorMap.blue} p-2.5 shadow-lg`}>
           <Icon className="h-4 w-4 text-white" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wider">{label}</p>
-          <p className="text-lg font-bold text-slate-900 mt-0.5 truncate">{value}</p>
-          {subtext && <p className="text-xs text-slate-400 mt-0.5">{subtext}</p>}
+          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">{label}</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-slate-100 mt-0.5 truncate">{value}</p>
+          {subtext && <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{subtext}</p>}
         </div>
       </div>
     </div>
@@ -248,8 +248,8 @@ export default function MemberDetails() {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
-          <p className="text-sm text-slate-500">Loading member details...</p>
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 dark:border-slate-700 border-t-blue-600" />
+          <p className="text-sm text-slate-500 dark:text-slate-400">Loading member details...</p>
         </div>
       </div>
     );
@@ -258,10 +258,10 @@ export default function MemberDetails() {
   if (!member) {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
-        <div className="rounded-full bg-slate-100 p-4">
-          <User className="h-8 w-8 text-slate-400" />
+        <div className="rounded-full bg-slate-100 dark:bg-slate-800 p-4">
+          <User className="h-8 w-8 text-slate-400 dark:text-slate-500" />
         </div>
-        <p className="text-lg font-medium text-slate-700">Member not found</p>
+        <p className="text-lg font-medium text-slate-700 dark:text-slate-200">Member not found</p>
         <Button variant="outline" onClick={() => setLocation("/members")}>
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Members
@@ -283,18 +283,18 @@ export default function MemberDetails() {
   return (
     <div className="space-y-6 page-container animate-fade-in">
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" onClick={() => setLocation("/members")} className="text-slate-500 hover:text-slate-800">
+        <Button variant="ghost" size="sm" onClick={() => setLocation("/members")} className="text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:text-slate-200">
           <ArrowLeft className="mr-1.5 h-4 w-4" />
           Members
         </Button>
         <ChevronRight className="h-4 w-4 text-slate-300" />
-        <span className="text-sm text-slate-500 truncate">{memberName}</span>
+        <span className="text-sm text-slate-500 dark:text-slate-400 truncate">{memberName}</span>
       </div>
 
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-slate-800 via-slate-700 to-blue-800 p-6 sm:p-8 text-white shadow-xl">
         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48Y2lyY2xlIGN4PSIyMCIgY3k9IjIwIiByPSIxIiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMDUpIi8+PC9zdmc+')] opacity-60" />
         <div className="relative flex flex-col sm:flex-row sm:items-center gap-5">
-          <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-white/15 backdrop-blur-sm flex items-center justify-center text-2xl sm:text-3xl font-bold border border-white/20 shrink-0">
+          <div className="h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-white dark:bg-slate-900/15 backdrop-blur-sm flex items-center justify-center text-2xl sm:text-3xl font-bold border border-white/20 shrink-0">
             {initials}
           </div>
           <div className="flex-1 min-w-0">
@@ -333,12 +333,12 @@ export default function MemberDetails() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2 sm:shrink-0">
-            <Button size="sm" variant="secondary" className="bg-white/15 hover:bg-white/25 text-white border-0" onClick={() => setIsEditDialogOpen(true)}>
+            <Button size="sm" variant="secondary" className="bg-white dark:bg-slate-900/15 hover:bg-white dark:bg-slate-900/25 text-white border-0" onClick={() => setIsEditDialogOpen(true)}>
               <Edit className="mr-1.5 h-3.5 w-3.5" />
               Edit
             </Button>
             {isAdmin && (
-              <Button size="sm" variant="secondary" className="bg-white/15 hover:bg-white/25 text-white border-0" onClick={() => setIsShareCapitalDialogOpen(true)}>
+              <Button size="sm" variant="secondary" className="bg-white dark:bg-slate-900/15 hover:bg-white dark:bg-slate-900/25 text-white border-0" onClick={() => setIsShareCapitalDialogOpen(true)}>
                 <DollarSign className="mr-1.5 h-3.5 w-3.5" />
                 Post Shares
               </Button>
@@ -379,20 +379,20 @@ export default function MemberDetails() {
 
       <Tabs defaultValue="personal" className="w-full">
         <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="w-full inline-flex sm:grid sm:grid-cols-5 h-auto gap-1 bg-slate-100/80 p-1 rounded-xl min-w-max sm:min-w-0">
-            <TabsTrigger value="personal" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Personal</TabsTrigger>
-            <TabsTrigger value="financial" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Financial</TabsTrigger>
-            <TabsTrigger value="savings" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Savings</TabsTrigger>
-            <TabsTrigger value="loans" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Loans</TabsTrigger>
-            <TabsTrigger value="transactions" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm py-2 px-4 sm:px-3">History</TabsTrigger>
+          <TabsList className="w-full inline-flex sm:grid sm:grid-cols-5 h-auto gap-1 bg-slate-100 dark:bg-slate-800/80 p-1 rounded-xl min-w-max sm:min-w-0">
+            <TabsTrigger value="personal" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Personal</TabsTrigger>
+            <TabsTrigger value="financial" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Financial</TabsTrigger>
+            <TabsTrigger value="savings" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Savings</TabsTrigger>
+            <TabsTrigger value="loans" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm py-2 px-4 sm:px-3">Loans</TabsTrigger>
+            <TabsTrigger value="transactions" className="text-xs sm:text-sm rounded-lg data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm py-2 px-4 sm:px-3">History</TabsTrigger>
           </TabsList>
         </div>
 
         <TabsContent value="personal" className="mt-4 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-blue-50 p-1.5"><User className="h-3.5 w-3.5 text-blue-600" /></div>
                   Basic Information
                 </CardTitle>
@@ -409,9 +409,9 @@ export default function MemberDetails() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-green-50 p-1.5"><Phone className="h-3.5 w-3.5 text-green-600" /></div>
                   Contact Information
                 </CardTitle>
@@ -425,9 +425,9 @@ export default function MemberDetails() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-amber-50 p-1.5"><Briefcase className="h-3.5 w-3.5 text-amber-600" /></div>
                   Employment Details
                 </CardTitle>
@@ -443,9 +443,9 @@ export default function MemberDetails() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-rose-50 p-1.5"><Heart className="h-3.5 w-3.5 text-rose-600" /></div>
                   Next of Kin & Beneficiary
                 </CardTitle>
@@ -463,9 +463,9 @@ export default function MemberDetails() {
           </div>
 
           {(member.approvedBy || member.approvalComments) && (
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-violet-50 p-1.5"><Shield className="h-3.5 w-3.5 text-violet-600" /></div>
                   Membership Approval
                 </CardTitle>
@@ -483,9 +483,9 @@ export default function MemberDetails() {
 
         <TabsContent value="financial" className="mt-4 space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-green-50 p-1.5"><Wallet className="h-3.5 w-3.5 text-green-600" /></div>
                   Savings Information
                 </CardTitle>
@@ -499,9 +499,9 @@ export default function MemberDetails() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-200/60 shadow-sm">
+            <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <div className="rounded-md bg-violet-50 p-1.5"><TrendingUp className="h-3.5 w-3.5 text-violet-600" /></div>
                   Share Capital
                 </CardTitle>
@@ -512,13 +512,13 @@ export default function MemberDetails() {
               <CardContent className="pt-0">
                 <div className="space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-lg bg-slate-50 p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Per Share</p>
-                      <p className="text-sm font-bold text-slate-800">{formatCurrency(perSharePrice)}</p>
+                    <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3 text-center">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Per Share</p>
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{formatCurrency(perSharePrice)}</p>
                     </div>
-                    <div className="rounded-lg bg-slate-50 p-3 text-center">
-                      <p className="text-xs text-slate-500 mb-1">Shares</p>
-                      <p className="text-sm font-bold text-slate-800">{member.numberOfShares || 4}</p>
+                    <div className="rounded-lg bg-slate-50 dark:bg-slate-800/50 p-3 text-center">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Shares</p>
+                      <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{member.numberOfShares || 4}</p>
                     </div>
                     <div className="rounded-lg bg-emerald-50 p-3 text-center">
                       <p className="text-xs text-emerald-600 mb-1">Paid</p>
@@ -530,7 +530,7 @@ export default function MemberDetails() {
                     </div>
                   </div>
                   {!member.isPaidUp && (
-                    <div className="w-full bg-slate-100 rounded-full h-2">
+                    <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2">
                       <div className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-2 rounded-full transition-all" style={{ width: `${Math.min(100, (sharePaid / shareExpected) * 100)}%` }} />
                     </div>
                   )}
@@ -541,9 +541,9 @@ export default function MemberDetails() {
         </TabsContent>
 
         <TabsContent value="savings" className="mt-4">
-          <Card className="border-slate-200/60 shadow-sm">
+          <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                 <div className="rounded-md bg-green-50 p-1.5"><PiggyBank className="h-3.5 w-3.5 text-green-600" /></div>
                 Savings Accounts
               </CardTitle>
@@ -552,19 +552,19 @@ export default function MemberDetails() {
               {Array.isArray(savingsAccounts) && savingsAccounts.length > 0 ? (
                 <div className="space-y-3">
                   {savingsAccounts.map((account: any) => (
-                    <div key={account.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors gap-2">
+                    <div key={account.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50/50 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50 transition-colors gap-2">
                       <div className="flex items-center gap-3">
                         <div className="rounded-lg bg-emerald-100 p-2">
                           <Wallet className="h-4 w-4 text-emerald-600" />
                         </div>
                         <div>
-                          <p className="font-semibold text-sm text-slate-800">{account.accountNumber}</p>
-                          <p className="text-xs text-slate-500 capitalize">{account.accountType}</p>
+                          <p className="font-semibold text-sm text-slate-800 dark:text-slate-200">{account.accountNumber}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 capitalize">{account.accountType}</p>
                         </div>
                       </div>
                       <div className="sm:text-right pl-11 sm:pl-0">
                         <p className="text-lg font-bold text-emerald-600">{formatCurrency(account.balance)}</p>
-                        <p className="text-xs text-slate-400">Current Balance</p>
+                        <p className="text-xs text-slate-400 dark:text-slate-500">Current Balance</p>
                       </div>
                     </div>
                   ))}
@@ -572,7 +572,7 @@ export default function MemberDetails() {
               ) : (
                 <div className="text-center py-8">
                   <PiggyBank className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">No savings accounts found</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No savings accounts found</p>
                 </div>
               )}
             </CardContent>
@@ -580,9 +580,9 @@ export default function MemberDetails() {
         </TabsContent>
 
         <TabsContent value="loans" className="mt-4">
-          <Card className="border-slate-200/60 shadow-sm">
+          <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                 <div className="rounded-md bg-amber-50 p-1.5"><Banknote className="h-3.5 w-3.5 text-amber-600" /></div>
                 Loan History
               </CardTitle>
@@ -591,11 +591,11 @@ export default function MemberDetails() {
               {Array.isArray(loans) && loans.length > 0 ? (
                 <div className="space-y-3">
                   {loans.map((loan: any) => (
-                    <div key={loan.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-50 transition-colors">
+                    <div key={loan.id} className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50/50 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50 transition-colors">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center flex-wrap gap-2 mb-1.5">
-                            <span className="font-semibold text-sm text-slate-800">{loan.loanType}</span>
+                            <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">{loan.loanType}</span>
                             <Badge className={`text-xs ${
                               loan.status === 'approved' || loan.status === 'active' || loan.status === 'disbursed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                               loan.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
@@ -605,7 +605,7 @@ export default function MemberDetails() {
                               {loan.status}
                             </Badge>
                           </div>
-                          <p className="text-xs text-slate-500 mb-2.5">
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2.5">
                             #{loan.loanNumber} &middot; Applied {formatDate(loan.applicationDate)}
                           </p>
                           <div className="flex flex-wrap gap-1.5">
@@ -621,7 +621,7 @@ export default function MemberDetails() {
                           </div>
                         </div>
                         <div className="sm:text-right shrink-0">
-                          <p className="text-lg font-bold text-slate-800">{formatCurrency(loan.principalAmount || loan.amount || 0)}</p>
+                          <p className="text-lg font-bold text-slate-800 dark:text-slate-200">{formatCurrency(loan.principalAmount || loan.amount || 0)}</p>
                           <p className="text-xs text-amber-600 font-medium">
                             Outstanding: {formatCurrency(loan.outstandingBalance || 0)}
                           </p>
@@ -633,7 +633,7 @@ export default function MemberDetails() {
               ) : (
                 <div className="text-center py-8">
                   <Banknote className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">No loans found</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No loans found</p>
                 </div>
               )}
             </CardContent>
@@ -641,13 +641,13 @@ export default function MemberDetails() {
         </TabsContent>
 
         <TabsContent value="transactions" className="mt-4">
-          <Card className="border-slate-200/60 shadow-sm">
+          <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
             <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                 <div className="rounded-md bg-blue-50 p-1.5"><Activity className="h-3.5 w-3.5 text-blue-600" /></div>
                 Recent Transactions
               </CardTitle>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-400 dark:text-slate-500">
                 Page {txPage} of {totalTxPages} ({totalTransactions} transactions)
               </p>
             </CardHeader>
@@ -656,26 +656,26 @@ export default function MemberDetails() {
                 <div className="overflow-x-auto -mx-6">
                   <table className="w-full text-sm min-w-[600px]">
                     <thead>
-                      <tr className="border-b border-slate-100">
-                        <th className="pb-3 px-6 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                        <th className="pb-3 px-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider">Type</th>
-                        <th className="pb-3 px-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wider hidden sm:table-cell">Description</th>
-                        <th className="pb-3 px-3 text-right text-xs font-semibold text-slate-500 uppercase tracking-wider">Amount</th>
-                        <th className="pb-3 px-6 text-center text-xs font-semibold text-slate-500 uppercase tracking-wider">Status</th>
+                      <tr className="border-b border-slate-100 dark:border-slate-700">
+                        <th className="pb-3 px-6 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Date</th>
+                        <th className="pb-3 px-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Type</th>
+                        <th className="pb-3 px-3 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden sm:table-cell">Description</th>
+                        <th className="pb-3 px-3 text-right text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Amount</th>
+                        <th className="pb-3 px-6 text-center text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Status</th>
                       </tr>
                     </thead>
                     <tbody>
                       {recentTransactions.map((tx: any) => {
                         const isCredit = ['deposit', 'interest_credit', 'share_capital', 'loan_disbursement'].includes(tx.transactionType);
                         return (
-                          <tr key={tx.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50/50 transition-colors">
-                            <td className="py-3 px-6 text-slate-600 whitespace-nowrap">{formatDate(tx.transactionDate || tx.createdAt)}</td>
+                          <tr key={tx.id} className="border-b border-slate-50 last:border-0 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50/50 transition-colors">
+                            <td className="py-3 px-6 text-slate-600 dark:text-slate-300 whitespace-nowrap">{formatDate(tx.transactionDate || tx.createdAt)}</td>
                             <td className="py-3 px-3">
                               <Badge variant="outline" className="capitalize text-xs font-medium">
                                 {(tx.transactionType || '').replace(/_/g, ' ')}
                               </Badge>
                             </td>
-                            <td className="py-3 px-3 text-slate-500 max-w-[200px] truncate hidden sm:table-cell">{tx.description || '-'}</td>
+                            <td className="py-3 px-3 text-slate-500 dark:text-slate-400 max-w-[200px] truncate hidden sm:table-cell">{tx.description || '-'}</td>
                             <td className={`py-3 px-3 text-right font-semibold whitespace-nowrap ${isCredit ? 'text-emerald-600' : 'text-red-500'}`}>
                               {isCredit ? '+' : '-'}{formatCurrency(tx.amount || '0')}
                             </td>
@@ -684,7 +684,7 @@ export default function MemberDetails() {
                                 tx.status === 'completed' ? 'bg-emerald-50 text-emerald-700' :
                                 tx.status === 'pending' ? 'bg-amber-50 text-amber-700' :
                                 tx.status === 'failed' ? 'bg-red-50 text-red-700' :
-                                'bg-slate-100 text-slate-600'
+                                'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                               }`}>
                                 {tx.status || 'unknown'}
                               </span>
@@ -697,16 +697,16 @@ export default function MemberDetails() {
                 </div>
               ) : txLoading ? (
                 <div className="text-center py-8">
-                  <p className="text-sm text-slate-500">Loading transactions...</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">Loading transactions...</p>
                 </div>
               ) : (
                 <div className="text-center py-8">
                   <Activity className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500">No transactions found</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">No transactions found</p>
                 </div>
               )}
               {totalTxPages > 1 && (
-                <div className="flex items-center justify-between pt-4 border-t border-slate-100 mt-4">
+                <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-700 mt-4">
                   <Button
                     variant="outline"
                     size="sm"
@@ -715,7 +715,7 @@ export default function MemberDetails() {
                   >
                     Previous
                   </Button>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
                     Page {txPage} of {totalTxPages}
                   </span>
                   <Button
@@ -742,7 +742,7 @@ export default function MemberDetails() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit((data) => updateMemberMutation.mutate(data))} className="space-y-6">
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-slate-700 border-b pb-2">Personal Details</h3>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 border-b pb-2">Personal Details</h3>
                 <FormField control={form.control} name="fullName" render={({ field }) => (
                   <FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>
                 )} />
@@ -779,7 +779,7 @@ export default function MemberDetails() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-slate-700 border-b pb-2">Employment Information</h3>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 border-b pb-2">Employment Information</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="department" render={({ field }) => (
                     <FormItem><FormLabel>Department</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>
@@ -802,7 +802,7 @@ export default function MemberDetails() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-slate-700 border-b pb-2">Next of Kin</h3>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 border-b pb-2">Next of Kin</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="nextOfKinName" render={({ field }) => (
                     <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>
@@ -814,7 +814,7 @@ export default function MemberDetails() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-slate-700 border-b pb-2">Financial Information</h3>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 border-b pb-2">Financial Information</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="monthlySavings" render={({ field }) => (
                     <FormItem><FormLabel>Monthly Savings (UGX)</FormLabel><FormControl><Input type="number" {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>
@@ -837,7 +837,7 @@ export default function MemberDetails() {
               </div>
 
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-slate-700 border-b pb-2">Beneficiary</h3>
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 border-b pb-2">Beneficiary</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="beneficiaryName" render={({ field }) => (
                     <FormItem><FormLabel>Name</FormLabel><FormControl><Input {...field} value={field.value || ""} /></FormControl><FormMessage /></FormItem>

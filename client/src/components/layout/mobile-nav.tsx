@@ -34,7 +34,7 @@ export default function MobileNav() {
   const [location] = useLocation();
 
   return (
-    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-2 z-40">
+    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 px-4 py-2 z-40">
       <div className="flex justify-around">
         {navigation.map((item) => {
           const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
@@ -45,7 +45,7 @@ export default function MobileNav() {
                   "flex flex-col items-center py-2 px-3 rounded-lg transition-colors cursor-pointer",
                   isActive
                     ? "text-primary-600"
-                    : "text-slate-400 hover:text-slate-600"
+                    : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:text-slate-300"
                 )}
               >
                 <item.icon className="h-5 w-5" />

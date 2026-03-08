@@ -233,17 +233,17 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="user" className="space-y-6">
-        <TabsList className="w-full justify-start bg-slate-100/50 p-1 rounded-lg">
-          <TabsTrigger value="user" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+        <TabsList className="w-full justify-start bg-slate-100 dark:bg-slate-800/50 p-1 rounded-lg">
+          <TabsTrigger value="user" className="data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm">
             User Settings
           </TabsTrigger>
           {hasPermission('read', 'roles') && (
-            <TabsTrigger value="rbac" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <TabsTrigger value="rbac" className="data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm">
               RBAC Management
             </TabsTrigger>
           )}
           {hasPermission('update', 'members') && (
-            <TabsTrigger value="roles" className="data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <TabsTrigger value="roles" className="data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm">
               Role Management
             </TabsTrigger>
           )}

@@ -128,9 +128,9 @@ export default function AccountStatement() {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
-          <FileText className="w-16 h-16 text-slate-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 mb-2">Invalid Account</h3>
-          <p className="text-slate-600 mb-4">The account ID provided is not valid.</p>
+          <FileText className="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">Invalid Account</h3>
+          <p className="text-slate-600 dark:text-slate-300 mb-4">The account ID provided is not valid.</p>
           <Link href="/savings">
             <Button variant="outline">
               <ArrowLeft className="w-4 h-4 mr-2" />
@@ -154,8 +154,8 @@ export default function AccountStatement() {
             </Button>
           </Link>
           <div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-slate-900">Account Statement</h2>
-            <p className="text-sm text-slate-600 mt-0.5">
+            <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Account Statement</h2>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">
               {statementData?.account ? `Account ${statementData.account.accountNumber}` : 'Loading...'}
             </p>
           </div>
@@ -172,9 +172,9 @@ export default function AccountStatement() {
         <Card>
           <CardContent className="pt-6">
             <div className="animate-pulse space-y-4">
-              <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-              <div className="h-4 bg-slate-200 rounded w-1/2"></div>
-              <div className="h-4 bg-slate-200 rounded w-1/3"></div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/2"></div>
+              <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
             </div>
           </CardContent>
         </Card>
@@ -189,15 +189,15 @@ export default function AccountStatement() {
           <CardContent>
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
               <div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600">Account Number</p>
-                <p className="text-sm sm:text-lg font-semibold text-slate-900 truncate">{statementData.account.accountNumber}</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Account Number</p>
+                <p className="text-sm sm:text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">{statementData.account.accountNumber}</p>
               </div>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600">Account Holder</p>
-                <p className="text-sm sm:text-lg font-semibold text-slate-900 truncate">{statementData.account.member?.fullName}</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Account Holder</p>
+                <p className="text-sm sm:text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">{statementData.account.member?.fullName}</p>
               </div>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600">Account Type</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Account Type</p>
                 <Badge className={
                   statementData.account.accountType === 'regular' ? 'bg-blue-100 text-blue-800' :
                   statementData.account.accountType === 'fixed_deposit' ? 'bg-green-100 text-green-800' :
@@ -207,13 +207,13 @@ export default function AccountStatement() {
                 </Badge>
               </div>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600">Interest Rate</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Interest Rate</p>
                 <p className="text-sm sm:text-lg font-semibold text-blue-600">
                   {(parseFloat(statementData.account.interestRate || '0') * 100).toFixed(2)}% p.a.
                 </p>
               </div>
               <div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600">Current Balance</p>
+                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Current Balance</p>
                 <p className="text-sm sm:text-lg font-semibold text-green-600">
                   {formatCurrency(statementData.account.balance || '0')}
                 </p>
@@ -239,7 +239,7 @@ export default function AccountStatement() {
       ) : (
         <Card>
           <CardContent className="pt-6">
-            <div className="text-center py-8 text-slate-500">
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
               Failed to load account information
             </div>
           </CardContent>
@@ -262,9 +262,9 @@ export default function AccountStatement() {
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 pt-2">
             <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2 flex-1 w-full sm:w-auto">
               <div className="flex-1 w-full sm:w-auto">
-                <Label htmlFor="startDate" className="text-xs text-slate-500 mb-1 block">From</Label>
+                <Label htmlFor="startDate" className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">From</Label>
                 <div className="relative">
-                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
                   <Input
                     id="startDate"
                     type="date"
@@ -275,9 +275,9 @@ export default function AccountStatement() {
                 </div>
               </div>
               <div className="flex-1 w-full sm:w-auto">
-                <Label htmlFor="endDate" className="text-xs text-slate-500 mb-1 block">To</Label>
+                <Label htmlFor="endDate" className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">To</Label>
                 <div className="relative">
-                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
                   <Input
                     id="endDate"
                     type="date"
@@ -307,10 +307,10 @@ export default function AccountStatement() {
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="animate-pulse flex space-x-4">
-                  <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-                  <div className="h-4 bg-slate-200 rounded w-1/3"></div>
-                  <div className="h-4 bg-slate-200 rounded w-1/4"></div>
-                  <div className="h-4 bg-slate-200 rounded w-1/5"></div>
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
+                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/5"></div>
                 </div>
               ))}
             </div>
@@ -377,7 +377,7 @@ export default function AccountStatement() {
               />
             </>
           ) : (
-            <div className="text-center py-8 text-slate-500">
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
               <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
               <p>{hasDateFilter ? 'No transactions found for the selected date range' : 'No transactions found for this account'}</p>
               {hasDateFilter && (

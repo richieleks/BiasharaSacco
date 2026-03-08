@@ -60,8 +60,8 @@ export default function QuickActions() {
   return (
     <>
       <div className="section-card">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-900">Quick Actions</h3>
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Quick Actions</h3>
         </div>
         <div className="p-5 space-y-2.5">
           <Button

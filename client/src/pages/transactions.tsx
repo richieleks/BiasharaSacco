@@ -112,7 +112,7 @@ export default function Transactions() {
       case 'loan_disbursement':
         return <DollarSign className="w-4 h-4 text-purple-600" />;
       default:
-        return <DollarSign className="w-4 h-4 text-slate-600" />;
+        return <DollarSign className="w-4 h-4 text-slate-600 dark:text-slate-300" />;
     }
   };
 
@@ -131,7 +131,7 @@ export default function Transactions() {
       case 'fee_charge':
         return 'bg-orange-50 text-orange-700 border-orange-200/50';
       default:
-        return 'bg-slate-50 text-slate-700 border-slate-200/50';
+        return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
   };
 
@@ -144,9 +144,9 @@ export default function Transactions() {
       case 'failed':
         return 'bg-red-50 text-red-700 border-red-200/50';
       case 'cancelled':
-        return 'bg-slate-50 text-slate-700 border-slate-200/50';
+        return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
       default:
-        return 'bg-slate-50 text-slate-700 border-slate-200/50';
+        return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
   };
 
@@ -160,7 +160,7 @@ export default function Transactions() {
       case 'cancelled':
         return <X className="w-4 h-4 text-red-600" />;
       default:
-        return <Clock className="w-4 h-4 text-slate-600" />;
+        return <Clock className="w-4 h-4 text-slate-600 dark:text-slate-300" />;
     }
   };
 
@@ -175,10 +175,10 @@ export default function Transactions() {
   return (
     <div className="space-y-6 page-container animate-fade-in">
       <div>
-        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
+        <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
           {isPersonalView ? 'My Transactions' : 'Transactions'}
         </h2>
-        <p className="text-sm text-slate-500 mt-0.5">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
           {isPersonalView 
             ? 'View your transaction history and account activity' 
             : 'View and manage all SACCO transactions'
@@ -188,7 +188,7 @@ export default function Transactions() {
 
       <div className="section-card p-4">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 w-4 h-4" />
           <Input
             data-testid="input-search-transactions"
             placeholder="Search by reference number, member name, or transaction type..."
@@ -205,15 +205,15 @@ export default function Transactions() {
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="animate-pulse">
-                  <div className="flex items-center justify-between p-4 border border-slate-200 rounded-lg">
+                  <div className="flex items-center justify-between p-4 border border-slate-200 dark:border-slate-700 rounded-lg">
                     <div className="flex items-center space-x-4">
-                      <div className="w-8 h-8 bg-slate-100 rounded-lg"></div>
+                      <div className="w-8 h-8 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>
                       <div>
-                        <div className="h-4 bg-slate-100 rounded-lg w-32 mb-2"></div>
-                        <div className="h-3 bg-slate-100 rounded-lg w-24"></div>
+                        <div className="h-4 bg-slate-100 dark:bg-slate-800 rounded-lg w-32 mb-2"></div>
+                        <div className="h-3 bg-slate-100 dark:bg-slate-800 rounded-lg w-24"></div>
                       </div>
                     </div>
-                    <div className="h-8 bg-slate-100 rounded-lg w-24"></div>
+                    <div className="h-8 bg-slate-100 dark:bg-slate-800 rounded-lg w-24"></div>
                   </div>
                 </div>
               ))}
@@ -239,16 +239,16 @@ export default function Transactions() {
                         <TableCell>
                           <div className="flex items-center space-x-3">
                             <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
-                              <span className="text-slate-600 text-sm font-medium">
+                              <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">
                                 {transaction.member?.user?.firstName?.charAt(0)}
                                 {transaction.member?.user?.lastName?.charAt(0)}
                               </span>
                             </div>
                             <div>
-                              <p className="font-medium text-slate-900">
+                              <p className="font-medium text-slate-900 dark:text-slate-100">
                                 {transaction.member?.user?.firstName} {transaction.member?.user?.lastName}
                               </p>
-                              <p className="text-sm text-slate-500">{transaction.member?.memberNumber}</p>
+                              <p className="text-sm text-slate-500 dark:text-slate-400">{transaction.member?.memberNumber}</p>
                             </div>
                           </div>
                         </TableCell>
@@ -302,9 +302,9 @@ export default function Transactions() {
           ) : (
             <div className="section-card">
               <div className="py-16 text-center">
-                <DollarSign className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-slate-900 mb-2">No transactions found</h3>
-                <p className="text-slate-500">
+                <DollarSign className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">No transactions found</h3>
+                <p className="text-slate-500 dark:text-slate-400">
                   {search 
                     ? "No transactions match your search criteria." 
                     : isPersonalView 

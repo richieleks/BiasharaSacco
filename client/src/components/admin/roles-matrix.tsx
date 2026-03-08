@@ -112,8 +112,8 @@ export default function RolesMatrix() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Roles & Permissions Matrix</h1>
-        <p className="text-slate-600 mt-2">
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-slate-100">Roles & Permissions Matrix</h1>
+        <p className="text-slate-600 dark:text-slate-300 mt-2">
           Comprehensive overview of user roles, permissions, and system access levels
         </p>
       </div>
@@ -141,7 +141,7 @@ export default function RolesMatrix() {
                     <span className="font-medium">{role.title}</span>
                   </Badge>
                   {index < rolesData.length - 1 && (
-                    <span className="text-slate-400 text-sm">→</span>
+                    <span className="text-slate-400 dark:text-slate-500 text-sm">→</span>
                   )}
                 </div>
               );
@@ -167,15 +167,15 @@ export default function RolesMatrix() {
                     <IconComponent className="w-5 h-5 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-slate-900">{role.title}</h3>
-                    <p className="text-slate-600 text-sm">{role.description}</p>
+                    <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{role.title}</h3>
+                    <p className="text-slate-600 dark:text-slate-300 text-sm">{role.description}</p>
                   </div>
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Permissions */}
                 <div>
-                  <h4 className="font-semibold text-slate-900 mb-2 flex items-center space-x-2">
+                  <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2 flex items-center space-x-2">
                     <CheckCircle className="w-4 h-4 text-green-600" />
                     <span>Permissions</span>
                   </h4>
@@ -183,7 +183,7 @@ export default function RolesMatrix() {
                     {role.permissions.map((permission, index) => (
                       <div key={index} className="flex items-center space-x-2 text-sm">
                         <div className="w-1.5 h-1.5 bg-green-500 rounded-full flex-shrink-0" />
-                        <span className="text-slate-700">{permission}</span>
+                        <span className="text-slate-700 dark:text-slate-200">{permission}</span>
                       </div>
                     ))}
                   </div>
@@ -193,11 +193,11 @@ export default function RolesMatrix() {
 
                 {/* Data Access */}
                 <div>
-                  <h4 className="font-semibold text-slate-900 mb-2 flex items-center space-x-2">
+                  <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2 flex items-center space-x-2">
                     <Eye className="w-4 h-4 text-blue-600" />
                     <span>Data Access Level</span>
                   </h4>
-                  <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg">
+                  <p className="text-sm text-slate-700 dark:text-slate-200 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
                     {role.dataAccess}
                   </p>
                 </div>
@@ -206,11 +206,11 @@ export default function RolesMatrix() {
 
                 {/* Restrictions */}
                 <div>
-                  <h4 className="font-semibold text-slate-900 mb-2 flex items-center space-x-2">
+                  <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2 flex items-center space-x-2">
                     <XCircle className="w-4 h-4 text-red-600" />
                     <span>Restrictions</span>
                   </h4>
-                  <p className="text-sm text-slate-700 bg-red-50 p-3 rounded-lg border border-red-200">
+                  <p className="text-sm text-slate-700 dark:text-slate-200 bg-red-50 p-3 rounded-lg border border-red-200">
                     {role.restrictions}
                   </p>
                 </div>
@@ -234,10 +234,10 @@ export default function RolesMatrix() {
         <CardContent>
           <div className="space-y-6">
             {loanApprovalWorkflow.map((workflow, index) => (
-              <div key={index} className="bg-slate-50 p-4 rounded-lg">
+              <div key={index} className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="font-semibold text-slate-900">{workflow.type}</h4>
-                  <Badge variant="outline" className="bg-white">
+                  <h4 className="font-semibold text-slate-900 dark:text-slate-100">{workflow.type}</h4>
+                  <Badge variant="outline" className="bg-white dark:bg-slate-900">
                     {workflow.amount}
                   </Badge>
                 </div>
@@ -246,7 +246,7 @@ export default function RolesMatrix() {
                     <div key={stageIndex} className="flex items-center space-x-2">
                       <div className="flex flex-col items-center space-y-2 min-w-fit">
                         <div className={`w-3 h-3 rounded-full ${stage.color}`} />
-                        <span className="text-xs text-slate-600 text-center whitespace-nowrap">
+                        <span className="text-xs text-slate-600 dark:text-slate-300 text-center whitespace-nowrap">
                           {stage.stage}
                         </span>
                       </div>
@@ -273,8 +273,8 @@ export default function RolesMatrix() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <h4 className="font-semibold text-slate-900 mb-3">Role Assignment</h4>
-              <ul className="space-y-2 text-sm text-slate-700">
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">Role Assignment</h4>
+              <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
                 <li className="flex items-center space-x-2">
                   <div className="w-1.5 h-1.5 bg-blue-500 rounded-full" />
                   <span>Only Admins can assign/remove roles</span>
@@ -294,8 +294,8 @@ export default function RolesMatrix() {
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold text-slate-900 mb-3">Permission Enforcement</h4>
-              <ul className="space-y-2 text-sm text-slate-700">
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">Permission Enforcement</h4>
+              <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
                 <li className="flex items-center space-x-2">
                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
                   <span>Server-side validation on all operations</span>
