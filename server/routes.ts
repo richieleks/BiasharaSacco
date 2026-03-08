@@ -471,6 +471,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update user settings
+  app.get('/api/auth/settings', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const defaults = {
+        emailNotifications: true,
+        browserNotifications: true,
+        smsNotifications: false,
+        loanUpdates: true,
+        paymentReminders: true,
+        systemAlerts: true,
+        theme: "system",
+        language: "en",
+        soundEnabled: true,
+        autoLogout: 120,
+      };
+
+      const savedJson = await storage.getUserSettings(userId);
+      let saved = {};
+      if (savedJson) {
+        try { saved = JSON.parse(savedJson); } catch { saved = {}; }
+      }
+      res.json({ ...defaults, ...saved });
+    } catch (error) {
+      console.error("Error fetching user settings:", error);
+      res.status(500).json({ message: "Failed to fetch user settings" });
+    }
+  });
+
   app.patch('/api/auth/settings', isAuthenticated, async (req: AuthRequest, res) => {
     try {
       const userId = getUserId(req);
@@ -479,8 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const settings = req.body;
-      
-      // Validate settings structure (you could add more validation here)
+
       const validSettings = {
         emailNotifications: settings.emailNotifications ?? true,
         browserNotifications: settings.browserNotifications ?? true,
@@ -494,8 +525,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         autoLogout: settings.autoLogout ?? 120,
       };
 
-      // In a real application, you'd save these to a user_settings table
-      // For now, we'll just return success
+      await storage.upsertUserSettings(userId, JSON.stringify(validSettings));
+
       res.json({ 
         message: "Settings updated successfully", 
         settings: validSettings 

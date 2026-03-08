@@ -234,6 +234,16 @@ export default function AdminSettingsPage() {
     defaultValues: defaultUserSettings,
   });
 
+  const { data: savedUserSettings } = useQuery<UserSettingsData>({
+    queryKey: ['/api/auth/settings'],
+  });
+
+  useEffect(() => {
+    if (savedUserSettings) {
+      userForm.reset(savedUserSettings);
+    }
+  }, [savedUserSettings, userForm]);
+
   const updateUserSettingsMutation = useMutation({
     mutationFn: async (data: UserSettingsData) => {
       return await apiRequest('PATCH', `/api/auth/settings`, data);
@@ -243,7 +253,7 @@ export default function AdminSettingsPage() {
         title: "Settings Updated",
         description: "Your settings have been saved successfully.",
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/settings'] });
     },
     onError: (error: Error) => {
       toast({

@@ -64,6 +64,7 @@ import {
   type RolePermission,
   type InsertRolePermission,
   type SystemSetting,
+  userSettings,
   loanApprovals,
   type LoanApproval,
 } from "@shared/schema";
@@ -308,6 +309,10 @@ export interface IStorage {
   getSystemSetting(key: string): Promise<SystemSetting | undefined>;
   getAllSystemSettings(): Promise<SystemSetting[]>;
   upsertSystemSetting(key: string, value: string, type?: string, description?: string, updatedBy?: string): Promise<SystemSetting>;
+
+  // User Settings operations
+  getUserSettings(userId: string): Promise<string | null>;
+  upsertUserSettings(userId: string, settingsJson: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3018,6 +3023,23 @@ export class DatabaseStorage implements IStorage {
         .values({ settingKey: key, settingValue: value, settingType: type || 'string', description, updatedBy })
         .returning();
       return created;
+    }
+  }
+
+  async getUserSettings(userId: string): Promise<string | null> {
+    const [result] = await db.select().from(userSettings).where(eq(userSettings.userId, userId));
+    return result ? result.settingsJson : null;
+  }
+
+  async upsertUserSettings(userId: string, settingsJson: string): Promise<void> {
+    const existing = await this.getUserSettings(userId);
+    if (existing !== null) {
+      await db.update(userSettings)
+        .set({ settingsJson, updatedAt: new Date() })
+        .where(eq(userSettings.userId, userId));
+    } else {
+      await db.insert(userSettings)
+        .values({ userId, settingsJson });
     }
   }
 }

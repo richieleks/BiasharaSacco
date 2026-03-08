@@ -836,6 +836,17 @@ export const insertSystemSettingSchema = createInsertSchema(systemSettings).omit
 export type SystemSetting = typeof systemSettings.$inferSelect;
 export type InsertSystemSetting = typeof systemSettings.$inferInsert;
 
+// User Settings table for persisting per-user preferences
+export const userSettings = pgTable("user_settings", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id).unique(),
+  settingsJson: text("settings_json").notNull().default('{}'),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type UserSetting = typeof userSettings.$inferSelect;
+export type InsertUserSetting = typeof userSettings.$inferInsert;
+
 // Insert schemas for loan types and terms
 export const insertLoanTypeSchema = createInsertSchema(loanTypes).omit({
   id: true,

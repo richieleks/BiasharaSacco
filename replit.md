@@ -20,6 +20,7 @@ The system is divided into a `client/` (React frontend) and `server/` (Express.j
 - **Currency Formatting**: All monetary amounts use `formatCurrency(amount, prefix="UGX")` from `client/src/lib/utils.ts` with 0 decimal precision. Never use inline `UGX ${...toLocaleString()}` patterns. Keep `.toFixed(2)` only for data storage/API calls, not display.
 - **Business Logic**: A robust business rules validation system ensures compliance with SACCO regulations, providing real-time eligibility checks for loan applications based on membership duration, active saver status, and savings-to-loan ratios.
 - **Notifications**: A real-time notification system with WebSocket support keeps users informed of critical activities, offering various notification types and priority levels.
+- **User Preferences**: Per-user settings (theme, language, notification toggles, auto-logout timer) are persisted in the `user_settings` table as a JSON blob per user. The `GET /api/auth/settings` endpoint returns saved settings merged with defaults, and `PATCH /api/auth/settings` upserts them. The admin-settings Preferences tab loads saved values on mount via react-query and resets the form.
 - **Data Management**: Features include Excel file upload for bank statement processing and transaction import, comprehensive account statement generation, and an audit logging system for tracking all critical system activities. Loan import requires selecting a loan type beforehand and only maps to existing members (no auto-creation of members or savings accounts).
 
 ### Feature Specifications
