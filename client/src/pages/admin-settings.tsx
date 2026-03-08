@@ -38,7 +38,6 @@ import {
   Palette,
   Volume2,
   VolumeX,
-  ShieldCheck,
   UserCheck,
   Search,
   AlertCircle,
@@ -140,7 +139,7 @@ export default function AdminSettingsPage() {
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
   const { hasPermission } = useRBAC();
-  const [activeTab, setActiveTab] = useState<'system' | 'security' | 'email' | 'notifications' | 'business' | 'maintenance' | 'loantypes' | 'users' | 'preferences' | 'rbac'>('business');
+  const [activeTab, setActiveTab] = useState<'system' | 'security' | 'email' | 'notifications' | 'business' | 'maintenance' | 'loantypes' | 'users' | 'preferences'>('business');
 
   const settingsDefaults: AdminSettingsData = {
     maintenanceMode: false,
@@ -387,14 +386,8 @@ export default function AdminSettingsPage() {
           <TabButton
             tab="users"
             icon={Users}
-            label="User Management"
+            label="Users & Roles"
             isActive={activeTab === 'users'}
-          />
-          <TabButton
-            tab="rbac"
-            icon={ShieldCheck}
-            label="RBAC Management"
-            isActive={activeTab === 'rbac'}
           />
           <TabButton
             tab="maintenance"
@@ -1199,7 +1192,7 @@ export default function AdminSettingsPage() {
                 <UserManagementTab />
               )}
 
-              {!['users', 'rbac', 'preferences', 'loantypes'].includes(activeTab) && (
+              {!['users', 'preferences', 'loantypes'].includes(activeTab) && (
                 <div className="flex justify-end gap-4 pt-4 border-t">
                   <Button variant="outline" onClick={() => navigate('/')}>
                     Cancel
@@ -1559,11 +1552,6 @@ export default function AdminSettingsPage() {
             </Form>
           )}
 
-          {/* RBAC Management Tab */}
-          {activeTab === 'rbac' && (
-            <RBACManagementTab />
-          )}
-
         </div>
       </div>
     </div>
@@ -1717,11 +1705,11 @@ function UserManagementTab() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h3 className="text-lg font-medium mb-4">User Management</h3>
+        <h3 className="text-lg font-medium mb-1">Users & Roles</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Create, edit, and manage system user accounts and their roles
+          Manage user accounts, roles, and access permissions
         </p>
       </div>
 
@@ -1984,6 +1972,10 @@ function UserManagementTab() {
           </Form>
         </DialogContent>
       </Dialog>
+
+      <Separator />
+
+      <RBACManagementTab />
     </div>
   );
 }
