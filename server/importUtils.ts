@@ -73,7 +73,9 @@ export interface ImportResult {
   importedLoans?: number;
 }
 
-export async function importSavingsFromExcel(filePath: string, options?: { createNewMembers?: boolean; userId?: string }): Promise<ImportResult> {
+export type JournalEntryCallback = (mappingKey: string, amount: number, description: string, reference: string, userId: string) => Promise<void>;
+
+export async function importSavingsFromExcel(filePath: string, options?: { createNewMembers?: boolean; userId?: string; onJournalEntry?: JournalEntryCallback }): Promise<ImportResult> {
   const result: ImportResult = {
     success: false,
     totalRows: 0,
@@ -305,6 +307,19 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
       if (transactionEntries.length > 0) {
         for (const transaction of transactionEntries) {
           await storage.createTransaction(transaction);
+          if (options?.onJournalEntry && options?.userId) {
+            const mappingKey = transaction.transactionType === 'deposit' ? 'member_deposit' : 'member_withdrawal';
+            const amt = parseFloat(transaction.amount?.toString() || '0');
+            if (amt > 0) {
+              await options.onJournalEntry(
+                mappingKey,
+                amt,
+                `Imported ${transaction.transactionType} - ${accountNumber}`,
+                transaction.referenceNumber || `IMP-${Date.now()}`,
+                options.userId
+              );
+            }
+          }
         }
         console.log(`Imported ${transactionEntries.length} new transaction entries`);
       }
@@ -774,7 +789,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 }
 
 // Function to import loans from Excel file
-export async function importLoansFromExcel(filePath: string, options?: { userId?: string; loanTypeId?: number }): Promise<ImportResult> {
+export async function importLoansFromExcel(filePath: string, options?: { userId?: string; loanTypeId?: number; onJournalEntry?: JournalEntryCallback }): Promise<ImportResult> {
   const result: ImportResult = {
     success: false,
     totalRows: 0,
@@ -1029,11 +1044,23 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
         }
       }
 
-      // Create transactions
       if (transactionEntries.length > 0) {
         for (const transaction of transactionEntries) {
           const validatedTransactionData = insertTransactionSchema.parse(transaction);
           await storage.createTransaction(validatedTransactionData);
+          if (options?.onJournalEntry && options?.userId) {
+            const mappingKey = transaction.transactionType === 'loan_disbursement' ? 'loan_disbursement' : 'loan_repayment_principal';
+            const amt = parseFloat(transaction.amount?.toString() || '0');
+            if (amt > 0) {
+              await options.onJournalEntry(
+                mappingKey,
+                amt,
+                `Imported ${transaction.transactionType === 'loan_disbursement' ? 'loan disbursement' : 'loan repayment'} - ${member.memberNumber}`,
+                transaction.referenceNumber || `IMP-L-${Date.now()}`,
+                options.userId
+              );
+            }
+          }
         }
         console.log(`Imported ${transactionEntries.length} loan transactions`);
       }

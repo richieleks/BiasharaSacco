@@ -4455,7 +4455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const createNewMembers = req.body?.createNewMembers !== 'false';
       
       console.log('Starting import from:', filePath, '| createNewMembers:', createNewMembers);
-      const result = await importSavingsFromExcel(filePath, { createNewMembers, userId: getUserId(req) });
+      const result = await importSavingsFromExcel(filePath, { createNewMembers, userId: getUserId(req), onJournalEntry: recordJournalEntry });
       
       // Create audit log
       await storage.createAuditLog({
@@ -4466,7 +4466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
       });
 
-      broadcastDataUpdate(['/api/members', '/api/savings', '/api/transactions', '/api/dashboard']);
+      broadcastDataUpdate(['/api/members', '/api/savings', '/api/transactions', '/api/dashboard', '/api/sacco-accounts', '/api/sacco-journal-entries']);
       res.json(result);
     } catch (error) {
       console.error('Error importing savings data:', error);
@@ -4536,7 +4536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       console.log('Starting loan import from:', filePath, 'with loanTypeId:', loanTypeId);
-      const result = await importLoansFromExcel(filePath, { userId: getUserId(req), loanTypeId });
+      const result = await importLoansFromExcel(filePath, { userId: getUserId(req), loanTypeId, onJournalEntry: recordJournalEntry });
       
       await storage.createAuditLog({
         userId: getUserId(req) || '',
@@ -4546,7 +4546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: `Imported ${result.importedLoans || 0} loans. ${result.errors?.length || 0} errors.`,
       });
 
-      broadcastDataUpdate(['/api/loans', '/api/dashboard']);
+      broadcastDataUpdate(['/api/loans', '/api/dashboard', '/api/sacco-accounts', '/api/sacco-journal-entries']);
       res.json(result);
     } catch (error) {
       console.error('Error importing loan data:', error);
@@ -4687,6 +4687,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: 'completed',
           });
 
+          await recordJournalEntry(
+            'loan_repayment_principal',
+            repaymentAmount,
+            `Imported loan repayment - ${member.memberNumber}`,
+            reference || `IMP-LR-${Date.now()}-${i}`,
+            userId
+          );
+
           if (reference) existingRefs.add(reference);
           successCount++;
           totalAmount += repaymentAmount;
@@ -4702,7 +4710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: `Bulk loan repayment import (${loanType.displayName}): ${successCount} payments totaling UGX ${totalAmount.toLocaleString()}. ${errors.length} errors. ${skippedNoMember} unmatched accounts. ${skippedNoLoan} no matching loan.`,
       });
 
-      broadcastDataUpdate(['/api/loans', '/api/transactions', '/api/dashboard', '/api/savings']);
+      broadcastDataUpdate(['/api/loans', '/api/transactions', '/api/dashboard', '/api/savings', '/api/sacco-accounts', '/api/sacco-journal-entries']);
 
       res.json({
         success: true,
@@ -4816,6 +4824,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: 'completed',
           });
 
+          await recordJournalEntry(
+            'member_deposit',
+            amount,
+            `Imported savings deposit - ${member.memberNumber}`,
+            reference || `IMP-SD-${Date.now()}-${i}`,
+            userId
+          );
+
           if (reference) existingRefs.add(reference);
           successCount++;
           totalAmount += amount;
@@ -4831,7 +4847,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: `Bulk savings deposit import: ${successCount} deposits totaling UGX ${totalAmount.toLocaleString()}. ${errors.length} errors. ${skippedNoMember} unmatched accounts.`,
       });
 
-      broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard', '/api/members']);
+      broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard', '/api/members', '/api/sacco-accounts', '/api/sacco-journal-entries']);
 
       res.json({
         success: true,
