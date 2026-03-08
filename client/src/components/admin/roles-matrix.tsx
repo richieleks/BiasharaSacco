@@ -210,7 +210,7 @@ export default function RolesMatrix() {
                     <XCircle className="w-4 h-4 text-red-600" />
                     <span>Restrictions</span>
                   </h4>
-                  <p className="text-sm text-slate-700 dark:text-slate-200 bg-red-50 p-3 rounded-lg border border-red-200">
+                  <p className="text-sm text-slate-700 dark:text-slate-200 bg-red-50 dark:bg-red-950/50 p-3 rounded-lg border border-red-200">
                     {role.restrictions}
                   </p>
                 </div>
@@ -251,7 +251,7 @@ export default function RolesMatrix() {
                         </span>
                       </div>
                       {stageIndex < workflow.workflow.length - 1 && (
-                        <div className="flex-shrink-0 w-8 h-px bg-slate-300" />
+                        <div className="flex-shrink-0 w-8 h-px bg-slate-300 dark:bg-slate-600" />
                       )}
                     </div>
                   ))}

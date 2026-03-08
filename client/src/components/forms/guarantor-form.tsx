@@ -138,7 +138,7 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
       </div>
 
       {loanAmount > 0 && (
-        <div className="bg-blue-50 p-4 rounded-lg space-y-1 text-sm">
+        <div className="bg-blue-50 dark:bg-blue-950/50 p-4 rounded-lg space-y-1 text-sm">
           <div className="flex justify-between">
             <span className="text-slate-600 dark:text-slate-300">Loan Amount:</span>
             <span className="font-medium">{formatCurrency(loanAmount)}</span>
@@ -147,7 +147,7 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
             <span className="text-slate-600 dark:text-slate-300">Member Savings:</span>
             <span className="font-medium text-emerald-700">{formatCurrency(totalSavings)}</span>
           </div>
-          <div className="flex justify-between border-t border-blue-200 pt-1 mt-1">
+          <div className="flex justify-between border-t border-blue-200 dark:border-blue-800 pt-1 mt-1">
             <span className="font-medium text-blue-900">Amount to Guarantee:</span>
             <span className="font-bold text-blue-900">{formatCurrency(amountToGuarantee)}</span>
           </div>
@@ -256,7 +256,7 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
           />
 
           {formError && (
-            <div className="p-4 bg-red-50 border-2 border-red-400 rounded-lg">
+            <div className="p-4 bg-red-50 dark:bg-red-950/50 border-2 border-red-400 rounded-lg">
               <div className="flex items-start gap-2">
                 <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-red-700 font-medium">{formError}</p>

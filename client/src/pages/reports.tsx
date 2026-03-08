@@ -81,7 +81,7 @@ export default function Reports() {
       title: "Member Report",
       description: "Comprehensive list of all SACCO members with their status and account details",
       icon: Users,
-      color: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+      color: "bg-blue-100 text-blue-800 dark:text-blue-300 dark:bg-blue-900 dark:text-blue-200",
       fields: ["Member Number", "Full Name", "Status", "Department", "Join Date", "Total Savings"],
     },
     {
@@ -89,7 +89,7 @@ export default function Reports() {
       title: "Savings Summary",
       description: "Overview of all savings accounts, balances, and interest calculations",
       icon: PiggyBank,
-      color: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+      color: "bg-green-100 text-green-800 dark:text-green-300 dark:bg-green-900 dark:text-green-200",
       fields: ["Account Number", "Member Name", "Account Type", "Balance", "Interest Earned", "Last Transaction"],
     },
     {
@@ -97,7 +97,7 @@ export default function Reports() {
       title: "Loan Portfolio",
       description: "Active loans, repayment schedules, and delinquency analysis",
       icon: HandCoins,
-      color: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+      color: "bg-purple-100 text-purple-800 dark:text-purple-300 dark:bg-purple-900 dark:text-purple-200",
       fields: ["Loan Number", "Member", "Amount", "Balance", "Interest Rate", "Status", "Due Date"],
     },
     {
@@ -113,7 +113,7 @@ export default function Reports() {
       title: "Financial Performance",
       description: "Revenue, expenses, profit/loss, and key financial ratios",
       icon: TrendingUp,
-      color: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+      color: "bg-red-100 text-red-800 dark:text-red-300 dark:bg-red-900 dark:text-red-200",
       fields: ["Period", "Total Revenue", "Total Expenses", "Net Income", "Loan Portfolio", "Savings Total"],
     },
     {
@@ -531,15 +531,15 @@ export default function Reports() {
 
                   <div className="p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                      <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 rounded-xl p-4">
                         <p className="text-xs font-medium text-red-600">Delinquent Loans</p>
                         <p className="text-xl font-bold text-red-700 mt-1">{reportData.delinquent.count}</p>
                       </div>
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                      <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 rounded-xl p-4">
                         <p className="text-xs font-medium text-red-600">Total Overdue Amount</p>
                         <p className="text-xl font-bold text-red-700 mt-1">{formatCurrency(reportData.delinquent.totalAmount)}</p>
                       </div>
-                      <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                      <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 rounded-xl p-4">
                         <p className="text-xs font-medium text-red-600">Delinquency Rate</p>
                         <p className="text-xl font-bold text-red-700 mt-1">{reportData.delinquent.delinquencyRate}%</p>
                       </div>

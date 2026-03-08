@@ -60,8 +60,8 @@ export default function AnalyticsCharts() {
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
       <div className={chartCardClass}>
         <div className={chartHeaderClass}>
-          <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-            <DollarSign className="h-4 w-4 text-blue-600" />
+          <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center">
+            <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Distribution by Type</h3>
@@ -106,8 +106,8 @@ export default function AnalyticsCharts() {
 
       <div className={chartCardClass}>
         <div className={chartHeaderClass}>
-          <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-            <TrendingUp className="h-4 w-4 text-emerald-600" />
+          <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center">
+            <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Monthly Transaction Trends</h3>
@@ -132,8 +132,8 @@ export default function AnalyticsCharts() {
 
       <div className={chartCardClass}>
         <div className={chartHeaderClass}>
-          <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center">
-            <Users className="h-4 w-4 text-violet-600" />
+          <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center">
+            <Users className="h-4 w-4 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Member Growth</h3>
@@ -161,8 +161,8 @@ export default function AnalyticsCharts() {
 
       <div className={chartCardClass}>
         <div className={chartHeaderClass}>
-          <div className="w-8 h-8 rounded-lg bg-amber-50 flex items-center justify-center">
-            <Activity className="h-4 w-4 text-amber-600" />
+          <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center">
+            <Activity className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           </div>
           <div>
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Savings vs Loans Balance</h3>

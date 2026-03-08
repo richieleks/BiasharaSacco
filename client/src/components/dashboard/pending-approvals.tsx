@@ -86,7 +86,7 @@ export default function PendingApprovals() {
       <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-700">
         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Pending Approvals</h3>
         {totalPending > 0 && (
-          <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200/50 text-xs font-semibold">
+          <Badge variant="outline" className="bg-red-50 dark:bg-red-950/50 text-red-600 border-red-200/50 text-xs font-semibold">
             {totalPending}
           </Badge>
         )}
@@ -120,7 +120,7 @@ export default function PendingApprovals() {
                       {loan.member?.user?.firstName} {loan.member?.user?.lastName} - {formatCurrency(loan.principalAmount)}
                     </p>
                   </div>
-                  <Badge className="text-xs text-yellow-600 bg-yellow-100">Pending</Badge>
+                  <Badge className="text-xs text-yellow-600 bg-yellow-100 dark:bg-yellow-950/50">Pending</Badge>
                 </div>
                 <Button
                   size="sm"
@@ -143,7 +143,7 @@ export default function PendingApprovals() {
                       {withdrawal.member?.user?.firstName} {withdrawal.member?.user?.lastName} - {formatCurrency(withdrawal.amount)}
                     </p>
                   </div>
-                  <Badge className="text-xs text-yellow-600 bg-yellow-100">Pending</Badge>
+                  <Badge className="text-xs text-yellow-600 bg-yellow-100 dark:bg-yellow-950/50">Pending</Badge>
                 </div>
                 <Button
                   size="sm"

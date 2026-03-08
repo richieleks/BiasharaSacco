@@ -117,7 +117,7 @@ export default function ShareCapital() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
+              <div className="p-2 bg-blue-100 dark:bg-blue-950/50 rounded-lg">
                 <Users className="h-5 w-5 text-blue-600" />
               </div>
               <div className="min-w-0">
@@ -130,7 +130,7 @@ export default function ShareCapital() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg">
+              <div className="p-2 bg-green-100 dark:bg-green-950/50 rounded-lg">
                 <DollarSign className="h-5 w-5 text-green-600" />
               </div>
               <div className="min-w-0">
@@ -143,7 +143,7 @@ export default function ShareCapital() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
+              <div className="p-2 bg-orange-100 dark:bg-orange-950/50 rounded-lg">
                 <TrendingUp className="h-5 w-5 text-orange-600" />
               </div>
               <div className="min-w-0">
@@ -156,7 +156,7 @@ export default function ShareCapital() {
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-100 rounded-lg">
+              <div className="p-2 bg-emerald-100 dark:bg-emerald-950/50 rounded-lg">
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
               </div>
               <div className="min-w-0">
@@ -238,10 +238,10 @@ export default function ShareCapital() {
                             </TableCell>
                             <TableCell className="text-center">
                               <Badge className={member.isPaidUp
-                                ? 'bg-green-100 text-green-800'
+                                ? 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300'
                                 : paid > 0
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
+                                  ? 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-800 dark:text-yellow-300'
+                                  : 'bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300'
                               }>
                                 {member.isPaidUp ? 'Fully Paid' : paid > 0 ? 'Partial' : 'Unpaid'}
                               </Badge>
@@ -322,7 +322,7 @@ export default function ShareCapital() {
                             +{formatCurrency(tx.amount || '0')}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge className="bg-green-100 text-green-800 text-xs">
+                            <Badge className="bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300 text-xs">
                               {tx.status}
                             </Badge>
                           </TableCell>

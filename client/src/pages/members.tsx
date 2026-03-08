@@ -117,13 +117,13 @@ export default function Members() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+        return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
       case 'pending':
-        return 'bg-amber-50 text-amber-700 border-amber-200/50';
+        return 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50';
       case 'inactive':
         return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
       case 'suspended':
-        return 'bg-red-50 text-red-700 border-red-200/50';
+        return 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50';
       default:
         return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
@@ -215,7 +215,7 @@ export default function Members() {
                 <TableRow key={member.id} className="hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50" data-testid={`row-member-${member.id}`}>
                   <TableCell>
                     <div className="flex items-center space-x-3">
-                      <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-lg flex items-center justify-center">
                         <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">
                           {member.fullName ? getInitials(
                             member.fullName.split(' ')[0] || '', 

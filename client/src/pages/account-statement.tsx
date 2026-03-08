@@ -199,9 +199,9 @@ export default function AccountStatement() {
               <div>
                 <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Account Type</p>
                 <Badge className={
-                  statementData.account.accountType === 'regular' ? 'bg-blue-100 text-blue-800' :
-                  statementData.account.accountType === 'fixed_deposit' ? 'bg-green-100 text-green-800' :
-                  'bg-purple-100 text-purple-800'
+                  statementData.account.accountType === 'regular' ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300' :
+                  statementData.account.accountType === 'fixed_deposit' ? 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300' :
+                  'bg-purple-100 text-purple-800 dark:text-purple-300'
                 }>
                   {statementData.account.accountType?.replace('_', ' ')}
                 </Badge>
@@ -221,17 +221,17 @@ export default function AccountStatement() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 pt-4 border-t">
-              <div className="bg-green-50 rounded-lg p-3">
+              <div className="bg-green-50 dark:bg-green-950/50 rounded-lg p-3">
                 <p className="text-xs sm:text-sm font-medium text-green-700">Total Deposits{hasDateFilter ? ' (filtered)' : ''}</p>
-                <p className="text-base sm:text-lg font-semibold text-green-800">{formatCurrency(statementData.totalDeposits || 0)}</p>
+                <p className="text-base sm:text-lg font-semibold text-green-800 dark:text-green-300">{formatCurrency(statementData.totalDeposits || 0)}</p>
               </div>
-              <div className="bg-red-50 rounded-lg p-3">
+              <div className="bg-red-50 dark:bg-red-950/50 rounded-lg p-3">
                 <p className="text-xs sm:text-sm font-medium text-red-700">Total Withdrawals{hasDateFilter ? ' (filtered)' : ''}</p>
-                <p className="text-base sm:text-lg font-semibold text-red-800">{formatCurrency(statementData.totalWithdrawals || 0)}</p>
+                <p className="text-base sm:text-lg font-semibold text-red-800 dark:text-red-300">{formatCurrency(statementData.totalWithdrawals || 0)}</p>
               </div>
-              <div className="bg-blue-50 rounded-lg p-3">
+              <div className="bg-blue-50 dark:bg-blue-950/50 rounded-lg p-3">
                 <p className="text-xs sm:text-sm font-medium text-blue-700">Total Interest{hasDateFilter ? ' (filtered)' : ''}</p>
-                <p className="text-base sm:text-lg font-semibold text-blue-800">{formatCurrency(statementData.totalInterest || 0)}</p>
+                <p className="text-base sm:text-lg font-semibold text-blue-800 dark:text-blue-300">{formatCurrency(statementData.totalInterest || 0)}</p>
               </div>
             </div>
           </CardContent>
@@ -356,9 +356,9 @@ export default function AccountStatement() {
                         </TableCell>
                         <TableCell className="hidden sm:table-cell">
                           <Badge className={`text-[10px] ${
-                            transaction.status === 'completed' ? 'bg-green-100 text-green-800' :
-                            transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
+                            transaction.status === 'completed' ? 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300' :
+                            transaction.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-800 dark:text-yellow-300' :
+                            'bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300'
                           }`}>
                             {transaction.status}
                           </Badge>

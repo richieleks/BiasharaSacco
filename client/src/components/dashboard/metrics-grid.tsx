@@ -40,8 +40,8 @@ export default function MetricsGrid() {
   };
 
   const getChangeColor = (change: number) => {
-    if (change > 0) return "text-emerald-600 bg-emerald-50";
-    if (change < 0) return "text-red-600 bg-red-50";
+    if (change > 0) return "text-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 dark:text-emerald-400";
+    if (change < 0) return "text-red-600 bg-red-50 dark:bg-red-950/50 dark:text-red-400";
     return "text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50";
   };
 
@@ -58,7 +58,7 @@ export default function MetricsGrid() {
       value: (metrics.totalMembers || 0).toLocaleString(),
       icon: Users,
       gradient: "from-blue-500 to-blue-600",
-      iconBg: "bg-blue-50 text-blue-600",
+      iconBg: "bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400",
       accentColor: "bg-blue-500",
       change: metrics.memberChange || '0',
       subtitle: `${metrics.newMembersThisMonth || 0} new this month`,
@@ -68,7 +68,7 @@ export default function MetricsGrid() {
       value: formatCurrency(metrics.totalSavings || "0"),
       icon: PiggyBank,
       gradient: "from-emerald-500 to-emerald-600",
-      iconBg: "bg-emerald-50 text-emerald-600",
+      iconBg: "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400",
       accentColor: "bg-emerald-500",
       change: metrics.savingsChange || '0',
       subtitle: "Active accounts balance",
@@ -78,7 +78,7 @@ export default function MetricsGrid() {
       value: formatCurrency(metrics.activeLoans || "0"),
       icon: HandCoins,
       gradient: "from-amber-500 to-orange-500",
-      iconBg: "bg-amber-50 text-amber-600",
+      iconBg: "bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400",
       accentColor: "bg-amber-500",
       change: metrics.loansChange || '0',
       subtitle: `${metrics.pendingLoans || 0} pending approval`,
@@ -88,7 +88,7 @@ export default function MetricsGrid() {
       value: `${metrics.repaymentRate || "0"}%`,
       icon: TrendingUp,
       gradient: "from-violet-500 to-purple-600",
-      iconBg: "bg-violet-50 text-violet-600",
+      iconBg: "bg-violet-50 dark:bg-violet-950/50 text-violet-600 dark:text-violet-400",
       accentColor: "bg-violet-500",
       change: metrics.repaymentChange || '0',
       subtitle: `${metrics.totalTransactionsThisMonth || 0} transactions this month`,

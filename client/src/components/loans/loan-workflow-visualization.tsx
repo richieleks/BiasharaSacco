@@ -265,7 +265,7 @@ export default function LoanWorkflowVisualization({
                     className={cn(
                       "flex items-start gap-4 p-4 rounded-lg border-2 transition-all duration-500 cursor-pointer",
                       isActive && "border-primary bg-primary/5 shadow-md",
-                      isCompleted && "border-green-500 bg-green-50",
+                      isCompleted && "border-green-500 bg-green-50 dark:bg-green-950/50",
                       isPending && "border-gray-200 dark:border-gray-700 bg-gray-50"
                     )}
                     onClick={() => handleStepClick(index)}

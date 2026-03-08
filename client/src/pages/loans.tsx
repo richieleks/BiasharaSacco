@@ -21,22 +21,22 @@ import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, Arrow
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200/50';
-    case 'approved': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-    case 'disbursed': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-    case 'active': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+    case 'pending': return 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50';
+    case 'approved': return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
+    case 'disbursed': return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
+    case 'active': return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
     case 'completed': return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
-    case 'defaulted': return 'bg-red-50 text-red-700 border-red-200/50';
+    case 'defaulted': return 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50';
     default: return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
   }
 };
 
 const getLoanTypeColor = (type: string) => {
   switch (type) {
-    case 'personal': return 'bg-blue-50 text-blue-700 border-blue-200/50';
-    case 'business': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-    case 'emergency': return 'bg-red-50 text-red-700 border-red-200/50';
-    case 'asset': return 'bg-purple-50 text-purple-700 border-purple-200/50';
+    case 'personal': return 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50';
+    case 'business': return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
+    case 'emergency': return 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50';
+    case 'asset': return 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 border-purple-200/50';
     default: return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
   }
 };
@@ -267,7 +267,7 @@ export default function Loans() {
               {isPersonalView && (
                 <Button
                   variant="outline"
-                  className="border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl shadow-sm flex-1 sm:flex-none"
+                  className="border-blue-200 dark:border-blue-800 text-blue-700 hover:bg-blue-50 dark:bg-blue-950/50 rounded-xl shadow-sm flex-1 sm:flex-none"
                   onClick={() => setIsTopUpModalOpen(true)}
                   data-testid="button-topup"
                 >
@@ -325,7 +325,7 @@ export default function Loans() {
               </DialogHeader>
               {repaymentLoan && (
                 <div className="space-y-4">
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2 text-sm">
+                  <div className="p-4 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2 text-sm">
                     <div className="grid grid-cols-2 gap-2">
                       <div>
                         <span className="text-blue-600">Loan Number:</span>
@@ -375,7 +375,7 @@ export default function Loans() {
                   </div>
 
                   {parseFloat(repaymentAmount || '0') > 0 && (
-                    <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm">
+                    <div className="p-3 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 rounded-lg text-sm">
                       <div className="flex justify-between">
                         <span className="text-emerald-700">Payment Amount:</span>
                         <span className="font-medium text-emerald-900">{formatCurrency(repaymentAmount)}</span>
@@ -438,7 +438,7 @@ export default function Loans() {
               {isPersonalView ? 'My Loan Applications' : 'Loan Applications'}
             </h3>
             {pendingLoans && (
-              <Badge className="bg-blue-50 text-blue-700 border-blue-200/50">
+              <Badge className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50">
                 {totalItems}
               </Badge>
             )}
@@ -455,7 +455,7 @@ export default function Loans() {
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                       <div className="flex items-center space-x-4">
-                        <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-lg flex items-center justify-center flex-shrink-0">
                           <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">
                             {isPersonalView 
                               ? loan.loanNumber?.slice(-2) || 'LN'
@@ -475,7 +475,7 @@ export default function Loans() {
                       </div>
                       <div className="flex items-center flex-wrap gap-2">
                         {loan.isTopUp && (
-                          <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200/50">
+                          <Badge variant="outline" className="bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/50 dark:border-violet-800/50">
                             <ArrowUpCircle className="w-3 h-3 mr-1" />
                             Top-Up
                           </Badge>
@@ -509,7 +509,7 @@ export default function Loans() {
                     </div>
 
                     {loan.isTopUp && loan.previousLoanBalance && (
-                      <div className="mb-3 p-3 bg-violet-50 border border-violet-200 rounded-lg">
+                      <div className="mb-3 p-3 bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800 rounded-lg">
                         <div className="flex items-center text-sm text-violet-700">
                           <ArrowUpCircle className="w-4 h-4 mr-2" />
                           <span>Top-up loan — Previous balance of {formatCurrency(loan.previousLoanBalance)} was consolidated into this loan.</span>
@@ -559,7 +559,7 @@ export default function Loans() {
                             size="sm"
                             onClick={() => openRepaymentModal(loan)}
                             variant="outline"
-                            className="border-emerald-200/50 text-emerald-700 hover:bg-emerald-50 rounded-xl shadow-sm"
+                            className="border-emerald-200/50 text-emerald-700 hover:bg-emerald-50 dark:bg-emerald-950/50 rounded-xl shadow-sm"
                             data-testid={`button-repayment-loan-${loan.id}`}
                           >
                             <Banknote className="w-4 h-4 mr-1" />
@@ -620,7 +620,7 @@ export default function Loans() {
                 <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">Total Active Loans</p>
                 <p className="text-lg sm:text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1" data-testid="text-active-loans-count">{loanStats.activeCount}</p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 dark:bg-blue-950/50 rounded-lg flex items-center justify-center shrink-0">
                 <HandCoins className="text-blue-600 h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             </div>
@@ -632,7 +632,7 @@ export default function Loans() {
                 <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm font-medium">Outstanding Amount</p>
                 <p className="text-lg sm:text-2xl font-semibold text-slate-900 dark:text-slate-100 mt-1 truncate" data-testid="text-outstanding-amount">{formatCurrency(loanStats.totalOutstanding)}</p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 dark:bg-emerald-950/50 rounded-lg flex items-center justify-center shrink-0">
                 <DollarSign className="text-emerald-600 h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             </div>
@@ -646,7 +646,7 @@ export default function Loans() {
                   {loanStats.totalCount > 0 ? ((loanStats.defaultedCount / loanStats.totalCount) * 100).toFixed(1) : '0'}%
                 </p>
               </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-50 dark:bg-red-950/50 rounded-lg flex items-center justify-center shrink-0">
                 <XCircle className="text-red-600 h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             </div>

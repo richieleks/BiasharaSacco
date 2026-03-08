@@ -217,7 +217,7 @@ export default function DataImport() {
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 flex items-center flex-wrap gap-2">
           <Shield className="h-6 w-6 text-blue-600" />
           Data Import
-          <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/50">Admin Only</Badge>
+          <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50">Admin Only</Badge>
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Import customer data from Excel files</p>
       </div>
@@ -358,7 +358,7 @@ export default function DataImport() {
             </div>
             
             {selectedFile && (
-              <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg border border-blue-200 dark:border-blue-800">
                 <div className="flex items-center gap-3">
                   <FileSpreadsheet className="h-8 w-8 text-blue-600" />
                   <div>
@@ -601,23 +601,23 @@ export default function DataImport() {
 
             {/* Statistics Cards */}
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
-              <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-lg">
+              <div className="text-center p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg">
                 <div className="text-lg sm:text-2xl font-bold text-blue-600">{importResult.totalRows}</div>
                 <div className="text-xs sm:text-sm text-blue-600">Total Rows</div>
               </div>
-              <div className="text-center p-3 sm:p-4 bg-green-50 rounded-lg">
+              <div className="text-center p-3 sm:p-4 bg-green-50 dark:bg-green-950/50 rounded-lg">
                 <div className="text-lg sm:text-2xl font-bold text-green-600">{importResult.importedMembers}</div>
                 <div className="text-xs sm:text-sm text-green-600">New Members</div>
               </div>
-              <div className="text-center p-3 sm:p-4 bg-purple-50 rounded-lg">
+              <div className="text-center p-3 sm:p-4 bg-purple-50 dark:bg-purple-950/50 rounded-lg">
                 <div className="text-lg sm:text-2xl font-bold text-purple-600">{importResult.importedAccounts}</div>
                 <div className="text-xs sm:text-sm text-purple-600">Savings Accounts</div>
               </div>
-              <div className="text-center p-3 sm:p-4 bg-amber-50 rounded-lg">
+              <div className="text-center p-3 sm:p-4 bg-amber-50 dark:bg-amber-950/50 rounded-lg">
                 <div className="text-lg sm:text-2xl font-bold text-amber-600">{importResult.skippedDuplicates || 0}</div>
                 <div className="text-xs sm:text-sm text-amber-600">Duplicates Skipped</div>
               </div>
-              <div className="text-center p-3 sm:p-4 bg-red-50 rounded-lg">
+              <div className="text-center p-3 sm:p-4 bg-red-50 dark:bg-red-950/50 rounded-lg">
                 <div className="text-lg sm:text-2xl font-bold text-red-600">{(importResult.errors?.length || 0) - (importResult.skippedDuplicates || 0)}</div>
                 <div className="text-xs sm:text-sm text-red-600">Other Errors</div>
               </div>
@@ -636,11 +636,11 @@ export default function DataImport() {
                     const isDuplicate = error.error?.includes('Duplicate') || error.error?.includes('already exists');
                     const isMissing = error.error?.includes('Missing');
                     return (
-                      <Alert key={index} variant="destructive" className={isDuplicate ? '!border-amber-300 !bg-amber-50 !text-amber-900' : isMissing ? '!border-orange-300 !bg-orange-50 !text-orange-900' : ''}>
+                      <Alert key={index} variant="destructive" className={isDuplicate ? '!border-amber-300 dark:!border-amber-700 !bg-amber-50 dark:!bg-amber-950/50 !text-amber-900 dark:!text-amber-300' : isMissing ? '!border-orange-300 dark:!border-orange-700 !bg-orange-50 dark:!bg-orange-950/50 !text-orange-900 dark:!text-orange-300' : ''}>
                         <AlertDescription>
                           <strong>Row {error.row}:</strong> {error.error}
                           {error.data?.matchedField && (
-                            <span className="ml-1 text-xs font-medium px-1.5 py-0.5 rounded bg-amber-200/60 text-amber-800">
+                            <span className="ml-1 text-xs font-medium px-1.5 py-0.5 rounded bg-amber-200/60 text-amber-800 dark:text-amber-300">
                               matched by: {error.data.matchedField === 'idNumber' ? 'ID Number' : error.data.matchedField === 'staffAccountNumber' ? 'Staff Account' : 'Bank Account'}
                             </span>
                           )}

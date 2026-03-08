@@ -397,13 +397,13 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
               </>
             ) : (
               <div className="text-center p-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-950/50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <FileText className="w-8 h-8 text-green-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Application Complete
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
                   {savingsCoverLoan 
                     ? "Your loan application has been created successfully. Your savings fully cover this loan amount, so no guarantors are required. Your application is ready for review by the loan committee."
                     : "Your loan application has been created successfully. This loan type does not require guarantors, so your application is ready for review by the loan committee."}
@@ -435,18 +435,18 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
         </CardHeader>
         <CardContent>
           <div className="text-center p-6">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="w-16 h-16 bg-red-100 dark:bg-red-950/50 rounded-full flex items-center justify-center mx-auto mb-4">
               <FileText className="w-8 h-8 text-red-600" />
             </div>
             <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Membership Not Yet Approved
             </h3>
-            <p className="text-gray-600 mb-4">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
               Your membership status is currently <span className="font-medium capitalize text-red-600">{memberStatus}</span>. 
               You must have an approved membership before you can apply for loans.
             </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-blue-800">
+            <div className="bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-4">
+              <p className="text-sm text-blue-800 dark:text-blue-300">
                 <strong>Next Steps:</strong>
               </p>
               <ul className="text-sm text-blue-700 mt-2 list-disc list-inside">
@@ -477,10 +477,10 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
       <CardContent>
         {/* Pending Loans Warning */}
         {hasPendingLoans && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <div className="mb-6 p-4 bg-red-50 dark:bg-red-950/50 border border-red-200 rounded-lg">
             <div className="flex items-center">
               <AlertCircle className="w-5 h-5 text-red-600 mr-2" />
-              <div className="text-sm text-red-800">
+              <div className="text-sm text-red-800 dark:text-red-300">
                 <strong>Pending Loan Application:</strong> You currently have a loan application pending approval. 
                 You cannot apply for a new loan until your existing application is approved or rejected.
               </div>
@@ -506,8 +506,8 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
             </div>
 
             {/* Auto-populated fields notice */}
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-              <h4 className="font-medium text-sm text-blue-800 mb-1">Auto-populated Fields</h4>
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
+              <h4 className="font-medium text-sm text-blue-800 dark:text-blue-300 mb-1">Auto-populated Fields</h4>
               <p className="text-xs text-blue-700">
                 Fields marked with * are automatically populated from your member profile and cannot be edited.
                 If any information is incorrect, please update your member profile first.
@@ -518,17 +518,17 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
             {eligibilityResult && (
               <div className="w-full mb-6">
                 {eligibilityResult.isEligible ? (
-                  <Alert className="border-green-500 bg-green-50">
+                  <Alert className="border-green-500 bg-green-50 dark:bg-green-950/50">
                     <CheckCircle className="h-5 w-5 text-green-600" />
                     <AlertDescription className="text-green-900">
-                      <div className="font-bold text-lg text-green-800 mb-2">✅ LOAN APPLICATION ELIGIBLE</div>
+                      <div className="font-bold text-lg text-green-800 dark:text-green-300 mb-2">✅ LOAN APPLICATION ELIGIBLE</div>
                       {eligibilityResult.maxLoanAmount && (
-                        <div className="text-sm font-medium text-green-800 mb-2">
+                        <div className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
                           💰 Maximum loan amount: {formatCurrency(eligibilityResult.maxLoanAmount)}
                         </div>
                       )}
                       {eligibilityResult.warnings?.length > 0 && (
-                        <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                        <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-950/50 border border-yellow-200 rounded-md">
                           <div className="text-sm">
                             <strong className="text-yellow-800">⚠️ Important Notes:</strong>
                             <ul className="list-disc list-inside mt-1 space-y-1">
@@ -542,12 +542,12 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                     </AlertDescription>
                   </Alert>
                 ) : (
-                  <Alert className="border-red-500 bg-red-50">
+                  <Alert className="border-red-500 bg-red-50 dark:bg-red-950/50">
                     <AlertCircle className="h-5 w-5 text-red-600" />
                     <AlertDescription className="text-red-900">
                       <div className="font-bold text-xl mb-4">❌ LOAN APPLICATION NOT ELIGIBLE</div>
                       <div className="space-y-4">
-                        <div className="font-semibold text-red-800 mb-3">You must meet the following requirements before applying:</div>
+                        <div className="font-semibold text-red-800 dark:text-red-300 mb-3">You must meet the following requirements before applying:</div>
                         <div className="space-y-3">
                           {eligibilityResult.violations?.map((violation: string, index: number) => (
                             <div key={index} className="p-4 bg-white dark:bg-slate-900 border border-red-200 rounded-md shadow-sm">
@@ -555,8 +555,8 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                             </div>
                           )) || <div className="text-red-600">No violations data available</div>}
                         </div>
-                        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-                          <div className="text-sm text-blue-800">
+                        <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-md">
+                          <div className="text-sm text-blue-800 dark:text-blue-300">
                             <strong>📞 Need Help?</strong> Contact the SACCO office for assistance with any of these requirements.
                           </div>
                         </div>
@@ -671,7 +671,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                           max={selectedLoanType ? (selectedLoanType.maxTerm || selectedLoanType.max_term || 60) : 60}
                           value={field.value}
                           onChange={field.onChange}
-                          className={selectedLoanType ? "bg-muted border-blue-200" : ""}
+                          className={selectedLoanType ? "bg-muted border-blue-200 dark:border-blue-800" : ""}
                         />
                         {selectedLoanType && (
                           <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
@@ -704,7 +704,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                           value={field.value}
                           onChange={field.onChange}
                           disabled={!!selectedLoanType}
-                          className={selectedLoanType ? "bg-muted border-blue-200" : ""}
+                          className={selectedLoanType ? "bg-muted border-blue-200 dark:border-blue-800" : ""}
                         />
                         {selectedLoanType && (
                           <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
@@ -731,7 +731,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                           value={field.value ? formatCurrency(field.value) : 'Not set in profile'}
                           onChange={field.onChange}
                           disabled={true}
-                          className="bg-muted border-blue-200"
+                          className="bg-muted border-blue-200 dark:border-blue-800"
                         />
                         <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
                       </div>
@@ -754,7 +754,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                           value={field.value || 'Not set in profile'}
                           onChange={field.onChange}
                           disabled={true}
-                          className="bg-muted border-blue-200"
+                          className="bg-muted border-blue-200 dark:border-blue-800"
                         />
                         <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
                       </div>
@@ -778,7 +778,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                           value={field.value || 'Not set in profile'}
                           onChange={field.onChange}
                           disabled={true}
-                          className="bg-muted border-blue-200"
+                          className="bg-muted border-blue-200 dark:border-blue-800"
                         />
                         <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
                       </div>
@@ -801,7 +801,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                           value={field.value || 'Not set in profile'}
                           onChange={field.onChange}
                           disabled={true}
-                          className="bg-muted border-blue-200"
+                          className="bg-muted border-blue-200 dark:border-blue-800"
                         />
                         <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
                       </div>
@@ -825,7 +825,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                           value={field.value ? formatCurrency(field.value) : 'UGX 0'}
                           onChange={field.onChange}
                           disabled={true}
-                          className="bg-muted border-blue-200"
+                          className="bg-muted border-blue-200 dark:border-blue-800"
                         />
                         <div className="absolute right-2 top-2 text-xs text-blue-600">Auto</div>
                       </div>

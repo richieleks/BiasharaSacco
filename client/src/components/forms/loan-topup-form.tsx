@@ -298,13 +298,13 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
               </>
             ) : (
               <div className="text-center p-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-950/50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Application Complete
                 </h3>
-                <p className="text-gray-600 mb-4">
+                <p className="text-gray-600 dark:text-gray-400 mb-4">
                   Your savings fully cover this loan amount, so no guarantors are required. Your top-up application is ready for review by the loan committee.
                 </p>
               </div>
@@ -381,8 +381,8 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
             />
 
             {selectedLoan && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-2">
-                <h4 className="font-medium text-sm text-blue-800">Current Loan Details</h4>
+              <div className="p-4 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg space-y-2">
+                <h4 className="font-medium text-sm text-blue-800 dark:text-blue-300">Current Loan Details</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div>
                     <span className="text-blue-600">Loan Number:</span>
@@ -410,7 +410,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                   </div>
                 </div>
                 {minRepaymentsRequired > 0 && (
-                  <div className="mt-2 pt-2 border-t border-blue-200 text-sm text-blue-700">
+                  <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800 text-sm text-blue-700">
                     <AlertCircle className="w-3.5 h-3.5 inline mr-1" />
                     This loan type requires at least <strong>{minRepaymentsRequired}</strong> repayment(s) before a top-up can be requested.
                   </div>
@@ -507,7 +507,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
             />
 
             {validationErrors.length > 0 && (
-              <div className="p-4 bg-red-50 border-2 border-red-400 rounded-lg">
+              <div className="p-4 bg-red-50 dark:bg-red-950/50 border-2 border-red-400 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
                   <h4 className="font-semibold text-red-700 text-sm">Validation Errors</h4>
@@ -521,7 +521,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
             )}
 
             {serverErrors.length > 0 && (
-              <div className="p-4 bg-red-50 border-2 border-red-400 rounded-lg">
+              <div className="p-4 bg-red-50 dark:bg-red-950/50 border-2 border-red-400 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
                   <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
                   <h4 className="font-semibold text-red-700 text-sm">Submission Errors</h4>
@@ -535,7 +535,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
             )}
 
             {selectedLoan && topUpAmount > 0 && validationErrors.length === 0 && (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-lg space-y-2">
+              <div className="p-4 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 rounded-lg space-y-2">
                 <h4 className="font-medium text-sm text-emerald-800">New Loan Summary</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
                   <div>
@@ -616,9 +616,9 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
               )}
             />
 
-            <Alert className="border-amber-200 bg-amber-50">
+            <Alert className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50">
               <AlertCircle className="h-4 w-4 text-amber-600" />
-              <AlertDescription className="text-amber-800 text-sm">
+              <AlertDescription className="text-amber-800 dark:text-amber-300 text-sm">
                 Your current loan will be settled and replaced by a new loan for the combined total amount.
                 The top-up request will go through the standard approval process before disbursement.
               </AlertDescription>

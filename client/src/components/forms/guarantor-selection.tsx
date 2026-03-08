@@ -123,7 +123,7 @@ export default function GuarantorSelection({
                 <DialogTitle>Add Guarantor</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
-                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700">
                   <strong>Note:</strong> Only approved/active SACCO members can serve as guarantors for loan applications.
                 </div>
                 
@@ -164,7 +164,7 @@ export default function GuarantorSelection({
                 </div>
 
                 {formError && (
-                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                  <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/50 border border-red-200 rounded-lg text-sm text-red-700">
                     <AlertCircle className="h-4 w-4 flex-shrink-0" />
                     {formError}
                   </div>
@@ -259,7 +259,7 @@ export default function GuarantorSelection({
                     size="sm"
                     onClick={() => removeGuarantor(index)}
                     disabled={disabled}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:bg-red-950/50"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -271,7 +271,7 @@ export default function GuarantorSelection({
 
         {/* Validation Messages */}
         {guarantors.length > 0 && guaranteeCoverage < 50 && (
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg">
             <p className="text-sm text-amber-700">
               ⚠️ Low guarantee coverage. Consider adding more guarantors or increasing guarantee amounts.
             </p>

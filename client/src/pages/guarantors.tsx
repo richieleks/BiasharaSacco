@@ -185,11 +185,11 @@ export default function Guarantors() {
       case 'approved':
       case 'active':
       case 'disbursed':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+        return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
       case 'rejected':
-        return 'bg-red-50 text-red-700 border-red-200/50';
+        return 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50';
       default:
-        return 'bg-amber-50 text-amber-700 border-amber-200/50';
+        return 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50';
     }
   };
 
@@ -506,7 +506,7 @@ export default function Guarantors() {
                               {guarantors.map((guarantor: any) => (
                                 <div key={guarantor.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
                                   <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                                    <div className="w-8 h-8 bg-blue-100 dark:bg-blue-950/50 rounded-full flex items-center justify-center shrink-0">
                                       <UserCheck className="h-4 w-4 text-blue-600" />
                                     </div>
                                     <div>
@@ -531,7 +531,7 @@ export default function Guarantors() {
                                         variant="outline"
                                         onClick={() => resendGuarantorMutation.mutate({ guarantorId: guarantor.id })}
                                         disabled={resendGuarantorMutation.isPending}
-                                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                                        className="text-blue-600 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:bg-blue-950/50"
                                       >
                                         <RefreshCw className="h-3 w-3 mr-1" />
                                         Resend
@@ -618,7 +618,7 @@ export default function Guarantors() {
                           <FileText className="h-5 w-5 text-amber-600" />
                           <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Guarantee Request</h3>
                         </div>
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200/50">
+                        <Badge variant="outline" className="bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50">
                           <Clock className="h-3 w-3 mr-1" />
                           Pending
                         </Badge>
@@ -662,7 +662,7 @@ export default function Guarantors() {
                         {/* Guarantee Details */}
                         <div className="space-y-3">
                           <h4 className="font-medium text-slate-900 dark:text-slate-100">Your Guarantee</h4>
-                          <div className="bg-blue-50 p-4 rounded-lg">
+                          <div className="bg-blue-50 dark:bg-blue-950/50 p-4 rounded-lg">
                             <div className="flex items-center gap-2 mb-2">
                               <DollarSign className="h-4 w-4 text-blue-600" />
                               <span className="font-medium text-blue-900">Amount to Guarantee</span>
@@ -693,7 +693,7 @@ export default function Guarantors() {
                         <Button
                           variant="outline"
                           onClick={() => openApprovalDialog(request)}
-                          className="border-red-300 text-red-700 hover:bg-red-50"
+                          className="border-red-300 text-red-700 hover:bg-red-50 dark:bg-red-950/50"
                         >
                           <XCircle className="h-4 w-4 mr-2" />
                           Reject Request
@@ -829,7 +829,7 @@ export default function Guarantors() {
                   variant="outline"
                   onClick={handleReject}
                   disabled={rejectGuarantorMutation.isPending || !comments.trim()}
-                  className="border-red-300 text-red-700 hover:bg-red-50 flex-1"
+                  className="border-red-300 text-red-700 hover:bg-red-50 dark:bg-red-950/50 flex-1"
                 >
                   <XCircle className="h-4 w-4 mr-2" />
                   Reject Request
@@ -928,7 +928,7 @@ export default function Guarantors() {
                   ))}
                 </div>
 
-                <div className="bg-blue-50 p-4 rounded-lg mt-4">
+                <div className="bg-blue-50 dark:bg-blue-950/50 p-4 rounded-lg mt-4">
                   <div className="flex items-center gap-2 mb-2">
                     <DollarSign className="h-4 w-4 text-blue-600" />
                     <span className="font-medium text-blue-900">Total Guarantee Coverage</span>

@@ -122,11 +122,11 @@ function CommitteeApprovalActivity() {
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Reviewed</p>
             <p className="text-xl font-bold mt-0.5">{summary.totalReviewed}</p>
           </div>
-          <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-center">
+          <div className="bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-xl p-3 text-center">
             <p className="text-xs font-medium text-green-600">Approved</p>
             <p className="text-xl font-bold text-green-700 mt-0.5">{summary.totalApproved}</p>
           </div>
-          <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-center">
+          <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 rounded-xl p-3 text-center">
             <p className="text-xs font-medium text-red-600">Declined</p>
             <p className="text-xl font-bold text-red-700 mt-0.5">{summary.totalRejected}</p>
           </div>
@@ -166,7 +166,7 @@ function CommitteeApprovalActivity() {
                     <TableCell className="hidden sm:table-cell">{formatCurrency(item.principalAmount)}</TableCell>
                     <TableCell>
                       {item.action === 'approved' ? (
-                        <Badge className="bg-green-100 text-green-700 border-green-200 gap-1">
+                        <Badge className="bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 gap-1">
                           <CheckCircle className="h-3 w-3" />
                           Approved
                         </Badge>
@@ -428,7 +428,7 @@ function MemberDashboard() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-blue-50 p-1.5"><User className="h-3.5 w-3.5 text-blue-600" /></div>
+                  <div className="rounded-md bg-blue-50 dark:bg-blue-950/50 p-1.5"><User className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" /></div>
                   Basic Information
                 </CardTitle>
               </CardHeader>
@@ -447,7 +447,7 @@ function MemberDashboard() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-green-50 p-1.5"><Phone className="h-3.5 w-3.5 text-green-600" /></div>
+                  <div className="rounded-md bg-green-50 dark:bg-green-950/50 p-1.5"><Phone className="h-3.5 w-3.5 text-green-600 dark:text-green-400" /></div>
                   Contact Information
                 </CardTitle>
               </CardHeader>
@@ -463,7 +463,7 @@ function MemberDashboard() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-amber-50 p-1.5"><Briefcase className="h-3.5 w-3.5 text-amber-600" /></div>
+                  <div className="rounded-md bg-amber-50 dark:bg-amber-950/50 p-1.5"><Briefcase className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /></div>
                   Employment Details
                 </CardTitle>
               </CardHeader>
@@ -481,7 +481,7 @@ function MemberDashboard() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-rose-50 p-1.5"><Heart className="h-3.5 w-3.5 text-rose-600" /></div>
+                  <div className="rounded-md bg-rose-50 dark:bg-rose-950/50 p-1.5"><Heart className="h-3.5 w-3.5 text-rose-600" /></div>
                   Next of Kin & Beneficiary
                 </CardTitle>
               </CardHeader>
@@ -503,7 +503,7 @@ function MemberDashboard() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-green-50 p-1.5"><Wallet className="h-3.5 w-3.5 text-green-600" /></div>
+                  <div className="rounded-md bg-green-50 dark:bg-green-950/50 p-1.5"><Wallet className="h-3.5 w-3.5 text-green-600" /></div>
                   Savings Information
                 </CardTitle>
               </CardHeader>
@@ -519,7 +519,7 @@ function MemberDashboard() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-violet-50 p-1.5"><TrendingUp className="h-3.5 w-3.5 text-violet-600" /></div>
+                  <div className="rounded-md bg-violet-50 dark:bg-violet-950/50 p-1.5"><TrendingUp className="h-3.5 w-3.5 text-violet-600" /></div>
                   Share Capital
                 </CardTitle>
               </CardHeader>
@@ -543,7 +543,7 @@ function MemberDashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-green-50 p-1.5"><PiggyBank className="h-3.5 w-3.5 text-green-600" /></div>
+                  <div className="rounded-md bg-green-50 dark:bg-green-950/50 p-1.5"><PiggyBank className="h-3.5 w-3.5 text-green-600" /></div>
                   Savings Accounts
                 </CardTitle>
                 <Button variant="outline" size="sm" onClick={() => setLocation('/savings')}>
@@ -572,7 +572,7 @@ function MemberDashboard() {
                           <TableCell><Badge variant="outline" className="capitalize">{acc.accountType}</Badge></TableCell>
                           <TableCell className="font-semibold text-green-600">{formatCurrency(acc.balance || '0')}</TableCell>
                           <TableCell>
-                            <Badge className={acc.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'}>
+                            <Badge className={acc.status === 'active' ? 'bg-green-100 text-green-800 dark:text-green-300' : 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'}>
                               {acc.status}
                             </Badge>
                           </TableCell>
@@ -602,7 +602,7 @@ function MemberDashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-amber-50 p-1.5"><HandCoins className="h-3.5 w-3.5 text-amber-600" /></div>
+                  <div className="rounded-md bg-amber-50 dark:bg-amber-950/50 p-1.5"><HandCoins className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" /></div>
                   My Loans
                 </CardTitle>
                 <Button variant="outline" size="sm" onClick={() => setLocation('/loans')}>
@@ -633,10 +633,10 @@ function MemberDashboard() {
                           <TableCell>{formatCurrency(loan.monthlyPayment || '0')}</TableCell>
                           <TableCell>
                             <Badge className={
-                              loan.status === 'approved' || loan.status === 'disbursed' ? 'bg-green-100 text-green-800' :
-                              loan.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                              loan.status === 'completed' ? 'bg-blue-100 text-blue-800' :
-                              loan.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              loan.status === 'approved' || loan.status === 'disbursed' ? 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300' :
+                              loan.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-800 dark:text-yellow-300' :
+                              loan.status === 'completed' ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300' :
+                              loan.status === 'rejected' ? 'bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300' :
                               'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
                             }>
                               {loan.status}
@@ -662,7 +662,7 @@ function MemberDashboard() {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-blue-50 p-1.5"><CreditCard className="h-3.5 w-3.5 text-blue-600" /></div>
+                  <div className="rounded-md bg-blue-50 dark:bg-blue-950/50 p-1.5"><CreditCard className="h-3.5 w-3.5 text-blue-600" /></div>
                   Transaction History
                 </CardTitle>
                 <Button variant="outline" size="sm" onClick={() => setLocation('/transactions')}>
@@ -704,8 +704,8 @@ function MemberDashboard() {
                           </TableCell>
                           <TableCell>
                             <Badge className={
-                              txn.status === 'completed' ? 'bg-green-100 text-green-800' :
-                              txn.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              txn.status === 'completed' ? 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300' :
+                              txn.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-800 dark:text-yellow-300' :
                               'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200'
                             }>
                               {txn.status}

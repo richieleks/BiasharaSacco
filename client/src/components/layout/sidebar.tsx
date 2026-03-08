@@ -68,7 +68,7 @@ export default function Sidebar() {
                   className={cn(
                     "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                     isActive
-                      ? "bg-primary-50 text-primary-700"
+                      ? "bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300"
                       : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-800 hover:text-slate-900 dark:text-slate-100 dark:hover:text-white"
                   )}
                 >
@@ -95,7 +95,7 @@ export default function Sidebar() {
                     className={cn(
                       "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                       isActive
-                        ? "bg-primary-50 text-primary-700"
+                        ? "bg-primary-50 dark:bg-primary-950/50 text-primary-700 dark:text-primary-300"
                         : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50 dark:hover:bg-slate-800 hover:text-slate-900 dark:text-slate-100 dark:hover:text-white"
                     )}
                   >

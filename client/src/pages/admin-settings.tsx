@@ -1698,10 +1698,10 @@ function UserManagementTab() {
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case 'admin': return 'bg-red-100 text-red-800';
-      case 'manager': return 'bg-purple-100 text-purple-800';
-      case 'committee': return 'bg-blue-100 text-blue-800';
-      case 'teller': return 'bg-green-100 text-green-800';
+      case 'admin': return 'bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300';
+      case 'manager': return 'bg-purple-100 text-purple-800 dark:text-purple-300';
+      case 'committee': return 'bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300';
+      case 'teller': return 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300';
       default: return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200';
     }
   };

@@ -218,8 +218,8 @@ export default function LoanApprovalWorkflow() {
             </div>
 
             {stage === 'committee' && approvalData && (
-              <div className="p-2 bg-blue-50 border border-blue-200 rounded">
-                <div className="flex items-center gap-2 text-sm text-blue-800">
+              <div className="p-2 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded">
+                <div className="flex items-center gap-2 text-sm text-blue-800 dark:text-blue-300">
                   <Users className="h-4 w-4" />
                   <span className="font-medium">
                     Committee Approvals: {approvalData.approvalCount}/{approvalData.minApprovers}
@@ -285,7 +285,7 @@ export default function LoanApprovalWorkflow() {
         </div>
 
         {parseFloat(loan.principalAmount) > 500000 && (
-          <div className="flex items-center gap-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-800">
+          <div className="flex items-center gap-2 p-2 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded text-amber-800 dark:text-amber-300">
             <AlertTriangle className="h-4 w-4" />
             <span className="text-sm">High-value loan - requires careful risk assessment</span>
           </div>

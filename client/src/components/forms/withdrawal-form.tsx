@@ -163,8 +163,8 @@ export default function WithdrawalForm({ onSuccess }: WithdrawalFormProps) {
         />
 
         {selectedAccount && (
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <p className="text-sm text-blue-800">
+          <div className="p-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm text-blue-800 dark:text-blue-300">
               <span className="font-medium">Available Balance:</span> {formatCurrency(selectedAccount.balance)}
             </p>
           </div>
@@ -205,7 +205,7 @@ export default function WithdrawalForm({ onSuccess }: WithdrawalFormProps) {
           )}
         />
 
-        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <div className="p-3 bg-yellow-50 dark:bg-yellow-950/50 border border-yellow-200 rounded-lg">
           <p className="text-sm text-yellow-800">
             <span className="font-medium">Note:</span> Withdrawal requests require approval before processing.
           </p>

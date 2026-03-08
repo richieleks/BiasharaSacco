@@ -79,11 +79,11 @@ export default function Savings() {
   const getAccountTypeColor = (type: string) => {
     switch (type) {
       case 'regular':
-        return 'bg-blue-50 text-blue-700 border-blue-200/50';
+        return 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50';
       case 'fixed_deposit':
-        return 'bg-green-50 text-green-700 border-green-200/50';
+        return 'bg-green-50 dark:bg-green-950/50 text-green-700 border-green-200 dark:border-green-800/50';
       case 'group':
-        return 'bg-purple-50 text-purple-700 border-purple-200/50';
+        return 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 border-purple-200/50';
       default:
         return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
@@ -92,11 +92,11 @@ export default function Savings() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-50 text-green-700 border-green-200/50';
+        return 'bg-green-50 dark:bg-green-950/50 text-green-700 border-green-200 dark:border-green-800/50';
       case 'closed':
         return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
       case 'frozen':
-        return 'bg-red-50 text-red-700 border-red-200/50';
+        return 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50';
       default:
         return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
@@ -147,7 +147,7 @@ export default function Savings() {
 
               <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
                 <DialogTrigger asChild>
-                  <Button data-testid="button-withdrawal-request" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
+                  <Button data-testid="button-withdrawal-request" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 dark:bg-red-950/50 rounded-xl shadow-sm">
                     <ArrowDown className="w-4 h-4 mr-2" />
                     Withdrawal Request
                   </Button>
@@ -207,7 +207,7 @@ export default function Savings() {
                 <div className="p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div className="flex items-center space-x-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center shrink-0">
+                      <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-lg flex items-center justify-center shrink-0">
                         <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">
                           {account.member?.fullName ? account.member.fullName.split(' ').map((n: string) => n.charAt(0)).slice(0, 2).join('').toUpperCase() : `${account.member?.user?.firstName?.charAt(0) || ''}${account.member?.user?.lastName?.charAt(0) || ''}`}
                         </span>

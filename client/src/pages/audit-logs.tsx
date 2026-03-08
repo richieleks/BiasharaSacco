@@ -11,13 +11,13 @@ import { Shield, Search, Calendar, Activity, FileText, UserX } from "lucide-reac
 import { format } from "date-fns";
 
 const actionColors: Record<string, string> = {
-  create: "bg-emerald-50 text-emerald-700 border-emerald-200/50",
-  update: "bg-blue-50 text-blue-700 border-blue-200/50",
-  delete: "bg-red-50 text-red-700 border-red-200/50",
-  approve: "bg-emerald-50 text-emerald-700 border-emerald-200/50",
-  reject: "bg-amber-50 text-amber-700 border-amber-200/50",
-  login: "bg-blue-50 text-blue-700 border-blue-200/50",
-  logout: "bg-blue-50 text-blue-700 border-blue-200/50",
+  create: "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50",
+  update: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50",
+  delete: "bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50",
+  approve: "bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50",
+  reject: "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50",
+  login: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50",
+  logout: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50",
 };
 
 const resourceIcons: Record<string, any> = {
@@ -60,7 +60,7 @@ export default function AuditLogs() {
             <div className="py-16 text-center">
               <Shield className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
               <h3 className="text-lg font-semibold">Access Denied</h3>
-              <p className="text-gray-600 mt-2">You don't have permission to view audit logs.</p>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">You don't have permission to view audit logs.</p>
             </div>
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function AuditLogs() {
   };
 
   const getActionBadge = (action: string) => {
-    const colorClass = actionColors[action] || "bg-blue-50 text-blue-700 border-blue-200/50";
+    const colorClass = actionColors[action] || "bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50";
     return (
       <Badge variant="outline" className={colorClass}>
         {action.charAt(0).toUpperCase() + action.slice(1)}

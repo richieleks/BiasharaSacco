@@ -156,7 +156,7 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
                         variant="outline"
                         onClick={() => resendMutation.mutate(guarantor.id)}
                         disabled={resendMutation.isPending}
-                        className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                        className="text-blue-600 border-blue-200 dark:border-blue-800 hover:bg-blue-50 dark:bg-blue-950/50"
                       >
                         <RefreshCw className="h-3 w-3 mr-1" />
                         Resend

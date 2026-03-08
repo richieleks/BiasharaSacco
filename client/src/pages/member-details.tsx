@@ -393,7 +393,7 @@ export default function MemberDetails() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-blue-50 p-1.5"><User className="h-3.5 w-3.5 text-blue-600" /></div>
+                  <div className="rounded-md bg-blue-50 dark:bg-blue-950/50 p-1.5"><User className="h-3.5 w-3.5 text-blue-600" /></div>
                   Basic Information
                 </CardTitle>
               </CardHeader>
@@ -412,7 +412,7 @@ export default function MemberDetails() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-green-50 p-1.5"><Phone className="h-3.5 w-3.5 text-green-600" /></div>
+                  <div className="rounded-md bg-green-50 dark:bg-green-950/50 p-1.5"><Phone className="h-3.5 w-3.5 text-green-600" /></div>
                   Contact Information
                 </CardTitle>
               </CardHeader>
@@ -428,7 +428,7 @@ export default function MemberDetails() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-amber-50 p-1.5"><Briefcase className="h-3.5 w-3.5 text-amber-600" /></div>
+                  <div className="rounded-md bg-amber-50 dark:bg-amber-950/50 p-1.5"><Briefcase className="h-3.5 w-3.5 text-amber-600" /></div>
                   Employment Details
                 </CardTitle>
               </CardHeader>
@@ -446,7 +446,7 @@ export default function MemberDetails() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-rose-50 p-1.5"><Heart className="h-3.5 w-3.5 text-rose-600" /></div>
+                  <div className="rounded-md bg-rose-50 dark:bg-rose-950/50 p-1.5"><Heart className="h-3.5 w-3.5 text-rose-600" /></div>
                   Next of Kin & Beneficiary
                 </CardTitle>
               </CardHeader>
@@ -466,7 +466,7 @@ export default function MemberDetails() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-violet-50 p-1.5"><Shield className="h-3.5 w-3.5 text-violet-600" /></div>
+                  <div className="rounded-md bg-violet-50 dark:bg-violet-950/50 p-1.5"><Shield className="h-3.5 w-3.5 text-violet-600" /></div>
                   Membership Approval
                 </CardTitle>
               </CardHeader>
@@ -486,7 +486,7 @@ export default function MemberDetails() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-green-50 p-1.5"><Wallet className="h-3.5 w-3.5 text-green-600" /></div>
+                  <div className="rounded-md bg-green-50 dark:bg-green-950/50 p-1.5"><Wallet className="h-3.5 w-3.5 text-green-600" /></div>
                   Savings Information
                 </CardTitle>
               </CardHeader>
@@ -502,10 +502,10 @@ export default function MemberDetails() {
             <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
               <CardHeader className="pb-3 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                  <div className="rounded-md bg-violet-50 p-1.5"><TrendingUp className="h-3.5 w-3.5 text-violet-600" /></div>
+                  <div className="rounded-md bg-violet-50 dark:bg-violet-950/50 p-1.5"><TrendingUp className="h-3.5 w-3.5 text-violet-600" /></div>
                   Share Capital
                 </CardTitle>
-                <Badge className={`text-xs ${member.isPaidUp ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-amber-50 text-amber-700 border-amber-200'} border`}>
+                <Badge className={`text-xs ${member.isPaidUp ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'} border`}>
                   {member.isPaidUp ? 'Fully Paid' : 'In Progress'}
                 </Badge>
               </CardHeader>
@@ -520,11 +520,11 @@ export default function MemberDetails() {
                       <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Shares</p>
                       <p className="text-sm font-bold text-slate-800 dark:text-slate-200">{member.numberOfShares || 4}</p>
                     </div>
-                    <div className="rounded-lg bg-emerald-50 p-3 text-center">
+                    <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/50 p-3 text-center">
                       <p className="text-xs text-emerald-600 mb-1">Paid</p>
                       <p className="text-sm font-bold text-emerald-700">{formatCurrency(sharePaid)}</p>
                     </div>
-                    <div className="rounded-lg bg-amber-50 p-3 text-center">
+                    <div className="rounded-lg bg-amber-50 dark:bg-amber-950/50 p-3 text-center">
                       <p className="text-xs text-amber-600 mb-1">Remaining</p>
                       <p className="text-sm font-bold text-amber-700">{formatCurrency(shareRemaining)}</p>
                     </div>
@@ -544,7 +544,7 @@ export default function MemberDetails() {
           <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                <div className="rounded-md bg-green-50 p-1.5"><PiggyBank className="h-3.5 w-3.5 text-green-600" /></div>
+                <div className="rounded-md bg-green-50 dark:bg-green-950/50 p-1.5"><PiggyBank className="h-3.5 w-3.5 text-green-600" /></div>
                 Savings Accounts
               </CardTitle>
             </CardHeader>
@@ -554,7 +554,7 @@ export default function MemberDetails() {
                   {savingsAccounts.map((account: any) => (
                     <div key={account.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50/50 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50 transition-colors gap-2">
                       <div className="flex items-center gap-3">
-                        <div className="rounded-lg bg-emerald-100 p-2">
+                        <div className="rounded-lg bg-emerald-100 dark:bg-emerald-950/50 p-2">
                           <Wallet className="h-4 w-4 text-emerald-600" />
                         </div>
                         <div>
@@ -583,7 +583,7 @@ export default function MemberDetails() {
           <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                <div className="rounded-md bg-amber-50 p-1.5"><Banknote className="h-3.5 w-3.5 text-amber-600" /></div>
+                <div className="rounded-md bg-amber-50 dark:bg-amber-950/50 p-1.5"><Banknote className="h-3.5 w-3.5 text-amber-600" /></div>
                 Loan History
               </CardTitle>
             </CardHeader>
@@ -597,10 +597,10 @@ export default function MemberDetails() {
                           <div className="flex items-center flex-wrap gap-2 mb-1.5">
                             <span className="font-semibold text-sm text-slate-800 dark:text-slate-200">{loan.loanType}</span>
                             <Badge className={`text-xs ${
-                              loan.status === 'approved' || loan.status === 'active' || loan.status === 'disbursed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                              loan.status === 'rejected' ? 'bg-red-50 text-red-700 border-red-200' :
-                              loan.status === 'completed' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                              'bg-amber-50 text-amber-700 border-amber-200'
+                              loan.status === 'approved' || loan.status === 'active' || loan.status === 'disbursed' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' :
+                              loan.status === 'rejected' ? 'bg-red-50 dark:bg-red-950/50 text-red-700 border-red-200' :
+                              loan.status === 'completed' ? 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800' :
+                              'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
                             } border capitalize`}>
                               {loan.status}
                             </Badge>
@@ -644,7 +644,7 @@ export default function MemberDetails() {
           <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
             <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
-                <div className="rounded-md bg-blue-50 p-1.5"><Activity className="h-3.5 w-3.5 text-blue-600" /></div>
+                <div className="rounded-md bg-blue-50 dark:bg-blue-950/50 p-1.5"><Activity className="h-3.5 w-3.5 text-blue-600" /></div>
                 Recent Transactions
               </CardTitle>
               <p className="text-xs text-slate-400 dark:text-slate-500">
@@ -681,9 +681,9 @@ export default function MemberDetails() {
                             </td>
                             <td className="py-3 px-6 text-center">
                               <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${
-                                tx.status === 'completed' ? 'bg-emerald-50 text-emerald-700' :
-                                tx.status === 'pending' ? 'bg-amber-50 text-amber-700' :
-                                tx.status === 'failed' ? 'bg-red-50 text-red-700' :
+                                tx.status === 'completed' ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700' :
+                                tx.status === 'pending' ? 'bg-amber-50 dark:bg-amber-950/50 text-amber-700' :
+                                tx.status === 'failed' ? 'bg-red-50 dark:bg-red-950/50 text-red-700' :
                                 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
                               }`}>
                                 {tx.status || 'unknown'}

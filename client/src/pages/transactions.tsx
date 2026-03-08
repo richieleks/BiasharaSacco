@@ -119,17 +119,17 @@ export default function Transactions() {
   const getTransactionTypeColor = (type: string) => {
     switch (type) {
       case 'deposit':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+        return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
       case 'withdrawal':
-        return 'bg-red-50 text-red-700 border-red-200/50';
+        return 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50';
       case 'loan_payment':
-        return 'bg-blue-50 text-blue-700 border-blue-200/50';
+        return 'bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50';
       case 'loan_disbursement':
-        return 'bg-purple-50 text-purple-700 border-purple-200/50';
+        return 'bg-purple-50 dark:bg-purple-950/50 text-purple-700 border-purple-200/50';
       case 'interest_credit':
-        return 'bg-amber-50 text-amber-700 border-amber-200/50';
+        return 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50';
       case 'fee_charge':
-        return 'bg-orange-50 text-orange-700 border-orange-200/50';
+        return 'bg-orange-50 dark:bg-orange-950/50 text-orange-700 border-orange-200/50';
       default:
         return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
     }
@@ -138,11 +138,11 @@ export default function Transactions() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+        return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
       case 'pending':
-        return 'bg-amber-50 text-amber-700 border-amber-200/50';
+        return 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50';
       case 'failed':
-        return 'bg-red-50 text-red-700 border-red-200/50';
+        return 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50';
       case 'cancelled':
         return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
       default:
@@ -238,7 +238,7 @@ export default function Transactions() {
                       {!isPersonalView && (
                         <TableCell>
                           <div className="flex items-center space-x-3">
-                            <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
+                            <div className="w-8 h-8 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-lg flex items-center justify-center">
                               <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">
                                 {transaction.member?.user?.firstName?.charAt(0)}
                                 {transaction.member?.user?.lastName?.charAt(0)}

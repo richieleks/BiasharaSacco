@@ -11,10 +11,10 @@ import { format } from "date-fns";
 import type { Notification } from "@shared/schema";
 
 const priorityColors = {
-  low: "bg-blue-50 text-blue-700 border-blue-200/50",
-  medium: "bg-blue-50 text-blue-700 border-blue-200/50",
-  high: "bg-amber-50 text-amber-700 border-amber-200/50",
-  urgent: "bg-red-50 text-red-700 border-red-200/50",
+  low: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50",
+  medium: "bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50",
+  high: "bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50",
+  urgent: "bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50",
 };
 
 const typeIcons = {
@@ -104,7 +104,7 @@ export default function NotificationsPage() {
         
         <div className="flex flex-wrap items-center gap-2">
           {isConnected && (
-            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200/50">
+            <Badge variant="outline" className="bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50">
               ● Real-time updates enabled
             </Badge>
           )}
@@ -253,7 +253,7 @@ export default function NotificationsPage() {
                               </Badge>
                             )}
                             {!notification.isRead && (
-                              <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200/50">
+                              <Badge variant="outline" className="bg-blue-50 dark:bg-blue-950/50 text-blue-700 border-blue-200 dark:border-blue-800/50">
                                 New
                               </Badge>
                             )}

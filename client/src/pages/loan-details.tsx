@@ -17,12 +17,12 @@ import {
 
 const getStatusColor = (status: string) => {
   switch (status) {
-    case 'pending': return 'bg-amber-50 text-amber-700 border-amber-200/50';
-    case 'approved': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-    case 'disbursed': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
-    case 'active': return 'bg-emerald-50 text-emerald-700 border-emerald-200/50';
+    case 'pending': return 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50';
+    case 'approved': return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
+    case 'disbursed': return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
+    case 'active': return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
     case 'completed': return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
-    case 'defaulted': return 'bg-red-50 text-red-700 border-red-200/50';
+    case 'defaulted': return 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50';
     default: return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
   }
 };
@@ -206,7 +206,7 @@ export default function LoanDetails() {
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           {loan.isTopUp && (
-            <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-200/50">
+            <Badge variant="outline" className="bg-violet-50 dark:bg-violet-950/50 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800/50 dark:border-violet-800/50">
               <ArrowUpCircle className="w-3 h-3 mr-1" />
               Top-Up
             </Badge>
@@ -390,7 +390,7 @@ export default function LoanDetails() {
           </div>
 
           {loan.isTopUp && loan.previousLoanBalance && (
-            <div className="mt-4 p-4 bg-violet-50 border border-violet-200 rounded-lg">
+            <div className="mt-4 p-4 bg-violet-50 dark:bg-violet-950/50 border border-violet-200 dark:border-violet-800 rounded-lg">
               <div className="flex items-center text-sm text-violet-700">
                 <ArrowUpCircle className="w-4 h-4 mr-2 flex-shrink-0" />
                 <span>This is a top-up loan. Previous balance of {formatCurrency(loan.previousLoanBalance)} was consolidated into this loan.</span>
@@ -624,15 +624,15 @@ export default function LoanDetails() {
                       : <Clock className="h-4 w-4 text-amber-600" />;
 
                     const statusColor = guarantor.status === 'approved'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200/50'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50'
                       : guarantor.status === 'rejected'
-                      ? 'bg-red-50 text-red-700 border-red-200/50'
-                      : 'bg-amber-50 text-amber-700 border-amber-200/50';
+                      ? 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50'
+                      : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50 dark:border-amber-800/50';
 
                     return (
                       <div key={guarantor.id} className="flex items-center justify-between p-3 border rounded-lg">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 bg-blue-100 rounded-full flex items-center justify-center shrink-0">
+                          <div className="w-9 h-9 bg-blue-100 dark:bg-blue-950/50 rounded-full flex items-center justify-center shrink-0">
                             <Users className="h-4 w-4 text-blue-600" />
                           </div>
                           <div>

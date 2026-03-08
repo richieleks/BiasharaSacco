@@ -8,7 +8,7 @@ export default function Forbidden() {
     <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-800/50 px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/50">
             <ShieldX className="h-6 w-6 text-red-600" />
           </div>
           <CardTitle className="text-2xl font-bold text-slate-900 dark:text-slate-100">
