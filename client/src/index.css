@@ -220,15 +220,15 @@
   }
 
   .section-card {
-    @apply rounded-xl border border-slate-200/60 bg-white shadow-sm overflow-hidden;
+    @apply rounded-xl border border-slate-200/60 bg-white shadow-sm overflow-hidden dark:bg-slate-800/90 dark:border-slate-700/60;
   }
 
   .table-modern thead {
-    @apply bg-slate-50/80;
+    @apply bg-slate-50/80 dark:bg-slate-800/80;
   }
 
   .table-modern th {
-    @apply text-xs font-semibold uppercase tracking-wider text-slate-500 py-3;
+    @apply text-xs font-semibold uppercase tracking-wider text-slate-500 py-3 dark:text-slate-400;
   }
 
   .table-modern td {
@@ -236,7 +236,7 @@
   }
 
   .table-modern tbody tr {
-    @apply transition-colors hover:bg-slate-50/60;
+    @apply transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-700/40;
   }
 }
 

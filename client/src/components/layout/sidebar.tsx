@@ -57,7 +57,7 @@ export default function Sidebar() {
   const [location] = useLocation();
 
   return (
-    <aside className="hidden lg:block w-64 bg-white shadow-sm h-screen sticky top-16 border-r border-slate-200">
+    <aside className="hidden lg:block w-64 bg-white dark:bg-slate-900 shadow-sm h-screen sticky top-16 border-r border-slate-200 dark:border-slate-700">
       <nav className="p-4 space-y-2">
         <div className="space-y-1">
           {navigation.map((item) => {
@@ -69,13 +69,13 @@ export default function Sidebar() {
                     "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                     isActive
                       ? "bg-primary-50 text-primary-700"
-                      : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                      : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                   )}
                 >
                   <item.icon
                     className={cn(
                       "mr-3 h-5 w-5 transition-colors",
-                      isActive ? "text-primary-600" : "text-slate-400 group-hover:text-slate-500"
+                      isActive ? "text-primary-600" : "text-slate-400 dark:text-slate-500 group-hover:text-slate-500 dark:group-hover:text-slate-300"
                     )}
                   />
                   {item.name}
@@ -85,7 +85,7 @@ export default function Sidebar() {
           })}
         </div>
 
-        <div className="border-t border-slate-200 pt-4 mt-4">
+        <div className="border-t border-slate-200 dark:border-slate-700 pt-4 mt-4">
           <div className="space-y-1">
             {secondaryNavigation.map((item) => {
               const isActive = location === item.href;
@@ -96,7 +96,7 @@ export default function Sidebar() {
                       "group flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors cursor-pointer",
                       isActive
                         ? "bg-primary-50 text-primary-700"
-                        : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                        : "text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white"
                     )}
                   >
                     <item.icon

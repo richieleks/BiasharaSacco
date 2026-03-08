@@ -46,7 +46,7 @@ export default function Header() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-slate-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+    <header className="sticky top-0 z-50 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-700 shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-3 ml-12 lg:ml-0">
@@ -55,7 +55,7 @@ export default function Header() {
                 <PiggyBank className="text-white h-5 w-5" />
               </div>
               <div className="hidden sm:block">
-                <h1 className="text-base font-bold tracking-tight text-slate-900 leading-none">Biashara SACCO</h1>
+                <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-none">Biashara SACCO</h1>
                 <p className="text-[11px] text-slate-400 font-medium mt-0.5">Savings & Loans Management</p>
               </div>
             </Link>
@@ -64,18 +64,18 @@ export default function Header() {
           <div className="flex items-center gap-2">
             <NotificationBell />
             
-            <div className="w-px h-8 bg-slate-200/80 mx-1 hidden sm:block" />
+            <div className="w-px h-8 bg-slate-200/80 dark:bg-slate-700/80 mx-1 hidden sm:block" />
             
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="flex items-center gap-2.5 hover:bg-slate-100/80 rounded-xl px-2.5 py-1.5 h-auto">
+                <Button variant="ghost" className="flex items-center gap-2.5 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 rounded-xl px-2.5 py-1.5 h-auto">
                   <div className="w-8 h-8 rounded-lg sacco-gradient flex items-center justify-center shadow-sm">
                     <span className="text-white text-xs font-semibold">
                       {getInitials(user?.firstName, user?.lastName)}
                     </span>
                   </div>
                   <div className="hidden sm:block text-left">
-                    <p className="text-sm font-semibold text-slate-800 leading-none">
+                    <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 leading-none">
                       {user?.firstName} {user?.lastName}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5">

@@ -63,7 +63,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
                 <span className="text-white font-bold text-xs">BS</span>
               </div>
               <div>
-                <h2 className="text-sm font-bold text-slate-900 leading-none">Biashara SACCO</h2>
+                <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-none">Biashara SACCO</h2>
                 <p className="text-[11px] text-slate-400 capitalize mt-0.5 font-medium">
                   {userRole} Portal
                 </p>
@@ -83,7 +83,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
             <span className="text-white font-bold text-xs">BS</span>
           </div>
           <div>
-            <h2 className="text-sm font-bold text-slate-900 leading-none">Biashara SACCO</h2>
+            <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-none">Biashara SACCO</h2>
             <p className="text-[11px] text-slate-400 capitalize mt-0.5 font-medium">
               {userRole} Portal
             </p>
@@ -103,7 +103,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
                 </div>
               ) : (
                 <div className="my-3 mx-3">
-                  <div className="border-t border-slate-100" />
+                  <div className="border-t border-slate-100 dark:border-slate-700" />
                 </div>
               )}
             </>
@@ -121,7 +121,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
                       "w-full justify-start transition-all duration-150 h-9 rounded-lg text-[13px] font-medium",
                       isActive 
                         ? "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90" 
-                        : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
+                        : "text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white",
                       isCollapsed && !mobile && "px-2 justify-center",
                       mobile && "justify-start"
                     )}
@@ -153,14 +153,14 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
             <Button 
               variant="ghost" 
               size="sm" 
-              className="fixed top-[1.1rem] left-4 z-50 lg:hidden bg-white shadow-md rounded-xl border border-slate-200"
+              className="fixed top-[1.1rem] left-4 z-50 lg:hidden bg-white dark:bg-slate-800 shadow-md rounded-xl border border-slate-200 dark:border-slate-700"
             >
               <Menu className="h-5 w-5" />
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0 border-r border-slate-200 bg-white z-50">
-            <div className="flex items-center p-5 border-b border-slate-100">
-              <h2 className="text-sm font-bold text-slate-900">Navigation</h2>
+          <SheetContent side="left" className="w-72 p-0 border-r border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 z-50">
+            <div className="flex items-center p-5 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">Navigation</h2>
             </div>
             <div className="overflow-y-auto h-[calc(100vh-65px)]">
               <SidebarContent mobile />
@@ -170,7 +170,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
       </div>
 
       <aside className={cn(
-        "hidden lg:block bg-white border-r border-slate-200 transition-all duration-300 ease-in-out relative",
+        "hidden lg:block bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-700 transition-all duration-300 ease-in-out relative",
         isCollapsed ? "w-[68px]" : "w-60",
         className
       )}>
@@ -179,7 +179,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
           size="sm"
           onClick={() => setIsCollapsed(!isCollapsed)}
           className={cn(
-            "absolute -right-3 top-6 z-10 h-6 w-6 rounded-full border border-slate-200 bg-white shadow-sm hover:bg-slate-50 hover:shadow",
+            "absolute -right-3 top-6 z-10 h-6 w-6 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow",
             "flex items-center justify-center p-0"
           )}
         >

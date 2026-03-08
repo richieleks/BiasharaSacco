@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useWebSocket } from "@/hooks/useWebSocket";
+import { useTheme } from "@/hooks/useTheme";
 import NotFound from "@/pages/not-found";
 import Forbidden from "@/pages/forbidden";
 
@@ -132,6 +133,7 @@ function Router() {
   const { canAccessRoute } = useRBAC();
   
   useWebSocket();
+  useTheme();
 
   if (isLoading) {
     return <FullPageLoader />;
@@ -148,7 +150,7 @@ function Router() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <PageLoadingBar />
       <Header />
       <div className="flex">
