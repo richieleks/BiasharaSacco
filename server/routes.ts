@@ -5173,5 +5173,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== SACCO Account Mappings ====================
+
+  app.get('/api/sacco-account-mappings', isAuthenticated, requirePermission('read', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const mappings = await storage.getSaccoAccountMappings();
+      res.json(mappings);
+    } catch (error) {
+      console.error("Error fetching account mappings:", error);
+      res.status(500).json({ message: "Failed to fetch account mappings" });
+    }
+  });
+
+  app.patch('/api/sacco-account-mappings/:id', isAuthenticated, requirePermission('update', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const { debitAccountId, creditAccountId } = req.body;
+      const parsedDebit = debitAccountId ? parseInt(debitAccountId) : null;
+      const parsedCredit = creditAccountId ? parseInt(creditAccountId) : null;
+      if (debitAccountId && (isNaN(parsedDebit!) || parsedDebit! <= 0)) {
+        return res.status(400).json({ message: "Invalid debit account ID" });
+      }
+      if (creditAccountId && (isNaN(parsedCredit!) || parsedCredit! <= 0)) {
+        return res.status(400).json({ message: "Invalid credit account ID" });
+      }
+      const mapping = await storage.updateSaccoAccountMapping(parseInt(req.params.id), {
+        debitAccountId: parsedDebit,
+        creditAccountId: parsedCredit,
+      });
+
+      const userId = getUserId(req)!;
+      await storage.createAuditLog({
+        userId,
+        action: 'update',
+        resource: 'sacco-account-mapping',
+        resourceId: mapping.id.toString(),
+        details: `Updated account mapping: ${mapping.mappingKey}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      res.json(mapping);
+    } catch (error) {
+      console.error("Error updating account mapping:", error);
+      res.status(500).json({ message: "Failed to update account mapping" });
+    }
+  });
+
   return httpServer;
 }

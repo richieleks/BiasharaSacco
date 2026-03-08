@@ -42,6 +42,7 @@ app.use((req, res, next) => {
   await seedAdminUser();
   await seedRBAC();
   await storage.seedDefaultSaccoAccounts();
+  await storage.seedDefaultAccountMappings();
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

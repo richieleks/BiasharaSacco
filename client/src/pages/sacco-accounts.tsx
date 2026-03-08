@@ -16,9 +16,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Landmark, Plus, ArrowRightLeft, RotateCcw, Search,
   TrendingUp, TrendingDown, Wallet, Building2, PiggyBank,
-  ChevronLeft, ChevronRight, DollarSign, Scale
+  ChevronLeft, ChevronRight, DollarSign, Scale, Link2, Save, Check
 } from "lucide-react";
-import type { SaccoAccount } from "@shared/schema";
+import type { SaccoAccount, SaccoAccountMapping } from "@shared/schema";
 
 const ACCOUNT_TYPE_LABELS: Record<string, string> = {
   asset: "Assets",
@@ -175,9 +175,10 @@ export default function SaccoAccounts() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 max-w-md">
+        <TabsList className="grid w-full grid-cols-4 max-w-lg">
           <TabsTrigger value="accounts" data-testid="tab-accounts">Chart of Accounts</TabsTrigger>
           <TabsTrigger value="journal" data-testid="tab-journal">Journal Entries</TabsTrigger>
+          <TabsTrigger value="mappings" data-testid="tab-mappings">Mappings</TabsTrigger>
           <TabsTrigger value="summary" data-testid="tab-summary">Summary</TabsTrigger>
         </TabsList>
 
@@ -385,6 +386,10 @@ export default function SaccoAccounts() {
               </div>
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="mappings" className="space-y-4 mt-4">
+          <MappingsTab accounts={accounts} canManage={canManage} />
         </TabsContent>
 
         <TabsContent value="summary" className="space-y-6 mt-4">
@@ -764,5 +769,208 @@ function JournalEntryDialog({ open, onOpenChange, accounts, onSubmit, isPending 
         </form>
       </DialogContent>
     </Dialog>
+  );
+}
+
+const CATEGORY_LABELS: Record<string, string> = {
+  loan: "Loan Operations",
+  savings: "Savings Operations",
+  membership: "Membership & Shares",
+  operations: "General Operations",
+};
+
+const CATEGORY_ICONS: Record<string, typeof Wallet> = {
+  loan: DollarSign,
+  savings: PiggyBank,
+  membership: Building2,
+  operations: Wallet,
+};
+
+function MappingsTab({ accounts, canManage }: { accounts: SaccoAccount[]; canManage: boolean }) {
+  const { toast } = useToast();
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDebit, setEditDebit] = useState<string>("");
+  const [editCredit, setEditCredit] = useState<string>("");
+
+  const { data: mappings = [], isLoading } = useQuery<any[]>({
+    queryKey: ['/api/sacco-account-mappings'],
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, debitAccountId, creditAccountId }: { id: number; debitAccountId: number | null; creditAccountId: number | null }) => {
+      const res = await apiRequest('PATCH', `/api/sacco-account-mappings/${id}`, { debitAccountId, creditAccountId });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sacco-account-mappings'] });
+      setEditingId(null);
+      toast({ title: "Mapping updated", variant: "success" as any });
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
+
+  const activeAccounts = accounts.filter(a => a.isActive);
+
+  const groupedMappings = mappings.reduce((groups: Record<string, any[]>, m: any) => {
+    if (!groups[m.category]) groups[m.category] = [];
+    groups[m.category].push(m);
+    return groups;
+  }, {});
+
+  const startEdit = (mapping: any) => {
+    setEditingId(mapping.id);
+    setEditDebit(mapping.debitAccountId?.toString() || "");
+    setEditCredit(mapping.creditAccountId?.toString() || "");
+  };
+
+  const saveEdit = (id: number) => {
+    updateMutation.mutate({
+      id,
+      debitAccountId: editDebit ? parseInt(editDebit) : null,
+      creditAccountId: editCredit ? parseInt(editCredit) : null,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        {[1, 2, 3].map(i => (
+          <Card key={i}><CardContent className="p-6"><div className="h-24 bg-muted animate-pulse rounded" /></CardContent></Card>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold flex items-center gap-2">
+          <Link2 className="h-5 w-5" />
+          Fee & Rate Account Mappings
+        </h2>
+        <p className="text-sm text-muted-foreground mt-1">
+          Configure which GL accounts are debited and credited for each type of financial operation
+        </p>
+      </div>
+
+      {Object.entries(CATEGORY_LABELS).map(([category, label]) => {
+        const categoryMappings = groupedMappings[category];
+        if (!categoryMappings || categoryMappings.length === 0) return null;
+        const CatIcon = CATEGORY_ICONS[category] || Wallet;
+        return (
+          <Card key={category} data-testid={`card-mapping-group-${category}`}>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <CatIcon className="h-5 w-5 text-primary" />
+                {label}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">Fee / Rate</TableHead>
+                    <TableHead className="hidden md:table-cell">Description</TableHead>
+                    <TableHead>Debit Account</TableHead>
+                    <TableHead>Credit Account</TableHead>
+                    {canManage && <TableHead className="w-20"></TableHead>}
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {categoryMappings.map((mapping: any) => (
+                    <TableRow key={mapping.id} data-testid={`row-mapping-${mapping.id}`}>
+                      <TableCell className="font-medium text-sm">{mapping.mappingLabel}</TableCell>
+                      <TableCell className="hidden md:table-cell text-sm text-muted-foreground">{mapping.description}</TableCell>
+                      <TableCell>
+                        {editingId === mapping.id ? (
+                          <Select value={editDebit} onValueChange={setEditDebit}>
+                            <SelectTrigger className="h-8 text-xs" data-testid={`select-edit-debit-${mapping.id}`}>
+                              <SelectValue placeholder="Select account" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {activeAccounts.map(acc => (
+                                <SelectItem key={acc.id} value={acc.id.toString()}>
+                                  <span className="font-mono text-xs mr-1">{acc.accountCode}</span> {acc.accountName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : mapping.debitAccountId ? (
+                          <span className="text-sm">
+                            <span className="font-mono text-xs text-muted-foreground mr-1">{mapping.debitAccountCode}</span>
+                            {mapping.debitAccountName}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground italic">Not mapped</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {editingId === mapping.id ? (
+                          <Select value={editCredit} onValueChange={setEditCredit}>
+                            <SelectTrigger className="h-8 text-xs" data-testid={`select-edit-credit-${mapping.id}`}>
+                              <SelectValue placeholder="Select account" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {activeAccounts.map(acc => (
+                                <SelectItem key={acc.id} value={acc.id.toString()}>
+                                  <span className="font-mono text-xs mr-1">{acc.accountCode}</span> {acc.accountName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        ) : mapping.creditAccountId ? (
+                          <span className="text-sm">
+                            <span className="font-mono text-xs text-muted-foreground mr-1">{mapping.creditAccountCode}</span>
+                            {mapping.creditAccountName}
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted-foreground italic">Not mapped</span>
+                        )}
+                      </TableCell>
+                      {canManage && (
+                        <TableCell>
+                          {editingId === mapping.id ? (
+                            <div className="flex gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => saveEdit(mapping.id)}
+                                disabled={updateMutation.isPending}
+                                data-testid={`button-save-mapping-${mapping.id}`}
+                              >
+                                <Check className="h-3.5 w-3.5 text-green-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditingId(null)}
+                                data-testid={`button-cancel-mapping-${mapping.id}`}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => startEdit(mapping)}
+                              data-testid={`button-edit-mapping-${mapping.id}`}
+                            >
+                              Edit
+                            </Button>
+                          )}
+                        </TableCell>
+                      )}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        );
+      })}
+    </div>
   );
 }

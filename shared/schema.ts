@@ -903,6 +903,19 @@ export const saccoJournalEntries = pgTable("sacco_journal_entries", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const saccoAccountMappings = pgTable("sacco_account_mappings", {
+  id: serial("id").primaryKey(),
+  mappingKey: varchar("mapping_key").unique().notNull(),
+  mappingLabel: varchar("mapping_label").notNull(),
+  category: varchar("category", {
+    enum: ["loan", "savings", "membership", "operations"]
+  }).notNull(),
+  description: text("description"),
+  debitAccountId: integer("debit_account_id").references(() => saccoAccounts.id),
+  creditAccountId: integer("credit_account_id").references(() => saccoAccounts.id),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertSaccoAccountSchema = createInsertSchema(saccoAccounts).omit({
   id: true,
   uuid: true,
@@ -916,7 +929,14 @@ export const insertSaccoJournalEntrySchema = createInsertSchema(saccoJournalEntr
   createdAt: true,
 });
 
+export const insertSaccoAccountMappingSchema = createInsertSchema(saccoAccountMappings).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export type SaccoAccount = typeof saccoAccounts.$inferSelect;
 export type InsertSaccoAccount = z.infer<typeof insertSaccoAccountSchema>;
 export type SaccoJournalEntry = typeof saccoJournalEntries.$inferSelect;
 export type InsertSaccoJournalEntry = z.infer<typeof insertSaccoJournalEntrySchema>;
+export type SaccoAccountMapping = typeof saccoAccountMappings.$inferSelect;
+export type InsertSaccoAccountMapping = z.infer<typeof insertSaccoAccountMappingSchema>;

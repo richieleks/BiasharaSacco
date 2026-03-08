@@ -69,10 +69,12 @@ import {
   type LoanApproval,
   saccoAccounts,
   saccoJournalEntries,
+  saccoAccountMappings,
   type SaccoAccount,
   type InsertSaccoAccount,
   type SaccoJournalEntry,
   type InsertSaccoJournalEntry,
+  type SaccoAccountMapping,
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
@@ -332,6 +334,9 @@ export interface IStorage {
   getSaccoAccountStatement(accountId: number, startDate?: string, endDate?: string): Promise<any[]>;
   getSaccoAccountsSummary(): Promise<any>;
   seedDefaultSaccoAccounts(): Promise<void>;
+  getSaccoAccountMappings(): Promise<SaccoAccountMapping[]>;
+  updateSaccoAccountMapping(id: number, data: { debitAccountId?: number | null; creditAccountId?: number | null }): Promise<SaccoAccountMapping>;
+  seedDefaultAccountMappings(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3326,6 +3331,65 @@ export class DatabaseStorage implements IStorage {
 
     for (const acc of defaults) {
       await db.insert(saccoAccounts).values(acc);
+    }
+  }
+
+  async getSaccoAccountMappings(): Promise<SaccoAccountMapping[]> {
+    const mappings = await db.select({
+      mapping: saccoAccountMappings,
+      debitAccountCode: sql<string>`da.account_code`,
+      debitAccountName: sql<string>`da.account_name`,
+      creditAccountCode: sql<string>`ca.account_code`,
+      creditAccountName: sql<string>`ca.account_name`,
+    })
+    .from(saccoAccountMappings)
+    .leftJoin(sql`sacco_accounts da`, sql`da.id = ${saccoAccountMappings.debitAccountId}`)
+    .leftJoin(sql`sacco_accounts ca`, sql`ca.id = ${saccoAccountMappings.creditAccountId}`)
+    .orderBy(saccoAccountMappings.category, saccoAccountMappings.mappingLabel);
+
+    return mappings.map(m => ({
+      ...m.mapping,
+      debitAccountCode: m.debitAccountCode,
+      debitAccountName: m.debitAccountName,
+      creditAccountCode: m.creditAccountCode,
+      creditAccountName: m.creditAccountName,
+    })) as any;
+  }
+
+  async updateSaccoAccountMapping(id: number, data: { debitAccountId?: number | null; creditAccountId?: number | null }): Promise<SaccoAccountMapping> {
+    const [mapping] = await db.update(saccoAccountMappings)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(saccoAccountMappings.id, id))
+      .returning();
+    return mapping;
+  }
+
+  async seedDefaultAccountMappings(): Promise<void> {
+    const existing = await db.select().from(saccoAccountMappings).limit(1);
+    if (existing.length > 0) return;
+
+    const allAccounts = await db.select().from(saccoAccounts);
+    const byCode = (code: string) => allAccounts.find(a => a.accountCode === code)?.id || null;
+
+    const defaults = [
+      { mappingKey: 'loan_disbursement', mappingLabel: 'Loan Disbursement', category: 'loan' as const, description: 'When a loan is disbursed to a member', debitAccountId: byCode('1003'), creditAccountId: byCode('1001') },
+      { mappingKey: 'loan_repayment_principal', mappingLabel: 'Loan Repayment (Principal)', category: 'loan' as const, description: 'Principal portion of loan repayment received', debitAccountId: byCode('1001'), creditAccountId: byCode('1003') },
+      { mappingKey: 'loan_interest_income', mappingLabel: 'Loan Interest Income', category: 'loan' as const, description: 'Interest earned from member loans', debitAccountId: byCode('1001'), creditAccountId: byCode('4001') },
+      { mappingKey: 'loan_processing_fee', mappingLabel: 'Loan Processing Fee', category: 'loan' as const, description: 'Fees charged for processing loan applications', debitAccountId: byCode('2001'), creditAccountId: byCode('4002') },
+      { mappingKey: 'late_payment_penalty', mappingLabel: 'Late Payment Penalty', category: 'loan' as const, description: 'Penalties charged for overdue loan repayments', debitAccountId: byCode('1005'), creditAccountId: byCode('4004') },
+      { mappingKey: 'member_deposit', mappingLabel: 'Member Savings Deposit', category: 'savings' as const, description: 'When a member deposits into their savings account', debitAccountId: byCode('1001'), creditAccountId: byCode('2001') },
+      { mappingKey: 'member_withdrawal', mappingLabel: 'Member Savings Withdrawal', category: 'savings' as const, description: 'When a member withdraws from their savings account', debitAccountId: byCode('2001'), creditAccountId: byCode('1001') },
+      { mappingKey: 'savings_interest_accrual', mappingLabel: 'Savings Interest Accrual', category: 'savings' as const, description: 'Interest accrued and payable to members on savings', debitAccountId: byCode('5010'), creditAccountId: byCode('2004') },
+      { mappingKey: 'share_capital_contribution', mappingLabel: 'Share Capital Contribution', category: 'membership' as const, description: 'When a member buys shares in the SACCO', debitAccountId: byCode('1001'), creditAccountId: byCode('2002') },
+      { mappingKey: 'membership_entry_fee', mappingLabel: 'Membership Entry Fee', category: 'membership' as const, description: 'One-time registration fee for new members', debitAccountId: byCode('1001'), creditAccountId: byCode('4003') },
+      { mappingKey: 'bank_charges', mappingLabel: 'Bank Charges', category: 'operations' as const, description: 'Fees charged by the bank for transactions', debitAccountId: byCode('5009'), creditAccountId: byCode('1001') },
+      { mappingKey: 'salary_payment', mappingLabel: 'Staff Salary Payment', category: 'operations' as const, description: 'Monthly salary and wage payments to staff', debitAccountId: byCode('5001'), creditAccountId: byCode('1001') },
+      { mappingKey: 'rent_payment', mappingLabel: 'Office Rent Payment', category: 'operations' as const, description: 'Monthly rent payment for office space', debitAccountId: byCode('5002'), creditAccountId: byCode('1001') },
+      { mappingKey: 'utility_payment', mappingLabel: 'Utility Payment', category: 'operations' as const, description: 'Electricity, water, internet bills', debitAccountId: byCode('5003'), creditAccountId: byCode('1001') },
+    ];
+
+    for (const mapping of defaults) {
+      await db.insert(saccoAccountMappings).values(mapping);
     }
   }
 }
