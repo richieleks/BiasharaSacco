@@ -1,10 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
-import { usePagination } from "@/hooks/usePagination";
+import { useServerPagination } from "@/hooks/useServerPagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { formatCurrency } from "@/lib/utils";
@@ -19,14 +19,31 @@ import { Search, Plus, Eye, Users, UserCheck, UserX, AlertCircle } from "lucide-
 import type { MemberWithDetails } from "@shared/schema";
 
 export default function Members() {
-  const [searchQuery, setSearchQuery] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
   const { hasPermission, userRole } = useRBAC();
 
-  // Redirect to home if not authenticated
+  const {
+    page,
+    limit,
+    search,
+    setPage,
+    setLimit,
+    setSearch,
+    buildQueryParams,
+  } = useServerPagination({ initialLimit: 10 });
+
+  const [searchInput, setSearchInput] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput, setSearch]);
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -41,33 +58,19 @@ export default function Members() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: allMembers = [], isLoading: membersLoading, error } = useQuery({
-    queryKey: ['/api/members'],
+  const queryParams = buildQueryParams();
+  const { data: response, isLoading: membersLoading, error } = useQuery<{ data: MemberWithDetails[]; total: number }>({
+    queryKey: ['/api/members', queryParams],
+    queryFn: async () => {
+      const res = await fetch(`/api/members?${queryParams}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch members');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
-  // Filter members based on search query
-  const filteredMembers = allMembers.filter((member: MemberWithDetails) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      member.fullName?.toLowerCase().includes(query) ||
-      member.memberNumber?.toLowerCase().includes(query) ||
-      member.phoneNumber?.toLowerCase().includes(query) ||
-      member.department?.toLowerCase().includes(query) ||
-      member.status?.toLowerCase().includes(query)
-    );
-  });
-
-  // Apply pagination
-  const {
-    currentPage,
-    itemsPerPage,
-    paginatedData: members,
-    totalItems,
-    handlePageChange,
-    handleItemsPerPageChange,
-  } = usePagination({ data: filteredMembers, initialItemsPerPage: 10 });
+  const members = response?.data || [];
+  const totalItems = response?.total || 0;
 
   const addMemberMutation = useMutation({
     mutationFn: async (memberData: any) => {
@@ -94,7 +97,6 @@ export default function Members() {
         return;
       }
       
-      // Handle specific validation errors
       let errorMessage = "Failed to add member. Please try again.";
       if (error.message && error.message.includes("A member with this ID number already exists")) {
         errorMessage = "This ID number is already registered. Please check and use a different ID number.";
@@ -130,12 +132,11 @@ export default function Members() {
   };
 
   if (error && isUnauthorizedError(error as Error)) {
-    return null; // Will redirect via useEffect
+    return null;
   }
 
   return (
     <div className="space-y-6 page-container animate-fade-in">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-2">
           <Users className="h-7 w-7" />
@@ -144,7 +145,7 @@ export default function Members() {
         {hasPermission('create', 'members') && (
           <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
             <DialogTrigger asChild>
-              <Button className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm">
+              <Button data-testid="button-add-member" className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Member
               </Button>
@@ -165,20 +166,19 @@ export default function Members() {
         )}
       </div>
 
-      {/* Search */}
       <div className="section-card p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
           <Input
+            data-testid="input-search-members"
             placeholder="Search members by name, ID, or phone number..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="pl-10"
           />
         </div>
       </div>
 
-      {/* Members Table */}
       {membersLoading ? (
         <div className="section-card p-6">
           <div className="animate-pulse space-y-4">
@@ -214,7 +214,7 @@ export default function Members() {
             </TableHeader>
             <TableBody>
               {members.map((member: MemberWithDetails) => (
-                <TableRow key={member.id} className="hover:bg-slate-50">
+                <TableRow key={member.id} className="hover:bg-slate-50" data-testid={`row-member-${member.id}`}>
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center">
@@ -226,7 +226,7 @@ export default function Members() {
                         </span>
                       </div>
                       <div>
-                        <div className="font-medium text-slate-900">
+                        <div className="font-medium text-slate-900" data-testid={`text-member-name-${member.id}`}>
                           {member.fullName || 'No Name'}
                         </div>
                         <div className="text-sm text-slate-500">ID: {member.memberNumber}</div>
@@ -254,6 +254,7 @@ export default function Members() {
                       size="sm"
                       onClick={() => setLocation(`/members/${member.uuid}`)}
                       className="h-8 w-8 p-0"
+                      data-testid={`button-view-member-${member.id}`}
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
@@ -262,15 +263,13 @@ export default function Members() {
               ))}
             </TableBody>
           </Table>
-          {filteredMembers.length > 0 && (
-            <Pagination
-              totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              currentPage={currentPage}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleItemsPerPageChange}
-            />
-          )}
+          <Pagination
+            totalItems={totalItems}
+            itemsPerPage={limit}
+            currentPage={page}
+            onPageChange={setPage}
+            onItemsPerPageChange={setLimit}
+          />
         </div>
       ) : (
         <div className="section-card">
@@ -278,7 +277,7 @@ export default function Members() {
             <Users className="w-12 h-12 text-slate-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-900 mb-2">No members found</h3>
             <p className="text-slate-500 mb-4">
-              {searchQuery ? "No members match your search criteria." : "Get started by adding your first member."}
+              {search ? "No members match your search criteria." : "Get started by adding your first member."}
             </p>
             {hasPermission('create', 'members') && (
               <Button onClick={() => setIsAddModalOpen(true)} className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm">

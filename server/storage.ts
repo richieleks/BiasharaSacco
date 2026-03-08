@@ -69,7 +69,7 @@ import {
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
-import { eq, desc, sql, like, or, and, gte, lte, count, getTableColumns, inArray } from "drizzle-orm";
+import { eq, desc, sql, like, ilike, or, and, gte, lte, count, getTableColumns, inArray } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -92,6 +92,7 @@ export interface IStorage {
   getMembersCount(): Promise<number>;
   searchMembers(query: string): Promise<MemberWithDetails[]>;
   getPendingMembers(): Promise<MemberWithDetails[]>;
+  getMembersPaginated(page: number, limit: number, search?: string): Promise<{ data: MemberWithDetails[]; total: number }>;
   approveMember(id: number, approvedBy: string, comments?: string): Promise<Member>;
   rejectMember(id: number, approvedBy: string, comments?: string): Promise<Member>;
 
@@ -100,6 +101,8 @@ export interface IStorage {
   getSavingsAccount(id: number): Promise<SavingsAccount | undefined>;
   getSavingsAccountsByMember(memberId: number): Promise<SavingsAccount[]>;
   updateSavingsAccountBalance(id: number, amount: string, operation: 'add' | 'subtract'): Promise<SavingsAccount>;
+  getAllSavingsAccounts(): Promise<SavingsAccount[]>;
+  getSavingsAccountsPaginated(page: number, limit: number, search?: string, memberId?: number): Promise<{ data: any[]; total: number }>;
 
   // Loan operations
   createLoan(loan: InsertLoan): Promise<Loan>;
@@ -120,6 +123,8 @@ export interface IStorage {
   calculateRequiredApprovalStage(loanAmount: number, loanType: string): Promise<string>;
 
   getMemberActiveLoans(memberId: number): Promise<LoanWithDetails[]>;
+  getAllLoans(): Promise<LoanWithDetails[]>;
+  getLoansPaginated(page: number, limit: number, search?: string, memberId?: number): Promise<{ data: LoanWithDetails[]; total: number }>;
 
   // Transaction operations
   createTransaction(transaction: InsertTransaction): Promise<Transaction>;
@@ -127,6 +132,8 @@ export interface IStorage {
   getTransactionsByMember(memberId: number): Promise<TransactionWithDetails[]>;
   getTransactionsByLoan(loanId: number): Promise<TransactionWithDetails[]>;
   getRecentTransactions(limit?: number): Promise<TransactionWithDetails[]>;
+  getAllTransactions(): Promise<TransactionWithDetails[]>;
+  getTransactionsPaginated(page: number, limit: number, search?: string, memberId?: number): Promise<{ data: TransactionWithDetails[]; total: number }>;
   updateTransactionStatus(id: number, status: string): Promise<Transaction>;
 
   // Dashboard metrics
@@ -232,6 +239,7 @@ export interface IStorage {
     endDate?: Date;
     limit?: number;
   }): Promise<any[]>;
+  getAuditLogsPaginated(page: number, limit: number, search?: string): Promise<{ data: any[]; total: number }>;
 
   // Notification operations
   createNotification(notification: InsertNotification): Promise<Notification>;
@@ -241,6 +249,7 @@ export interface IStorage {
     priority?: string;
     limit?: number;
   }): Promise<Notification[]>;
+  getNotificationsPaginated(userId: string, page: number, limit: number): Promise<{ data: Notification[]; total: number }>;
   markNotificationAsRead(id: number, userId: string): Promise<Notification | undefined>;
   markAllNotificationsAsRead(userId: string): Promise<void>;
   deleteNotification(id: number, userId: string): Promise<boolean>;
@@ -487,6 +496,46 @@ export class DatabaseStorage implements IStorage {
     return membersWithDetails;
   }
 
+  async getMembersPaginated(page: number, limit: number, search?: string): Promise<{ data: MemberWithDetails[]; total: number }> {
+    const conditions: any[] = [];
+    if (search) {
+      conditions.push(
+        or(
+          ilike(members.fullName, `%${search}%`),
+          ilike(members.memberNumber, `%${search}%`),
+          ilike(members.phoneNumber, `%${search}%`),
+          ilike(members.department, `%${search}%`)
+        )
+      );
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [countResult] = await db
+      .select({ value: count() })
+      .from(members)
+      .where(whereClause);
+
+    const offset = (page - 1) * limit;
+    const results = await db
+      .select()
+      .from(members)
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(whereClause)
+      .orderBy(desc(members.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const data = await Promise.all(
+      results.map(async (result) => {
+        const roles = await this.getMemberRoles(result.members.id);
+        return { ...result.members, user: result.users || undefined, roles };
+      })
+    );
+
+    return { data, total: Number(countResult.value) };
+  }
+
   async getPendingMembers(): Promise<MemberWithDetails[]> {
     const results = await db
       .select()
@@ -597,6 +646,48 @@ export class DatabaseStorage implements IStorage {
         user: result.users || undefined,
       } : undefined,
     }));
+  }
+
+  async getSavingsAccountsPaginated(page: number, limit: number, search?: string, memberId?: number): Promise<{ data: any[]; total: number }> {
+    const conditions: any[] = [];
+    if (memberId) {
+      conditions.push(eq(savingsAccounts.memberId, memberId));
+    }
+    if (search) {
+      conditions.push(
+        or(
+          ilike(savingsAccounts.accountNumber, `%${search}%`),
+          ilike(members.fullName, `%${search}%`),
+          ilike(members.memberNumber, `%${search}%`)
+        )
+      );
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [countResult] = await db
+      .select({ value: count() })
+      .from(savingsAccounts)
+      .leftJoin(members, eq(savingsAccounts.memberId, members.id))
+      .where(whereClause);
+
+    const offset = (page - 1) * limit;
+    const results = await db
+      .select()
+      .from(savingsAccounts)
+      .leftJoin(members, eq(savingsAccounts.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(whereClause)
+      .orderBy(desc(savingsAccounts.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const data = results.map(result => ({
+      ...result.savings_accounts,
+      member: result.members ? { ...result.members, user: result.users || undefined } : undefined,
+    }));
+
+    return { data, total: Number(countResult.value) };
   }
 
   async updateSavingsAccountBalance(id: number, amount: string, operation: 'add' | 'subtract'): Promise<SavingsAccount> {
@@ -773,6 +864,49 @@ export class DatabaseStorage implements IStorage {
         user: result.users || undefined,
       } : undefined,
     }));
+  }
+
+  async getLoansPaginated(page: number, limit: number, search?: string, memberId?: number): Promise<{ data: LoanWithDetails[]; total: number }> {
+    const conditions: any[] = [];
+    if (memberId) {
+      conditions.push(eq(loans.memberId, memberId));
+    }
+    if (search) {
+      conditions.push(
+        or(
+          ilike(members.fullName, `%${search}%`),
+          ilike(members.memberNumber, `%${search}%`),
+          ilike(loans.loanType, `%${search}%`),
+          ilike(loans.status, `%${search}%`)
+        )
+      );
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [countResult] = await db
+      .select({ value: count() })
+      .from(loans)
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .where(whereClause);
+
+    const offset = (page - 1) * limit;
+    const results = await db
+      .select()
+      .from(loans)
+      .leftJoin(members, eq(loans.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .where(whereClause)
+      .orderBy(desc(loans.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const data = results.map(result => ({
+      ...result.loans,
+      member: result.members ? { ...result.members, user: result.users || undefined } : undefined,
+    }));
+
+    return { data, total: Number(countResult.value) };
   }
 
   async getAllPendingLoans(): Promise<LoanWithDetails[]> {
@@ -1148,6 +1282,58 @@ export class DatabaseStorage implements IStorage {
       savingsAccount: result.savings_accounts || undefined,
       loan: result.loans || undefined,
     }));
+  }
+
+  async getAllTransactions(): Promise<TransactionWithDetails[]> {
+    return this.getRecentTransactions(10000);
+  }
+
+  async getTransactionsPaginated(page: number, limit: number, search?: string, memberId?: number): Promise<{ data: TransactionWithDetails[]; total: number }> {
+    const conditions: any[] = [];
+    if (memberId) {
+      conditions.push(eq(transactions.memberId, memberId));
+    }
+    if (search) {
+      conditions.push(
+        or(
+          ilike(transactions.referenceNumber, `%${search}%`),
+          ilike(transactions.transactionType, `%${search}%`),
+          ilike(transactions.description, `%${search}%`),
+          ilike(members.fullName, `%${search}%`),
+          ilike(members.memberNumber, `%${search}%`)
+        )
+      );
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [countResult] = await db
+      .select({ value: count() })
+      .from(transactions)
+      .leftJoin(members, eq(transactions.memberId, members.id))
+      .where(whereClause);
+
+    const offset = (page - 1) * limit;
+    const results = await db
+      .select()
+      .from(transactions)
+      .leftJoin(members, eq(transactions.memberId, members.id))
+      .leftJoin(users, eq(members.userId, users.id))
+      .leftJoin(savingsAccounts, eq(transactions.savingsAccountId, savingsAccounts.id))
+      .leftJoin(loans, eq(transactions.loanId, loans.id))
+      .where(whereClause)
+      .orderBy(desc(transactions.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const data = results.map(result => ({
+      ...result.transactions,
+      member: result.members ? { ...result.members, user: result.users || undefined } : undefined,
+      savingsAccount: result.savings_accounts || undefined,
+      loan: result.loans || undefined,
+    }));
+
+    return { data, total: Number(countResult.value) };
   }
 
   async updateTransactionStatus(id: number, status: string): Promise<Transaction> {
@@ -1559,6 +1745,49 @@ export class DatabaseStorage implements IStorage {
       user: r.user || undefined,
       member: r.member || undefined,
     }));
+  }
+
+  async getAuditLogsPaginated(page: number, limit: number, search?: string): Promise<{ data: any[]; total: number }> {
+    const conditions: any[] = [];
+    if (search) {
+      conditions.push(
+        or(
+          ilike(auditLogs.action, `%${search}%`),
+          ilike(auditLogs.resource, `%${search}%`),
+          ilike(auditLogs.details, `%${search}%`),
+          ilike(users.username, `%${search}%`),
+          ilike(users.firstName, `%${search}%`),
+          ilike(users.lastName, `%${search}%`)
+        )
+      );
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const [countResult] = await db
+      .select({ value: count() })
+      .from(auditLogs)
+      .leftJoin(users, eq(auditLogs.userId, users.id))
+      .where(whereClause);
+
+    const offset = (page - 1) * limit;
+    const results = await db
+      .select({ log: auditLogs, user: users, member: members })
+      .from(auditLogs)
+      .leftJoin(users, eq(auditLogs.userId, users.id))
+      .leftJoin(members, eq(auditLogs.memberId, members.id))
+      .where(whereClause)
+      .orderBy(desc(auditLogs.timestamp))
+      .limit(limit)
+      .offset(offset);
+
+    const data = results.map(r => ({
+      ...r.log,
+      user: r.user || undefined,
+      member: r.member || undefined,
+    }));
+
+    return { data, total: Number(countResult.value) };
   }
 
   async getMemberRoles(memberId: number): Promise<string[]> {
@@ -2072,6 +2301,24 @@ export class DatabaseStorage implements IStorage {
     }
 
     return await query;
+  }
+
+  async getNotificationsPaginated(userId: string, page: number, limit: number): Promise<{ data: Notification[]; total: number }> {
+    const [countResult] = await db
+      .select({ value: count() })
+      .from(notifications)
+      .where(eq(notifications.userId, userId));
+
+    const offset = (page - 1) * limit;
+    const data = await db
+      .select()
+      .from(notifications)
+      .where(eq(notifications.userId, userId))
+      .orderBy(desc(notifications.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return { data, total: Number(countResult.value) };
   }
 
   async markNotificationAsRead(id: number, userId: string): Promise<Notification | undefined> {

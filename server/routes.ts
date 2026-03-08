@@ -926,12 +926,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/members', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
-      const { search } = req.query;
+      const { search, page, limit } = req.query;
+      const pageNum = Math.max(1, parseInt(page as string) || 1);
+      const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+
+      if (page || limit) {
+        const userRoles = req.member?.roles || ['member'];
+        const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer', 'teller'].includes(role));
+
+        if (isStaff) {
+          const result = await storage.getMembersPaginated(pageNum, limitNum, search as string);
+          return res.json(result);
+        } else {
+          const userId = getUserId(req);
+          const member = userId ? await storage.getMemberByUserId(userId) : null;
+          return res.json({ data: member ? [member] : [], total: member ? 1 : 0 });
+        }
+      }
+
       const allMembers = search 
         ? await storage.searchMembers(search as string)
         : await storage.getAllMembers();
       
-      // Filter members based on user roles
       const filteredMembers = filterMembersByRole(allMembers, req.member?.roles || ['member'], req.member?.userId || '');
       res.json(filteredMembers);
     } catch (error) {
@@ -1675,8 +1691,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all loans
   app.get('/api/loans', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
+      const { search, page, limit } = req.query;
+
+      if (page || limit) {
+        const pageNum = Math.max(1, parseInt(page as string) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+        const userRoles = req.member?.roles || ['member'];
+        const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer', 'teller'].includes(role));
+
+        if (isStaff) {
+          const result = await storage.getLoansPaginated(pageNum, limitNum, search as string);
+          return res.json(result);
+        } else {
+          const userId = getUserId(req);
+          const member = userId ? await storage.getMemberByUserId(userId) : null;
+          if (member) {
+            const result = await storage.getLoansPaginated(pageNum, limitNum, search as string, member.id);
+            return res.json(result);
+          }
+          return res.json({ data: [], total: 0 });
+        }
+      }
+
       const allLoans = await storage.getAllLoans();
-      // Filter loans based on user role
       const filteredLoans = filterLoansByRole(allLoans, req.member?.roles || ['member'], req.member?.userId || '');
       res.json(filteredLoans);
     } catch (error) {
@@ -1716,6 +1753,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!member) {
         return res.json([]);
       }
+
+      const { search, page, limit } = req.query;
+      if (page || limit) {
+        const pageNum = Math.max(1, parseInt(page as string) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+        const result = await storage.getLoansPaginated(pageNum, limitNum, search as string, member.id);
+        return res.json(result);
+      }
+
       const loans = await storage.getLoansByMember(member.id);
       res.json(loans);
     } catch (error) {
@@ -2226,6 +2272,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!member) {
         return res.status(404).json({ message: "Member record not found" });
       }
+
+      const { search, page, limit } = req.query;
+      if (page || limit) {
+        const pageNum = Math.max(1, parseInt(page as string) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+        const result = await storage.getSavingsAccountsPaginated(pageNum, limitNum, search as string, member.id);
+        return res.json(result);
+      }
+
       const savingsAccounts = await storage.getSavingsAccountsByMember(member.id);
       const accountsWithMember = savingsAccounts.map(account => ({
         ...account,
@@ -2250,6 +2305,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!member) {
         return res.status(404).json({ message: "Member record not found" });
       }
+
+      const { search, page, limit } = req.query;
+      if (page || limit) {
+        const pageNum = Math.max(1, parseInt(page as string) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+        const result = await storage.getTransactionsPaginated(pageNum, limitNum, search as string, member.id);
+        return res.json(result);
+      }
+
       const transactions = await storage.getTransactionsByMember(member.id);
       res.json(transactions);
     } catch (error) {
@@ -2266,24 +2330,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User ID not found" });
       }
 
-      // Get user's member record to check their roles
       const savingsUser = await storage.getUser(userId);
       const requestingMember = await storage.getMemberByUserId(userId);
       const isSavingsAdmin = savingsUser?.role === 'admin';
 
-      // Get user's roles for permission checking - also check user.role directly for staff without member profiles
       const roleNames = requestingMember ? await storage.getMemberRoles(requestingMember.id) : [];
       const effectiveRoles = roleNames.length > 0 ? roleNames : (savingsUser?.role ? [savingsUser.role] : []);
 
-      // Access control: staff can see all accounts, members see only their own
       const isStaff = isSavingsAdmin || effectiveRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+
+      const { search, page, limit } = req.query;
+
+      if (page || limit) {
+        const pageNum = Math.max(1, parseInt(page as string) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+
+        if (isStaff) {
+          const result = await storage.getSavingsAccountsPaginated(pageNum, limitNum, search as string);
+          return res.json(result);
+        } else if (requestingMember) {
+          const result = await storage.getSavingsAccountsPaginated(pageNum, limitNum, search as string, requestingMember.id);
+          return res.json(result);
+        }
+        return res.json({ data: [], total: 0 });
+      }
 
       let savingsAccounts;
       if (isStaff) {
-        // Staff can see all savings accounts
         savingsAccounts = await storage.getAllSavingsAccounts();
       } else if (requestingMember) {
-        // Members can only see their own accounts
         savingsAccounts = await storage.getSavingsAccountsByMember(requestingMember.id);
       } else {
         savingsAccounts = [];
@@ -2299,7 +2374,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Transaction routes
   app.get('/api/transactions', isAuthenticated, async (req, res) => {
     try {
-      const { limit } = req.query;
+      const { search, page, limit } = req.query;
+
+      if (page || limit) {
+        const pageNum = Math.max(1, parseInt(page as string) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+        const result = await storage.getTransactionsPaginated(pageNum, limitNum, search as string);
+        return res.json(result);
+      }
+
       const transactions = await storage.getRecentTransactions(limit ? parseInt(limit as string) : undefined);
       res.json(transactions);
     } catch (error) {
@@ -2734,6 +2817,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit logs endpoint (admin only)
   app.get('/api/audit-logs', isAuthenticated, requirePermission('read', 'audit-logs'), async (req: any, res) => {
     try {
+      const { search, page, limit } = req.query;
+
+      if (page || limit) {
+        const pageNum = Math.max(1, parseInt(page as string) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+        const result = await storage.getAuditLogsPaginated(pageNum, limitNum, search as string);
+        return res.json(result);
+      }
+
       const filters = {
         userId: req.query.userId as string,
         resource: req.query.resource as string,
@@ -3127,7 +3219,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       const userId = user.id;
-      const { isRead, type, priority, limit } = req.query;
+      const { isRead, type, priority, limit, page, search } = req.query;
+
+      if (page || (limit && !isRead && !type && !priority)) {
+        const pageNum = Math.max(1, parseInt(page as string) || 1);
+        const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+        const result = await storage.getNotificationsPaginated(userId, pageNum, limitNum);
+        return res.json(result);
+      }
       
       const filters: any = {};
       if (isRead !== undefined) filters.isRead = isRead === 'true';

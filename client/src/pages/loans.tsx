@@ -4,7 +4,7 @@ import { useLocation, useRoute } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
-import { usePagination } from "@/hooks/usePagination";
+import { useServerPagination } from "@/hooks/useServerPagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -52,9 +52,27 @@ export default function Loans() {
   const [repaymentLoan, setRepaymentLoan] = useState<any>(null);
   const [repaymentAmount, setRepaymentAmount] = useState("");
   const [repaymentDescription, setRepaymentDescription] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+
+  const {
+    page,
+    limit,
+    search,
+    setPage,
+    setLimit,
+    setSearch,
+    buildQueryParams,
+  } = useServerPagination({ initialLimit: 10 });
+
+  const [searchInput, setSearchInput] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput, setSearch]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -70,30 +88,21 @@ export default function Loans() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: allLoans, isLoading: pendingLoading } = useQuery<any[]>({
-    queryKey: isPersonalView ? ['/api/loans/my-loans'] : ['/api/loans'],
+  const queryParams = buildQueryParams();
+  const baseUrl = isPersonalView ? '/api/loans/my-loans' : '/api/loans';
+
+  const { data: response, isLoading: pendingLoading } = useQuery<{ data: any[]; total: number }>({
+    queryKey: [baseUrl, queryParams],
+    queryFn: async () => {
+      const res = await fetch(`${baseUrl}?${queryParams}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch loans');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
-  const filteredLoans = (allLoans || []).filter((loan: any) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      loan.loanNumber?.toLowerCase().includes(query) ||
-      loan.member?.fullName?.toLowerCase().includes(query) ||
-      loan.loanType?.toLowerCase().includes(query) ||
-      loan.status?.toLowerCase().includes(query)
-    );
-  });
-
-  const {
-    currentPage,
-    itemsPerPage,
-    paginatedData: pendingLoans,
-    totalItems,
-    handlePageChange,
-    handleItemsPerPageChange,
-  } = usePagination({ data: filteredLoans, initialItemsPerPage: 10 });
+  const pendingLoans = response?.data || [];
+  const totalItems = response?.total || 0;
 
   const approveLoanMutation = useMutation({
     mutationFn: async (loan: any) => {
@@ -225,14 +234,16 @@ export default function Loans() {
             <div className="section-card p-4 relative flex items-center w-full sm:w-auto">
               <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-slate-400 h-4 w-4" />
               <Input
+                data-testid="input-search-loans"
                 placeholder="Search loans..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="pl-10 w-full sm:w-64 border-0 bg-transparent focus-visible:ring-0"
               />
             </div>
             <div className="flex gap-2">
               <Button 
+                data-testid="button-new-loan"
                 className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm flex-1 sm:flex-none"
                 onClick={() => setIsApplicationModalOpen(true)}
               >
@@ -245,6 +256,7 @@ export default function Loans() {
                   variant="outline"
                   className="border-blue-200 text-blue-700 hover:bg-blue-50 rounded-xl shadow-sm flex-1 sm:flex-none"
                   onClick={() => setIsTopUpModalOpen(true)}
+                  data-testid="button-topup"
                 >
                   <ArrowUpCircle className="mr-2 h-4 w-4" />
                   <span className="hidden sm:inline">Request Top-Up</span>
@@ -331,6 +343,7 @@ export default function Loans() {
                       min={1}
                       max={parseFloat(repaymentLoan.outstandingBalance || '0')}
                       placeholder="Enter payment amount"
+                      data-testid="input-repayment-amount"
                     />
                     <p className="text-xs text-muted-foreground">
                       Maximum: {formatCurrency(repaymentLoan.outstandingBalance || '0')}
@@ -378,6 +391,7 @@ export default function Loans() {
                       className="flex-1 sacco-gradient text-white hover:opacity-90"
                       onClick={handleRepaymentSubmit}
                       disabled={repaymentMutation.isPending || !repaymentAmount || parseFloat(repaymentAmount) <= 0}
+                      data-testid="button-submit-repayment"
                     >
                       {repaymentMutation.isPending ? (
                         <>
@@ -421,7 +435,7 @@ export default function Loans() {
           {pendingLoans && pendingLoans.length > 0 ? (
             <div className="space-y-4">
               {pendingLoans.map((loan: any) => (
-                <div key={loan.id} className="border border-slate-200/60 rounded-lg hover:shadow-sm transition-all">
+                <div key={loan.id} className="border border-slate-200/60 rounded-lg hover:shadow-sm transition-all" data-testid={`card-loan-${loan.id}`}>
                   <div
                     className="p-6 cursor-pointer"
                     onClick={() => loan.uuid && setLocation(`/loans/${loan.uuid}/details`)}
@@ -514,6 +528,7 @@ export default function Loans() {
                                 onClick={() => disburseLoanMutation.mutate(loan)}
                                 disabled={disburseLoanMutation.isPending}
                                 className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm"
+                                data-testid={`button-disburse-loan-${loan.id}`}
                               >
                                 <DollarSign className="w-4 h-4 mr-1" />
                                 Disburse
@@ -532,6 +547,7 @@ export default function Loans() {
                             onClick={() => openRepaymentModal(loan)}
                             variant="outline"
                             className="border-emerald-200/50 text-emerald-700 hover:bg-emerald-50 rounded-xl shadow-sm"
+                            data-testid={`button-repayment-loan-${loan.id}`}
                           >
                             <Banknote className="w-4 h-4 mr-1" />
                             Record Repayment
@@ -556,24 +572,24 @@ export default function Loans() {
             </div>
           )}
         </div>
-        {filteredLoans.length > 0 && (
+        {totalItems > 0 && (
           <div className="p-6 border-t border-slate-200/60">
             <Pagination
               totalItems={totalItems}
-              itemsPerPage={itemsPerPage}
-              currentPage={currentPage}
-              onPageChange={handlePageChange}
-              onItemsPerPageChange={handleItemsPerPageChange}
+              itemsPerPage={limit}
+              currentPage={page}
+              onPageChange={setPage}
+              onItemsPerPageChange={setLimit}
             />
           </div>
         )}
       </div>
 
       {(() => {
-        const activeLoansData = (allLoans || []).filter((l: any) => ['approved', 'active', 'disbursed'].includes(l.status));
+        const activeLoansData = pendingLoans.filter((l: any) => ['approved', 'active', 'disbursed'].includes(l.status));
         const totalOutstanding = activeLoansData.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
-        const defaultedCount = (allLoans || []).filter((l: any) => l.status === 'defaulted').length;
-        const totalLoansCount = (allLoans || []).length;
+        const defaultedCount = pendingLoans.filter((l: any) => l.status === 'defaulted').length;
+        const totalLoansCount = pendingLoans.length;
         const defaultRate = totalLoansCount > 0 ? ((defaultedCount / totalLoansCount) * 100).toFixed(1) : '0';
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
@@ -581,7 +597,7 @@ export default function Loans() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-slate-500 text-xs sm:text-sm font-medium">Total Active Loans</p>
-                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1">{activeLoansData.length}</p>
+                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1" data-testid="text-active-loans-count">{activeLoansData.length}</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
                   <HandCoins className="text-blue-600 h-5 w-5 sm:h-6 sm:w-6" />
@@ -593,7 +609,7 @@ export default function Loans() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-slate-500 text-xs sm:text-sm font-medium">Outstanding Amount</p>
-                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1 truncate">{formatCurrency(totalOutstanding)}</p>
+                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1 truncate" data-testid="text-outstanding-amount">{formatCurrency(totalOutstanding)}</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
                   <DollarSign className="text-emerald-600 h-5 w-5 sm:h-6 sm:w-6" />
@@ -605,7 +621,7 @@ export default function Loans() {
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-slate-500 text-xs sm:text-sm font-medium">Default Rate</p>
-                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1">{defaultRate}%</p>
+                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1" data-testid="text-default-rate">{defaultRate}%</p>
                 </div>
                 <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
                   <XCircle className="text-red-600 h-5 w-5 sm:h-6 sm:w-6" />
@@ -618,4 +634,3 @@ export default function Loans() {
     </div>
   );
 }
-

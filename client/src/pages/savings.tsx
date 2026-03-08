@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
-import { usePagination } from "@/hooks/usePagination";
+import { useServerPagination } from "@/hooks/useServerPagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -21,14 +21,31 @@ export default function Savings() {
   const [location] = useLocation();
   const { activeRole } = useRBAC();
   const isPersonalView = location === '/my-savings' || activeRole === 'member';
-  const [searchQuery, setSearchQuery] = useState("");
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
 
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Redirect to home if not authenticated
+  const {
+    page,
+    limit,
+    search,
+    setPage,
+    setLimit,
+    setSearch,
+    buildQueryParams,
+  } = useServerPagination({ initialLimit: 10 });
+
+  const [searchInput, setSearchInput] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput, setSearch]);
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -43,34 +60,21 @@ export default function Savings() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: allSavingsAccounts, isLoading: accountsLoading, error } = useQuery<any[]>({
-    queryKey: isPersonalView ? ['/api/savings/my-savings'] : ['/api/savings-accounts'],
+  const queryParams = buildQueryParams();
+  const baseUrl = isPersonalView ? '/api/savings/my-savings' : '/api/savings-accounts';
+
+  const { data: response, isLoading: accountsLoading, error } = useQuery<{ data: any[]; total: number }>({
+    queryKey: [baseUrl, queryParams],
+    queryFn: async () => {
+      const res = await fetch(`${baseUrl}?${queryParams}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch savings accounts');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
-
-
-  // Filter savings accounts based on search query
-  const filteredSavingsAccounts = (allSavingsAccounts || []).filter((account: any) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      account.accountNumber?.toLowerCase().includes(query) ||
-      account.member?.fullName?.toLowerCase().includes(query) ||
-      account.accountType?.toLowerCase().includes(query) ||
-      account.status?.toLowerCase().includes(query)
-    );
-  });
-
-  // Apply pagination
-  const {
-    currentPage,
-    itemsPerPage,
-    paginatedData: savingsAccounts,
-    totalItems,
-    handlePageChange,
-    handleItemsPerPageChange,
-  } = usePagination({ data: filteredSavingsAccounts, initialItemsPerPage: 10 });
+  const savingsAccounts = response?.data || [];
+  const totalItems = response?.total || 0;
 
   const getAccountTypeColor = (type: string) => {
     switch (type) {
@@ -102,15 +106,12 @@ export default function Savings() {
     window.location.href = `/savings/${accountUuid}/statement`;
   };
 
-
-
   if (error && isUnauthorizedError(error)) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   return (
     <div className="space-y-6 page-container animate-fade-in">
-      {/* Page Header */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -128,7 +129,7 @@ export default function Savings() {
             <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3">
               <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
                 <DialogTrigger asChild>
-                  <Button className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm">
+                  <Button data-testid="button-record-deposit" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm">
                     <ArrowUp className="w-4 h-4 mr-2" />
                     Record Deposit
                   </Button>
@@ -146,7 +147,7 @@ export default function Savings() {
 
               <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
                 <DialogTrigger asChild>
-                  <Button variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
+                  <Button data-testid="button-withdrawal-request" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 rounded-xl shadow-sm">
                     <ArrowDown className="w-4 h-4 mr-2" />
                     Withdrawal Request
                   </Button>
@@ -166,20 +167,19 @@ export default function Savings() {
         </div>
       </div>
 
-      {/* Search */}
       <div className="section-card p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
           <Input
+            data-testid="input-search-savings"
             placeholder="Search members or account numbers..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="pl-10"
           />
         </div>
       </div>
 
-      {/* Savings Accounts */}
       {accountsLoading ? (
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
@@ -203,7 +203,7 @@ export default function Savings() {
         <>
           <div className="space-y-4">
             {savingsAccounts.map((account: any) => (
-              <div key={account.id} className="section-card hover:shadow-md hover:border-slate-300/60 transition-all duration-200">
+              <div key={account.id} className="section-card hover:shadow-md hover:border-slate-300/60 transition-all duration-200" data-testid={`card-savings-${account.id}`}>
                 <div className="p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div className="flex items-center space-x-4">
@@ -220,7 +220,7 @@ export default function Savings() {
                       </div>
                     </div>
                     <div className="sm:text-right">
-                      <div className="text-lg font-semibold text-slate-900">
+                      <div className="text-lg font-semibold text-slate-900" data-testid={`text-balance-${account.id}`}>
                         {formatCurrency(account.balance || '0')}
                       </div>
                       <div className="text-sm text-slate-500">Current Balance</div>
@@ -260,13 +260,13 @@ export default function Savings() {
                     </div>
                   </div>
 
-                  {/* Account Actions */}
                   <div className="mt-4 pt-4 border-t border-slate-100">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleViewStatement(account.uuid)}
                       className="text-primary border-primary/30 hover:bg-primary/5 rounded-lg"
+                      data-testid={`button-view-statement-${account.id}`}
                     >
                       <FileText className="w-4 h-4 mr-2" />
                       View Statement
@@ -276,14 +276,14 @@ export default function Savings() {
               </div>
             ))}
           </div>
-          {filteredSavingsAccounts.length > 0 && (
+          {totalItems > 0 && (
             <div className="mt-6">
               <Pagination
                 totalItems={totalItems}
-                itemsPerPage={itemsPerPage}
-                currentPage={currentPage}
-                onPageChange={handlePageChange}
-                onItemsPerPageChange={handleItemsPerPageChange}
+                itemsPerPage={limit}
+                currentPage={page}
+                onPageChange={setPage}
+                onItemsPerPageChange={setLimit}
               />
             </div>
           )}
@@ -294,7 +294,7 @@ export default function Savings() {
             <PiggyBank className="w-12 h-12 text-slate-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-slate-900 mb-2">No savings accounts found</h3>
             <p className="text-slate-500 mb-4">
-              {searchQuery ? "No accounts match your search criteria." : "Savings accounts will appear here once members are added."}
+              {search ? "No accounts match your search criteria." : "Savings accounts will appear here once members are added."}
             </p>
           </div>
         </div>

@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
-import { usePagination } from "@/hooks/usePagination";
+import { useServerPagination } from "@/hooks/useServerPagination";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -20,11 +20,28 @@ export default function Transactions() {
   const [location] = useLocation();
   const { activeRole } = useRBAC();
   const isPersonalView = location === '/my-transactions' || activeRole === 'member';
-  const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
-  // Redirect to home if not authenticated
+  const {
+    page,
+    limit,
+    search,
+    setPage,
+    setLimit,
+    setSearch,
+    buildQueryParams,
+  } = useServerPagination({ initialLimit: 10 });
+
+  const [searchInput, setSearchInput] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearch(searchInput);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchInput, setSearch]);
+
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
       toast({
@@ -39,32 +56,21 @@ export default function Transactions() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: allTransactions, isLoading: transactionsLoading, error } = useQuery<any[]>({
-    queryKey: isPersonalView ? ['/api/transactions/my-transactions'] : ['/api/transactions'],
+  const queryParams = buildQueryParams();
+  const baseUrl = isPersonalView ? '/api/transactions/my-transactions' : '/api/transactions';
+
+  const { data: response, isLoading: transactionsLoading, error } = useQuery<{ data: TransactionWithDetails[]; total: number }>({
+    queryKey: [baseUrl, queryParams],
+    queryFn: async () => {
+      const res = await fetch(`${baseUrl}?${queryParams}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch transactions');
+      return res.json();
+    },
     enabled: isAuthenticated,
   });
 
-  // Filter transactions based on search query
-  const filteredTransactions = (allTransactions || []).filter((transaction: any) => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      transaction.member?.fullName?.toLowerCase().includes(query) ||
-      transaction.type?.toLowerCase().includes(query) ||
-      transaction.description?.toLowerCase().includes(query) ||
-      transaction.status?.toLowerCase().includes(query)
-    );
-  });
-
-  // Apply pagination
-  const {
-    currentPage,
-    itemsPerPage,
-    paginatedData: transactions,
-    totalItems,
-    handlePageChange,
-    handleItemsPerPageChange,
-  } = usePagination({ data: filteredTransactions, initialItemsPerPage: 10 });
+  const transactions = response?.data || [];
+  const totalItems = response?.total || 0;
 
   const approveTransactionMutation = useMutation({
     mutationFn: async (transactionId: number) => {
@@ -164,15 +170,12 @@ export default function Transactions() {
     return type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
   };
 
-
-
   if (error && isUnauthorizedError(error)) {
-    return null; // Will redirect in useEffect
+    return null;
   }
 
   return (
     <div className="space-y-6 page-container animate-fade-in">
-      {/* Page Header */}
       <div>
         <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900">
           {isPersonalView ? 'My Transactions' : 'Transactions'}
@@ -185,20 +188,19 @@ export default function Transactions() {
         </p>
       </div>
 
-      {/* Search */}
       <div className="section-card p-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 w-4 h-4" />
           <Input
+            data-testid="input-search-transactions"
             placeholder="Search by reference number, member name, or transaction type..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
             className="pl-10"
           />
         </div>
       </div>
 
-      {/* Transactions Table */}
       <div className="section-card">
         <div className="p-6">
           {transactionsLoading ? (
@@ -233,8 +235,8 @@ export default function Transactions() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTransactions.map((transaction: TransactionWithDetails) => (
-                    <TableRow key={transaction.id}>
+                  {transactions.map((transaction: TransactionWithDetails) => (
+                    <TableRow key={transaction.id} data-testid={`row-transaction-${transaction.id}`}>
                       {!isPersonalView && (
                         <TableCell>
                           <div className="flex items-center space-x-3">
@@ -286,6 +288,7 @@ export default function Transactions() {
                               onClick={() => approveTransactionMutation.mutate(transaction.id)}
                               disabled={approveTransactionMutation.isPending}
                               className="sacco-success text-white hover:opacity-90 rounded-xl shadow-sm"
+                              data-testid={`button-approve-transaction-${transaction.id}`}
                             >
                               <CheckCircle className="w-3 h-3 mr-1" />
                               Approve
@@ -304,7 +307,7 @@ export default function Transactions() {
                 <DollarSign className="w-12 h-12 text-slate-400 mx-auto mb-4" />
                 <h3 className="text-lg font-medium text-slate-900 mb-2">No transactions found</h3>
                 <p className="text-slate-500">
-                  {searchQuery 
+                  {search 
                     ? "No transactions match your search criteria." 
                     : isPersonalView 
                       ? "Your transaction history will appear here once you start making deposits, withdrawals, or loan payments."
@@ -315,13 +318,13 @@ export default function Transactions() {
             </div>
           )}
         </div>
-        {filteredTransactions.length > 0 && (
+        {totalItems > 0 && (
           <Pagination
             totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
-            currentPage={currentPage}
-            onPageChange={handlePageChange}
-            onItemsPerPageChange={handleItemsPerPageChange}
+            itemsPerPage={limit}
+            currentPage={page}
+            onPageChange={setPage}
+            onItemsPerPageChange={setLimit}
           />
         )}
       </div>

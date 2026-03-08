@@ -75,7 +75,9 @@ export function Pagination({
                 <SelectItem value="25">25 per page</SelectItem>
                 <SelectItem value="50">50 per page</SelectItem>
                 <SelectItem value="100">100 per page</SelectItem>
-                <SelectItem value={totalItems.toString()}>All</SelectItem>
+                {totalItems <= 100 && (
+                  <SelectItem value={totalItems.toString()}>All</SelectItem>
+                )}
               </SelectContent>
             </Select>
           </>
