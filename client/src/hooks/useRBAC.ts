@@ -34,11 +34,6 @@ function setSharedActiveRole(role: UserRole) {
 export function useRBAC() {
   const { user, isLoading } = useAuth();
   
-  const { data: dynamicPermissions = [] } = useQuery<any[]>({
-    queryKey: ["/api/auth/permissions"],
-    enabled: !!user,
-  });
-  
   let userRoles: UserRole[] = ['member'];
   
   if (user?.member) {
@@ -73,7 +68,18 @@ export function useRBAC() {
 
   const effectiveRole = userRoles.includes(activeRole) ? activeRole : getHighestRole(userRoles);
   const effectiveRoles = [effectiveRole];
-  const isAdmin = userRoles.includes('admin') || effectiveRole === 'admin';
+
+  const { data: dynamicPermissions = [], isLoading: permissionsLoading } = useQuery<any[]>({
+    queryKey: ["/api/auth/permissions", effectiveRole],
+    queryFn: async () => {
+      const res = await fetch(`/api/auth/permissions?role=${encodeURIComponent(effectiveRole)}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch permissions');
+      return res.json();
+    },
+    enabled: !!user,
+  });
   
   return {
     userRole: effectiveRole,
@@ -81,17 +87,16 @@ export function useRBAC() {
     activeRole: effectiveRole,
     switchRole,
     canSwitchRoles: userRoles.length > 1,
-    isLoading,
+    isLoading: isLoading || (!!user && permissionsLoading),
     
     hasPermission: (action: string, resource: string) => {
-      if (isAdmin) return true;
       return dynamicPermissions.some(
         (p: any) => p.action === action && p.resource === resource
       );
     },
     
     canAccessDashboardComponent: (component: string) => 
-      canAccessDashboardComponent(effectiveRole, component, dynamicPermissions),
+      canAccessDashboardComponent(effectiveRoles, component, dynamicPermissions),
     
     canAccessRoute: (route: string) => 
       canAccessRoute(effectiveRoles, route, dynamicPermissions),

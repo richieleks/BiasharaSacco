@@ -3,7 +3,7 @@ import { hashPassword } from "./localAuth";
 import { log } from "./vite";
 import { db } from "./db";
 import { roles, permissions, rolePermissions } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export async function seedAdminUser() {
   try {
@@ -86,10 +86,8 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "create", resource: "loans" },
     { action: "update", resource: "loans" },
     { action: "approve", resource: "loans" },
-    { action: "read", resource: "personal-loans" },
     { action: "read", resource: "transactions" },
     { action: "create", resource: "transactions" },
-    { action: "read", resource: "personal-transactions" },
     { action: "read", resource: "share-capital" },
     { action: "update", resource: "share-capital" },
     { action: "read", resource: "guarantors" },
@@ -101,8 +99,6 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "system-settings" },
     { action: "update", resource: "system-settings" },
     { action: "read", resource: "audit-logs" },
-    { action: "read", resource: "personal-dashboard" },
-    { action: "read", resource: "personal-savings" },
   ],
   treasurer: [
     { action: "read", resource: "dashboard" },
@@ -116,10 +112,8 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "create", resource: "loans" },
     { action: "update", resource: "loans" },
     { action: "approve", resource: "loans" },
-    { action: "read", resource: "personal-loans" },
     { action: "read", resource: "transactions" },
     { action: "create", resource: "transactions" },
-    { action: "read", resource: "personal-transactions" },
     { action: "read", resource: "share-capital" },
     { action: "update", resource: "share-capital" },
     { action: "read", resource: "guarantors" },
@@ -128,8 +122,6 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "interest-calculations" },
     { action: "read", resource: "reports" },
     { action: "read", resource: "notifications" },
-    { action: "read", resource: "personal-dashboard" },
-    { action: "read", resource: "personal-savings" },
   ],
   committee: [
     { action: "read", resource: "dashboard" },
@@ -142,18 +134,14 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "loans" },
     { action: "create", resource: "loans" },
     { action: "approve", resource: "loans" },
-    { action: "read", resource: "personal-loans" },
     { action: "read", resource: "transactions" },
     { action: "create", resource: "transactions" },
-    { action: "read", resource: "personal-transactions" },
     { action: "read", resource: "share-capital" },
     { action: "read", resource: "guarantors" },
     { action: "read", resource: "interest-rates" },
     { action: "read", resource: "interest-calculations" },
     { action: "read", resource: "reports" },
     { action: "read", resource: "notifications" },
-    { action: "read", resource: "personal-dashboard" },
-    { action: "read", resource: "personal-savings" },
   ],
   teller: [
     { action: "read", resource: "dashboard" },
@@ -162,17 +150,14 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "savings" },
     { action: "create", resource: "savings" },
     { action: "read", resource: "loans" },
-    { action: "read", resource: "personal-loans" },
     { action: "read", resource: "transactions" },
     { action: "create", resource: "transactions" },
-    { action: "read", resource: "personal-transactions" },
     { action: "read", resource: "share-capital" },
     { action: "read", resource: "guarantors" },
     { action: "read", resource: "notifications" },
-    { action: "read", resource: "personal-dashboard" },
-    { action: "read", resource: "personal-savings" },
   ],
   member: [
+    { action: "read", resource: "dashboard" },
     { action: "read", resource: "personal-dashboard" },
     { action: "read", resource: "personal-loans" },
     { action: "read", resource: "personal-savings" },
@@ -224,15 +209,34 @@ export async function seedRBAC() {
       const existingMappings = await storage.getRolePermissions(roleId);
       const existingPermIds = new Set(existingMappings.map(m => m.permissionId));
 
-      const missingPermIds = perms
-        .map(p => permIds[`${p.action}:${p.resource}`])
-        .filter((id): id is number => id !== undefined && !existingPermIds.has(id));
+      const desiredPermIds = new Set(
+        perms
+          .map(p => permIds[`${p.action}:${p.resource}`])
+          .filter((id): id is number => id !== undefined)
+      );
+
+      const missingPermIds = [...desiredPermIds].filter(id => !existingPermIds.has(id));
 
       if (missingPermIds.length > 0) {
         await db.insert(rolePermissions).values(
           missingPermIds.map(permissionId => ({ roleId, permissionId }))
         );
         log(`  Role '${roleName}': added ${missingPermIds.length} missing permissions`);
+      }
+
+      const stalePermIds = [...existingPermIds].filter(id => !desiredPermIds.has(id));
+      if (stalePermIds.length > 0) {
+        for (const permId of stalePermIds) {
+          await db
+            .delete(rolePermissions)
+            .where(
+              and(
+                eq(rolePermissions.roleId, roleId),
+                eq(rolePermissions.permissionId, permId)
+              )
+            );
+        }
+        log(`  Role '${roleName}': removed ${stalePermIds.length} stale permissions`);
       }
     }
 

@@ -25,10 +25,8 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Data Import', path: '/data-import', icon: 'Upload', group: 'Administration', permission: { action: 'update', resource: 'system-settings' } },
 ];
 
-export function hasPermission(userRoles: UserRole | UserRole[], action: string, resource: string, dynamicPermissions?: Permission[]): boolean {
+export function hasPermission(_userRoles: UserRole | UserRole[], action: string, resource: string, dynamicPermissions?: Permission[]): boolean {
   if (!dynamicPermissions || dynamicPermissions.length === 0) {
-    const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
-    if (roles.includes('admin')) return true;
     return false;
   }
   return dynamicPermissions.some(p => p.action === action && p.resource === resource);
@@ -36,7 +34,6 @@ export function hasPermission(userRoles: UserRole | UserRole[], action: string, 
 
 export function canAccessDashboardComponent(userRoles: UserRole | UserRole[], component: string, dynamicPermissions?: Permission[]): boolean {
   const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
-  if (roles.includes('admin')) return true;
 
   const componentPermissions: Record<string, Permission> = {
     'metrics-grid': { action: 'read', resource: 'dashboard' },
@@ -63,7 +60,6 @@ export function canAccessDashboardComponent(userRoles: UserRole | UserRole[], co
 
 export function getNavigationItems(userRoles: UserRole | UserRole[], dynamicPermissions?: Permission[]) {
   const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
-  if (roles.includes('admin')) return ALL_NAVIGATION_ITEMS;
 
   return ALL_NAVIGATION_ITEMS.filter(item =>
     hasPermission(roles, item.permission.action, item.permission.resource, dynamicPermissions)
@@ -72,7 +68,6 @@ export function getNavigationItems(userRoles: UserRole | UserRole[], dynamicPerm
 
 export function canAccessRoute(userRoles: UserRole | UserRole[], route: string, dynamicPermissions?: Permission[]): boolean {
   const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
-  if (roles.includes('admin')) return true;
   const navItems = getNavigationItems(roles, dynamicPermissions);
   return navItems.some(item => item.path === route);
 }

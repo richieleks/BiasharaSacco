@@ -165,12 +165,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get current user's permissions
   app.get('/api/auth/permissions', isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      // Handle both Replit and local auth users
       const userId = getUserId(req)!;
       const member = await storage.getMemberByUserId(userId);
       const user = await storage.getUser(userId);
+      const requestedRole = req.query.role as string | undefined;
       
-      // Get all roles for this member - also check user.role for staff without member profiles
       let roleNames: string[];
       if (member) {
         const memberRoles = await storage.getMemberRoles(member.id);
@@ -180,11 +179,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         return res.json([]);
       }
+
+      const rolesToQuery = requestedRole && roleNames.includes(requestedRole)
+        ? [requestedRole]
+        : roleNames;
       
-      // Get all permissions for all user's roles
       const allPermissions: any[] = [];
       
-      for (const roleName of roleNames) {
+      for (const roleName of rolesToQuery) {
         const role = await storage.getRoleByName(roleName);
         if (role) {
           const permissions = await storage.getPermissionsByRole(role.id);
@@ -192,7 +194,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      // Remove duplicates
       const uniquePermissions = Array.from(
         new Map(allPermissions.map(p => [`${p.action}-${p.resource}`, p])).values()
       );

@@ -21,12 +21,12 @@ const GROUP_COLORS: Record<string, string> = {
 };
 
 export default function CollapsibleSidebar({ className }: CollapsibleSidebarProps) {
-  const { getNavigationItems, userRole } = useRBAC();
+  const { getNavigationItems, userRole, isLoading } = useRBAC();
   const [location] = useLocation();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   
-  const navItems = getNavigationItems();
+  const navItems = isLoading ? [] : getNavigationItems();
 
   const getIcon = (iconName: string) => {
     const IconComponent = Icons[iconName as keyof typeof Icons] as any;
