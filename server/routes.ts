@@ -931,6 +931,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { comments } = req.body;
       
       const member = await storage.rejectMember(await storage.resolveMemberId(id), userId, comments);
+
+      if (member.userId) {
+        await createAndBroadcastNotification({
+          type: 'member_rejected',
+          title: 'Membership Application Rejected',
+          message: `Your membership application has been rejected.${comments ? ` Reason: ${comments}` : ''} Please contact the SACCO office for more information.`,
+          priority: 'high',
+          actionUrl: '/dashboard',
+          memberId: member.id,
+          userId: member.userId,
+          isRead: false
+        });
+      }
+
       res.json({ message: "Member application rejected", member });
     } catch (error) {
       console.error("Error rejecting member:", error);
@@ -1278,6 +1292,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
+      const member = await storage.getMember(account.memberId);
+      if (member?.userId) {
+        await createAndBroadcastNotification({
+          type: 'transaction_completed',
+          title: 'Deposit Received',
+          message: `A deposit of UGX ${parseFloat(amount).toLocaleString()} has been made to your savings account.`,
+          priority: 'medium',
+          actionUrl: '/savings',
+          memberId: account.memberId,
+          userId: member.userId,
+          isRead: false
+        });
+      }
+
       broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard']);
       res.status(201).json(transaction);
     } catch (error) {
@@ -1302,6 +1330,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'pending', // Requires approval
         processedBy: getUserId(req),
       });
+
+      const withdrawAccount = await storage.getSavingsAccount(accountId);
+      const withdrawMember = withdrawAccount ? await storage.getMember(withdrawAccount.memberId) : null;
+      if (withdrawMember?.userId) {
+        await createAndBroadcastNotification({
+          type: 'transaction_completed',
+          title: 'Withdrawal Request Submitted',
+          message: `Your withdrawal request of UGX ${parseFloat(amount).toLocaleString()} has been submitted and is pending approval.`,
+          priority: 'medium',
+          actionUrl: '/savings',
+          memberId: withdrawAccount!.memberId,
+          userId: withdrawMember.userId,
+          isRead: false
+        });
+      }
 
       broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard']);
       res.status(201).json(transaction);
@@ -2059,6 +2102,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const loan = await storage.rejectLoan(loanByUuid.id, userId, reason);
+
+      const loanMember = await storage.getMember(loan.memberId);
+      if (loanMember?.userId) {
+        await createAndBroadcastNotification({
+          type: 'loan_rejection',
+          title: 'Loan Application Rejected',
+          message: `Your loan application ${loan.loanNumber} has been rejected. Reason: ${reason}`,
+          priority: 'high',
+          actionUrl: '/loans',
+          memberId: loan.memberId,
+          userId: loanMember.userId,
+          isRead: false
+        });
+      }
+
       broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans']);
       res.json({ message: "Loan rejected", loan });
     } catch (error) {
@@ -2266,6 +2324,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
+      const disburseMember = await storage.getMember(loan.memberId);
+      if (disburseMember?.userId) {
+        await createAndBroadcastNotification({
+          type: 'loan_approval',
+          title: 'Loan Disbursed',
+          message: `Your loan ${loan.loanNumber} of UGX ${parseFloat(loan.principalAmount).toLocaleString()} has been disbursed. Please check your account.`,
+          priority: 'high',
+          actionUrl: '/loans',
+          memberId: loan.memberId,
+          userId: disburseMember.userId,
+          isRead: false
+        });
+      }
+
       broadcastDataUpdate(['/api/loans', '/api/loans/approval', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans']);
       res.json(loan);
     } catch (error) {
@@ -2300,6 +2372,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'completed',
         processedBy: getUserId(req),
       });
+
+      const paymentMember = await storage.getMember(loan.memberId!);
+      if (paymentMember?.userId) {
+        await createAndBroadcastNotification({
+          type: 'payment_received',
+          title: 'Loan Payment Recorded',
+          message: `A payment of UGX ${parseFloat(amount).toLocaleString()} has been recorded for your loan ${loan.loanNumber}. Outstanding balance: UGX ${parseFloat(loan.outstandingBalance || '0').toLocaleString()}.`,
+          priority: 'medium',
+          actionUrl: '/loans',
+          memberId: loan.memberId!,
+          userId: paymentMember.userId,
+          isRead: false
+        });
+      }
 
       broadcastDataUpdate(['/api/loans', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans']);
       res.status(201).json(transaction);
@@ -2574,6 +2660,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const guarantor = await storage.createGuarantor(validatedData);
+
+      const gLoan = await storage.getLoan(validatedData.loanId);
+      const gLoanApplicant = gLoan ? await storage.getMember(gLoan.memberId) : null;
+      if (guarantorMember.userId) {
+        await createAndBroadcastNotification({
+          type: 'guarantor_request',
+          title: 'Guarantor Request',
+          message: `${gLoanApplicant?.fullName || 'A member'} has requested you to guarantee their loan ${gLoan?.loanNumber || ''} for UGX ${parseFloat(validatedData.guaranteeAmount || '0').toLocaleString()}.`,
+          priority: 'high',
+          actionUrl: '/guarantor-requests',
+          memberId: guarantorMember.id,
+          userId: guarantorMember.userId,
+          isRead: false
+        });
+      }
+
       broadcastDataUpdate(['/api/guarantors', '/api/loans']);
       res.status(201).json(guarantor);
     } catch (error: any) {
@@ -2636,6 +2738,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const createdGuarantors = [];
+      const loanApplicant = await storage.getMember(loan.memberId);
       for (const guarantorData of guarantorList) {
         const guarantor = await storage.createGuarantor({
           loanId,
@@ -2644,6 +2747,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'pending'
         });
         createdGuarantors.push(guarantor);
+
+        const gMember = await storage.getMember(guarantorData.guarantorMemberId);
+        if (gMember?.userId) {
+          await createAndBroadcastNotification({
+            type: 'guarantor_request',
+            title: 'Guarantor Request',
+            message: `${loanApplicant?.fullName || 'A member'} has requested you to guarantee their loan ${loan.loanNumber} for UGX ${parseFloat(guarantorData.guaranteeAmount || '0').toLocaleString()}.`,
+            priority: 'high',
+            actionUrl: '/guarantor-requests',
+            memberId: gMember.id,
+            userId: gMember.userId,
+            isRead: false
+          });
+        }
       }
 
       broadcastDataUpdate(['/api/guarantors', '/api/loans']);
@@ -2700,6 +2817,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.headers['user-agent']
       });
 
+      const gApprovedLoan = await storage.getLoan(guarantor.loanId);
+      const gApprovedLoanMember = gApprovedLoan ? await storage.getMember(gApprovedLoan.memberId) : null;
+      if (gApprovedLoanMember?.userId) {
+        await createAndBroadcastNotification({
+          type: 'guarantor_response',
+          title: 'Guarantor Approved',
+          message: `${guarantorMember?.fullName || 'A guarantor'} has approved to guarantee your loan ${gApprovedLoan?.loanNumber || ''} for UGX ${parseFloat(guarantor.guaranteeAmount || '0').toLocaleString()}.`,
+          priority: 'medium',
+          actionUrl: '/loans',
+          memberId: gApprovedLoanMember.id,
+          userId: gApprovedLoanMember.userId,
+          isRead: false
+        });
+      }
+
       broadcastDataUpdate(['/api/guarantors', '/api/loans', '/api/loans/approval']);
       res.json(updatedGuarantor);
     } catch (error) {
@@ -2745,6 +2877,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ipAddress: req.ip,
         userAgent: req.headers['user-agent']
       });
+
+      const gRejectedLoan = await storage.getLoan(guarantor.loanId);
+      const gRejectedLoanMember = gRejectedLoan ? await storage.getMember(gRejectedLoan.memberId) : null;
+      if (gRejectedLoanMember?.userId) {
+        await createAndBroadcastNotification({
+          type: 'guarantor_response',
+          title: 'Guarantor Declined',
+          message: `${guarantorMember?.fullName || 'A guarantor'} has declined to guarantee your loan ${gRejectedLoan?.loanNumber || ''}. Reason: ${comments}. You may need to find a replacement guarantor.`,
+          priority: 'high',
+          actionUrl: '/loans',
+          memberId: gRejectedLoanMember.id,
+          userId: gRejectedLoanMember.userId,
+          isRead: false
+        });
+      }
 
       broadcastDataUpdate(['/api/guarantors', '/api/loans']);
       res.json(updatedGuarantor);
