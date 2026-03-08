@@ -577,7 +577,7 @@ function MemberDashboard() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" onClick={() => setLocation(`/account-statement/${acc.uuid}`)}>
+                            <Button variant="ghost" size="sm" onClick={() => setLocation(`/savings/${acc.uuid}/statement`)}>
                               <FileText className="h-3.5 w-3.5 mr-1" />
                               Statement
                             </Button>

@@ -185,7 +185,7 @@ function Router() {
               </ProtectedRoute>
             </Route>
             <Route path="/savings/:id/statement">
-              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'savings' }}>
+              <ProtectedRoute>
                 <AccountStatement />
               </ProtectedRoute>
             </Route>
