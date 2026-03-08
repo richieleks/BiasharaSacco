@@ -188,6 +188,7 @@ export function RBACManagementTab() {
 
       <div className="flex gap-2 mb-4">
         <Button
+          type="button"
           variant={activeSection === 'roles' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setActiveSection('roles')}
@@ -196,6 +197,7 @@ export function RBACManagementTab() {
           Roles & Permissions
         </Button>
         <Button
+          type="button"
           variant={activeSection === 'members' ? 'default' : 'outline'}
           size="sm"
           onClick={() => setActiveSection('members')}
@@ -213,7 +215,7 @@ export function RBACManagementTab() {
                 <Lock className="h-4 w-4" />
                 System Roles
               </CardTitle>
-              <Button size="sm" onClick={() => setIsCreateDialogOpen(true)}>
+              <Button type="button" size="sm" onClick={() => setIsCreateDialogOpen(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Create Role
               </Button>
@@ -235,7 +237,7 @@ export function RBACManagementTab() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant="outline">{role.permissions?.length || 0} permissions</Badge>
-                      <Button variant="outline" size="sm" onClick={() => openPermissionsDialog(role)}>
+                      <Button type="button" variant="outline" size="sm" onClick={() => openPermissionsDialog(role)}>
                         <KeyRound className="h-4 w-4 mr-1" />
                         Manage
                       </Button>
@@ -293,6 +295,7 @@ export function RBACManagementTab() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => setSelectedMember(member)}
