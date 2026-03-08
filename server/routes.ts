@@ -1722,6 +1722,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/loans/stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userRoles = req.member?.roles || ['member'];
+      const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer', 'teller'].includes(role));
+
+      let memberId: number | undefined;
+      if (!isStaff) {
+        const userId = getUserId(req);
+        const member = userId ? await storage.getMemberByUserId(userId) : null;
+        memberId = member?.id;
+        if (!memberId) {
+          return res.json({ activeCount: 0, totalOutstanding: 0, defaultedCount: 0, totalCount: 0 });
+        }
+      }
+
+      const stats = await storage.getLoanStats(memberId);
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching loan stats:", error);
+      res.status(500).json({ message: "Failed to fetch loan stats" });
+    }
+  });
+
   app.get('/api/loans/pending', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
       const allLoans = await storage.getAllPendingLoans();
@@ -2817,12 +2840,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Audit logs endpoint (admin only)
   app.get('/api/audit-logs', isAuthenticated, requirePermission('read', 'audit-logs'), async (req: any, res) => {
     try {
-      const { search, page, limit } = req.query;
+      const { search, page, limit, resource, action } = req.query;
 
       if (page || limit) {
         const pageNum = Math.max(1, parseInt(page as string) || 1);
         const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
-        const result = await storage.getAuditLogsPaginated(pageNum, limitNum, search as string);
+        const result = await storage.getAuditLogsPaginated(pageNum, limitNum, search as string, resource as string, action as string);
         return res.json(result);
       }
 

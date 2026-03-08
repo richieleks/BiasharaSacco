@@ -101,6 +101,16 @@ export default function Loans() {
     enabled: isAuthenticated,
   });
 
+  const { data: loanStats } = useQuery<{ activeCount: number; totalOutstanding: number; defaultedCount: number; totalCount: number }>({
+    queryKey: ['/api/loans/stats'],
+    queryFn: async () => {
+      const res = await fetch('/api/loans/stats', { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch loan stats');
+      return res.json();
+    },
+    enabled: isAuthenticated,
+  });
+
   const pendingLoans = response?.data || [];
   const totalItems = response?.total || 0;
 
@@ -111,6 +121,7 @@ export default function Loans() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/stats'] });
       toast({ title: "Success", description: "Loan approved successfully!" });
     },
     onError: (error) => {
@@ -130,6 +141,7 @@ export default function Loans() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/stats'] });
       toast({ title: "Success", description: "Loan disbursed successfully!" });
     },
     onError: (error) => {
@@ -152,6 +164,7 @@ export default function Loans() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/my-loans'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/stats'] });
       toast({ title: "Success", description: "Loan repayment recorded successfully!" });
       setIsRepaymentModalOpen(false);
       setRepaymentLoan(null);
@@ -585,52 +598,61 @@ export default function Loans() {
         )}
       </div>
 
-      {(() => {
-        const activeLoansData = pendingLoans.filter((l: any) => ['approved', 'active', 'disbursed'].includes(l.status));
-        const totalOutstanding = activeLoansData.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
-        const defaultedCount = pendingLoans.filter((l: any) => l.status === 'defaulted').length;
-        const totalLoansCount = pendingLoans.length;
-        const defaultRate = totalLoansCount > 0 ? ((defaultedCount / totalLoansCount) * 100).toFixed(1) : '0';
-        return (
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
-            <div className="section-card p-4 sm:p-6">
+      {!loanStats ? (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="section-card p-4 sm:p-6 animate-pulse">
               <div className="flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <p className="text-slate-500 text-xs sm:text-sm font-medium">Total Active Loans</p>
-                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1" data-testid="text-active-loans-count">{activeLoansData.length}</p>
+                  <div className="h-4 w-24 bg-slate-200 rounded" />
+                  <div className="h-7 w-16 bg-slate-200 rounded mt-2" />
                 </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                  <HandCoins className="text-blue-600 h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
+                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-slate-100 rounded-lg" />
               </div>
             </div>
-
-            <div className="section-card p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-slate-500 text-xs sm:text-sm font-medium">Outstanding Amount</p>
-                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1 truncate" data-testid="text-outstanding-amount">{formatCurrency(totalOutstanding)}</p>
-                </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
-                  <DollarSign className="text-emerald-600 h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
+          ))}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+          <div className="section-card p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-500 text-xs sm:text-sm font-medium">Total Active Loans</p>
+                <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1" data-testid="text-active-loans-count">{loanStats.activeCount}</p>
               </div>
-            </div>
-
-            <div className="section-card p-4 sm:p-6">
-              <div className="flex items-center justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-slate-500 text-xs sm:text-sm font-medium">Default Rate</p>
-                  <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1" data-testid="text-default-rate">{defaultRate}%</p>
-                </div>
-                <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
-                  <XCircle className="text-red-600 h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
+                <HandCoins className="text-blue-600 h-5 w-5 sm:h-6 sm:w-6" />
               </div>
             </div>
           </div>
-        );
-      })()}
+
+          <div className="section-card p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-500 text-xs sm:text-sm font-medium">Outstanding Amount</p>
+                <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1 truncate" data-testid="text-outstanding-amount">{formatCurrency(loanStats.totalOutstanding)}</p>
+              </div>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-50 rounded-lg flex items-center justify-center shrink-0">
+                <DollarSign className="text-emerald-600 h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+            </div>
+          </div>
+
+          <div className="section-card p-4 sm:p-6">
+            <div className="flex items-center justify-between">
+              <div className="min-w-0 flex-1">
+                <p className="text-slate-500 text-xs sm:text-sm font-medium">Default Rate</p>
+                <p className="text-lg sm:text-2xl font-semibold text-slate-900 mt-1" data-testid="text-default-rate">
+                  {loanStats.totalCount > 0 ? ((loanStats.defaultedCount / loanStats.totalCount) * 100).toFixed(1) : '0'}%
+                </p>
+              </div>
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-red-50 rounded-lg flex items-center justify-center shrink-0">
+                <XCircle className="text-red-600 h-5 w-5 sm:h-6 sm:w-6" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

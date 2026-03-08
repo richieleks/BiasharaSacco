@@ -42,6 +42,8 @@ export default function AuditLogs() {
   } = useServerPagination({ initialLimit: 25 });
 
   const [searchInput, setSearchInput] = useState("");
+  const [resourceFilter, setResourceFilter] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -66,7 +68,23 @@ export default function AuditLogs() {
     );
   }
 
-  const queryParams = buildQueryParams();
+  const handleResourceFilter = (value: string) => {
+    setResourceFilter(value === "all" ? "" : value);
+    setPage(1);
+  };
+
+  const handleActionFilter = (value: string) => {
+    setActionFilter(value === "all" ? "" : value);
+    setPage(1);
+  };
+
+  const baseQueryParams = buildQueryParams();
+  const queryParams = (() => {
+    const params = new URLSearchParams(baseQueryParams);
+    if (resourceFilter) params.set('resource', resourceFilter);
+    if (actionFilter) params.set('action', actionFilter);
+    return params.toString();
+  })();
 
   const { data: response, isLoading } = useQuery<{ data: any[]; total: number }>({
     queryKey: ['/api/audit-logs', queryParams],
@@ -109,21 +127,52 @@ export default function AuditLogs() {
 
       <div className="section-card">
         <div className="px-6 py-4 border-b border-slate-100">
-          <h3 className="text-sm font-semibold text-slate-900">Search</h3>
+          <h3 className="text-sm font-semibold text-slate-900">Filters</h3>
           <p className="text-sm text-slate-500 mt-0.5">
-            Search audit logs by user, action, resource, or details
+            Search and filter audit logs by user, action, resource, or details
           </p>
         </div>
         <div className="p-6">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-            <Input
-              data-testid="input-search-audit-logs"
-              placeholder="Search by user, details, or resource..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+              <Input
+                data-testid="input-search-audit-logs"
+                placeholder="Search by user, details, or resource..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Select value={resourceFilter || "all"} onValueChange={handleResourceFilter}>
+              <SelectTrigger className="w-full sm:w-[160px]" data-testid="select-resource-filter">
+                <SelectValue placeholder="All Resources" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Resources</SelectItem>
+                <SelectItem value="member">Member</SelectItem>
+                <SelectItem value="loan">Loan</SelectItem>
+                <SelectItem value="savings">Savings</SelectItem>
+                <SelectItem value="transaction">Transaction</SelectItem>
+                <SelectItem value="settings">Settings</SelectItem>
+                <SelectItem value="user">User</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={actionFilter || "all"} onValueChange={handleActionFilter}>
+              <SelectTrigger className="w-full sm:w-[160px]" data-testid="select-action-filter">
+                <SelectValue placeholder="All Actions" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Actions</SelectItem>
+                <SelectItem value="create">Create</SelectItem>
+                <SelectItem value="update">Update</SelectItem>
+                <SelectItem value="delete">Delete</SelectItem>
+                <SelectItem value="approve">Approve</SelectItem>
+                <SelectItem value="reject">Reject</SelectItem>
+                <SelectItem value="login">Login</SelectItem>
+                <SelectItem value="logout">Logout</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
