@@ -5004,5 +5004,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ==================== SACCO Operational Accounts ====================
+
+  app.get('/api/sacco-accounts', isAuthenticated, requirePermission('read', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const { type, active } = req.query;
+      const filters: any = {};
+      if (type) filters.accountType = type;
+      if (active !== undefined) filters.isActive = active === 'true';
+      const accounts = await storage.getSaccoAccounts(filters);
+      res.json(accounts);
+    } catch (error) {
+      console.error("Error fetching SACCO accounts:", error);
+      res.status(500).json({ message: "Failed to fetch SACCO accounts" });
+    }
+  });
+
+  app.get('/api/sacco-accounts/summary', isAuthenticated, requirePermission('read', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const summary = await storage.getSaccoAccountsSummary();
+      res.json(summary);
+    } catch (error) {
+      console.error("Error fetching SACCO accounts summary:", error);
+      res.status(500).json({ message: "Failed to fetch accounts summary" });
+    }
+  });
+
+  app.get('/api/sacco-accounts/:id', isAuthenticated, requirePermission('read', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const account = await storage.getSaccoAccount(parseInt(req.params.id));
+      if (!account) return res.status(404).json({ message: "Account not found" });
+      res.json(account);
+    } catch (error) {
+      console.error("Error fetching SACCO account:", error);
+      res.status(500).json({ message: "Failed to fetch account" });
+    }
+  });
+
+  app.get('/api/sacco-accounts/:id/statement', isAuthenticated, requirePermission('read', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const { startDate, endDate } = req.query;
+      const statement = await storage.getSaccoAccountStatement(
+        parseInt(req.params.id),
+        startDate as string,
+        endDate as string
+      );
+      res.json(statement);
+    } catch (error) {
+      console.error("Error fetching account statement:", error);
+      res.status(500).json({ message: "Failed to fetch account statement" });
+    }
+  });
+
+  app.post('/api/sacco-accounts', isAuthenticated, requirePermission('update', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const { accountCode, accountName, accountType, description } = req.body;
+      if (!accountCode || !accountName || !accountType) {
+        return res.status(400).json({ message: "Missing required fields: accountCode, accountName, accountType" });
+      }
+      const validTypes = ['asset', 'liability', 'equity', 'revenue', 'expense'];
+      if (!validTypes.includes(accountType)) {
+        return res.status(400).json({ message: `Invalid account type. Must be one of: ${validTypes.join(', ')}` });
+      }
+      const account = await storage.createSaccoAccount({ accountCode, accountName, accountType, description });
+      res.status(201).json(account);
+    } catch (error: any) {
+      console.error("Error creating SACCO account:", error);
+      if (error?.code === '23505') {
+        return res.status(400).json({ message: "An account with this code already exists" });
+      }
+      res.status(500).json({ message: "Failed to create account" });
+    }
+  });
+
+  app.patch('/api/sacco-accounts/:id', isAuthenticated, requirePermission('update', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const account = await storage.updateSaccoAccount(parseInt(req.params.id), req.body);
+      res.json(account);
+    } catch (error) {
+      console.error("Error updating SACCO account:", error);
+      res.status(500).json({ message: "Failed to update account" });
+    }
+  });
+
+  app.get('/api/sacco-journal-entries', isAuthenticated, requirePermission('read', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const { page, limit, accountId, startDate, endDate } = req.query;
+      const entries = await storage.getSaccoJournalEntries({
+        page: page ? parseInt(page) : undefined,
+        limit: limit ? parseInt(limit) : undefined,
+        accountId: accountId ? parseInt(accountId) : undefined,
+        startDate: startDate as string,
+        endDate: endDate as string,
+      });
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching journal entries:", error);
+      res.status(500).json({ message: "Failed to fetch journal entries" });
+    }
+  });
+
+  app.post('/api/sacco-journal-entries', isAuthenticated, requirePermission('update', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const { entryDate, description, reference, debitAccountId, creditAccountId, amount } = req.body;
+      if (!entryDate || !description || !debitAccountId || !creditAccountId || !amount) {
+        return res.status(400).json({ message: "Missing required fields: entryDate, description, debitAccountId, creditAccountId, amount" });
+      }
+      const parsedAmount = parseFloat(amount);
+      if (isNaN(parsedAmount) || parsedAmount <= 0) {
+        return res.status(400).json({ message: "Amount must be a positive number" });
+      }
+      if (debitAccountId === creditAccountId) {
+        return res.status(400).json({ message: "Debit and credit accounts must be different" });
+      }
+
+      const userId = getUserId(req)!;
+      const entryNumber = `JE${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+      const entry = await storage.createSaccoJournalEntry({
+        entryNumber,
+        entryDate,
+        description,
+        reference: reference || null,
+        debitAccountId: parseInt(debitAccountId),
+        creditAccountId: parseInt(creditAccountId),
+        amount: amount.toString(),
+        createdBy: userId,
+        status: 'posted',
+      });
+
+      await storage.createAuditLog({
+        userId,
+        action: 'create',
+        resource: 'sacco-journal-entry',
+        resourceId: entry.id.toString(),
+        details: `Created journal entry ${entryNumber}: ${req.body.description}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      broadcastDataUpdate(['/api/sacco-accounts', '/api/sacco-journal-entries', '/api/sacco-accounts/summary']);
+      res.status(201).json(entry);
+    } catch (error: any) {
+      console.error("Error creating journal entry:", error);
+      res.status(500).json({ message: error.message || "Failed to create journal entry" });
+    }
+  });
+
+  app.post('/api/sacco-journal-entries/:id/reverse', isAuthenticated, requirePermission('update', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const userId = getUserId(req)!;
+      const reversal = await storage.reverseSaccoJournalEntry(parseInt(req.params.id), userId);
+
+      await storage.createAuditLog({
+        userId,
+        action: 'update',
+        resource: 'sacco-journal-entry',
+        resourceId: reversal.id.toString(),
+        details: `Reversed journal entry ${req.params.id}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      broadcastDataUpdate(['/api/sacco-accounts', '/api/sacco-journal-entries', '/api/sacco-accounts/summary']);
+      res.json(reversal);
+    } catch (error: any) {
+      console.error("Error reversing journal entry:", error);
+      res.status(500).json({ message: error.message || "Failed to reverse journal entry" });
+    }
+  });
+
   return httpServer;
 }

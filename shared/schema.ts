@@ -13,7 +13,7 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -869,3 +869,54 @@ export type InsertLoanTerm = typeof loanTerms.$inferInsert;
 export type LoanTypeWithTerms = LoanType & {
   terms: LoanTerm[];
 };
+
+export const saccoAccounts = pgTable("sacco_accounts", {
+  id: serial("id").primaryKey(),
+  uuid: varchar("uuid").default(sql`gen_random_uuid()`).notNull(),
+  accountCode: varchar("account_code").unique().notNull(),
+  accountName: varchar("account_name").notNull(),
+  accountType: varchar("account_type", {
+    enum: ["asset", "liability", "equity", "revenue", "expense"]
+  }).notNull(),
+  parentAccountId: integer("parent_account_id"),
+  description: text("description"),
+  balance: decimal("balance", { precision: 15, scale: 2 }).default("0.00").notNull(),
+  isActive: boolean("is_active").default(true).notNull(),
+  isSystemAccount: boolean("is_system_account").default(false).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const saccoJournalEntries = pgTable("sacco_journal_entries", {
+  id: serial("id").primaryKey(),
+  uuid: varchar("uuid").default(sql`gen_random_uuid()`).notNull(),
+  entryNumber: varchar("entry_number").unique().notNull(),
+  entryDate: date("entry_date").notNull(),
+  description: text("description").notNull(),
+  reference: varchar("reference"),
+  debitAccountId: integer("debit_account_id").references(() => saccoAccounts.id).notNull(),
+  creditAccountId: integer("credit_account_id").references(() => saccoAccounts.id).notNull(),
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  createdBy: varchar("created_by").references(() => users.id).notNull(),
+  status: varchar("status", { enum: ["posted", "reversed"] }).default("posted").notNull(),
+  reversedById: integer("reversed_by_id"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertSaccoAccountSchema = createInsertSchema(saccoAccounts).omit({
+  id: true,
+  uuid: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertSaccoJournalEntrySchema = createInsertSchema(saccoJournalEntries).omit({
+  id: true,
+  uuid: true,
+  createdAt: true,
+});
+
+export type SaccoAccount = typeof saccoAccounts.$inferSelect;
+export type InsertSaccoAccount = z.infer<typeof insertSaccoAccountSchema>;
+export type SaccoJournalEntry = typeof saccoJournalEntries.$inferSelect;
+export type InsertSaccoJournalEntry = z.infer<typeof insertSaccoJournalEntrySchema>;

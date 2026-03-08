@@ -67,6 +67,12 @@ import {
   userSettings,
   loanApprovals,
   type LoanApproval,
+  saccoAccounts,
+  saccoJournalEntries,
+  type SaccoAccount,
+  type InsertSaccoAccount,
+  type SaccoJournalEntry,
+  type InsertSaccoJournalEntry,
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
@@ -313,6 +319,19 @@ export interface IStorage {
   // User Settings operations
   getUserSettings(userId: string): Promise<string | null>;
   upsertUserSettings(userId: string, settingsJson: string): Promise<void>;
+
+  // SACCO Operational Accounts
+  getSaccoAccounts(filters?: { accountType?: string; isActive?: boolean }): Promise<SaccoAccount[]>;
+  getSaccoAccount(id: number): Promise<SaccoAccount | undefined>;
+  createSaccoAccount(data: InsertSaccoAccount): Promise<SaccoAccount>;
+  updateSaccoAccount(id: number, data: Partial<InsertSaccoAccount>): Promise<SaccoAccount>;
+  getSaccoJournalEntries(filters?: { page?: number; limit?: number; accountId?: number; startDate?: string; endDate?: string }): Promise<{ data: any[]; total: number }>;
+  getSaccoJournalEntry(id: number): Promise<any>;
+  createSaccoJournalEntry(data: InsertSaccoJournalEntry): Promise<SaccoJournalEntry>;
+  reverseSaccoJournalEntry(id: number, userId: string): Promise<SaccoJournalEntry>;
+  getSaccoAccountStatement(accountId: number, startDate?: string, endDate?: string): Promise<any[]>;
+  getSaccoAccountsSummary(): Promise<any>;
+  seedDefaultSaccoAccounts(): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -3040,6 +3059,273 @@ export class DatabaseStorage implements IStorage {
     } else {
       await db.insert(userSettings)
         .values({ userId, settingsJson });
+    }
+  }
+
+  async getSaccoAccounts(filters?: { accountType?: string; isActive?: boolean }): Promise<SaccoAccount[]> {
+    const conditions = [];
+    if (filters?.accountType) {
+      conditions.push(eq(saccoAccounts.accountType, filters.accountType));
+    }
+    if (filters?.isActive !== undefined) {
+      conditions.push(eq(saccoAccounts.isActive, filters.isActive));
+    }
+    return db.select().from(saccoAccounts)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(saccoAccounts.accountCode);
+  }
+
+  async getSaccoAccount(id: number): Promise<SaccoAccount | undefined> {
+    const [account] = await db.select().from(saccoAccounts).where(eq(saccoAccounts.id, id));
+    return account;
+  }
+
+  async createSaccoAccount(data: InsertSaccoAccount): Promise<SaccoAccount> {
+    const [account] = await db.insert(saccoAccounts).values(data).returning();
+    return account;
+  }
+
+  async updateSaccoAccount(id: number, data: Partial<InsertSaccoAccount>): Promise<SaccoAccount> {
+    const [account] = await db.update(saccoAccounts)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(saccoAccounts.id, id))
+      .returning();
+    return account;
+  }
+
+  async getSaccoJournalEntries(filters?: { page?: number; limit?: number; accountId?: number; startDate?: string; endDate?: string }): Promise<{ data: any[]; total: number }> {
+    const page = filters?.page || 1;
+    const limit = filters?.limit || 25;
+    const offset = (page - 1) * limit;
+
+    const conditions = [];
+    conditions.push(eq(saccoJournalEntries.status, 'posted'));
+    if (filters?.accountId) {
+      conditions.push(or(
+        eq(saccoJournalEntries.debitAccountId, filters.accountId),
+        eq(saccoJournalEntries.creditAccountId, filters.accountId)
+      )!);
+    }
+    if (filters?.startDate) {
+      conditions.push(gte(saccoJournalEntries.entryDate, filters.startDate));
+    }
+    if (filters?.endDate) {
+      conditions.push(lte(saccoJournalEntries.entryDate, filters.endDate));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    const debitAccount = db.select().from(saccoAccounts).as('debit_acc');
+    const creditAccount = db.select().from(saccoAccounts).as('credit_acc');
+
+    const entries = await db
+      .select({
+        entry: saccoJournalEntries,
+        debitAccountName: sql<string>`(SELECT account_name FROM sacco_accounts WHERE id = ${saccoJournalEntries.debitAccountId})`,
+        debitAccountCode: sql<string>`(SELECT account_code FROM sacco_accounts WHERE id = ${saccoJournalEntries.debitAccountId})`,
+        creditAccountName: sql<string>`(SELECT account_name FROM sacco_accounts WHERE id = ${saccoJournalEntries.creditAccountId})`,
+        creditAccountCode: sql<string>`(SELECT account_code FROM sacco_accounts WHERE id = ${saccoJournalEntries.creditAccountId})`,
+        createdByName: sql<string>`(SELECT COALESCE(first_name || ' ' || last_name, username) FROM users WHERE id = ${saccoJournalEntries.createdBy})`,
+      })
+      .from(saccoJournalEntries)
+      .where(whereClause)
+      .orderBy(desc(saccoJournalEntries.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    const [totalResult] = await db
+      .select({ count: count() })
+      .from(saccoJournalEntries)
+      .where(whereClause);
+
+    return {
+      data: entries.map(e => ({
+        ...e.entry,
+        debitAccountName: e.debitAccountName,
+        debitAccountCode: e.debitAccountCode,
+        creditAccountName: e.creditAccountName,
+        creditAccountCode: e.creditAccountCode,
+        createdByName: e.createdByName,
+      })),
+      total: totalResult?.count || 0,
+    };
+  }
+
+  async getSaccoJournalEntry(id: number): Promise<any> {
+    const [entry] = await db
+      .select({
+        entry: saccoJournalEntries,
+        debitAccountName: sql<string>`(SELECT account_name FROM sacco_accounts WHERE id = ${saccoJournalEntries.debitAccountId})`,
+        creditAccountName: sql<string>`(SELECT account_name FROM sacco_accounts WHERE id = ${saccoJournalEntries.creditAccountId})`,
+      })
+      .from(saccoJournalEntries)
+      .where(eq(saccoJournalEntries.id, id));
+    if (!entry) return undefined;
+    return { ...entry.entry, debitAccountName: entry.debitAccountName, creditAccountName: entry.creditAccountName };
+  }
+
+  async createSaccoJournalEntry(data: InsertSaccoJournalEntry): Promise<SaccoJournalEntry> {
+    return await db.transaction(async (tx) => {
+      const [debitAccount] = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.id, data.debitAccountId));
+      const [creditAccount] = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.id, data.creditAccountId));
+      if (!debitAccount || !creditAccount) throw new Error("Invalid account IDs");
+
+      const amount = parseFloat(data.amount);
+      if (isNaN(amount) || amount <= 0) throw new Error("Amount must be a positive number");
+      if (data.debitAccountId === data.creditAccountId) throw new Error("Debit and credit accounts must be different");
+
+      const debitDelta = ['asset', 'expense'].includes(debitAccount.accountType) ? amount : -amount;
+      const creditDelta = ['liability', 'equity', 'revenue'].includes(creditAccount.accountType) ? amount : -amount;
+
+      await tx.update(saccoAccounts)
+        .set({ balance: sql`(${saccoAccounts.balance}::numeric + ${debitDelta})::decimal(15,2)`, updatedAt: new Date() })
+        .where(eq(saccoAccounts.id, data.debitAccountId));
+
+      await tx.update(saccoAccounts)
+        .set({ balance: sql`(${saccoAccounts.balance}::numeric + ${creditDelta})::decimal(15,2)`, updatedAt: new Date() })
+        .where(eq(saccoAccounts.id, data.creditAccountId));
+
+      const [entry] = await tx.insert(saccoJournalEntries).values(data).returning();
+      return entry;
+    });
+  }
+
+  async reverseSaccoJournalEntry(id: number, userId: string): Promise<SaccoJournalEntry> {
+    return await db.transaction(async (tx) => {
+      const [original] = await tx.select().from(saccoJournalEntries).where(eq(saccoJournalEntries.id, id));
+      if (!original) throw new Error("Journal entry not found");
+      if (original.status === 'reversed') throw new Error("Entry is already reversed");
+
+      await tx.update(saccoJournalEntries)
+        .set({ status: 'reversed' })
+        .where(eq(saccoJournalEntries.id, id));
+
+      const [debitAccount] = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.id, original.creditAccountId));
+      const [creditAccount] = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.id, original.debitAccountId));
+      if (!debitAccount || !creditAccount) throw new Error("Original accounts no longer exist");
+
+      const amount = parseFloat(original.amount);
+      const debitDelta = ['asset', 'expense'].includes(debitAccount.accountType) ? amount : -amount;
+      const creditDelta = ['liability', 'equity', 'revenue'].includes(creditAccount.accountType) ? amount : -amount;
+
+      await tx.update(saccoAccounts)
+        .set({ balance: sql`(${saccoAccounts.balance}::numeric + ${debitDelta})::decimal(15,2)`, updatedAt: new Date() })
+        .where(eq(saccoAccounts.id, original.creditAccountId));
+
+      await tx.update(saccoAccounts)
+        .set({ balance: sql`(${saccoAccounts.balance}::numeric + ${creditDelta})::decimal(15,2)`, updatedAt: new Date() })
+        .where(eq(saccoAccounts.id, original.debitAccountId));
+
+      const reversalNumber = `REV-${original.entryNumber}`;
+      const [reversal] = await tx.insert(saccoJournalEntries).values({
+        entryNumber: reversalNumber,
+        entryDate: new Date().toISOString().split('T')[0],
+        description: `Reversal of ${original.entryNumber}: ${original.description}`,
+        reference: original.reference,
+        debitAccountId: original.creditAccountId,
+        creditAccountId: original.debitAccountId,
+        amount: original.amount,
+        createdBy: userId,
+        status: 'posted',
+        reversedById: id,
+      }).returning();
+
+      return reversal;
+    });
+  }
+
+  async getSaccoAccountStatement(accountId: number, startDate?: string, endDate?: string): Promise<any[]> {
+    const conditions = [
+      or(
+        eq(saccoJournalEntries.debitAccountId, accountId),
+        eq(saccoJournalEntries.creditAccountId, accountId)
+      )!,
+      eq(saccoJournalEntries.status, 'posted'),
+    ];
+    if (startDate) conditions.push(gte(saccoJournalEntries.entryDate, startDate));
+    if (endDate) conditions.push(lte(saccoJournalEntries.entryDate, endDate));
+
+    const entries = await db
+      .select({
+        entry: saccoJournalEntries,
+        debitAccountName: sql<string>`(SELECT account_name FROM sacco_accounts WHERE id = ${saccoJournalEntries.debitAccountId})`,
+        creditAccountName: sql<string>`(SELECT account_name FROM sacco_accounts WHERE id = ${saccoJournalEntries.creditAccountId})`,
+      })
+      .from(saccoJournalEntries)
+      .where(and(...conditions))
+      .orderBy(saccoJournalEntries.entryDate, saccoJournalEntries.createdAt);
+
+    return entries.map(e => ({
+      ...e.entry,
+      debitAccountName: e.debitAccountName,
+      creditAccountName: e.creditAccountName,
+    }));
+  }
+
+  async getSaccoAccountsSummary(): Promise<any> {
+    const accounts = await db.select().from(saccoAccounts).where(eq(saccoAccounts.isActive, true));
+    const summary: Record<string, { count: number; totalBalance: number; accounts: SaccoAccount[] }> = {};
+    for (const acc of accounts) {
+      if (!summary[acc.accountType]) {
+        summary[acc.accountType] = { count: 0, totalBalance: 0, accounts: [] };
+      }
+      summary[acc.accountType].count++;
+      summary[acc.accountType].totalBalance += parseFloat(acc.balance || '0');
+      summary[acc.accountType].accounts.push(acc);
+    }
+    const totalAssets = summary['asset']?.totalBalance || 0;
+    const totalLiabilities = summary['liability']?.totalBalance || 0;
+    const totalEquity = summary['equity']?.totalBalance || 0;
+    const totalRevenue = summary['revenue']?.totalBalance || 0;
+    const totalExpenses = summary['expense']?.totalBalance || 0;
+    return {
+      byType: summary,
+      totalAssets,
+      totalLiabilities,
+      totalEquity,
+      totalRevenue,
+      totalExpenses,
+      netIncome: totalRevenue - totalExpenses,
+      balanceSheetBalance: totalAssets - totalLiabilities - totalEquity,
+    };
+  }
+
+  async seedDefaultSaccoAccounts(): Promise<void> {
+    const existing = await db.select({ count: count() }).from(saccoAccounts);
+    if (existing[0]?.count > 0) return;
+
+    const defaults: InsertSaccoAccount[] = [
+      { accountCode: '1001', accountName: 'Cash at Bank', accountType: 'asset', description: 'Main SACCO bank account', isSystemAccount: true },
+      { accountCode: '1002', accountName: 'Petty Cash', accountType: 'asset', description: 'Office petty cash', isSystemAccount: true },
+      { accountCode: '1003', accountName: 'Loan Portfolio', accountType: 'asset', description: 'Total outstanding loans to members', isSystemAccount: true },
+      { accountCode: '1004', accountName: 'Fixed Assets', accountType: 'asset', description: 'Office equipment, furniture, and fixtures', isSystemAccount: true },
+      { accountCode: '1005', accountName: 'Accounts Receivable', accountType: 'asset', description: 'Amounts owed to the SACCO', isSystemAccount: true },
+      { accountCode: '2001', accountName: 'Member Savings', accountType: 'liability', description: 'Total member savings deposits held', isSystemAccount: true },
+      { accountCode: '2002', accountName: 'Member Share Capital', accountType: 'liability', description: 'Total member share capital contributions', isSystemAccount: true },
+      { accountCode: '2003', accountName: 'Accounts Payable', accountType: 'liability', description: 'Amounts owed by the SACCO', isSystemAccount: true },
+      { accountCode: '2004', accountName: 'Interest Payable on Savings', accountType: 'liability', description: 'Accrued interest owed to members on savings', isSystemAccount: true },
+      { accountCode: '3001', accountName: 'Statutory Reserve Fund', accountType: 'equity', description: 'Mandatory reserve as required by regulations', isSystemAccount: true },
+      { accountCode: '3002', accountName: 'General Reserve Fund', accountType: 'equity', description: 'Retained earnings for SACCO growth', isSystemAccount: true },
+      { accountCode: '3003', accountName: 'Emergency Fund', accountType: 'equity', description: 'Fund for emergency situations and contingencies', isSystemAccount: true },
+      { accountCode: '4001', accountName: 'Interest on Loans', accountType: 'revenue', description: 'Interest income earned from member loans', isSystemAccount: true },
+      { accountCode: '4002', accountName: 'Loan Processing Fees', accountType: 'revenue', description: 'Fees charged for processing loan applications', isSystemAccount: true },
+      { accountCode: '4003', accountName: 'Membership Entry Fees', accountType: 'revenue', description: 'One-time fees from new member registration', isSystemAccount: true },
+      { accountCode: '4004', accountName: 'Late Payment Penalties', accountType: 'revenue', description: 'Penalties charged for late loan repayments', isSystemAccount: true },
+      { accountCode: '4005', accountName: 'Other Income', accountType: 'revenue', description: 'Miscellaneous income sources', isSystemAccount: true },
+      { accountCode: '5001', accountName: 'Salaries & Wages', accountType: 'expense', description: 'Staff compensation and benefits', isSystemAccount: true },
+      { accountCode: '5002', accountName: 'Office Rent', accountType: 'expense', description: 'Rental expenses for office space', isSystemAccount: true },
+      { accountCode: '5003', accountName: 'Utilities', accountType: 'expense', description: 'Electricity, water, and internet costs', isSystemAccount: true },
+      { accountCode: '5004', accountName: 'Stationery & Supplies', accountType: 'expense', description: 'Office supplies and printing materials', isSystemAccount: true },
+      { accountCode: '5005', accountName: 'Transport & Travel', accountType: 'expense', description: 'Travel and transportation expenses', isSystemAccount: true },
+      { accountCode: '5006', accountName: 'Audit & Legal Fees', accountType: 'expense', description: 'External audit and legal consultation fees', isSystemAccount: true },
+      { accountCode: '5007', accountName: 'Insurance', accountType: 'expense', description: 'Insurance premiums for SACCO assets', isSystemAccount: true },
+      { accountCode: '5008', accountName: 'Depreciation', accountType: 'expense', description: 'Depreciation of fixed assets', isSystemAccount: true },
+      { accountCode: '5009', accountName: 'Bank Charges', accountType: 'expense', description: 'Bank transaction fees and charges', isSystemAccount: true },
+      { accountCode: '5010', accountName: 'Other Expenses', accountType: 'expense', description: 'Miscellaneous operational expenses', isSystemAccount: true },
+    ];
+
+    for (const acc of defaults) {
+      await db.insert(saccoAccounts).values(acc);
     }
   }
 }

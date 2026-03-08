@@ -70,6 +70,8 @@ const SYSTEM_PERMISSIONS = [
   { resource: "audit-logs", action: "read", displayName: "View Audit Logs", category: "Administration" },
   { resource: "personal-dashboard", action: "read", displayName: "View Personal Dashboard", category: "Main" },
   { resource: "personal-savings", action: "read", displayName: "View Personal Savings", category: "Finance" },
+  { resource: "sacco-accounts", action: "read", displayName: "View SACCO Accounts", category: "Finance" },
+  { resource: "sacco-accounts", action: "update", displayName: "Manage SACCO Accounts", category: "Finance" },
 ];
 
 const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]> = {
@@ -99,6 +101,8 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "system-settings" },
     { action: "update", resource: "system-settings" },
     { action: "read", resource: "audit-logs" },
+    { action: "read", resource: "sacco-accounts" },
+    { action: "update", resource: "sacco-accounts" },
   ],
   treasurer: [
     { action: "read", resource: "dashboard" },
@@ -122,6 +126,8 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "interest-calculations" },
     { action: "read", resource: "reports" },
     { action: "read", resource: "notifications" },
+    { action: "read", resource: "sacco-accounts" },
+    { action: "update", resource: "sacco-accounts" },
   ],
   committee: [
     { action: "read", resource: "dashboard" },
@@ -142,6 +148,7 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "interest-calculations" },
     { action: "read", resource: "reports" },
     { action: "read", resource: "notifications" },
+    { action: "read", resource: "sacco-accounts" },
   ],
   teller: [
     { action: "read", resource: "dashboard" },

@@ -20,6 +20,7 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Interest Calculations', path: '/interest-calculations', icon: 'Calculator', group: 'Finance', permission: { action: 'read', resource: 'interest-calculations' } },
   { name: 'Reports', path: '/reports', icon: 'BarChart3', group: 'Reports', permission: { action: 'read', resource: 'reports' } },
   { name: 'Notifications', path: '/notifications', icon: 'Bell', group: 'Reports', permission: { action: 'read', resource: 'notifications' } },
+  { name: 'SACCO Accounts', path: '/sacco-accounts', icon: 'Landmark', group: 'Finance', permission: { action: 'read', resource: 'sacco-accounts' } },
   { name: 'Settings', path: '/admin-settings', icon: 'Settings', group: 'Administration', permission: { action: 'update', resource: 'system-settings' } },
   { name: 'Audit Logs', path: '/audit-logs', icon: 'FileText', group: 'Administration', permission: { action: 'read', resource: 'audit-logs' } },
   { name: 'Data Import', path: '/data-import', icon: 'Upload', group: 'Administration', permission: { action: 'update', resource: 'system-settings' } },

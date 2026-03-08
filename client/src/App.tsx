@@ -38,6 +38,7 @@ import AccountStatement from "@/pages/account-statement";
 import LoanStatement from "@/pages/loan-statement";
 import LoanDetails from "@/pages/loan-details";
 import InterestCalculations from "@/pages/interest-calculations";
+import SaccoAccounts from "@/pages/sacco-accounts";
 import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 
@@ -226,6 +227,12 @@ function Router() {
             <Route path="/guarantors">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'guarantors' }}>
                 <Guarantors />
+              </ProtectedRoute>
+            </Route>
+
+            <Route path="/sacco-accounts">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'sacco-accounts' }}>
+                <SaccoAccounts />
               </ProtectedRoute>
             </Route>
 
