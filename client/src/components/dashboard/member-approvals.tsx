@@ -42,10 +42,8 @@ export default function MemberApprovals() {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
       setIsDialogOpen(false);
       setComments("");
-      toast({
-        title: "Member Approved",
-        description: "Member application has been approved successfully!",
-      });
+      toast({ title: "Member Approved",
+        description: "Member application has been approved successfully!", variant: "success" });
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
@@ -76,10 +74,8 @@ export default function MemberApprovals() {
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
       setIsDialogOpen(false);
       setComments("");
-      toast({
-        title: "Application Rejected",
-        description: "Member application has been rejected.",
-      });
+      toast({ title: "Application Rejected",
+        description: "Member application has been rejected.", variant: "warning" });
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {

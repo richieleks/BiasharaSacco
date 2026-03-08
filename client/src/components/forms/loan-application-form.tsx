@@ -297,10 +297,8 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     },
     onSuccess: async (response) => {
       const loan = await response.json();
-      toast({
-        title: "Success",
-        description: "Loan application created. Now add guarantors before submission.",
-      });
+      toast({ title: "Success",
+        description: "Loan application created. Now add guarantors before submission.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       setCurrentLoanId(loan.id);
       form.reset();

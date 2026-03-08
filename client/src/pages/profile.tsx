@@ -81,10 +81,8 @@ export default function ProfilePage() {
       return await apiRequest('PATCH', `/api/auth/profile`, data);
     },
     onSuccess: () => {
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been updated successfully.",
-      });
+      toast({ title: "Profile Updated",
+        description: "Your profile has been updated successfully.", variant: "success" });
       setIsEditing(false);
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     },
@@ -105,10 +103,8 @@ export default function ProfilePage() {
       });
     },
     onSuccess: () => {
-      toast({
-        title: "Password Changed",
-        description: "Your password has been changed successfully.",
-      });
+      toast({ title: "Password Changed",
+        description: "Your password has been changed successfully.", variant: "success" });
       setIsChangingPassword(false);
       passwordForm.reset();
     },

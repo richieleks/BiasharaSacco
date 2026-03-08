@@ -69,10 +69,8 @@ export default function LoanApprovalWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
       setIsDialogOpen(false);
       setComments("");
-      toast({
-        title: "Approval Recorded",
-        description: data.message || `Loan has been approved at ${selectedAction?.stage} stage.`,
-      });
+      toast({ title: "Approval Recorded",
+        description: data.message || `Loan has been approved at ${selectedAction?.stage} stage.`, variant: "success" });
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {
@@ -103,10 +101,8 @@ export default function LoanApprovalWorkflow() {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
       setIsDialogOpen(false);
       setRejectionReason("");
-      toast({
-        title: "Loan Rejected",
-        description: "Loan application has been rejected.",
-      });
+      toast({ title: "Loan Rejected",
+        description: "Loan application has been rejected.", variant: "warning" });
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {

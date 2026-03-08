@@ -99,10 +99,8 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
     },
     onSuccess: () => {
       setFormError(null);
-      toast({
-        title: "Success",
-        description: "Guarantor request sent successfully",
-      });
+      toast({ title: "Success",
+        description: "Guarantor request sent successfully", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/loan', loanId] });
       onSuccess();
     },

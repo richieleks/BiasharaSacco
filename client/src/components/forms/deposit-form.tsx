@@ -59,10 +59,8 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
       onSuccess();
-      toast({
-        title: "Success",
-        description: "Deposit recorded successfully!",
-      });
+      toast({ title: "Success",
+        description: "Deposit recorded successfully!", variant: "success" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {

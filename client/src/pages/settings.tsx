@@ -146,10 +146,8 @@ export default function SettingsPage() {
       return await apiRequest('PATCH', `/api/auth/settings`, data);
     },
     onSuccess: () => {
-      toast({
-        title: "Settings Updated",
-        description: "Your settings have been saved successfully.",
-      });
+      toast({ title: "Settings Updated",
+        description: "Your settings have been saved successfully.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     },
     onError: (error: Error) => {
@@ -168,10 +166,8 @@ export default function SettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rbac/roles"] });
-      toast({
-        title: "Success",
-        description: "Role created successfully",
-      });
+      toast({ title: "Success",
+        description: "Role created successfully", variant: "success" });
       setIsCreateDialogOpen(false);
       setRoleFormData({ name: "", displayName: "", description: "" });
     },
@@ -190,10 +186,8 @@ export default function SettingsPage() {
       return await apiRequest('PATCH', `/api/members/${memberId}/roles`, { roles });
     },
     onSuccess: () => {
-      toast({
-        title: "Roles Updated",
-        description: "Member roles have been updated successfully.",
-      });
+      toast({ title: "Roles Updated",
+        description: "Member roles have been updated successfully.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
       setSelectedMember(null);
     },

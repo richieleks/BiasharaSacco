@@ -26,10 +26,8 @@ export default function PendingApprovals() {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/pending-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/recent-transactions'] });
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-      toast({
-        title: "Success",
-        description: "Transaction approved successfully!",
-      });
+      toast({ title: "Success",
+        description: "Transaction approved successfully!", variant: "success" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -58,10 +56,8 @@ export default function PendingApprovals() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/pending-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
-      toast({
-        title: "Success",
-        description: "Loan approved successfully!",
-      });
+      toast({ title: "Success",
+        description: "Loan approved successfully!", variant: "success" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {

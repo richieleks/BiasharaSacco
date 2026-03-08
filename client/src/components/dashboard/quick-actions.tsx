@@ -25,10 +25,8 @@ export default function QuickActions() {
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
       setIsMemberModalOpen(false);
-      toast({
-        title: "Success",
-        description: "Member added successfully!",
-      });
+      toast({ title: "Success",
+        description: "Member added successfully!", variant: "success" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -55,10 +53,8 @@ export default function QuickActions() {
   };
 
   const handleGenerateReport = () => {
-    toast({
-      title: "Report Generation",
-      description: "Report generation started. You'll be notified when ready.",
-    });
+    toast({ title: "Report Generation",
+      description: "Report generation started. You'll be notified when ready.", variant: "success" });
   };
 
   return (

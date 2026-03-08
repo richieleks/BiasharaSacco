@@ -57,10 +57,8 @@ export default function WithdrawalForm({ onSuccess }: WithdrawalFormProps) {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/pending-approvals'] });
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
       onSuccess();
-      toast({
-        title: "Success",
-        description: "Withdrawal request submitted successfully! Awaiting approval.",
-      });
+      toast({ title: "Success",
+        description: "Withdrawal request submitted successfully! Awaiting approval.", variant: "success" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {

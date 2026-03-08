@@ -206,7 +206,7 @@ export default function MemberDetails() {
       return await apiRequest("PATCH", `/api/members/${memberId}`, data);
     },
     onSuccess: () => {
-      toast({ title: "Success", description: "Member updated successfully" });
+      toast({ title: "Success", description: "Member updated successfully", variant: "success" });
       setIsEditDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['/api/members', memberId] });
       queryClient.invalidateQueries({ queryKey: ["/api/members"] });
@@ -227,7 +227,7 @@ export default function MemberDetails() {
       return response.json();
     },
     onSuccess: (data: any) => {
-      toast({ title: "Share Capital Posted", description: data.message });
+      toast({ title: "Share Capital Posted", description: data.message, variant: "success" });
       setIsShareCapitalDialogOpen(false);
       shareCapitalForm.reset({ amount: "", description: "" });
       queryClient.invalidateQueries({ queryKey: ['/api/members', memberId] });

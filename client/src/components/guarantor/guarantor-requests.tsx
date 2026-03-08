@@ -36,10 +36,8 @@ export default function GuarantorRequests({ memberId }: GuarantorRequestsProps) 
       await apiRequest('PATCH', `/api/guarantors/${guarantorId}/approve`, { comments });
     },
     onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Guarantor request approved",
-      });
+      toast({ title: "Success",
+        description: "Guarantor request approved", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending', memberId] });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/member'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
@@ -60,10 +58,8 @@ export default function GuarantorRequests({ memberId }: GuarantorRequestsProps) 
       await apiRequest('PATCH', `/api/guarantors/${guarantorId}/reject`, { comments });
     },
     onSuccess: () => {
-      toast({
-        title: "Success",
-        description: "Guarantor request rejected",
-      });
+      toast({ title: "Request Rejected",
+        description: "Guarantor request rejected", variant: "warning" });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending', memberId] });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/member'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });

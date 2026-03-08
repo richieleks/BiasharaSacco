@@ -84,7 +84,7 @@ export function RBACManagementTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rbac/roles"] });
-      toast({ title: "Success", description: "Role created successfully" });
+      toast({ title: "Success", description: "Role created successfully", variant: "success" });
       setIsCreateDialogOpen(false);
       setRoleFormData({ name: "", displayName: "", description: "" });
     },
@@ -99,7 +99,7 @@ export function RBACManagementTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rbac/roles"] });
-      toast({ title: "Success", description: "Permissions updated successfully" });
+      toast({ title: "Success", description: "Permissions updated successfully", variant: "success" });
       setIsPermissionsDialogOpen(false);
       setSelectedRole(null);
     },
@@ -113,7 +113,7 @@ export function RBACManagementTab() {
       return await apiRequest('PATCH', `/api/members/${memberId}/roles`, { roles });
     },
     onSuccess: () => {
-      toast({ title: "Roles Updated", description: "Member roles have been updated successfully." });
+      toast({ title: "Roles Updated", description: "Member roles have been updated successfully.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
       setSelectedMember(null);
     },

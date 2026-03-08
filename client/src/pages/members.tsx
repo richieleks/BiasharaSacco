@@ -79,10 +79,8 @@ export default function Members() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
       setIsAddModalOpen(false);
-      toast({
-        title: "Success",
-        description: "Member added successfully!",
-      });
+      toast({ title: "Success",
+        description: "Member added successfully!", variant: "success" });
     },
     onError: (error: any) => {
       if (isUnauthorizedError(error)) {

@@ -122,7 +122,7 @@ export default function Loans() {
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/stats'] });
-      toast({ title: "Success", description: "Loan approved successfully!" });
+      toast({ title: "Success", description: "Loan approved successfully!", variant: "success" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -142,7 +142,7 @@ export default function Loans() {
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/stats'] });
-      toast({ title: "Success", description: "Loan disbursed successfully!" });
+      toast({ title: "Success", description: "Loan disbursed successfully!", variant: "success" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {
@@ -165,7 +165,7 @@ export default function Loans() {
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/my-loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/stats'] });
-      toast({ title: "Success", description: "Loan repayment recorded successfully!" });
+      toast({ title: "Success", description: "Loan repayment recorded successfully!", variant: "success" });
       setIsRepaymentModalOpen(false);
       setRepaymentLoan(null);
       setRepaymentAmount("");

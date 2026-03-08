@@ -209,15 +209,11 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
       if (needsGuarantors && loanData?.id) {
         setCurrentLoanId(loanData.id);
         setSavedTopUpPrincipal(totalNewPrincipal);
-        toast({
-          title: "Top-Up Application Created",
-          description: "Now add guarantors to complete your application.",
-        });
+        toast({ title: "Top-Up Application Created",
+          description: "Now add guarantors to complete your application.", variant: "success" });
       } else {
-        toast({
-          title: "Success",
-          description: "Loan top-up application submitted successfully. It will go through the standard approval process.",
-        });
+        toast({ title: "Success",
+          description: "Loan top-up application submitted successfully. It will go through the standard approval process.", variant: "success" });
         form.reset();
         onSuccess();
       }

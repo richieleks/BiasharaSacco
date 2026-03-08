@@ -78,10 +78,8 @@ export default function Transactions() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/transactions'] });
-      toast({
-        title: "Success",
-        description: "Transaction approved successfully!",
-      });
+      toast({ title: "Success",
+        description: "Transaction approved successfully!", variant: "success" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {

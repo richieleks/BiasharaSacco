@@ -75,10 +75,8 @@ export default function InterestRatesPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/interest-rates'] });
       setIsDialogOpen(false);
       form.reset();
-      toast({
-        title: "Success",
-        description: "Interest rate created successfully",
-      });
+      toast({ title: "Success",
+        description: "Interest rate created successfully", variant: "success" });
     },
     onError: (error) => {
       toast({
@@ -101,10 +99,8 @@ export default function InterestRatesPage() {
       setIsDialogOpen(false);
       setEditingRate(null);
       form.reset();
-      toast({
-        title: "Success",
-        description: "Interest rate updated successfully",
-      });
+      toast({ title: "Success",
+        description: "Interest rate updated successfully", variant: "success" });
     },
     onError: (error) => {
       toast({
@@ -123,10 +119,8 @@ export default function InterestRatesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/interest-rates'] });
-      toast({
-        title: "Success",
-        description: "Interest rate deactivated successfully",
-      });
+      toast({ title: "Success",
+        description: "Interest rate deactivated successfully", variant: "success" });
     },
     onError: (error) => {
       toast({

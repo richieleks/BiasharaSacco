@@ -103,10 +103,8 @@ export default function DataImport() {
           ? `Successfully processed ${data.successfulImports} savings deposits totaling UGX ${(data as any).totalAmount?.toLocaleString() || 0}.`
           : `Successfully imported ${data.importedLoans || 0} loans.`;
         
-        toast({
-          title: "Import Successful",
-          description: successMessage,
-        });
+        toast({ title: "Import Successful",
+          description: successMessage, variant: "success" });
       } else if (data) {
         toast({
           title: "Import Completed with Errors",

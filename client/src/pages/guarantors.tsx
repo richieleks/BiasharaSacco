@@ -87,10 +87,8 @@ export default function Guarantors() {
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending'] });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/member'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
-      toast({
-        title: "Success",
-        description: "Guarantor request approved successfully!",
-      });
+      toast({ title: "Success",
+        description: "Guarantor request approved successfully!", variant: "success" });
       setIsApprovalDialogOpen(false);
       setComments("");
       setSelectedGuarantor(null);
@@ -123,10 +121,8 @@ export default function Guarantors() {
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending'] });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/member'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
-      toast({
-        title: "Success",
-        description: "Guarantor request rejected successfully!",
-      });
+      toast({ title: "Request Rejected",
+        description: "Guarantor request rejected successfully!", variant: "warning" });
       setIsApprovalDialogOpen(false);
       setComments("");
       setSelectedGuarantor(null);
@@ -159,10 +155,8 @@ export default function Guarantors() {
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending'] });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/member'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
-      toast({
-        title: "Success",
-        description: "Guarantor request resent successfully!",
-      });
+      toast({ title: "Success",
+        description: "Guarantor request resent successfully!", variant: "success" });
     },
     onError: (error) => {
       toast({
@@ -249,10 +243,8 @@ export default function Guarantors() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans/guarantors'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/my-loans'] });
-      toast({
-        title: "Success",
-        description: "Guarantor requests sent successfully!",
-      });
+      toast({ title: "Success",
+        description: "Guarantor requests sent successfully!", variant: "success" });
       setIsGuarantorSelectionOpen(false);
       setSelectedGuarantors([]);
       setSelectedLoanForGuarantors(null);

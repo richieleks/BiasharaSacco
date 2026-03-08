@@ -57,10 +57,8 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans', loan.uuid, 'amortization'] });
-      toast({
-        title: "Success",
-        description: "Amortization schedule generated successfully",
-      });
+      toast({ title: "Success",
+        description: "Amortization schedule generated successfully", variant: "success" });
     },
     onError: (error) => {
       toast({
@@ -105,10 +103,8 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
       setIsPaymentDialogOpen(false);
       setSelectedPayment(null);
       form.reset();
-      toast({
-        title: "Success",
-        description: "Payment recorded successfully",
-      });
+      toast({ title: "Success",
+        description: "Payment recorded successfully", variant: "success" });
     },
     onError: (error) => {
       toast({

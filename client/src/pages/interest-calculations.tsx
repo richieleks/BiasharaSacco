@@ -110,10 +110,8 @@ export default function InterestCalculations() {
   const createFinancialYearMutation = useMutation({
     mutationFn: (data: any) => apiRequest('POST', '/api/financial-years', data),
     onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Financial year created successfully',
-      });
+      toast({ title: 'Success',
+        description: 'Financial year created successfully', variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/financial-years'] });
       setIsCreateDialogOpen(false);
       setNewFinancialYearData({ yearLabel: '', startDate: '', endDate: '', interestRate: '' });
@@ -132,10 +130,8 @@ export default function InterestCalculations() {
   const activateFinancialYearMutation = useMutation({
     mutationFn: (id: number) => apiRequest('PUT', `/api/financial-years/${id}/activate`),
     onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Financial year activated successfully',
-      });
+      toast({ title: 'Success',
+        description: 'Financial year activated successfully', variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/financial-years'] });
       queryClient.invalidateQueries({ queryKey: ['/api/financial-years/active'] });
     },
@@ -152,10 +148,8 @@ export default function InterestCalculations() {
   const calculateAllInterestMutation = useMutation({
     mutationFn: (financialYearId: number) => apiRequest('POST', '/api/interest-calculations/calculate-all', { financialYearId }),
     onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Interest calculations completed for all members',
-      });
+      toast({ title: 'Success',
+        description: 'Interest calculations completed for all members', variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/interest-calculations'] });
     },
     onError: (error) => {
@@ -172,10 +166,8 @@ export default function InterestCalculations() {
     mutationFn: (data: { financialYearId: number; snapshotDate: string }) => 
       apiRequest('POST', '/api/balance-snapshots/create-all', data),
     onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Balance snapshots created for all accounts',
-      });
+      toast({ title: 'Success',
+        description: 'Balance snapshots created for all accounts', variant: "success" });
     },
     onError: (error) => {
       toast({
@@ -190,10 +182,8 @@ export default function InterestCalculations() {
   const approveCalculationMutation = useMutation({
     mutationFn: (id: number) => apiRequest('PUT', `/api/interest-calculations/${id}/approve`),
     onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Interest calculation approved',
-      });
+      toast({ title: 'Success',
+        description: 'Interest calculation approved', variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/interest-calculations'] });
     },
     onError: (error) => {
@@ -209,10 +199,8 @@ export default function InterestCalculations() {
   const postCalculationMutation = useMutation({
     mutationFn: (id: number) => apiRequest('PUT', `/api/interest-calculations/${id}/post`),
     onSuccess: () => {
-      toast({
-        title: 'Success',
-        description: 'Interest calculation posted',
-      });
+      toast({ title: 'Success',
+        description: 'Interest calculation posted', variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/interest-calculations'] });
     },
     onError: (error) => {
@@ -227,10 +215,8 @@ export default function InterestCalculations() {
   const approveAllMutation = useMutation({
     mutationFn: (financialYearId: number) => apiRequest('PUT', '/api/interest-calculations/approve-all', { financialYearId }),
     onSuccess: (data: any) => {
-      toast({
-        title: 'Success',
-        description: `Approved ${data.approved} interest calculations`,
-      });
+      toast({ title: 'Success',
+        description: `Approved ${data.approved} interest calculations`, variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/interest-calculations'] });
     },
     onError: () => {
@@ -245,10 +231,8 @@ export default function InterestCalculations() {
   const postAllMutation = useMutation({
     mutationFn: (financialYearId: number) => apiRequest('PUT', '/api/interest-calculations/post-all', { financialYearId }),
     onSuccess: (data: any) => {
-      toast({
-        title: 'Success',
-        description: `Posted ${data.posted} interest calculations and credited member accounts`,
-      });
+      toast({ title: 'Success',
+        description: `Posted ${data.posted} interest calculations and credited member accounts`, variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/interest-calculations'] });
       queryClient.invalidateQueries({ queryKey: ['/api/interest-payments'] });
       queryClient.invalidateQueries({ queryKey: ['/api/savings'] });

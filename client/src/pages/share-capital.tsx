@@ -67,7 +67,7 @@ export default function ShareCapital() {
       return res.json();
     },
     onSuccess: (data: any) => {
-      toast({ title: "Share Capital Posted", description: data.message });
+      toast({ title: "Share Capital Posted", description: data.message, variant: "success" });
       setIsPostDialogOpen(false);
       setSelectedMember(null);
       form.reset({ amount: "", description: "" });

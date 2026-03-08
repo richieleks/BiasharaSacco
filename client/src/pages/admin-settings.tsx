@@ -196,10 +196,8 @@ export default function AdminSettingsPage() {
       return await apiRequest('PATCH', `/api/admin/settings`, data);
     },
     onSuccess: () => {
-      toast({
-        title: "Settings Updated",
-        description: "System settings have been updated successfully.",
-      });
+      toast({ title: "Settings Updated",
+        description: "System settings have been updated successfully.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
     },
     onError: (error: Error) => {
@@ -249,10 +247,8 @@ export default function AdminSettingsPage() {
       return await apiRequest('PATCH', `/api/auth/settings`, data);
     },
     onSuccess: () => {
-      toast({
-        title: "Settings Updated",
-        description: "Your settings have been saved successfully.",
-      });
+      toast({ title: "Settings Updated",
+        description: "Your settings have been saved successfully.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/settings'] });
     },
     onError: (error: Error) => {
@@ -278,10 +274,8 @@ export default function AdminSettingsPage() {
       return await apiRequest('POST', '/api/loan-types', data);
     },
     onSuccess: () => {
-      toast({
-        title: "Loan Type Created",
-        description: "New loan type has been created successfully.",
-      });
+      toast({ title: "Loan Type Created",
+        description: "New loan type has been created successfully.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/loan-types'] });
     },
     onError: (error: Error) => {
@@ -298,7 +292,7 @@ export default function AdminSettingsPage() {
       return await apiRequest('DELETE', `/api/loan-types/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "Loan Type Deleted", description: "Loan type has been removed." });
+      toast({ title: "Loan Type Deleted", description: "Loan type has been removed.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/loan-types'] });
     },
     onError: (error: Error) => {
@@ -1630,7 +1624,7 @@ function UserManagementTab() {
       return await apiRequest('POST', '/api/auth/create-user', data);
     },
     onSuccess: () => {
-      toast({ title: "User Created", description: "New user account has been created successfully." });
+      toast({ title: "User Created", description: "New user account has been created successfully.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/users'] });
       setShowCreateDialog(false);
       createForm.reset();
@@ -1650,7 +1644,7 @@ function UserManagementTab() {
       return await apiRequest('PATCH', `/api/auth/users/${id}`, payload);
     },
     onSuccess: () => {
-      toast({ title: "User Updated", description: "User account has been updated successfully." });
+      toast({ title: "User Updated", description: "User account has been updated successfully.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/users'] });
       setShowEditDialog(false);
       setEditingUser(null);
@@ -1665,7 +1659,7 @@ function UserManagementTab() {
       return await apiRequest('DELETE', `/api/auth/users/${id}`);
     },
     onSuccess: () => {
-      toast({ title: "User Deleted", description: "User account has been deleted." });
+      toast({ title: "User Deleted", description: "User account has been deleted.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/users'] });
     },
     onError: (error: Error) => {
@@ -1679,10 +1673,8 @@ function UserManagementTab() {
       return res;
     },
     onSuccess: (data: any) => {
-      toast({
-        title: "Password Reset",
-        description: `Password has been reset to "changeme123". User will be prompted to change it on next login.`,
-      });
+      toast({ title: "Password Reset",
+        description: `Password has been reset to "changeme123". User will be prompted to change it on next login.`, variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/auth/users'] });
     },
     onError: (error: Error) => {

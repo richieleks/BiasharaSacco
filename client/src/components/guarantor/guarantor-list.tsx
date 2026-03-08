@@ -33,10 +33,8 @@ export default function GuarantorList({ loanId }: GuarantorListProps) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/loan', loanId] });
       queryClient.invalidateQueries({ queryKey: ['/api/guarantors/pending'] });
-      toast({
-        title: "Success",
-        description: "Guarantor request resent successfully!",
-      });
+      toast({ title: "Success",
+        description: "Guarantor request resent successfully!", variant: "success" });
     },
     onError: (error) => {
       toast({

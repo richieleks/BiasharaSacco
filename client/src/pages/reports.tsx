@@ -149,10 +149,8 @@ export default function Reports() {
     link.click();
     document.body.removeChild(link);
     
-    toast({
-      title: "Downloading Report",
-      description: `Your ${selectedReport} report is being downloaded as ${format.toUpperCase()}.`,
-    });
+    toast({ title: "Downloading Report",
+      description: `Your ${selectedReport} report is being downloaded as ${format.toUpperCase()}.`, variant: "success" });
     setIsReportModalOpen(false);
   };
 
