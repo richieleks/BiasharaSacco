@@ -31,6 +31,70 @@ function getUserId(req: any): string | undefined {
   return req.user.claims?.sub;
 }
 
+async function generateMemberNumber(): Promise<string> {
+  const allMembers = await storage.getAllMembers();
+  const pendingMembers = await storage.getPendingMembers();
+  const totalCount = allMembers.length + pendingMembers.length;
+  return `BCS${String(totalCount + 1).padStart(6, '0')}`;
+}
+
+async function ensureMemberProfile(userId: string, options?: { roles?: string[], approvedBy?: string }): Promise<any> {
+  const existing = await storage.getMemberByUserId(userId);
+  if (existing) return existing;
+
+  const user = await storage.getUser(userId);
+  if (!user) return null;
+
+  const fullName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.username || 'User';
+  const assignedRoles = options?.roles || [user.role || 'member'];
+
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const memberNumber = await generateMemberNumber();
+      const idNumber = `ID-${user.username || userId}`;
+
+      const member = await storage.createMember({
+        memberNumber,
+        userId: user.id,
+        fullName,
+        idNumber,
+        phoneNumber: '',
+        address: '',
+        role: assignedRoles[0] || 'member',
+        status: 'active',
+        joinDate: new Date(),
+        approvedBy: options?.approvedBy || userId,
+        approvedAt: new Date(),
+        membershipStartDate: new Date(),
+        email: user.email,
+      } as any);
+
+      for (const r of assignedRoles) {
+        await storage.addMemberRole(member.id, r, options?.approvedBy || userId);
+      }
+
+      const accountNumber = `SAV${String(member.id).padStart(8, '0')}`;
+      await storage.createSavingsAccount({
+        memberId: member.id,
+        accountNumber,
+        accountType: 'regular',
+        balance: '0.00',
+      });
+
+      return member;
+    } catch (err: any) {
+      if (attempt < 2 && err?.message?.includes('unique')) {
+        continue;
+      }
+      const recheck = await storage.getMemberByUserId(userId);
+      if (recheck) return recheck;
+      console.error(`ensureMemberProfile failed for ${userId}:`, err);
+      return null;
+    }
+  }
+  return null;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Extend AuthRequest type to include member data
   interface ExtendedAuthRequest extends Request {
@@ -65,33 +129,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      // Check if user has a member profile
-      const member = await storage.getMemberByUserId(userId);
+      const member = await ensureMemberProfile(userId, {
+        roles: [user.role || 'member'],
+      });
       
-      // Remove password from user object
       const { password, ...userWithoutPassword } = user as typeof user & { password?: string };
       
       if (member) {
-        const roles = await storage.getMemberRoles(member.id);
-        
-        if (member.user && (member.user as any).password) {
-          const { password: _, ...memberUserWithoutPassword } = member.user as any;
-          member.user = memberUserWithoutPassword as typeof member.user;
-        }
-        
-        res.json({
-          ...userWithoutPassword,
-          member: {
-            ...member,
-            roles: roles.length > 0 ? roles : [member.role || 'member']
+        const freshMember = await storage.getMemberByUserId(userId);
+        if (freshMember) {
+          const roles = await storage.getMemberRoles(freshMember.id);
+          if (freshMember.user && (freshMember.user as any).password) {
+            const { password: _, ...memberUserWithoutPassword } = freshMember.user as any;
+            freshMember.user = memberUserWithoutPassword as typeof freshMember.user;
           }
-        });
+          res.json({
+            ...userWithoutPassword,
+            member: {
+              ...freshMember,
+              roles: roles.length > 0 ? roles : [freshMember.role || 'member']
+            }
+          });
+        } else {
+          res.json({ ...userWithoutPassword, member: null, isAdmin: user.role === 'admin' });
+        }
       } else {
-        res.json({
-          ...userWithoutPassword,
-          member: null,
-          isAdmin: user.role === 'admin',
-        });
+        res.json({ ...userWithoutPassword, member: null, isAdmin: user.role === 'admin' });
       }
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -163,9 +226,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profileImageUrl: (req.user as any)?.claims?.profile_image_url || (req.user as any)?.profileImageUrl || null,
       });
 
-      const member = await storage.getMemberByUserId(userId);
+      const member = await ensureMemberProfile(userId);
       if (member) {
         const memberUpdates: any = {};
+        const fullName = `${firstName || ''} ${lastName || ''}`.trim();
+        if (fullName) memberUpdates.fullName = fullName;
+        if (email) memberUpdates.email = email;
         if (phoneNumber !== undefined) memberUpdates.phoneNumber = phoneNumber;
         if (address !== undefined) memberUpdates.address = address;
         if (department !== undefined) memberUpdates.department = department;
@@ -260,43 +326,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: primaryRole
       });
 
-      // If roles include 'member', also create a member profile with member number
-      let memberProfile = null;
-      if (assignedRoles.includes('member')) {
-        const allMembers = await storage.getAllMembers();
-        const pendingMembers = await storage.getPendingMembers();
-        const totalCount = allMembers.length + pendingMembers.length;
-        const memberNumber = `BCS${String(totalCount + 1).padStart(6, '0')}`;
-        
-        const fullName = `${firstName || ''} ${lastName || ''}`.trim();
-        
-        memberProfile = await storage.createMember({
-          memberNumber,
-          userId: newUser.id,
-          fullName: fullName || username,
-          idNumber: username,
-          phoneNumber: '',
-          address: '',
-          role: 'member',
-          status: 'active',
-          joinDate: new Date(),
-          approvedBy: getUserId(req),
-          approvedAt: new Date(),
-          membershipStartDate: new Date(),
-        } as any);
-
-        for (const r of assignedRoles) {
-          await storage.addMemberRole(memberProfile.id, r, getUserId(req) || userId);
-        }
-
-        const accountNumber = `SAV${String(memberProfile.id).padStart(8, '0')}`;
-        await storage.createSavingsAccount({
-          memberId: memberProfile.id,
-          accountNumber,
-          accountType: 'regular',
-          balance: '0.00',
-        });
-      }
+      const memberProfile = await ensureMemberProfile(newUser.id, {
+        roles: assignedRoles,
+        approvedBy: getUserId(req),
+      });
 
       // Remove password from response
       const { password: _, ...userWithoutPassword } = newUser;
@@ -345,18 +378,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedUser = await storage.updateUser(id, updateData);
 
-      if (Array.isArray(roles) && roles.length > 0) {
-        const member = await storage.getMemberByUserId(id);
-        if (member) {
+      const member = await ensureMemberProfile(id, {
+        roles: Array.isArray(roles) && roles.length > 0 ? roles : undefined,
+        approvedBy: getUserId(req),
+      });
+
+      if (member) {
+        const memberUpdates: any = {};
+        if (firstName || lastName) {
+          memberUpdates.fullName = `${firstName || updatedUser.firstName || ''} ${lastName || updatedUser.lastName || ''}`.trim();
+        }
+        if (email) memberUpdates.email = email;
+        if (primaryRole) memberUpdates.role = primaryRole;
+        if (Object.keys(memberUpdates).length > 0) {
+          await storage.updateMember(member.id, memberUpdates);
+        }
+
+        if (Array.isArray(roles) && roles.length > 0) {
           await storage.replaceMemberRoles(member.id, roles, getUserId(req) || id);
-          await storage.updateMember(member.id, { role: primaryRole });
         }
       }
 
       const { password: _, ...userWithoutPassword } = updatedUser as any;
-      const member = await storage.getMemberByUserId(id);
-      const memberRoles = member ? await storage.getMemberRoles(member.id) : [primaryRole || updatedUser.role];
-      res.json({ ...userWithoutPassword, roles: memberRoles, memberId: member?.id || null });
+      const updatedMember = await storage.getMemberByUserId(id);
+      const memberRoles = updatedMember ? await storage.getMemberRoles(updatedMember.id) : [primaryRole || updatedUser.role];
+      res.json({ ...userWithoutPassword, roles: memberRoles, memberId: updatedMember?.id || null });
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: "Failed to update user" });
@@ -1113,8 +1159,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedMember = await storage.updateMember(memberId, updates);
+
+      if (updatedMember.userId) {
+        const userSyncUpdates: any = {};
+        if (updates.fullName) {
+          const nameParts = updates.fullName.trim().split(/\s+/);
+          userSyncUpdates.firstName = nameParts[0] || '';
+          userSyncUpdates.lastName = nameParts.slice(1).join(' ') || '';
+        }
+        if (updates.email) userSyncUpdates.email = updates.email;
+        if (Object.keys(userSyncUpdates).length > 0) {
+          await storage.updateUser(updatedMember.userId, userSyncUpdates);
+        }
+      }
       
-      // Log the action
       if (requestingMember) {
         await storage.createAuditLog({
           userId: getUserId(req)!,

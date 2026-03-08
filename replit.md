@@ -23,7 +23,8 @@ The system is divided into a `client/` (React frontend) and `server/` (Express.j
 - **Data Management**: Features include Excel file upload for bank statement processing and transaction import, comprehensive account statement generation, and an audit logging system for tracking all critical system activities. Loan import requires selecting a loan type beforehand and only maps to existing members (no auto-creation of members or savings accounts).
 
 ### Feature Specifications
-- **User Management**: Creation, profile management, and role assignment for SACCO members and staff.
+- **User-Member Auto-Sync**: The `users` and `members` tables are kept separate but tightly synchronized via the `ensureMemberProfile()` helper in `server/routes.ts`. Whenever a user is created, updated, or logs in, a member profile is automatically created if one doesn't exist. Name and email changes on either side are synced to the other. Every user always has a corresponding member profile with a savings account.
+- **User Management**: Creation, profile management, and role assignment for SACCO members and staff. User Management and RBAC Management are combined into a single "Users & Roles" tab in admin settings.
 - **Savings Accounts**: Creation, management, deposits, withdrawals, and detailed statement generation.
 - **Loans**: Application, multi-stage approval, guarantor management, dynamic repayment schedules, business rule validation, and loan top-up module (members can request additional funds on active loans, consolidating outstanding balance with new amount into a single replacement loan through the standard approval workflow). Top-ups follow the same guarantor workflow as new applications: if the loan type requires guarantors AND the member's savings don't fully cover the total new principal, the form transitions to a guarantor management step after submission.
 - **Transactions**: Comprehensive tracking, auditing, and reporting.
