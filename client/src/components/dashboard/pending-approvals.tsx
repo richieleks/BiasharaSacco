@@ -6,9 +6,11 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { formatCurrency } from "@/lib/utils";
+import { useRBAC } from "@/hooks/useRBAC";
 
 export default function PendingApprovals() {
   const { toast } = useToast();
+  const { activeRole } = useRBAC();
   
   const { data: approvals, isLoading } = useQuery<{
     loanApplications: any[];
@@ -29,7 +31,7 @@ export default function PendingApprovals() {
       toast({ title: "Success",
         description: "Transaction approved successfully!", variant: "success" });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -41,9 +43,12 @@ export default function PendingApprovals() {
         }, 500);
         return;
       }
+      const message = error?.message?.includes('treasurer')
+        ? "Only the treasurer can approve withdrawal requests."
+        : "Failed to approve transaction. Please try again.";
       toast({
         title: "Error",
-        description: "Failed to approve transaction. Please try again.",
+        description: message,
         variant: "destructive",
       });
     },
@@ -145,14 +150,19 @@ export default function PendingApprovals() {
                   </div>
                   <Badge className="text-xs text-yellow-600 bg-yellow-100 dark:bg-yellow-950/50">Pending</Badge>
                 </div>
-                <Button
-                  size="sm"
-                  onClick={() => approveTransactionMutation.mutate(withdrawal.uuid)}
-                  disabled={approveTransactionMutation.isPending}
-                  className="w-full sacco-success text-white hover:opacity-90"
-                >
-                  Approve Withdrawal
-                </Button>
+                {['admin', 'treasurer'].includes(activeRole) ? (
+                  <Button
+                    size="sm"
+                    onClick={() => approveTransactionMutation.mutate(withdrawal.uuid)}
+                    disabled={approveTransactionMutation.isPending}
+                    className="w-full sacco-success text-white hover:opacity-90"
+                    data-testid={`button-approve-withdrawal-${withdrawal.id}`}
+                  >
+                    Approve Withdrawal
+                  </Button>
+                ) : (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 italic">Awaiting treasurer approval</p>
+                )}
               </div>
             ))}
           </div>

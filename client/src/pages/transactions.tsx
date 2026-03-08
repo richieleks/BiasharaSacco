@@ -81,7 +81,7 @@ export default function Transactions() {
       toast({ title: "Success",
         description: "Transaction approved successfully!", variant: "success" });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       if (isUnauthorizedError(error)) {
         toast({
           title: "Unauthorized",
@@ -93,9 +93,12 @@ export default function Transactions() {
         }, 500);
         return;
       }
+      const message = error?.message?.includes('treasurer')
+        ? "Only the treasurer can approve withdrawal requests."
+        : "Failed to approve transaction. Please try again.";
       toast({
         title: "Error",
-        description: "Failed to approve transaction. Please try again.",
+        description: message,
         variant: "destructive",
       });
     },
@@ -281,16 +284,31 @@ export default function Transactions() {
                       {!isPersonalView && (
                         <TableCell>
                           {transaction.status === 'pending' && (
-                            <Button
-                              size="sm"
-                              onClick={() => approveTransactionMutation.mutate(transaction.id)}
-                              disabled={approveTransactionMutation.isPending}
-                              className="sacco-success text-white hover:opacity-90 rounded-xl shadow-sm"
-                              data-testid={`button-approve-transaction-${transaction.id}`}
-                            >
-                              <CheckCircle className="w-3 h-3 mr-1" />
-                              Approve
-                            </Button>
+                            transaction.transactionType === 'withdrawal'
+                              ? ['admin', 'treasurer'].includes(activeRole) && (
+                                <Button
+                                  size="sm"
+                                  onClick={() => approveTransactionMutation.mutate(transaction.id)}
+                                  disabled={approveTransactionMutation.isPending}
+                                  className="sacco-success text-white hover:opacity-90 rounded-xl shadow-sm"
+                                  data-testid={`button-approve-transaction-${transaction.id}`}
+                                >
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Approve Withdrawal
+                                </Button>
+                              )
+                              : (
+                                <Button
+                                  size="sm"
+                                  onClick={() => approveTransactionMutation.mutate(transaction.id)}
+                                  disabled={approveTransactionMutation.isPending}
+                                  className="sacco-success text-white hover:opacity-90 rounded-xl shadow-sm"
+                                  data-testid={`button-approve-transaction-${transaction.id}`}
+                                >
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Approve
+                                </Button>
+                              )
                           )}
                         </TableCell>
                       )}
