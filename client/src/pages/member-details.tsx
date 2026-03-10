@@ -21,8 +21,10 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   ArrowLeft, Edit, User, Phone, Mail, MapPin, Calendar, CreditCard, Building,
   Users, Eye, FileText, Calculator, DollarSign, TrendingUp, Banknote, Shield,
-  Briefcase, Heart, Clock, Hash, Wallet, PiggyBank, ChevronRight, Activity
+  Briefcase, Heart, Clock, Hash, Wallet, PiggyBank, ChevronRight, Activity,
+  LogOut, AlertTriangle, CheckCircle, XCircle
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
 import { z } from "zod";
 
@@ -108,6 +110,8 @@ export default function MemberDetails() {
   const [, setLocation] = useLocation();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isShareCapitalDialogOpen, setIsShareCapitalDialogOpen] = useState(false);
+  const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
+  const [exitReason, setExitReason] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -165,6 +169,37 @@ export default function MemberDetails() {
 
   const { data: systemConfig } = useQuery<any>({
     queryKey: ['/api/system/settings/public'],
+  });
+
+  const { data: exitEligibility, isLoading: exitEligibilityLoading, refetch: refetchEligibility } = useQuery<{
+    eligible: boolean;
+    blockers: string[];
+    exitFee: number;
+    member: any;
+  }>({
+    queryKey: ['/api/members', memberId, 'exit-eligibility'],
+    queryFn: async () => {
+      const response = await fetch(`/api/members/${memberId}/exit-eligibility`, { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch exit eligibility');
+      return response.json();
+    },
+    enabled: !!memberId && isExitDialogOpen,
+  });
+
+  const exitMemberMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/members/${memberId}/exit`, { reason: exitReason });
+    },
+    onSuccess: () => {
+      toast({ title: "Member Exited", description: "The member account has been closed successfully.", variant: "success" });
+      setIsExitDialogOpen(false);
+      setExitReason("");
+      queryClient.invalidateQueries({ queryKey: ['/api/members', memberId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/members'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Exit Failed", description: error.message || "Failed to process member exit.", variant: "destructive" });
+    },
   });
 
   const form = useForm<UpdateMemberData>({
@@ -304,6 +339,7 @@ export default function MemberDetails() {
                 member.status === 'active' ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30' :
                 member.status === 'inactive' ? 'bg-slate-400/20 text-slate-300 border-slate-400/30' :
                 member.status === 'suspended' ? 'bg-red-400/20 text-red-300 border-red-400/30' :
+                member.status === 'exited' ? 'bg-gray-400/20 text-gray-300 border-gray-400/30' :
                 'bg-amber-400/20 text-amber-300 border-amber-400/30'
               } border capitalize`}>
                 {member.status || 'pending'}
@@ -341,6 +377,18 @@ export default function MemberDetails() {
               <Button size="sm" variant="secondary" className="bg-white dark:bg-slate-900/15 hover:bg-white dark:bg-slate-900/25 text-white border-0" onClick={() => setIsShareCapitalDialogOpen(true)}>
                 <DollarSign className="mr-1.5 h-3.5 w-3.5" />
                 Post Shares
+              </Button>
+            )}
+            {isStaff && member.status !== 'exited' && (
+              <Button
+                size="sm"
+                variant="secondary"
+                className="bg-red-500/20 hover:bg-red-500/30 text-red-200 border-red-400/30 border"
+                data-testid="button-member-exit"
+                onClick={() => { setIsExitDialogOpen(true); refetchEligibility(); }}
+              >
+                <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                Process Exit
               </Button>
             )}
           </div>
@@ -896,6 +944,111 @@ export default function MemberDetails() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isExitDialogOpen} onOpenChange={(open) => { setIsExitDialogOpen(open); if (!open) setExitReason(""); }}>
+        <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <LogOut className="h-5 w-5" />
+              Process Member Exit
+            </DialogTitle>
+            <DialogDescription>
+              This will permanently close <strong>{member?.fullName}</strong>'s account and mark them as exited. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {exitEligibilityLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="h-6 w-6 animate-spin rounded-full border-4 border-slate-200 border-t-blue-600" />
+                <span className="ml-3 text-sm text-slate-500">Checking eligibility...</span>
+              </div>
+            ) : exitEligibility ? (
+              <>
+                {exitEligibility.eligible ? (
+                  <Alert className="border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20">
+                    <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <AlertDescription className="text-emerald-700 dark:text-emerald-300">
+                      This member is eligible for exit. All loans are cleared and no outstanding guarantor obligations.
+                    </AlertDescription>
+                  </Alert>
+                ) : (
+                  <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
+                    <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
+                    <AlertDescription className="text-red-700 dark:text-red-300">
+                      <p className="font-semibold mb-2">This member does not qualify for exit:</p>
+                      <ul className="list-disc list-inside space-y-1 text-sm">
+                        {exitEligibility.blockers.map((blocker, i) => (
+                          <li key={i}>{blocker}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 dark:text-slate-400">Total Savings</span>
+                    <span className="font-medium">{formatCurrency(parseFloat(exitEligibility.member?.totalSavings || '0'))}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500 dark:text-slate-400">Share Capital</span>
+                    <span className="font-medium">{formatCurrency(parseFloat(exitEligibility.member?.shareCapital || '0'))}</span>
+                  </div>
+                  <div className="flex justify-between border-t pt-2 border-slate-200 dark:border-slate-700">
+                    <span className="text-slate-500 dark:text-slate-400">Exit Fee</span>
+                    <span className={`font-semibold ${exitEligibility.exitFee > 0 ? 'text-red-600 dark:text-red-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                      {exitEligibility.exitFee > 0 ? formatCurrency(exitEligibility.exitFee) : 'None'}
+                    </span>
+                  </div>
+                </div>
+
+                {exitEligibility.exitFee > 0 && (
+                  <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
+                    <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
+                      An exit fee of <strong>{formatCurrency(exitEligibility.exitFee)}</strong> will be charged and recorded as a fee transaction.
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                    Exit Reason <span className="text-slate-400">(optional)</span>
+                  </label>
+                  <Textarea
+                    data-testid="input-exit-reason"
+                    placeholder="Enter the reason for exit (e.g., resignation, retirement, relocation...)"
+                    value={exitReason}
+                    onChange={(e) => setExitReason(e.target.value)}
+                    className="min-h-[80px]"
+                  />
+                </div>
+              </>
+            ) : null}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => { setIsExitDialogOpen(false); setExitReason(""); }}
+              data-testid="button-exit-cancel"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!exitEligibility?.eligible || exitMemberMutation.isPending}
+              onClick={() => exitMemberMutation.mutate()}
+              data-testid="button-exit-confirm"
+            >
+              {exitMemberMutation.isPending ? "Processing Exit..." : "Confirm Exit & Close Account"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

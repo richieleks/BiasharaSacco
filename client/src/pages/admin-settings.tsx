@@ -109,6 +109,7 @@ const adminSettingsSchema = z.object({
   loanToSavingsRatio: z.number().min(1).max(10).default(2.5),
   membershipDurationMonths: z.number().min(1).max(12).default(3),
   minLoanApprovers: z.number().min(1).max(10).default(2),
+  memberExitFee: z.number().min(0).default(0),
   
   // Backup and Maintenance
   autoBackupEnabled: z.boolean().default(true),
@@ -164,6 +165,7 @@ export default function AdminSettingsPage() {
     loanToSavingsRatio: 2.5,
     membershipDurationMonths: 3,
     minLoanApprovers: 2,
+    memberExitFee: 0,
     autoBackupEnabled: true,
     backupFrequency: "daily",
     logRetentionDays: 90,
@@ -1013,6 +1015,28 @@ export default function AdminSettingsPage() {
                               </FormControl>
                               <FormDescription>
                                 Number of committee members required to approve a loan before it moves to disbursement
+                              </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="memberExitFee"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Member Exit Fee (UGX)</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  type="number" 
+                                  min="0"
+                                  {...field}
+                                  onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                />
+                              </FormControl>
+                              <FormDescription>
+                                Fee charged when a member exits and their account is closed. Set to 0 for no exit fee.
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
