@@ -6,11 +6,11 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword } from "./localAuth";
 import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole } from "./rbac-middleware";
-import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests } from "@shared/schema";
+import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
 import { z } from "zod";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and, inArray, sql, lt, isNull, or, not } from "drizzle-orm";
 
 function generateDefaultPassword(fullName: string): string {
   const namePart = fullName.trim().split(/\s+/)[0] || 'Member';
@@ -1493,57 +1493,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const member = await storage.getMember(exitRequest.memberId);
       if (!member) return res.status(404).json({ message: "Member not found" });
 
-      // If savings were to be used for loan repayment, process that first
-      if (exitRequest.savingsUsedForLoanRepayment && exitRequest.loanAmountRepaid) {
-        const loanAmount = parseFloat(exitRequest.loanAmountRepaid);
-        const savingsAccounts = await storage.getSavingsAccountsByMember(exitRequest.memberId);
-        const primaryAccount = savingsAccounts[0];
+      // Re-evaluate eligibility at approval time to ensure current data is used
+      const currentEligibility = await getExitEligibilityDetails(exitRequest.memberId);
+      // Guarantor obligations remain a hard blocker
+      const guarantorBlockers = currentEligibility.blockers.filter(b => b.includes('guarantor'));
+      if (guarantorBlockers.length > 0) {
+        return res.status(400).json({ message: `Cannot approve: ${guarantorBlockers[0]}` });
+      }
 
-        if (primaryAccount && loanAmount > 0) {
-          // Record savings withdrawal to repay loan
+      const savingsAccounts = await storage.getSavingsAccountsByMember(exitRequest.memberId);
+      const primaryAccount = savingsAccounts[0];
+
+      // If member has active loans, re-compute current outstanding and verify savings sufficiency
+      const activeLoans = await storage.getMemberActiveLoans(exitRequest.memberId);
+      const runningLoans = activeLoans.filter((l: any) =>
+        ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved'].includes(l.status)
+      );
+
+      let actualLoanRepayment = 0;
+      if (runningLoans.length > 0) {
+        actualLoanRepayment = runningLoans.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
+        const currentSavings = parseFloat(member.totalSavings || '0');
+        if (currentSavings < actualLoanRepayment) {
+          return res.status(400).json({ message: `Cannot approve: member savings (UGX ${currentSavings.toLocaleString()}) are insufficient to cover outstanding loans (UGX ${actualLoanRepayment.toLocaleString()})` });
+        }
+
+        if (primaryAccount && actualLoanRepayment > 0) {
           const repayRefNumber = `EXIT-LOAN-REPAY-${Date.now()}`;
           await storage.createTransaction({
             memberId: exitRequest.memberId,
             savingsAccountId: primaryAccount.id,
             transactionType: 'withdrawal',
-            amount: loanAmount.toString(),
+            amount: actualLoanRepayment.toString(),
             description: `Savings used to repay outstanding loan balance on member exit (Request #${requestId})`,
             referenceNumber: repayRefNumber,
             status: 'completed',
             processedBy: userId,
           });
-          // Deduct from savings
-          await storage.updateSavingsAccountBalance(primaryAccount.id, loanAmount.toString(), 'subtract');
+          await storage.updateSavingsAccountBalance(primaryAccount.id, actualLoanRepayment.toString(), 'subtract');
 
-          // Mark all active loans as completed
-          const activeLoans = await storage.getMemberActiveLoans(exitRequest.memberId);
-          for (const loan of activeLoans) {
-            if (['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved'].includes(loan.status)) {
-              await storage.updateLoanStatus(loan.id, 'completed');
-              await storage.updateLoanBalance(loan.id, '0');
-            }
+          for (const loan of runningLoans) {
+            await storage.updateLoanStatus(loan.id, 'completed');
+            await storage.updateLoanBalance(loan.id, '0');
           }
         }
       }
 
-      // Record exit fee transaction if applicable
-      const exitFee = parseFloat(exitRequest.exitFee || '0');
-      if (exitFee > 0) {
-        const savingsAccounts = await storage.getSavingsAccountsByMember(exitRequest.memberId);
-        const primaryAccount = savingsAccounts[0];
-        if (primaryAccount) {
-          const feeRefNumber = `EXIT-FEE-${Date.now()}`;
-          await storage.createTransaction({
-            memberId: exitRequest.memberId,
-            savingsAccountId: primaryAccount.id,
-            transactionType: 'fee_charge',
-            amount: exitFee.toString(),
-            description: `Member exit fee charged on account closure`,
-            referenceNumber: feeRefNumber,
-            status: 'completed',
-            processedBy: userId,
-          });
-        }
+      // Record and deduct exit fee from savings
+      const exitFeeSetting = await storage.getSystemSetting('memberExitFee');
+      const exitFee = exitFeeSetting ? parseFloat(exitFeeSetting.settingValue) : 0;
+      if (exitFee > 0 && primaryAccount) {
+        const feeRefNumber = `EXIT-FEE-${Date.now()}`;
+        await storage.createTransaction({
+          memberId: exitRequest.memberId,
+          savingsAccountId: primaryAccount.id,
+          transactionType: 'fee_charge',
+          amount: exitFee.toString(),
+          description: `Member exit fee charged on account closure`,
+          referenceNumber: feeRefNumber,
+          status: 'completed',
+          processedBy: userId,
+        });
+        await storage.updateSavingsAccountBalance(primaryAccount.id, exitFee.toString(), 'subtract');
       }
 
       // Mark exit request as approved
@@ -1552,6 +1563,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         approvedBy: userId,
         approvedAt: new Date(),
         treasurerComments: comments || null,
+        loanAmountRepaid: actualLoanRepayment > 0 ? actualLoanRepayment.toString() : null,
+        savingsUsedForLoanRepayment: actualLoanRepayment > 0,
+        exitFee: exitFee.toString(),
         updatedAt: new Date(),
       }).where(eq(memberExitRequests.id, requestId));
 
@@ -1569,12 +1583,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'approve',
         resource: 'member-exit-request',
         resourceId: requestId.toString(),
-        details: `Treasurer approved exit for member ${member.memberNumber}. ${exitRequest.savingsUsedForLoanRepayment ? `Savings used to repay UGX ${exitRequest.loanAmountRepaid} in loans.` : ''} Exit fee: UGX ${exitFee}.`,
+        details: `Treasurer approved exit for member ${member.memberNumber}. ${actualLoanRepayment > 0 ? `Savings used to repay UGX ${actualLoanRepayment.toLocaleString()} in loans.` : ''} Exit fee: UGX ${exitFee}.`,
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
       });
 
-      broadcastDataUpdate(['/api/exit-requests', '/api/members', '/api/dashboard']);
+      broadcastDataUpdate(['/api/exit-requests', '/api/members', '/api/dashboard', '/api/savings', '/api/transactions']);
       res.json({ message: "Exit request approved. Member account has been closed.", exitRequest });
     } catch (error: any) {
       console.error("Error approving exit request:", error);
@@ -1659,6 +1673,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       await recordJournalEntry('member_deposit', amount, `Savings deposit - ${account.accountNumber}`, referenceNumber, getUserId(req)!);
+
+      await db.update(members).set({
+        lastSavingsDate: new Date(),
+        lastActivityDate: new Date(),
+        isActiveSaver: true,
+      }).where(eq(members.id, account.memberId));
 
       const member = await storage.getMember(account.memberId);
       if (member?.userId) {
@@ -5160,6 +5180,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             userId
           );
 
+          await db.update(members).set({
+            lastSavingsDate: new Date(),
+            lastActivityDate: new Date(),
+            isActiveSaver: true,
+          }).where(eq(members.id, member.id));
+
           if (reference) existingRefs.add(reference);
           successCount++;
           totalAmount += amount;
@@ -5630,6 +5656,213 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating account mapping:", error);
       res.status(500).json({ message: "Failed to update account mapping" });
+    }
+  });
+
+  // Member activity status check - marks inactive (3 months no savings + no running loans) and dormant (6 months)
+  async function runMemberActivityCheck(): Promise<{ inactivated: number; dormanted: number; reactivated: number; checked: number }> {
+    const now = new Date();
+    const threeMonthsAgo = new Date(now);
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+    const sixMonthsAgo = new Date(now);
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+    const activeMembers = await db.select().from(members)
+      .where(inArray(members.status, ['active', 'inactive', 'dormant']));
+
+    let inactivated = 0;
+    let dormanted = 0;
+    let reactivated = 0;
+
+    for (const member of activeMembers) {
+      const baselineDate = member.lastSavingsDate
+        ? new Date(member.lastSavingsDate)
+        : member.joinDate
+        ? new Date(member.joinDate)
+        : member.membershipStartDate
+        ? new Date(member.membershipStartDate)
+        : member.createdAt
+        ? new Date(member.createdAt)
+        : null;
+
+      if (!baselineDate) continue;
+
+      const activeLoans = await storage.getMemberActiveLoans(member.id);
+      const hasRunningLoans = activeLoans.some((l: any) =>
+        ['active', 'disbursed'].includes(l.status) && parseFloat(l.outstandingBalance || '0') > 0
+      );
+
+      let newStatus: string | null = null;
+
+      if (baselineDate < sixMonthsAgo) {
+        if (!hasRunningLoans && member.status !== 'dormant') {
+          newStatus = 'dormant';
+          dormanted++;
+        }
+      } else if (baselineDate < threeMonthsAgo) {
+        if (!hasRunningLoans && member.status !== 'inactive') {
+          newStatus = 'inactive';
+          inactivated++;
+        }
+      } else {
+        if ((member.status === 'inactive' || member.status === 'dormant')) {
+          newStatus = 'active';
+          reactivated++;
+        }
+      }
+
+      if (newStatus && newStatus !== member.status) {
+        await db.update(members).set({
+          status: newStatus as any,
+          isActiveSaver: newStatus === 'active',
+          updatedAt: new Date(),
+        }).where(eq(members.id, member.id));
+      }
+    }
+
+    return { inactivated, dormanted, reactivated, checked: activeMembers.length };
+  }
+
+  // Auto-run activity check on server startup (non-blocking)
+  setTimeout(async () => {
+    try {
+      const result = await runMemberActivityCheck();
+      console.log(`[activity-check] Startup check: ${result.checked} members checked, ${result.inactivated} inactivated, ${result.dormanted} set dormant, ${result.reactivated} reactivated`);
+    } catch (error) {
+      console.error('[activity-check] Startup check failed:', error);
+    }
+  }, 5000);
+
+  // Schedule daily activity check (every 24 hours)
+  setInterval(async () => {
+    try {
+      const result = await runMemberActivityCheck();
+      console.log(`[activity-check] Daily check: ${result.checked} members checked, ${result.inactivated} inactivated, ${result.dormanted} set dormant, ${result.reactivated} reactivated`);
+    } catch (error) {
+      console.error('[activity-check] Daily check failed:', error);
+    }
+  }, 24 * 60 * 60 * 1000);
+
+  // Manual trigger for activity check (admin/treasurer)
+  app.post('/api/members/check-activity', isAuthenticated, requirePermission('update', 'members'), async (req: any, res) => {
+    try {
+      const result = await runMemberActivityCheck();
+      const userId = getUserId(req)!;
+
+      await storage.createAuditLog({
+        userId,
+        action: 'update',
+        resource: 'member-activity-check',
+        details: `Manual activity check: ${result.checked} members checked, ${result.inactivated} inactivated, ${result.dormanted} set dormant, ${result.reactivated} reactivated`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      broadcastDataUpdate(['/api/members', '/api/dashboard', '/api/reports/member-activity']);
+      res.json({ message: 'Activity check completed', ...result });
+    } catch (error: any) {
+      console.error('Error running activity check:', error);
+      res.status(500).json({ message: error.message || 'Failed to run activity check' });
+    }
+  });
+
+  // Member activity report
+  app.get('/api/reports/member-activity', isAuthenticated, requirePermission('read', 'reports'), async (req: any, res) => {
+    try {
+      const allMembers = await db.select().from(members)
+        .where(not(inArray(members.status, ['pending', 'rejected', 'exited'])));
+
+      const now = new Date();
+      const threeMonthsAgo = new Date(now);
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      const sixMonthsAgo = new Date(now);
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const activeCount = allMembers.filter(m => m.status === 'active').length;
+      const inactiveCount = allMembers.filter(m => m.status === 'inactive').length;
+      const dormantCount = allMembers.filter(m => m.status === 'dormant').length;
+      const suspendedCount = allMembers.filter(m => m.status === 'suspended').length;
+
+      const inactiveMembers = allMembers
+        .filter(m => m.status === 'inactive')
+        .map(m => ({
+          id: m.id,
+          memberNumber: m.memberNumber,
+          fullName: m.fullName,
+          status: m.status,
+          lastSavingsDate: m.lastSavingsDate,
+          totalSavings: m.totalSavings,
+          phoneNumber: m.phoneNumber,
+          joinDate: m.joinDate,
+          daysSinceLastSaving: m.lastSavingsDate
+            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
+            : null,
+        }));
+
+      const dormantMembers = allMembers
+        .filter(m => m.status === 'dormant')
+        .map(m => ({
+          id: m.id,
+          memberNumber: m.memberNumber,
+          fullName: m.fullName,
+          status: m.status,
+          lastSavingsDate: m.lastSavingsDate,
+          totalSavings: m.totalSavings,
+          phoneNumber: m.phoneNumber,
+          joinDate: m.joinDate,
+          daysSinceLastSaving: m.lastSavingsDate
+            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
+            : null,
+        }));
+
+      const twoMonthsAgo = new Date(now);
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+      const atRiskMembers = allMembers
+        .filter(m => {
+          if (m.status !== 'active') return false;
+          const baseline = m.lastSavingsDate
+            ? new Date(m.lastSavingsDate)
+            : m.joinDate
+            ? new Date(m.joinDate)
+            : m.membershipStartDate
+            ? new Date(m.membershipStartDate)
+            : m.createdAt
+            ? new Date(m.createdAt)
+            : null;
+          if (!baseline) return false;
+          return baseline < twoMonthsAgo;
+        })
+        .map(m => ({
+          id: m.id,
+          memberNumber: m.memberNumber,
+          fullName: m.fullName,
+          status: m.status,
+          lastSavingsDate: m.lastSavingsDate,
+          totalSavings: m.totalSavings,
+          phoneNumber: m.phoneNumber,
+          joinDate: m.joinDate,
+          daysSinceLastSaving: m.lastSavingsDate
+            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
+            : null,
+        }));
+
+      res.json({
+        summary: {
+          total: allMembers.length,
+          active: activeCount,
+          inactive: inactiveCount,
+          dormant: dormantCount,
+          suspended: suspendedCount,
+          atRisk: atRiskMembers.length,
+        },
+        inactiveMembers,
+        dormantMembers,
+        atRiskMembers,
+      });
+    } catch (error: any) {
+      console.error('Error fetching member activity report:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch member activity report' });
     }
   });
 

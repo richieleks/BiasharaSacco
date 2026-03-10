@@ -52,7 +52,7 @@ const updateMemberSchema = z.object({
   beneficiaryContact: z.string().optional(),
   nextOfKinName: z.string().optional(),
   nextOfKinPhone: z.string().optional(),
-  status: z.enum(["pending", "active", "inactive", "suspended", "rejected"]).optional(),
+  status: z.enum(["pending", "active", "inactive", "dormant", "suspended", "rejected"]).optional(),
   joinDate: z.string().optional(),
 });
 
@@ -342,7 +342,8 @@ export default function MemberDetails() {
               <h1 className="text-xl sm:text-2xl font-bold truncate">{memberName}</h1>
               <Badge className={`w-fit text-xs font-semibold ${
                 member.status === 'active' ? 'bg-emerald-400/20 text-emerald-300 border-emerald-400/30' :
-                member.status === 'inactive' ? 'bg-slate-400/20 text-slate-300 border-slate-400/30' :
+                member.status === 'inactive' ? 'bg-orange-400/20 text-orange-300 border-orange-400/30' :
+                member.status === 'dormant' ? 'bg-red-400/20 text-red-300 border-red-400/30' :
                 member.status === 'suspended' ? 'bg-red-400/20 text-red-300 border-red-400/30' :
                 member.status === 'exited' ? 'bg-gray-400/20 text-gray-300 border-gray-400/30' :
                 'bg-amber-400/20 text-amber-300 border-amber-400/30'
@@ -820,7 +821,7 @@ export default function MemberDetails() {
                     <FormItem><FormLabel>Marital Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="single">Single</SelectItem><SelectItem value="married">Married</SelectItem><SelectItem value="divorced">Divorced</SelectItem><SelectItem value="widowed">Widowed</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="status" render={({ field }) => (
-                    <FormItem><FormLabel>Member Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="pending">Pending</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem><SelectItem value="suspended">Suspended</SelectItem><SelectItem value="rejected">Rejected</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Member Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent><SelectItem value="pending">Pending</SelectItem><SelectItem value="active">Active</SelectItem><SelectItem value="inactive">Inactive</SelectItem><SelectItem value="dormant">Dormant</SelectItem><SelectItem value="suspended">Suspended</SelectItem><SelectItem value="rejected">Rejected</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                   )} />
                 </div>
                 <FormField control={form.control} name="address" render={({ field }) => (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Download, FileText, TrendingUp, Users, PiggyBank, HandCoins, Calendar, Filter, Printer, Mail, FileSpreadsheet, AlertTriangle } from "lucide-react";
+import { BarChart3, Download, FileText, TrendingUp, Users, PiggyBank, HandCoins, Calendar, Filter, Printer, Mail, FileSpreadsheet, AlertTriangle, UserX, Clock, RefreshCw, Eye } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 interface ReportFilter {
@@ -22,6 +22,219 @@ interface ReportFilter {
   memberNumber?: string;
   reportType?: string;
   status?: string;
+}
+
+interface ActivityMember {
+  id: number;
+  memberNumber: string;
+  fullName: string;
+  status: string;
+  lastSavingsDate: string | null;
+  totalSavings: string;
+  phoneNumber: string;
+  joinDate: string | null;
+  daysSinceLastSaving: number | null;
+}
+
+interface ActivityReport {
+  summary: {
+    total: number;
+    active: number;
+    inactive: number;
+    dormant: number;
+    suspended: number;
+    atRisk: number;
+  };
+  inactiveMembers: ActivityMember[];
+  dormantMembers: ActivityMember[];
+  atRiskMembers: ActivityMember[];
+}
+
+function MemberActivityTab() {
+  const { toast } = useToast();
+  const [activityView, setActivityView] = useState<'dormant' | 'inactive' | 'at-risk'>('dormant');
+  const qc = useQueryClient();
+
+  const { data: activityReport, isLoading: activityLoading } = useQuery<ActivityReport>({
+    queryKey: ['/api/reports/member-activity'],
+  });
+
+  const checkActivityMutation = useMutation({
+    mutationFn: async () => await apiRequest("POST", "/api/members/check-activity"),
+    onSuccess: () => {
+      toast({ title: "Activity Check Complete", description: "Member statuses have been updated based on savings activity.", variant: "success" });
+      qc.invalidateQueries({ queryKey: ['/api/reports/member-activity'] });
+      qc.invalidateQueries({ queryKey: ['/api/members'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Check Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const currentList = activityView === 'dormant'
+    ? activityReport?.dormantMembers || []
+    : activityView === 'inactive'
+    ? activityReport?.inactiveMembers || []
+    : activityReport?.atRiskMembers || [];
+
+  return (
+    <TabsContent value="activity" className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Member Activity Report</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+            Members inactive for 3+ months (no savings, no running loan) become inactive. 6+ months become dormant.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => checkActivityMutation.mutate()}
+          disabled={checkActivityMutation.isPending}
+          data-testid="button-run-activity-check"
+        >
+          <RefreshCw className={`h-4 w-4 mr-1.5 ${checkActivityMutation.isPending ? 'animate-spin' : ''}`} />
+          {checkActivityMutation.isPending ? "Checking..." : "Run Activity Check"}
+        </Button>
+      </div>
+
+      {activityLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="section-card p-5">
+              <Skeleton className="h-4 w-20 mb-2 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+              <Skeleton className="h-8 w-16 bg-slate-100 dark:bg-slate-800 rounded-lg" />
+            </div>
+          ))}
+        </div>
+      ) : activityReport ? (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="section-card p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Active</span>
+              </div>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-active-count">{activityReport.summary.active}</p>
+            </div>
+            <div
+              className={`section-card p-4 cursor-pointer transition-all ${activityView === 'at-risk' ? 'ring-2 ring-amber-500' : ''}`}
+              onClick={() => setActivityView('at-risk')}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">At Risk</span>
+              </div>
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400" data-testid="text-at-risk-count">{activityReport.summary.atRisk}</p>
+              <p className="text-xs text-slate-400 mt-0.5">2+ months no savings</p>
+            </div>
+            <div
+              className={`section-card p-4 cursor-pointer transition-all ${activityView === 'inactive' ? 'ring-2 ring-orange-500' : ''}`}
+              onClick={() => setActivityView('inactive')}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <Clock className="h-4 w-4 text-orange-500" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Inactive</span>
+              </div>
+              <p className="text-2xl font-bold text-orange-600 dark:text-orange-400" data-testid="text-inactive-count">{activityReport.summary.inactive}</p>
+              <p className="text-xs text-slate-400 mt-0.5">3+ months no savings</p>
+            </div>
+            <div
+              className={`section-card p-4 cursor-pointer transition-all ${activityView === 'dormant' ? 'ring-2 ring-red-500' : ''}`}
+              onClick={() => setActivityView('dormant')}
+            >
+              <div className="flex items-center gap-2 mb-1">
+                <UserX className="h-4 w-4 text-red-500" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Dormant</span>
+              </div>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400" data-testid="text-dormant-count">{activityReport.summary.dormant}</p>
+              <p className="text-xs text-slate-400 mt-0.5">6+ months no savings</p>
+            </div>
+            <div className="section-card p-4">
+              <div className="flex items-center gap-2 mb-1">
+                <Users className="h-4 w-4 text-slate-500" />
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">Total</span>
+              </div>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100" data-testid="text-total-count">{activityReport.summary.total}</p>
+            </div>
+          </div>
+
+          <div className="section-card">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {activityView === 'dormant' && `Dormant Members (${currentList.length})`}
+                {activityView === 'inactive' && `Inactive Members (${currentList.length})`}
+                {activityView === 'at-risk' && `At-Risk Members (${currentList.length})`}
+              </h4>
+              <Badge variant="outline" className={
+                activityView === 'dormant' ? 'border-red-200 text-red-700 dark:text-red-400' :
+                activityView === 'inactive' ? 'border-orange-200 text-orange-700 dark:text-orange-400' :
+                'border-amber-200 text-amber-700 dark:text-amber-400'
+              }>
+                {activityView === 'dormant' && '6+ months no savings'}
+                {activityView === 'inactive' && '3-6 months no savings'}
+                {activityView === 'at-risk' && '2-3 months no savings'}
+              </Badge>
+            </div>
+            <div className="overflow-x-auto">
+              {currentList.length === 0 ? (
+                <div className="text-center py-12 text-slate-400 dark:text-slate-500">
+                  <UserX className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                  <p className="text-sm">No {activityView === 'at-risk' ? 'at-risk' : activityView} members found.</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Member No.</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Last Savings</TableHead>
+                      <TableHead>Days Inactive</TableHead>
+                      <TableHead className="text-right">Total Savings</TableHead>
+                      <TableHead>Joined</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {currentList.map((m) => (
+                      <TableRow key={m.id} data-testid={`row-activity-member-${m.id}`}>
+                        <TableCell className="font-mono text-xs">{m.memberNumber}</TableCell>
+                        <TableCell>
+                          <a href={`/members/${m.id}`} className="text-blue-600 dark:text-blue-400 hover:underline font-medium" data-testid={`link-activity-member-${m.id}`}>
+                            {m.fullName}
+                          </a>
+                        </TableCell>
+                        <TableCell className="text-sm">{m.phoneNumber}</TableCell>
+                        <TableCell className="text-sm">
+                          {m.lastSavingsDate
+                            ? new Date(m.lastSavingsDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+                            : <span className="text-red-500 dark:text-red-400 text-xs">Never saved</span>
+                          }
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={
+                            (m.daysSinceLastSaving || 999) >= 180 ? 'border-red-200 text-red-700 dark:text-red-400' :
+                            (m.daysSinceLastSaving || 999) >= 90 ? 'border-orange-200 text-orange-700 dark:text-orange-400' :
+                            'border-amber-200 text-amber-700 dark:text-amber-400'
+                          }>
+                            {m.daysSinceLastSaving != null ? `${m.daysSinceLastSaving} days` : 'N/A'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{formatCurrency(parseFloat(m.totalSavings || '0'))}</TableCell>
+                        <TableCell className="text-xs text-slate-500">
+                          {m.joinDate ? new Date(m.joinDate).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' }) : 'N/A'}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </div>
+          </div>
+        </>
+      ) : null}
+    </TabsContent>
+  );
 }
 
 export default function Reports() {
@@ -72,7 +285,7 @@ export default function Reports() {
       const res = await apiRequest('GET', `/api/reports/${reportEndpoint}?${params.toString()}`);
       return await res.json();
     },
-    enabled: isAuthenticated && activeTab !== 'overview' && !!reportEndpoint,
+    enabled: isAuthenticated && activeTab !== 'overview' && activeTab !== 'activity' && !!reportEndpoint,
   });
 
   const reportTypes = [
@@ -164,10 +377,11 @@ export default function Reports() {
 
       {/* Tabs for different report sections */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="financial">Financial</TabsTrigger>
+          <TabsTrigger value="activity">Member Activity</TabsTrigger>
           <TabsTrigger value="custom">Custom Reports</TabsTrigger>
         </TabsList>
 
@@ -623,6 +837,9 @@ export default function Reports() {
             </div>
           )}
         </TabsContent>
+
+        {/* Member Activity Tab */}
+        <MemberActivityTab />
 
         {/* Custom/Detail Reports Tab */}
         <TabsContent value="custom" className="space-y-6">
