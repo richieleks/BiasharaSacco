@@ -175,6 +175,10 @@ export default function MemberDetails() {
     eligible: boolean;
     blockers: string[];
     exitFee: number;
+    canUseSavingsForLoan: boolean;
+    totalOutstandingLoan: number;
+    totalSavings: number;
+    pendingRequest: any | null;
     member: any;
   }>({
     queryKey: ['/api/members', memberId, 'exit-eligibility'],
@@ -191,14 +195,15 @@ export default function MemberDetails() {
       return await apiRequest("POST", `/api/members/${memberId}/exit`, { reason: exitReason });
     },
     onSuccess: () => {
-      toast({ title: "Member Exited", description: "The member account has been closed successfully.", variant: "success" });
+      toast({ title: "Exit Request Submitted", description: "The exit request has been submitted and is awaiting treasurer approval.", variant: "success" });
       setIsExitDialogOpen(false);
       setExitReason("");
       queryClient.invalidateQueries({ queryKey: ['/api/members', memberId] });
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/exit-requests'] });
     },
     onError: (error: Error) => {
-      toast({ title: "Exit Failed", description: error.message || "Failed to process member exit.", variant: "destructive" });
+      toast({ title: "Exit Request Failed", description: error.message || "Failed to submit exit request.", variant: "destructive" });
     },
   });
 
@@ -948,14 +953,14 @@ export default function MemberDetails() {
       </Dialog>
 
       <Dialog open={isExitDialogOpen} onOpenChange={(open) => { setIsExitDialogOpen(open); if (!open) setExitReason(""); }}>
-        <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[520px] max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-red-600 dark:text-red-400">
               <LogOut className="h-5 w-5" />
-              Process Member Exit
+              Submit Member Exit Request
             </DialogTitle>
             <DialogDescription>
-              This will permanently close <strong>{member?.fullName}</strong>'s account and mark them as exited. This action cannot be undone.
+              Submit an exit request for <strong>{member?.fullName}</strong>. The Treasurer must approve before the account is closed.
             </DialogDescription>
           </DialogHeader>
 
@@ -967,18 +972,34 @@ export default function MemberDetails() {
               </div>
             ) : exitEligibility ? (
               <>
-                {exitEligibility.eligible ? (
+                {exitEligibility.pendingRequest ? (
+                  <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
+                    <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <AlertDescription className="text-amber-700 dark:text-amber-300">
+                      <p className="font-semibold">An exit request is already pending treasurer approval.</p>
+                      <p className="text-sm mt-1">Submitted on {exitEligibility.pendingRequest.requestedAt ? format(new Date(exitEligibility.pendingRequest.requestedAt), 'PPp') : 'N/A'}.</p>
+                    </AlertDescription>
+                  </Alert>
+                ) : exitEligibility.eligible ? (
                   <Alert className="border-emerald-200 bg-emerald-50 dark:border-emerald-800 dark:bg-emerald-950/20">
                     <CheckCircle className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                     <AlertDescription className="text-emerald-700 dark:text-emerald-300">
                       This member is eligible for exit. All loans are cleared and no outstanding guarantor obligations.
                     </AlertDescription>
                   </Alert>
+                ) : exitEligibility.canUseSavingsForLoan ? (
+                  <Alert className="border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-950/20">
+                    <AlertTriangle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <AlertDescription className="text-blue-700 dark:text-blue-300">
+                      <p className="font-semibold mb-1">Active loan can be settled from savings.</p>
+                      <p className="text-sm">This member has an outstanding loan of <strong>{formatCurrency(exitEligibility.totalOutstandingLoan)}</strong>. Their savings of <strong>{formatCurrency(exitEligibility.totalSavings)}</strong> are sufficient to cover this. The Treasurer will settle the loan from savings upon approval.</p>
+                    </AlertDescription>
+                  </Alert>
                 ) : (
                   <Alert className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
                     <XCircle className="h-4 w-4 text-red-600 dark:text-red-400" />
                     <AlertDescription className="text-red-700 dark:text-red-300">
-                      <p className="font-semibold mb-2">This member does not qualify for exit:</p>
+                      <p className="font-semibold mb-2">This member cannot exit at this time:</p>
                       <ul className="list-disc list-inside space-y-1 text-sm">
                         {exitEligibility.blockers.map((blocker, i) => (
                           <li key={i}>{blocker}</li>
@@ -993,6 +1014,12 @@ export default function MemberDetails() {
                     <span className="text-slate-500 dark:text-slate-400">Total Savings</span>
                     <span className="font-medium">{formatCurrency(parseFloat(exitEligibility.member?.totalSavings || '0'))}</span>
                   </div>
+                  {exitEligibility.canUseSavingsForLoan && (
+                    <div className="flex justify-between text-red-600 dark:text-red-400">
+                      <span>Outstanding Loan Balance</span>
+                      <span className="font-medium">− {formatCurrency(exitEligibility.totalOutstandingLoan)}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
                     <span className="text-slate-500 dark:text-slate-400">Share Capital</span>
                     <span className="font-medium">{formatCurrency(parseFloat(exitEligibility.member?.shareCapital || '0'))}</span>
@@ -1009,23 +1036,25 @@ export default function MemberDetails() {
                   <Alert className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
                     <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                     <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
-                      An exit fee of <strong>{formatCurrency(exitEligibility.exitFee)}</strong> will be charged and recorded as a fee transaction.
+                      An exit fee of <strong>{formatCurrency(exitEligibility.exitFee)}</strong> will be charged upon treasurer approval.
                     </AlertDescription>
                   </Alert>
                 )}
 
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Exit Reason <span className="text-slate-400">(optional)</span>
-                  </label>
-                  <Textarea
-                    data-testid="input-exit-reason"
-                    placeholder="Enter the reason for exit (e.g., resignation, retirement, relocation...)"
-                    value={exitReason}
-                    onChange={(e) => setExitReason(e.target.value)}
-                    className="min-h-[80px]"
-                  />
-                </div>
+                {!exitEligibility.pendingRequest && (exitEligibility.eligible || exitEligibility.canUseSavingsForLoan) && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                      Exit Reason <span className="text-slate-400">(optional)</span>
+                    </label>
+                    <Textarea
+                      data-testid="input-exit-reason"
+                      placeholder="Enter the reason for exit (e.g., resignation, retirement, relocation...)"
+                      value={exitReason}
+                      onChange={(e) => setExitReason(e.target.value)}
+                      className="min-h-[80px]"
+                    />
+                  </div>
+                )}
               </>
             ) : null}
           </div>
@@ -1042,11 +1071,16 @@ export default function MemberDetails() {
             <Button
               type="button"
               variant="destructive"
-              disabled={!exitEligibility?.eligible || exitMemberMutation.isPending}
+              disabled={
+                exitEligibilityLoading ||
+                !!exitEligibility?.pendingRequest ||
+                (!exitEligibility?.eligible && !exitEligibility?.canUseSavingsForLoan) ||
+                exitMemberMutation.isPending
+              }
               onClick={() => exitMemberMutation.mutate()}
               data-testid="button-exit-confirm"
             >
-              {exitMemberMutation.isPending ? "Processing Exit..." : "Confirm Exit & Close Account"}
+              {exitMemberMutation.isPending ? "Submitting..." : "Submit for Treasurer Approval"}
             </Button>
           </div>
         </DialogContent>

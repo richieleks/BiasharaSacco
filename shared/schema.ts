@@ -820,6 +820,37 @@ export const insertLoanApprovalSchema = createInsertSchema(loanApprovals).omit({
 export type LoanApproval = typeof loanApprovals.$inferSelect;
 export type InsertLoanApproval = typeof loanApprovals.$inferInsert;
 
+// Member Exit Requests table - stores exit requests pending treasurer approval
+export const memberExitRequests = pgTable("member_exit_requests", {
+  id: serial("id").primaryKey(),
+  memberId: integer("member_id").references(() => members.id).notNull(),
+  requestedBy: varchar("requested_by").references(() => users.id).notNull(),
+  requestedAt: timestamp("requested_at").defaultNow(),
+  reason: text("reason"),
+  status: varchar("status", { enum: ["pending_treasurer", "approved", "rejected"] }).default("pending_treasurer"),
+  exitFee: decimal("exit_fee", { precision: 15, scale: 2 }).default("0"),
+  savingsUsedForLoanRepayment: boolean("savings_used_for_loan_repayment").default(false),
+  loanAmountRepaid: decimal("loan_amount_repaid", { precision: 15, scale: 2 }),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedBy: varchar("rejected_by").references(() => users.id),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  treasurerComments: text("treasurer_comments"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const memberExitRequestsRelations = relations(memberExitRequests, ({ one }) => ({
+  member: one(members, { fields: [memberExitRequests.memberId], references: [members.id] }),
+  requestedByUser: one(users, { fields: [memberExitRequests.requestedBy], references: [users.id] }),
+  approvedByUser: one(users, { fields: [memberExitRequests.approvedBy], references: [users.id] }),
+  rejectedByUser: one(users, { fields: [memberExitRequests.rejectedBy], references: [users.id] }),
+}));
+
+export type MemberExitRequest = typeof memberExitRequests.$inferSelect;
+export type InsertMemberExitRequest = typeof memberExitRequests.$inferInsert;
+
 // System Settings table for persisting configuration
 export const systemSettings = pgTable("system_settings", {
   id: serial("id").primaryKey(),

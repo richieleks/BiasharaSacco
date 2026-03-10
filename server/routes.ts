@@ -6,7 +6,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword } from "./localAuth";
 import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole } from "./rbac-middleware";
-import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members } from "@shared/schema";
+import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
 import { z } from "zod";
 import { db } from "./db";
@@ -1294,64 +1294,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper: compute exit eligibility details for a member
+  async function getExitEligibilityDetails(memberId: number) {
+    const member = await storage.getMember(memberId);
+    if (!member) throw new Error('Member not found');
+
+    if (member.status === 'exited') {
+      return { eligible: false, blockers: ['Member has already exited'], canUseSavingsForLoan: false, totalOutstandingLoan: 0, totalSavings: 0, exitFee: 0, member };
+    }
+
+    // Check for pending exit request
+    const existingRequest = await db.select().from(memberExitRequests)
+      .where(eq(memberExitRequests.memberId, memberId));
+    const pendingRequest = existingRequest.find(r => r.status === 'pending_treasurer');
+
+    const blockers: string[] = [];
+    let canUseSavingsForLoan = false;
+    let totalOutstandingLoan = 0;
+
+    // Check for active/running loans
+    const activeLoans = await storage.getMemberActiveLoans(memberId);
+    const runningLoans = activeLoans.filter((l: any) =>
+      ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved'].includes(l.status)
+    );
+
+    if (runningLoans.length > 0) {
+      totalOutstandingLoan = runningLoans.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
+      const totalSavingsVal = parseFloat(member.totalSavings || '0');
+      if (totalSavingsVal >= totalOutstandingLoan) {
+        canUseSavingsForLoan = true;
+        // Not a blocker - savings can cover the loan
+      } else {
+        blockers.push(`Member has ${runningLoans.length} active loan(s) with total outstanding balance of UGX ${totalOutstandingLoan.toLocaleString()} which exceeds available savings of UGX ${totalSavingsVal.toLocaleString()}`);
+      }
+    }
+
+    // Check for guaranteed loans still outstanding
+    const guaranteedLoans = await storage.getGuarantorsByMember(memberId);
+    for (const g of guaranteedLoans as any[]) {
+      if (g.status === 'approved' && g.loan) {
+        const loan = g.loan as any;
+        const loanActive = ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved'].includes(loan.status);
+        if (loanActive && parseFloat(loan.outstandingBalance || '0') > 0) {
+          blockers.push(`Member is a guarantor on loan ${loan.loanNumber} which has not been fully repaid (outstanding: UGX ${parseFloat(loan.outstandingBalance).toLocaleString()})`);
+        }
+      }
+    }
+
+    const exitFeeSetting = await storage.getSystemSetting('memberExitFee');
+    const exitFee = exitFeeSetting ? parseFloat(exitFeeSetting.settingValue) : 0;
+
+    return {
+      eligible: blockers.length === 0,
+      blockers,
+      canUseSavingsForLoan,
+      totalOutstandingLoan,
+      totalSavings: parseFloat(member.totalSavings || '0'),
+      exitFee,
+      pendingRequest: pendingRequest || null,
+      member: {
+        id: member.id,
+        fullName: member.fullName,
+        memberNumber: member.memberNumber,
+        totalSavings: member.totalSavings,
+        shareCapital: member.shareCapital,
+        status: member.status,
+      },
+    };
+  }
+
   // Member exit eligibility check
   app.get('/api/members/:id/exit-eligibility', isAuthenticated, requirePermission('update', 'members'), async (req: any, res) => {
     try {
       const memberId = await storage.resolveMemberId(req.params.id);
-      const member = await storage.getMember(memberId);
-      if (!member) return res.status(404).json({ message: "Member not found" });
-
-      const blockers: string[] = [];
-
-      if (member.status === 'exited') {
-        return res.json({ eligible: false, blockers: ["Member has already exited"] });
-      }
-
-      // Check for active/running loans
-      const activeLoans = await storage.getMemberActiveLoans(memberId);
-      const runningLoans = activeLoans.filter(l =>
-        ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved', 'pending'].includes(l.status)
-      );
-      if (runningLoans.length > 0) {
-        blockers.push(`Member has ${runningLoans.length} active loan(s) that must be fully repaid before exit`);
-      }
-
-      // Check for guaranteed loans still outstanding
-      const guaranteedLoans = await storage.getGuarantorsByMember(memberId);
-      for (const g of guaranteedLoans) {
-        if (g.status === 'approved' && g.loan) {
-          const loan = g.loan as any;
-          const loanActive = ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved'].includes(loan.status);
-          if (loanActive && parseFloat(loan.outstandingBalance || '0') > 0) {
-            blockers.push(`Member is a guarantor on loan ${loan.loanNumber} which is not fully paid (outstanding: ${loan.outstandingBalance})`);
-          }
-        }
-      }
-
-      // Fetch exit fee from system settings
-      const exitFeeSetting = await storage.getSystemSetting('memberExitFee');
-      const exitFee = exitFeeSetting ? parseFloat(exitFeeSetting.settingValue) : 0;
-
-      res.json({
-        eligible: blockers.length === 0,
-        blockers,
-        exitFee,
-        member: {
-          id: member.id,
-          fullName: member.fullName,
-          memberNumber: member.memberNumber,
-          totalSavings: member.totalSavings,
-          shareCapital: member.shareCapital,
-          status: member.status,
-        },
-      });
+      const details = await getExitEligibilityDetails(memberId);
+      res.json(details);
     } catch (error: any) {
       console.error("Error checking exit eligibility:", error);
       res.status(500).json({ message: error.message || "Failed to check exit eligibility" });
     }
   });
 
-  // Process member exit
+  // Submit member exit request (creates a pending_treasurer request)
   app.post('/api/members/:id/exit', isAuthenticated, requirePermission('update', 'members'), async (req: any, res) => {
     try {
       const memberId = await storage.resolveMemberId(req.params.id);
@@ -1362,82 +1386,238 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!member) return res.status(404).json({ message: "Member not found" });
       if (member.status === 'exited') return res.status(400).json({ message: "Member has already exited" });
 
-      // Re-run eligibility checks server-side
-      const activeLoans = await storage.getMemberActiveLoans(memberId);
-      const runningLoans = activeLoans.filter(l =>
-        ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved', 'pending'].includes(l.status)
-      );
-      if (runningLoans.length > 0) {
-        return res.status(400).json({ message: `Member has ${runningLoans.length} active loan(s) that must be repaid before exit` });
+      // Check for existing pending request
+      const existingRequests = await db.select().from(memberExitRequests)
+        .where(eq(memberExitRequests.memberId, memberId));
+      if (existingRequests.some(r => r.status === 'pending_treasurer')) {
+        return res.status(400).json({ message: "An exit request is already pending treasurer approval" });
       }
 
-      const guaranteedLoans = await storage.getGuarantorsByMember(memberId);
-      for (const g of guaranteedLoans) {
-        if (g.status === 'approved' && g.loan) {
-          const loan = g.loan as any;
-          const loanActive = ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved'].includes(loan.status);
-          if (loanActive && parseFloat(loan.outstandingBalance || '0') > 0) {
-            return res.status(400).json({ message: `Member is a guarantor on loan ${loan.loanNumber} which is not fully paid` });
+      const eligibility = await getExitEligibilityDetails(memberId);
+
+      // Only block if there are blockers that savings cannot resolve
+      if (!eligibility.eligible && !eligibility.canUseSavingsForLoan) {
+        return res.status(400).json({ message: eligibility.blockers[0] || "Member is not eligible for exit" });
+      }
+      // If there are blockers that are NOT the savings-covers-loan case, block
+      const nonSavingsBlockers = eligibility.blockers.filter(b => !b.includes('active loan'));
+      if (nonSavingsBlockers.length > 0) {
+        return res.status(400).json({ message: nonSavingsBlockers[0] });
+      }
+
+      // Create the exit request - requires treasurer approval
+      const [exitRequest] = await db.insert(memberExitRequests).values({
+        memberId,
+        requestedBy: userId,
+        reason: reason || null,
+        status: 'pending_treasurer',
+        exitFee: eligibility.exitFee > 0 ? eligibility.exitFee.toString() : '0',
+        savingsUsedForLoanRepayment: eligibility.canUseSavingsForLoan,
+        loanAmountRepaid: eligibility.canUseSavingsForLoan ? eligibility.totalOutstandingLoan.toString() : null,
+      }).returning();
+
+      await storage.createAuditLog({
+        userId,
+        memberId,
+        action: 'create',
+        resource: 'member-exit-request',
+        resourceId: exitRequest.id.toString(),
+        details: `Exit request submitted for member ${member.memberNumber}. Reason: ${reason || 'Not specified'}. ${eligibility.canUseSavingsForLoan ? `Savings will be used to repay UGX ${eligibility.totalOutstandingLoan.toLocaleString()} in loans.` : ''}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      broadcastDataUpdate(['/api/exit-requests', '/api/members']);
+      res.status(201).json({ message: "Exit request submitted successfully. Awaiting treasurer approval.", exitRequest });
+    } catch (error: any) {
+      console.error("Error submitting member exit request:", error);
+      res.status(500).json({ message: error.message || "Failed to submit exit request" });
+    }
+  });
+
+  // List all exit requests (Treasurer/Admin only)
+  app.get('/api/exit-requests', isAuthenticated, requirePermission('approve', 'members'), async (req: any, res) => {
+    try {
+      const { status } = req.query;
+      let query = db.select({
+        id: memberExitRequests.id,
+        memberId: memberExitRequests.memberId,
+        requestedBy: memberExitRequests.requestedBy,
+        requestedAt: memberExitRequests.requestedAt,
+        reason: memberExitRequests.reason,
+        status: memberExitRequests.status,
+        exitFee: memberExitRequests.exitFee,
+        savingsUsedForLoanRepayment: memberExitRequests.savingsUsedForLoanRepayment,
+        loanAmountRepaid: memberExitRequests.loanAmountRepaid,
+        approvedBy: memberExitRequests.approvedBy,
+        approvedAt: memberExitRequests.approvedAt,
+        rejectedBy: memberExitRequests.rejectedBy,
+        rejectedAt: memberExitRequests.rejectedAt,
+        rejectionReason: memberExitRequests.rejectionReason,
+        treasurerComments: memberExitRequests.treasurerComments,
+        createdAt: memberExitRequests.createdAt,
+      }).from(memberExitRequests);
+
+      const allRequests = await query.orderBy(memberExitRequests.createdAt);
+      const filtered = status ? allRequests.filter(r => r.status === status) : allRequests;
+
+      // Enrich with member data
+      const enriched = await Promise.all(filtered.map(async (r) => {
+        const member = await storage.getMember(r.memberId);
+        const requestedByUser = await storage.getUser(r.requestedBy);
+        return {
+          ...r,
+          member: member ? { id: member.id, fullName: member.fullName, memberNumber: member.memberNumber, totalSavings: member.totalSavings, shareCapital: member.shareCapital } : null,
+          requestedByUser: requestedByUser ? { id: requestedByUser.id, firstName: requestedByUser.firstName, lastName: requestedByUser.lastName, username: requestedByUser.username } : null,
+        };
+      }));
+
+      res.json(enriched);
+    } catch (error: any) {
+      console.error("Error fetching exit requests:", error);
+      res.status(500).json({ message: error.message || "Failed to fetch exit requests" });
+    }
+  });
+
+  // Treasurer approves an exit request - processes the actual exit
+  app.post('/api/exit-requests/:id/approve', isAuthenticated, requirePermission('approve', 'members'), async (req: any, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const { comments } = req.body;
+      const userId = getUserId(req)!;
+
+      const [exitRequest] = await db.select().from(memberExitRequests).where(eq(memberExitRequests.id, requestId));
+      if (!exitRequest) return res.status(404).json({ message: "Exit request not found" });
+      if (exitRequest.status !== 'pending_treasurer') return res.status(400).json({ message: `Cannot approve a request with status: ${exitRequest.status}` });
+
+      const member = await storage.getMember(exitRequest.memberId);
+      if (!member) return res.status(404).json({ message: "Member not found" });
+
+      // If savings were to be used for loan repayment, process that first
+      if (exitRequest.savingsUsedForLoanRepayment && exitRequest.loanAmountRepaid) {
+        const loanAmount = parseFloat(exitRequest.loanAmountRepaid);
+        const savingsAccounts = await storage.getSavingsAccountsByMember(exitRequest.memberId);
+        const primaryAccount = savingsAccounts[0];
+
+        if (primaryAccount && loanAmount > 0) {
+          // Record savings withdrawal to repay loan
+          const repayRefNumber = `EXIT-LOAN-REPAY-${Date.now()}`;
+          await storage.createTransaction({
+            memberId: exitRequest.memberId,
+            savingsAccountId: primaryAccount.id,
+            transactionType: 'withdrawal',
+            amount: loanAmount.toString(),
+            description: `Savings used to repay outstanding loan balance on member exit (Request #${requestId})`,
+            referenceNumber: repayRefNumber,
+            status: 'completed',
+            processedBy: userId,
+          });
+          // Deduct from savings
+          await storage.updateSavingsAccountBalance(primaryAccount.id, loanAmount.toString(), 'subtract');
+
+          // Mark all active loans as completed
+          const activeLoans = await storage.getMemberActiveLoans(exitRequest.memberId);
+          for (const loan of activeLoans) {
+            if (['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved'].includes(loan.status)) {
+              await storage.updateLoanStatus(loan.id, 'completed');
+              await storage.updateLoanBalance(loan.id, '0');
+            }
           }
         }
       }
 
-      // Fetch exit fee
-      const exitFeeSetting = await storage.getSystemSetting('memberExitFee');
-      const exitFee = exitFeeSetting ? parseFloat(exitFeeSetting.settingValue) : 0;
-
-      // Update member status to exited
-      const updatedMember = await storage.updateMember(memberId, {
-        status: 'exited' as any,
-        exitedAt: new Date(),
-        exitReason: reason || null,
-        exitFeeCharged: exitFee > 0 ? exitFee.toString() : null,
-      } as any);
-
-      // Close all savings accounts
-      const savingsAccounts = await storage.getSavingsAccountsByMember(memberId);
-      for (const account of savingsAccounts) {
-        if (account.status === 'active') {
-          await storage.updateSavingsAccountBalance(account.id, '0', 'add');
-          await (storage as any).closeSavingsAccount?.(account.id);
-        }
-      }
-
-      // Record exit fee as a transaction if applicable
+      // Record exit fee transaction if applicable
+      const exitFee = parseFloat(exitRequest.exitFee || '0');
       if (exitFee > 0) {
-        const accounts = await storage.getSavingsAccountsByMember(memberId);
-        const primaryAccount = accounts[0];
+        const savingsAccounts = await storage.getSavingsAccountsByMember(exitRequest.memberId);
+        const primaryAccount = savingsAccounts[0];
         if (primaryAccount) {
-          const refNumber = `EXIT-FEE-${Date.now()}`;
+          const feeRefNumber = `EXIT-FEE-${Date.now()}`;
           await storage.createTransaction({
-            memberId,
+            memberId: exitRequest.memberId,
             savingsAccountId: primaryAccount.id,
             transactionType: 'fee_charge',
             amount: exitFee.toString(),
             description: `Member exit fee charged on account closure`,
-            referenceNumber: refNumber,
+            referenceNumber: feeRefNumber,
             status: 'completed',
             processedBy: userId,
           });
         }
       }
 
+      // Mark exit request as approved
+      await db.update(memberExitRequests).set({
+        status: 'approved',
+        approvedBy: userId,
+        approvedAt: new Date(),
+        treasurerComments: comments || null,
+        updatedAt: new Date(),
+      }).where(eq(memberExitRequests.id, requestId));
+
+      // Update member status to exited
+      await storage.updateMember(exitRequest.memberId, {
+        status: 'exited' as any,
+        exitedAt: new Date(),
+        exitReason: exitRequest.reason || null,
+        exitFeeCharged: exitFee > 0 ? exitFee.toString() : null,
+      } as any);
+
       await storage.createAuditLog({
         userId,
-        memberId,
-        action: 'update',
-        resource: 'member',
-        resourceId: memberId.toString(),
-        details: `Member ${member.memberNumber} exited. Reason: ${reason || 'Not specified'}. Exit fee: ${exitFee}`,
+        memberId: exitRequest.memberId,
+        action: 'approve',
+        resource: 'member-exit-request',
+        resourceId: requestId.toString(),
+        details: `Treasurer approved exit for member ${member.memberNumber}. ${exitRequest.savingsUsedForLoanRepayment ? `Savings used to repay UGX ${exitRequest.loanAmountRepaid} in loans.` : ''} Exit fee: UGX ${exitFee}.`,
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
       });
 
-      broadcastDataUpdate(['/api/members', '/api/dashboard']);
-      res.json({ message: "Member exit processed successfully", member: updatedMember, exitFee });
+      broadcastDataUpdate(['/api/exit-requests', '/api/members', '/api/dashboard']);
+      res.json({ message: "Exit request approved. Member account has been closed.", exitRequest });
     } catch (error: any) {
-      console.error("Error processing member exit:", error);
-      res.status(500).json({ message: error.message || "Failed to process member exit" });
+      console.error("Error approving exit request:", error);
+      res.status(500).json({ message: error.message || "Failed to approve exit request" });
+    }
+  });
+
+  // Treasurer rejects an exit request
+  app.post('/api/exit-requests/:id/reject', isAuthenticated, requirePermission('approve', 'members'), async (req: any, res) => {
+    try {
+      const requestId = parseInt(req.params.id);
+      const { reason } = req.body;
+      const userId = getUserId(req)!;
+
+      const [exitRequest] = await db.select().from(memberExitRequests).where(eq(memberExitRequests.id, requestId));
+      if (!exitRequest) return res.status(404).json({ message: "Exit request not found" });
+      if (exitRequest.status !== 'pending_treasurer') return res.status(400).json({ message: `Cannot reject a request with status: ${exitRequest.status}` });
+
+      await db.update(memberExitRequests).set({
+        status: 'rejected',
+        rejectedBy: userId,
+        rejectedAt: new Date(),
+        rejectionReason: reason || null,
+        updatedAt: new Date(),
+      }).where(eq(memberExitRequests.id, requestId));
+
+      const member = await storage.getMember(exitRequest.memberId);
+      await storage.createAuditLog({
+        userId,
+        memberId: exitRequest.memberId,
+        action: 'reject',
+        resource: 'member-exit-request',
+        resourceId: requestId.toString(),
+        details: `Treasurer rejected exit request for member ${member?.memberNumber}. Reason: ${reason || 'Not specified'}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      broadcastDataUpdate(['/api/exit-requests', '/api/members']);
+      res.json({ message: "Exit request rejected." });
+    } catch (error: any) {
+      console.error("Error rejecting exit request:", error);
+      res.status(500).json({ message: error.message || "Failed to reject exit request" });
     }
   });
 

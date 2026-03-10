@@ -24,6 +24,7 @@ import Reports from "@/pages/reports";
 import Guarantors from "@/pages/guarantors";
 import GuarantorRequestsPage from "@/pages/guarantor-requests";
 import DataImport from "@/pages/data-import";
+import ExitRequests from "@/pages/exit-requests";
 
 
 import AuditLogs from "@/pages/audit-logs";
@@ -276,6 +277,11 @@ function Router() {
             <Route path="/loan-workflow">
               <ProtectedRoute requiredPermission={{ action: 'approve', resource: 'loans' }}>
                 <LoanWorkflow />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/exit-requests">
+              <ProtectedRoute requiredPermission={{ action: 'approve', resource: 'members' }}>
+                <ExitRequests />
               </ProtectedRoute>
             </Route>
             <Route path="/notifications">
