@@ -11,6 +11,7 @@ import { businessRulesValidator } from "./business-rules-validator";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, and, inArray, sql, lt, isNull, or, not } from "drizzle-orm";
+import * as XLSX from "xlsx";
 
 function generateDefaultPassword(fullName: string): string {
   const namePart = fullName.trim().split(/\s+/)[0] || 'Member';
@@ -606,6 +607,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         entranceFee: 15000,
         sharePrice: 5000,
         memberExitFee: 0,
+        saccoBankBranch: '253047',
+        saccoBankAccount: '2201034044',
+        saccoBankName: 'BIASHARA',
+        saccoSwiftCode: 'KCBLUGKA',
+        saccoAddress: '7 commercial plaza',
+        saccoTown: 'Kamplala Uganda',
+        saccoCustomerId: 'CM920321014GLG',
+        saccoCustomerDob: '20210909',
       };
 
       for (const setting of allSettings) {
@@ -4329,7 +4338,266 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Reports API endpoints
+  // Helper: sanitize cell value to prevent Excel formula injection
+  function sanitizeCell(value: string): string {
+    if (typeof value === 'string' && /^[=+\-@\t\r]/.test(value)) {
+      return "'" + value;
+    }
+    return value;
+  }
+
+  // Helper: get SACCO bank schedule settings
+  async function getBankScheduleSettings() {
+    const keys = ['saccoBankBranch', 'saccoBankAccount', 'saccoBankName', 'saccoSwiftCode', 'saccoAddress', 'saccoTown', 'saccoCustomerId', 'saccoCustomerDob'];
+    const defaults: Record<string, string> = {
+      saccoBankBranch: '253047',
+      saccoBankAccount: '2201034044',
+      saccoBankName: 'BIASHARA',
+      saccoSwiftCode: 'KCBLUGKA',
+      saccoAddress: '7 commercial plaza',
+      saccoTown: 'Kamplala Uganda',
+      saccoCustomerId: 'CM920321014GLG',
+      saccoCustomerDob: '20210909',
+    };
+    const result = { ...defaults };
+    for (const key of keys) {
+      const setting = await storage.getSystemSetting(key);
+      if (setting) result[key] = setting.settingValue;
+    }
+    return result;
+  }
+
+  // Helper: generate KCB bank schedule Excel workbook
+  function generateBankScheduleWorkbook(
+    rows: Array<{ accountNumber: string; name: string; amount: number }>,
+    sheetName: string,
+    detailsPrefix: string,
+    bankSettings: Record<string, string>,
+    month: string
+  ): Buffer {
+    const validMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const safeMonth = validMonths.includes(month) ? month : validMonths[new Date().getMonth()];
+
+    const header = [
+      '', 'SRC_BRANCH', 'DR_ACC', 'AC_NAME', 'CURR', 'AMOUNT',
+      'DEST_BRANCH', 'CR_AC_NO', 'AC_NAME', 'CR_CURR', 'DETAILS_OF_PYT',
+      'PAYMENT_TYPE', 'SWIFT_CODE', 'ORDERING_CUST_ADDRESS', 'ORDERING_CUST_TOWN',
+      'ORDERING_CUST_IDNO', 'ORDERING_CUST_DOB'
+    ];
+
+    const data: any[][] = [header];
+    for (const row of rows) {
+      if (!row.accountNumber || row.amount <= 0) continue;
+      data.push([
+        'P',
+        parseInt(bankSettings.saccoBankBranch) || bankSettings.saccoBankBranch,
+        sanitizeCell(row.accountNumber),
+        sanitizeCell(row.name),
+        'UGX',
+        Math.round(row.amount),
+        parseInt(bankSettings.saccoBankBranch) || bankSettings.saccoBankBranch,
+        sanitizeCell(bankSettings.saccoBankAccount),
+        sanitizeCell(bankSettings.saccoBankName),
+        'UGX',
+        `${safeMonth} ${detailsPrefix}`,
+        'IT',
+        sanitizeCell(bankSettings.saccoSwiftCode),
+        sanitizeCell(bankSettings.saccoAddress),
+        sanitizeCell(bankSettings.saccoTown),
+        sanitizeCell(bankSettings.saccoCustomerId),
+        sanitizeCell(bankSettings.saccoCustomerDob),
+      ]);
+    }
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    return Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
+  }
+
+  // Download savings deduction schedule (Excel)
+  app.get('/api/reports/savings-schedule', isAuthenticated, requirePermission('read', 'reports'), async (req: any, res) => {
+    try {
+      const bankSettings = await getBankScheduleSettings();
+      const month = (req.query.month as string) || new Date().toLocaleString('en-US', { month: 'short' });
+
+      const activeMembers = await db.select().from(members)
+        .where(inArray(members.status, ['active', 'inactive']));
+
+      const rows = activeMembers
+        .filter(m => parseFloat(m.monthlySavings || '0') > 0 && (m.accountNumber || m.staffAccountNumber))
+        .map(m => ({
+          accountNumber: m.accountNumber || m.staffAccountNumber || '',
+          name: m.fullName || '',
+          amount: parseFloat(m.monthlySavings || '0'),
+        }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      const validMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const safeMonth = validMonths.includes(month) ? month : validMonths[new Date().getMonth()];
+      const fileName = `BIASHARA_${safeMonth.toUpperCase()}_${new Date().getFullYear()}_SAVINGS_SCHEDULE.xlsx`;
+      const buffer = generateBankScheduleWorkbook(rows, `${safeMonth.toUpperCase()} SAVINGS`, 'Savings Deduction', bankSettings, safeMonth);
+
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.send(buffer);
+    } catch (error: any) {
+      console.error('Error generating savings schedule:', error);
+      res.status(500).json({ message: error.message || 'Failed to generate savings schedule' });
+    }
+  });
+
+  // Download loan repayment schedule (Excel)
+  app.get('/api/reports/loan-schedule', isAuthenticated, requirePermission('read', 'reports'), async (req: any, res) => {
+    try {
+      const bankSettings = await getBankScheduleSettings();
+      const month = (req.query.month as string) || new Date().toLocaleString('en-US', { month: 'short' });
+
+      const activeLoans = await db.select({
+        loanId: loans.id,
+        loanNumber: loans.loanNumber,
+        monthlyPayment: loans.monthlyPayment,
+        outstandingBalance: loans.outstandingBalance,
+        memberId: loans.memberId,
+      }).from(loans)
+        .where(inArray(loans.status, ['active', 'disbursed']));
+
+      const rows: Array<{ accountNumber: string; name: string; amount: number }> = [];
+
+      for (const loan of activeLoans) {
+        const payment = parseFloat(loan.monthlyPayment || '0');
+        if (payment <= 0) continue;
+
+        const member = await storage.getMember(loan.memberId);
+        if (!member) continue;
+
+        const accountNumber = member.accountNumber || member.staffAccountNumber;
+        if (!accountNumber) continue;
+
+        rows.push({
+          accountNumber,
+          name: member.fullName || '',
+          amount: payment,
+        });
+      }
+
+      rows.sort((a, b) => a.name.localeCompare(b.name));
+
+      const validMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const safeMonth = validMonths.includes(month) ? month : validMonths[new Date().getMonth()];
+      const fileName = `BIASHARA_${safeMonth.toUpperCase()}_${new Date().getFullYear()}_LOAN_SCHEDULE.xlsx`;
+      const buffer = generateBankScheduleWorkbook(rows, `${safeMonth.toUpperCase()} LOAN`, 'Loan Deduction', bankSettings, safeMonth);
+
+      res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+      res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      res.send(buffer);
+    } catch (error: any) {
+      console.error('Error generating loan schedule:', error);
+      res.status(500).json({ message: error.message || 'Failed to generate loan schedule' });
+    }
+  });
+
+  // Member activity report
+  app.get('/api/reports/member-activity', isAuthenticated, requirePermission('read', 'reports'), async (req: any, res) => {
+    try {
+      const allMembers = await db.select().from(members)
+        .where(not(inArray(members.status, ['pending', 'rejected', 'exited'])));
+
+      const now = new Date();
+      const threeMonthsAgo = new Date(now);
+      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+      const sixMonthsAgo = new Date(now);
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const activeCount = allMembers.filter(m => m.status === 'active').length;
+      const inactiveCount = allMembers.filter(m => m.status === 'inactive').length;
+      const dormantCount = allMembers.filter(m => m.status === 'dormant').length;
+      const suspendedCount = allMembers.filter(m => m.status === 'suspended').length;
+
+      const inactiveMembers = allMembers
+        .filter(m => m.status === 'inactive')
+        .map(m => ({
+          id: m.id,
+          memberNumber: m.memberNumber,
+          fullName: m.fullName,
+          status: m.status,
+          lastSavingsDate: m.lastSavingsDate,
+          totalSavings: m.totalSavings,
+          phoneNumber: m.phoneNumber,
+          joinDate: m.joinDate,
+          daysSinceLastSaving: m.lastSavingsDate
+            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
+            : null,
+        }));
+
+      const dormantMembers = allMembers
+        .filter(m => m.status === 'dormant')
+        .map(m => ({
+          id: m.id,
+          memberNumber: m.memberNumber,
+          fullName: m.fullName,
+          status: m.status,
+          lastSavingsDate: m.lastSavingsDate,
+          totalSavings: m.totalSavings,
+          phoneNumber: m.phoneNumber,
+          joinDate: m.joinDate,
+          daysSinceLastSaving: m.lastSavingsDate
+            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
+            : null,
+        }));
+
+      const twoMonthsAgo = new Date(now);
+      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+
+      const atRiskMembers = allMembers
+        .filter(m => {
+          if (m.status !== 'active') return false;
+          const baseline = m.lastSavingsDate
+            ? new Date(m.lastSavingsDate)
+            : m.joinDate
+            ? new Date(m.joinDate)
+            : m.membershipStartDate
+            ? new Date(m.membershipStartDate)
+            : m.createdAt
+            ? new Date(m.createdAt)
+            : null;
+          if (!baseline) return false;
+          return baseline < twoMonthsAgo;
+        })
+        .map(m => ({
+          id: m.id,
+          memberNumber: m.memberNumber,
+          fullName: m.fullName,
+          status: m.status,
+          lastSavingsDate: m.lastSavingsDate,
+          totalSavings: m.totalSavings,
+          phoneNumber: m.phoneNumber,
+          joinDate: m.joinDate,
+          daysSinceLastSaving: m.lastSavingsDate
+            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
+            : null,
+        }));
+
+      res.json({
+        summary: {
+          total: allMembers.length,
+          active: activeCount,
+          inactive: inactiveCount,
+          dormant: dormantCount,
+          suspended: suspendedCount,
+          atRisk: atRiskMembers.length,
+        },
+        inactiveMembers,
+        dormantMembers,
+        atRiskMembers,
+      });
+    } catch (error: any) {
+      console.error('Error fetching member activity report:', error);
+      res.status(500).json({ message: error.message || 'Failed to fetch member activity report' });
+    }
+  });
+
+  // Reports API endpoints (generic - must be after specific report routes)
   app.get('/api/reports/:reportType', isAuthenticated, async (req: any, res) => {
     try {
       const { reportType } = req.params;
@@ -5763,106 +6031,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error running activity check:', error);
       res.status(500).json({ message: error.message || 'Failed to run activity check' });
-    }
-  });
-
-  // Member activity report
-  app.get('/api/reports/member-activity', isAuthenticated, requirePermission('read', 'reports'), async (req: any, res) => {
-    try {
-      const allMembers = await db.select().from(members)
-        .where(not(inArray(members.status, ['pending', 'rejected', 'exited'])));
-
-      const now = new Date();
-      const threeMonthsAgo = new Date(now);
-      threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-      const sixMonthsAgo = new Date(now);
-      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
-
-      const activeCount = allMembers.filter(m => m.status === 'active').length;
-      const inactiveCount = allMembers.filter(m => m.status === 'inactive').length;
-      const dormantCount = allMembers.filter(m => m.status === 'dormant').length;
-      const suspendedCount = allMembers.filter(m => m.status === 'suspended').length;
-
-      const inactiveMembers = allMembers
-        .filter(m => m.status === 'inactive')
-        .map(m => ({
-          id: m.id,
-          memberNumber: m.memberNumber,
-          fullName: m.fullName,
-          status: m.status,
-          lastSavingsDate: m.lastSavingsDate,
-          totalSavings: m.totalSavings,
-          phoneNumber: m.phoneNumber,
-          joinDate: m.joinDate,
-          daysSinceLastSaving: m.lastSavingsDate
-            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
-            : null,
-        }));
-
-      const dormantMembers = allMembers
-        .filter(m => m.status === 'dormant')
-        .map(m => ({
-          id: m.id,
-          memberNumber: m.memberNumber,
-          fullName: m.fullName,
-          status: m.status,
-          lastSavingsDate: m.lastSavingsDate,
-          totalSavings: m.totalSavings,
-          phoneNumber: m.phoneNumber,
-          joinDate: m.joinDate,
-          daysSinceLastSaving: m.lastSavingsDate
-            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
-            : null,
-        }));
-
-      const twoMonthsAgo = new Date(now);
-      twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
-
-      const atRiskMembers = allMembers
-        .filter(m => {
-          if (m.status !== 'active') return false;
-          const baseline = m.lastSavingsDate
-            ? new Date(m.lastSavingsDate)
-            : m.joinDate
-            ? new Date(m.joinDate)
-            : m.membershipStartDate
-            ? new Date(m.membershipStartDate)
-            : m.createdAt
-            ? new Date(m.createdAt)
-            : null;
-          if (!baseline) return false;
-          return baseline < twoMonthsAgo;
-        })
-        .map(m => ({
-          id: m.id,
-          memberNumber: m.memberNumber,
-          fullName: m.fullName,
-          status: m.status,
-          lastSavingsDate: m.lastSavingsDate,
-          totalSavings: m.totalSavings,
-          phoneNumber: m.phoneNumber,
-          joinDate: m.joinDate,
-          daysSinceLastSaving: m.lastSavingsDate
-            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
-            : null,
-        }));
-
-      res.json({
-        summary: {
-          total: allMembers.length,
-          active: activeCount,
-          inactive: inactiveCount,
-          dormant: dormantCount,
-          suspended: suspendedCount,
-          atRisk: atRiskMembers.length,
-        },
-        inactiveMembers,
-        dormantMembers,
-        atRiskMembers,
-      });
-    } catch (error: any) {
-      console.error('Error fetching member activity report:', error);
-      res.status(500).json({ message: error.message || 'Failed to fetch member activity report' });
     }
   });
 

@@ -51,7 +51,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, KeyRound } from "lucide-react";
+import { Plus, Edit, Trash2, KeyRound, Building2 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -110,6 +110,16 @@ const adminSettingsSchema = z.object({
   membershipDurationMonths: z.number().min(1).max(12).default(3),
   minLoanApprovers: z.number().min(1).max(10).default(2),
   memberExitFee: z.number().min(0).default(0),
+
+  // SACCO Bank Details (for bank schedule reports)
+  saccoBankBranch: z.string().default('253047'),
+  saccoBankAccount: z.string().default('2201034044'),
+  saccoBankName: z.string().default('BIASHARA'),
+  saccoSwiftCode: z.string().default('KCBLUGKA'),
+  saccoAddress: z.string().default('7 commercial plaza'),
+  saccoTown: z.string().default('Kamplala Uganda'),
+  saccoCustomerId: z.string().default('CM920321014GLG'),
+  saccoCustomerDob: z.string().default('20210909'),
   
   // Backup and Maintenance
   autoBackupEnabled: z.boolean().default(true),
@@ -166,6 +176,14 @@ export default function AdminSettingsPage() {
     membershipDurationMonths: 3,
     minLoanApprovers: 2,
     memberExitFee: 0,
+    saccoBankBranch: '253047',
+    saccoBankAccount: '2201034044',
+    saccoBankName: 'BIASHARA',
+    saccoSwiftCode: 'KCBLUGKA',
+    saccoAddress: '7 commercial plaza',
+    saccoTown: 'Kamplala Uganda',
+    saccoCustomerId: 'CM920321014GLG',
+    saccoCustomerDob: '20210909',
     autoBackupEnabled: true,
     backupFrequency: "daily",
     logRetentionDays: 90,
@@ -1038,6 +1056,131 @@ export default function AdminSettingsPage() {
                               <FormDescription>
                                 Fee charged when a member exits and their account is closed. Set to 0 for no exit fee.
                               </FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        SACCO Bank Details
+                      </CardTitle>
+                      <CardDescription>
+                        Bank account details used when generating KCB bank transfer schedule files for salary deductions.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="saccoBankBranch"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Branch Code</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-sacco-branch" />
+                              </FormControl>
+                              <FormDescription>KCB branch code (e.g., 253047)</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="saccoBankAccount"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>SACCO Account Number</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-sacco-account" />
+                              </FormControl>
+                              <FormDescription>SACCO bank account number (credit account)</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="saccoBankName"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Account Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-sacco-bank-name" />
+                              </FormControl>
+                              <FormDescription>SACCO account name as registered with the bank</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="saccoSwiftCode"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>SWIFT Code</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-sacco-swift" />
+                              </FormControl>
+                              <FormDescription>Bank SWIFT/BIC code (e.g., KCBLUGKA)</FormDescription>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="saccoAddress"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Address</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-sacco-address" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="saccoTown"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Town</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-sacco-town" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="saccoCustomerId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Customer ID</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-sacco-customer-id" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="saccoCustomerDob"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Customer DOB (YYYYMMDD)</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-sacco-customer-dob" />
+                              </FormControl>
+                              <FormDescription>Date in YYYYMMDD format for bank records</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )}

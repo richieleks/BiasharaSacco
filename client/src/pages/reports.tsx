@@ -237,6 +237,164 @@ function MemberActivityTab() {
   );
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function BankSchedulesTab() {
+  const { toast } = useToast();
+  const currentMonth = MONTHS[new Date().getMonth()];
+  const [savingsMonth, setSavingsMonth] = useState(currentMonth);
+  const [loanMonth, setLoanMonth] = useState(currentMonth);
+  const [downloadingSavings, setDownloadingSavings] = useState(false);
+  const [downloadingLoans, setDownloadingLoans] = useState(false);
+
+  const downloadSchedule = async (type: 'savings' | 'loan', month: string) => {
+    const setLoading = type === 'savings' ? setDownloadingSavings : setDownloadingLoans;
+    setLoading(true);
+    try {
+      const endpoint = type === 'savings' ? 'savings-schedule' : 'loan-schedule';
+      const response = await fetch(`/api/reports/${endpoint}?month=${encodeURIComponent(month)}`, { credentials: 'include' });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({ message: 'Download failed' }));
+        throw new Error(err.message);
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const disposition = response.headers.get('Content-Disposition');
+      const filename = disposition?.match(/filename="(.+)"/)?.[1] || `BIASHARA_${month.toUpperCase()}_${new Date().getFullYear()}_${type.toUpperCase()}_SCHEDULE.xlsx`;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Download Started", description: `${type === 'savings' ? 'Savings' : 'Loan'} schedule for ${month} downloaded.`, variant: "success" });
+    } catch (error: any) {
+      toast({ title: "Download Failed", description: error.message || 'Failed to download schedule.', variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <TabsContent value="schedules" className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Bank Deduction Schedules</h3>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          Generate KCB bank transfer schedule files for monthly salary deductions. These Excel files can be submitted directly to the bank.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="section-card p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <PiggyBank className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100">Savings Deduction Schedule</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Monthly savings contributions from member salaries</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm text-slate-600 dark:text-slate-300">Month</Label>
+            <Select value={savingsMonth} onValueChange={setSavingsMonth}>
+              <SelectTrigger data-testid="select-savings-month">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTHS.map(m => (
+                  <SelectItem key={m} value={m}>{m} {new Date().getFullYear()}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+            onClick={() => downloadSchedule('savings', savingsMonth)}
+            disabled={downloadingSavings}
+            data-testid="button-download-savings-schedule"
+          >
+            {downloadingSavings ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Download Savings Schedule
+              </>
+            )}
+          </Button>
+        </div>
+
+        <div className="section-card p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <HandCoins className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100">Loan Repayment Schedule</h4>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Monthly loan repayments deducted from member salaries</p>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-sm text-slate-600 dark:text-slate-300">Month</Label>
+            <Select value={loanMonth} onValueChange={setLoanMonth}>
+              <SelectTrigger data-testid="select-loan-month">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTHS.map(m => (
+                  <SelectItem key={m} value={m}>{m} {new Date().getFullYear()}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <Button
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => downloadSchedule('loan', loanMonth)}
+            disabled={downloadingLoans}
+            data-testid="button-download-loan-schedule"
+          >
+            {downloadingLoans ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Download className="h-4 w-4 mr-2" />
+                Download Loan Schedule
+              </>
+            )}
+          </Button>
+        </div>
+      </div>
+
+      <div className="section-card p-4">
+        <div className="flex items-start gap-3">
+          <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5 shrink-0" />
+          <div className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="font-medium text-slate-700 dark:text-slate-300 mb-1">About Bank Schedules</p>
+            <ul className="list-disc list-inside space-y-0.5 text-xs">
+              <li>Savings schedule includes all active members with a monthly savings amount and bank account on file.</li>
+              <li>Loan schedule includes all members with active/disbursed loans that have a monthly repayment amount.</li>
+              <li>Files are generated in KCB bank transfer format ready for direct submission.</li>
+              <li>Bank details (branch code, SACCO account, SWIFT code) can be configured in Admin Settings.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </TabsContent>
+  );
+}
+
 export default function Reports() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
@@ -285,7 +443,7 @@ export default function Reports() {
       const res = await apiRequest('GET', `/api/reports/${reportEndpoint}?${params.toString()}`);
       return await res.json();
     },
-    enabled: isAuthenticated && activeTab !== 'overview' && activeTab !== 'activity' && !!reportEndpoint,
+    enabled: isAuthenticated && activeTab !== 'overview' && activeTab !== 'activity' && activeTab !== 'schedules' && !!reportEndpoint,
   });
 
   const reportTypes = [
@@ -377,11 +535,12 @@ export default function Reports() {
 
       {/* Tabs for different report sections */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="financial">Financial</TabsTrigger>
           <TabsTrigger value="activity">Member Activity</TabsTrigger>
+          <TabsTrigger value="schedules">Bank Schedules</TabsTrigger>
           <TabsTrigger value="custom">Custom Reports</TabsTrigger>
         </TabsList>
 
@@ -840,6 +999,9 @@ export default function Reports() {
 
         {/* Member Activity Tab */}
         <MemberActivityTab />
+
+        {/* Bank Schedules Tab */}
+        <BankSchedulesTab />
 
         {/* Custom/Detail Reports Tab */}
         <TabsContent value="custom" className="space-y-6">
