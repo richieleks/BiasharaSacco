@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import {
   Form,
@@ -17,9 +17,10 @@ import { Badge } from "@/components/ui/badge";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { User, Mail, Phone, Building, Calendar, Shield, ArrowLeft, Lock, MapPin } from "lucide-react";
+import { User, Mail, Phone, Building, Calendar, Shield, ArrowLeft, Lock, MapPin, Smartphone, CheckCircle, XCircle, Copy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
+import { QRCodeSVG } from "qrcode.react";
 
 const profileUpdateSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -43,6 +44,172 @@ const changePasswordSchema = z.object({
 });
 
 type ChangePasswordData = z.infer<typeof changePasswordSchema>;
+
+function TwoFactorSetup() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [setupData, setSetupData] = useState<{ secret: string; uri: string } | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+
+  const is2FAEnabled = (user as any)?.twoFactorEnabled;
+
+  const setupMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/auth/2fa/setup');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setSetupData(data);
+    },
+    onError: (error: Error) => {
+      toast({ title: "Setup Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const verifyMutation = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await apiRequest('POST', '/api/auth/2fa/verify', { code });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "2FA Enabled", description: "Two-factor authentication has been enabled for your account." });
+      setSetupData(null);
+      setVerifyCode("");
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Verification Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const disableMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/auth/2fa/disable');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "2FA Disabled", description: "Two-factor authentication has been disabled." });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <Smartphone className="h-5 w-5" />
+          Two-Factor Authentication
+        </CardTitle>
+        {is2FAEnabled ? (
+          <Badge className="bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300">
+            <CheckCircle className="h-3 w-3 mr-1" />
+            Enabled
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-muted-foreground">
+            <XCircle className="h-3 w-3 mr-1" />
+            Disabled
+          </Badge>
+        )}
+      </CardHeader>
+      <CardContent>
+        {is2FAEnabled && !setupData ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Two-factor authentication is active. You will be asked for a verification code from your authenticator app each time you sign in.
+            </p>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                if (confirm("Are you sure you want to disable two-factor authentication? This will make your account less secure.")) {
+                  disableMutation.mutate();
+                }
+              }}
+              disabled={disableMutation.isPending}
+              data-testid="button-disable-2fa"
+            >
+              {disableMutation.isPending ? "Disabling..." : "Disable 2FA"}
+            </Button>
+          </div>
+        ) : setupData ? (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Scan the QR code below with your authenticator app (Google Authenticator, Authy, etc.), or manually enter the secret key.
+            </p>
+            <div className="flex flex-col items-center gap-4 p-4 border rounded-lg bg-muted/30">
+              <div className="bg-white p-4 rounded-lg" data-testid="img-2fa-qrcode">
+                <QRCodeSVG value={setupData.uri} size={176} level="M" />
+              </div>
+              <div className="flex items-center gap-2">
+                <code className="text-xs bg-muted px-3 py-2 rounded font-mono">{setupData.secret}</code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    navigator.clipboard.writeText(setupData.secret);
+                    toast({ title: "Copied", description: "Secret key copied to clipboard" });
+                  }}
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="space-y-2 max-w-xs">
+              <label className="text-sm font-medium">Enter verification code to confirm setup</label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                placeholder="Enter 6-digit code"
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                data-testid="input-2fa-verify-code"
+              />
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => verifyMutation.mutate(verifyCode)}
+                  disabled={verifyMutation.isPending || verifyCode.length !== 6}
+                  data-testid="button-confirm-2fa-setup"
+                >
+                  {verifyMutation.isPending ? "Verifying..." : "Confirm & Enable"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setSetupData(null); setVerifyCode(""); }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Add an extra layer of security to your account. When enabled, you'll need to enter a code from your authenticator app each time you sign in.
+            </p>
+            <Button
+              size="sm"
+              onClick={() => setupMutation.mutate()}
+              disabled={setupMutation.isPending}
+              data-testid="button-setup-2fa"
+            >
+              <Shield className="h-4 w-4 mr-2" />
+              {setupMutation.isPending ? "Setting up..." : "Set Up 2FA"}
+            </Button>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function ProfilePage() {
   const { user } = useAuth();
@@ -506,6 +673,8 @@ export default function ProfilePage() {
           )}
         </CardContent>
       </Card>
+
+      <TwoFactorSetup />
     </div>
   );
 }

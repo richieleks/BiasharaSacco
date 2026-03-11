@@ -40,6 +40,10 @@ export const users = pgTable("users", {
   role: varchar("role", { enum: ["admin", "manager", "committee", "teller", "member"] }).default("member"),
   authMethod: varchar("auth_method", { enum: ["replit", "local"] }).default("local"),
   mustChangePassword: boolean("must_change_password").default(false),
+  failedLoginAttempts: integer("failed_login_attempts").default(0),
+  lockedUntil: timestamp("locked_until"),
+  twoFactorSecret: varchar("two_factor_secret"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });

@@ -28,6 +28,9 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [show2FA, setShow2FA] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorUsername, setTwoFactorUsername] = useState("");
 
   const changePasswordMutation = useMutation({
     mutationFn: async (data: { newPassword: string }) => {
@@ -69,6 +72,12 @@ export function LoginPage() {
       return response.json();
     },
     onSuccess: (data) => {
+      if (data.requiresTwoFactor) {
+        setTwoFactorUsername(data.username);
+        setShow2FA(true);
+        setError("");
+        return;
+      }
       if (data.mustChangePassword) {
         setShowChangePassword(true);
       } else {
@@ -77,6 +86,32 @@ export function LoginPage() {
     },
     onError: (error: Error) => {
       setError(error.message || "Invalid username or password");
+    },
+  });
+
+  const twoFactorMutation = useMutation({
+    mutationFn: async (data: { username: string; password: string; code: string }) => {
+      const response = await fetch("/api/auth/login/2fa", {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Verification failed");
+      }
+      return response.json();
+    },
+    onSuccess: (data) => {
+      if (data.mustChangePassword) {
+        setShow2FA(false);
+        setShowChangePassword(true);
+      } else {
+        window.location.href = "/";
+      }
+    },
+    onError: (error: Error) => {
+      setError(error.message || "Invalid verification code");
     },
   });
 
@@ -388,6 +423,78 @@ export function LoginPage() {
               ) : (
                 "Set New Password"
               )}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={show2FA} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-md bg-slate-900 border-white/10 text-white" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-4">
+                <Shield className="h-8 w-8 text-blue-400" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-white text-xl">Two-Factor Authentication</DialogTitle>
+            <DialogDescription className="text-center text-slate-400">
+              Enter the 6-digit code from your authenticator app to complete sign in.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={(e) => {
+            e.preventDefault();
+            setError("");
+            twoFactorMutation.mutate({ username: twoFactorUsername, password, code: twoFactorCode });
+          }} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="twoFactorCode" className="text-slate-300">Verification Code</Label>
+              <Input
+                id="twoFactorCode"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                placeholder="Enter 6-digit code"
+                value={twoFactorCode}
+                onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                className="h-12 text-center text-2xl tracking-[0.5em] bg-white/[0.06] border-white/[0.1] text-white placeholder:text-slate-500 focus:border-blue-500/50 rounded-xl"
+                autoFocus
+                data-testid="input-2fa-code"
+              />
+            </div>
+            {error && (
+              <div className="flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                <Shield className="h-4 w-4 flex-shrink-0" />
+                {error}
+              </div>
+            )}
+            <Button
+              type="submit"
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/25 rounded-xl font-semibold"
+              disabled={twoFactorMutation.isPending || twoFactorCode.length !== 6}
+              data-testid="button-verify-2fa"
+            >
+              {twoFactorMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                "Verify & Sign In"
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full text-slate-400 hover:text-white"
+              onClick={() => {
+                setShow2FA(false);
+                setTwoFactorCode("");
+                setError("");
+              }}
+              data-testid="button-back-to-login"
+            >
+              Back to login
             </Button>
           </form>
         </DialogContent>

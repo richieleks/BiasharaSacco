@@ -46,6 +46,10 @@ import {
   Monitor,
   MessageSquare,
   User,
+  Download,
+  HardDrive,
+  Clock,
+  Unlock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -143,6 +147,87 @@ const userSettingsSchema = z.object({
 });
 
 type UserSettingsData = z.infer<typeof userSettingsSchema>;
+
+function BackupManagementCard() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const { data: backups, isLoading: backupsLoading } = useQuery<any[]>({
+    queryKey: ['/api/admin/backups'],
+  });
+
+  const createBackupMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/admin/backup');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Backup Created", description: data.message });
+      queryClient.invalidateQueries({ queryKey: ['/api/admin/backups'] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Backup Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  function formatBytes(bytes: number) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <HardDrive className="h-4 w-4" />
+            Backup History
+          </CardTitle>
+          <Button
+            size="sm"
+            onClick={() => createBackupMutation.mutate()}
+            disabled={createBackupMutation.isPending}
+            data-testid="button-create-backup"
+          >
+            {createBackupMutation.isPending ? "Creating..." : "Create Backup Now"}
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {backupsLoading ? (
+          <p className="text-sm text-muted-foreground">Loading backups...</p>
+        ) : !backups || backups.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No backups yet. Click "Create Backup Now" to create your first backup.</p>
+        ) : (
+          <div className="space-y-2">
+            {backups.map((backup: any) => (
+              <div key={backup.filename} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30" data-testid={`backup-item-${backup.filename}`}>
+                <div className="flex items-center gap-3">
+                  <Database className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm font-medium">{new Date(backup.timestamp).toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">{formatBytes(backup.size)} — {backup.tables?.length || 0} tables</p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    window.open(`/api/admin/backups/${backup.filename}`, '_blank');
+                  }}
+                  data-testid={`button-download-backup-${backup.filename}`}
+                >
+                  <Download className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminSettingsPage() {
   const { user } = useAuth();
@@ -1278,6 +1363,8 @@ export default function AdminSettingsPage() {
                       </div>
                     </CardContent>
                   </Card>
+
+                  <BackupManagementCard />
                 </div>
               )}
 
@@ -1849,6 +1936,20 @@ function UserManagementTab() {
     },
   });
 
+  const unlockUserMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await apiRequest('POST', `/api/auth/users/${id}/unlock`);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: "Account Unlocked", description: data.message, variant: "success" });
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/users'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Unlock Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleEditUser = (u: any) => {
     setEditingUser(u);
     const userRoles = Array.isArray(u.roles) && u.roles.length > 0 ? u.roles : [u.role || "member"];
@@ -2000,7 +2101,17 @@ function UserManagementTab() {
                 {allUsers.map((u: any) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.firstName} {u.lastName}</TableCell>
-                    <TableCell>{u.username}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {u.username}
+                        {u.lockedUntil && new Date(u.lockedUntil) > new Date() && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300">
+                            <Lock className="h-3 w-3" />
+                            Locked
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>{u.email}</TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
@@ -2014,6 +2125,18 @@ function UserManagementTab() {
                     <TableCell>{new Date(u.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
+                        {u.lockedUntil && new Date(u.lockedUntil) > new Date() && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-orange-600 hover:text-orange-700"
+                            title="Unlock account"
+                            onClick={() => unlockUserMutation.mutate(u.id)}
+                            data-testid={`button-unlock-user-${u.id}`}
+                          >
+                            <Unlock className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button variant="ghost" size="sm" onClick={() => handleEditUser(u)} title="Edit user">
                           <Edit className="h-4 w-4" />
                         </Button>

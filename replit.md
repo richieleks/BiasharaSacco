@@ -38,10 +38,17 @@ The system is divided into a `client/` (React frontend) and `server/` (Express.j
 - **Reporting & Analytics**: Dashboards with KPIs, transaction history, member activity, and financial summaries, including visual analytics charts.
 - **System Settings**: Differentiated user and admin settings, allowing for personal preferences and system-wide configurations (e.g., loan limits, security policies, email setup, business rules).
 
+- **Security Features**:
+  - **Session Timeout**: `isAuthenticated` middleware in `server/replitAuth.ts` tracks `lastActivity` timestamp on each request and destroys sessions exceeding the configured `sessionTimeout` minutes (admin settings). Inactivity-based expiry.
+  - **Password Complexity**: `validatePasswordComplexity()` in `server/localAuth.ts` enforces rules based on `passwordComplexity` setting. Low: 6+ chars. Medium: 8+ chars with uppercase, lowercase, number. High: 12+ chars with uppercase, lowercase, number, special char. Enforced on user creation (`/api/auth/create-user`) and password change (`/api/auth/change-password`). `GET /api/auth/password-requirements` returns current level and description.
+  - **Login Lockout**: Users table has `failedLoginAttempts` (integer) and `lockedUntil` (timestamp) columns. On failed login, attempts increment; when reaching `maxLoginAttempts` setting, account locks for 30 minutes. Successful login resets counters. Admins can unlock via `POST /api/auth/users/:id/unlock`. Frontend shows "Locked" badge and unlock button in Users list.
+  - **Two-Factor Authentication (TOTP)**: Uses `otpauth` library. Users table has `twoFactorSecret` and `twoFactorEnabled` columns. Setup via `POST /api/auth/2fa/setup` (generates secret + TOTP URI), verify via `POST /api/auth/2fa/verify`, disable via `POST /api/auth/2fa/disable`. Login flow: when 2FA is enabled, initial login returns `requiresTwoFactor: true` without creating a session; frontend shows TOTP input dialog; `POST /api/auth/login/2fa` validates the TOTP code and completes authentication. Profile page (`client/src/pages/profile.tsx`) has `TwoFactorSetup` component with QR code display, secret key copy, and enable/disable controls.
+- **Database Backup System**: `server/backup.ts` exports all major tables (members, savings, loans, transactions, system settings) to JSON files in `backups/` directory. `POST /api/admin/backup` triggers manual backup. `GET /api/admin/backups` lists available backups. `GET /api/admin/backups/:filename` downloads a backup file. Scheduled backups run via `setInterval` based on `backupFrequency` setting (daily/weekly/monthly), controlled by `autoBackupEnabled`. Schedule restarts when backup settings change. Keeps max 10 backup files with automatic cleanup. Frontend: `BackupManagementCard` component in admin settings shows backup history with download buttons and manual trigger.
+
 ## External Dependencies
 - **Database**: Neon PostgreSQL (serverless)
-- **Authentication**: Local username/password authentication with bcrypt
+- **Authentication**: Local username/password authentication with bcrypt, optional TOTP 2FA via otpauth
 - **Hosting**: Replit deployment platform
 - **Frontend Libraries**: React, React Query, React Hook Form, Radix UI, Lucide icons, Tailwind CSS, Recharts
-- **Backend Libraries**: Express, Passport, bcryptjs, Drizzle ORM
+- **Backend Libraries**: Express, Passport, bcryptjs, Drizzle ORM, otpauth (TOTP)
 - **Utilities**: Zod (validation), date-fns, memoizee, Multer (file uploads)

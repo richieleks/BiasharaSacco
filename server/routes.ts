@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { setupLocalAuth, hashPassword } from "./localAuth";
+import { setupLocalAuth, hashPassword, validatePasswordComplexity, getSecuritySettings, getPasswordRequirementsText } from "./localAuth";
 import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "./rbac-middleware";
 import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans } from "@shared/schema";
@@ -186,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         roles: [user.role || 'member'],
       });
       
-      const { password, ...userWithoutPassword } = user as typeof user & { password?: string };
+      const { password, twoFactorSecret: _tfs, ...userWithoutPassword } = user as typeof user & { password?: string; twoFactorSecret?: string };
       
       if (member) {
         const freshMember = await storage.getMemberByUserId(userId);
@@ -333,13 +333,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!user) {
           return res.status(401).json({ message: info?.message || "Invalid username or password" });
         }
+
+        if (user.twoFactorEnabled && user.twoFactorSecret) {
+          return res.json({ 
+            message: "Two-factor authentication required", 
+            requiresTwoFactor: true, 
+            username: user.username 
+          });
+        }
+
         req.logIn(user, (err) => {
           if (err) {
             return res.status(500).json({ message: "Login error" });
           }
-          const { password: _, ...safeUser } = user;
+          const { password: _, twoFactorSecret: __, ...safeUser } = user;
           return res.json({ message: "Login successful", user: safeUser, mustChangePassword: user.mustChangePassword || false });
         });
+      })(req, res, next);
+    }
+  );
+
+  app.post('/api/auth/login/2fa',
+    (req, res, next) => {
+      const { username, code } = req.body;
+      if (!username || !code) {
+        return res.status(400).json({ message: "Username and verification code are required" });
+      }
+      passport.authenticate('local', async (err: any, user: any, info: any) => {
+        if (err) {
+          return res.status(500).json({ message: "Authentication error" });
+        }
+        if (!user) {
+          return res.status(401).json({ message: info?.message || "Invalid credentials" });
+        }
+        try {
+          const fullUser = await storage.getUserByUsername(username);
+          if (!fullUser || !fullUser.twoFactorSecret || !fullUser.twoFactorEnabled) {
+            return res.status(400).json({ message: "Two-factor authentication not configured" });
+          }
+          const OTPAuth = await import('otpauth');
+          const totp = new OTPAuth.TOTP({
+            issuer: 'Biashara SACCO',
+            label: fullUser.username || fullUser.email || 'User',
+            algorithm: 'SHA1',
+            digits: 6,
+            period: 30,
+            secret: OTPAuth.Secret.fromBase32(fullUser.twoFactorSecret),
+          });
+          const delta = totp.validate({ token: code, window: 1 });
+          if (delta === null) {
+            return res.status(401).json({ message: "Invalid verification code" });
+          }
+          req.logIn(user, (err) => {
+            if (err) {
+              return res.status(500).json({ message: "Login error" });
+            }
+            const { password: _, twoFactorSecret: __, ...safeUser } = user;
+            return res.json({ message: "Login successful", user: safeUser, mustChangePassword: user.mustChangePassword || false });
+          });
+        } catch (error) {
+          console.error("2FA login error:", error);
+          return res.status(500).json({ message: "Authentication error" });
+        }
       })(req, res, next);
     }
   );
@@ -351,18 +406,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assignedRoles: string[] = Array.isArray(roles) && roles.length > 0 ? roles : (role ? [role] : ['member']);
       const primaryRole = assignedRoles[0];
       
-      // Validate input
       if (!username || !password || !email) {
         return res.status(400).json({ message: "Username, password, and email are required" });
       }
 
-      // Check if username already exists
+      const secSettings = await getSecuritySettings();
+      const complexityCheck = validatePasswordComplexity(password, secSettings.passwordComplexity);
+      if (!complexityCheck.valid) {
+        return res.status(400).json({ message: complexityCheck.message });
+      }
+
       const existingUser = await storage.getUserByUsername(username);
       if (existingUser) {
         return res.status(409).json({ message: "Username already exists" });
       }
 
-      // Hash the password
       const hashedPassword = await hashPassword(password);
       
       // Generate a unique user ID
@@ -402,7 +460,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/auth/users', isAuthenticated, requirePermission('read', 'users'), async (req: AuthRequest, res) => {
     try {
       const allUsers = await storage.getAllUsers();
-      const usersWithRoles = await Promise.all(allUsers.map(async ({ password, ...u }: any) => {
+      const usersWithRoles = await Promise.all(allUsers.map(async ({ password, twoFactorSecret, ...u }: any) => {
         const member = await storage.getMemberByUserId(u.id);
         const roles = member ? await storage.getMemberRoles(member.id) : [u.role || 'member'];
         return { ...u, roles, memberId: member?.id || null };
@@ -463,6 +521,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/auth/password-requirements', async (_req, res) => {
+    try {
+      const secSettings = await getSecuritySettings();
+      res.json({ 
+        level: secSettings.passwordComplexity, 
+        description: getPasswordRequirementsText(secSettings.passwordComplexity) 
+      });
+    } catch (error) {
+      res.json({ level: 'medium', description: getPasswordRequirementsText('medium') });
+    }
+  });
+
+  app.post('/api/auth/users/:id/unlock', isAuthenticated, requirePermission('update', 'users'), async (req: AuthRequest, res) => {
+    try {
+      const { id } = req.params;
+      await storage.updateUser(id, { failedLoginAttempts: 0, lockedUntil: null });
+      res.json({ message: "User account unlocked successfully" });
+    } catch (error) {
+      console.error("Error unlocking user:", error);
+      res.status(500).json({ message: "Failed to unlock user" });
+    }
+  });
+
   app.post('/api/auth/users/:id/reset-password', isAuthenticated, requirePermission('update', 'users'), async (req: AuthRequest, res) => {
     try {
       const { id } = req.params;
@@ -483,14 +564,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not authenticated" });
       }
       const { currentPassword, newPassword } = req.body;
-      if (!newPassword || newPassword.length < 6) {
-        return res.status(400).json({ message: "New password must be at least 6 characters" });
+      if (!newPassword) {
+        return res.status(400).json({ message: "New password is required" });
+      }
+      const secSettings = await getSecuritySettings();
+      const complexityCheck = validatePasswordComplexity(newPassword, secSettings.passwordComplexity);
+      if (!complexityCheck.valid) {
+        return res.status(400).json({ message: complexityCheck.message });
       }
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      if (!user.mustChangePassword && currentPassword) {
+      if (!user.mustChangePassword) {
+        if (!currentPassword) {
+          return res.status(400).json({ message: "Current password is required" });
+        }
         const bcrypt = await import('bcryptjs');
         const isValid = await bcrypt.compare(currentPassword, user.password || '');
         if (!isValid) {
@@ -503,6 +592,119 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error changing password:", error);
       res.status(500).json({ message: "Failed to change password" });
+    }
+  });
+
+  app.post('/api/auth/2fa/setup', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: "User not authenticated" });
+      const user = await storage.getUser(userId);
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      const OTPAuth = await import('otpauth');
+      const secret = new OTPAuth.Secret({ size: 20 });
+      const totp = new OTPAuth.TOTP({
+        issuer: 'Biashara SACCO',
+        label: user.username || user.email || 'User',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
+        secret,
+      });
+
+      await storage.updateUser(userId, { twoFactorSecret: secret.base32 });
+
+      res.json({
+        secret: secret.base32,
+        uri: totp.toString(),
+        qrData: totp.toString(),
+      });
+    } catch (error) {
+      console.error("Error setting up 2FA:", error);
+      res.status(500).json({ message: "Failed to set up two-factor authentication" });
+    }
+  });
+
+  app.post('/api/auth/2fa/verify', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: "User not authenticated" });
+      const user = await storage.getUser(userId);
+      if (!user || !user.twoFactorSecret) {
+        return res.status(400).json({ message: "Two-factor authentication not set up" });
+      }
+
+      const { code } = req.body;
+      if (!code) return res.status(400).json({ message: "Verification code is required" });
+
+      const OTPAuth = await import('otpauth');
+      const totp = new OTPAuth.TOTP({
+        issuer: 'Biashara SACCO',
+        label: user.username || user.email || 'User',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
+        secret: OTPAuth.Secret.fromBase32(user.twoFactorSecret),
+      });
+
+      const delta = totp.validate({ token: code, window: 1 });
+      if (delta === null) {
+        return res.status(400).json({ message: "Invalid verification code" });
+      }
+
+      await storage.updateUser(userId, { twoFactorEnabled: true });
+      res.json({ message: "Two-factor authentication enabled successfully" });
+    } catch (error) {
+      console.error("Error verifying 2FA:", error);
+      res.status(500).json({ message: "Failed to verify two-factor authentication" });
+    }
+  });
+
+  app.post('/api/auth/2fa/disable', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: "User not authenticated" });
+
+      await storage.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null });
+      res.json({ message: "Two-factor authentication disabled" });
+    } catch (error) {
+      console.error("Error disabling 2FA:", error);
+      res.status(500).json({ message: "Failed to disable two-factor authentication" });
+    }
+  });
+
+  app.post('/api/auth/2fa/validate', async (req, res) => {
+    try {
+      const { username, code } = req.body;
+      if (!username || !code) {
+        return res.status(400).json({ message: "Username and code are required" });
+      }
+
+      const user = await storage.getUserByUsername(username);
+      if (!user || !user.twoFactorSecret || !user.twoFactorEnabled) {
+        return res.status(400).json({ message: "Invalid request" });
+      }
+
+      const OTPAuth = await import('otpauth');
+      const totp = new OTPAuth.TOTP({
+        issuer: 'Biashara SACCO',
+        label: user.username || user.email || 'User',
+        algorithm: 'SHA1',
+        digits: 6,
+        period: 30,
+        secret: OTPAuth.Secret.fromBase32(user.twoFactorSecret),
+      });
+
+      const delta = totp.validate({ token: code, window: 1 });
+      if (delta === null) {
+        return res.status(400).json({ message: "Invalid verification code" });
+      }
+
+      res.json({ valid: true });
+    } catch (error) {
+      console.error("Error validating 2FA:", error);
+      res.status(500).json({ message: "Failed to validate code" });
     }
   });
 
@@ -704,10 +906,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         clearMaintenanceModeCache();
       }
 
+      if ('autoBackupEnabled' in settings || 'backupFrequency' in settings) {
+        const { restartScheduledBackups } = await import('./backup');
+        restartScheduledBackups();
+      }
+
       res.json({ message: "Admin settings updated successfully", settings });
     } catch (error) {
       console.error("Error updating admin settings:", error);
       res.status(500).json({ message: "Failed to update admin settings" });
+    }
+  });
+
+  app.post('/api/admin/backup', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const { createBackup } = await import('./backup');
+      const result = await createBackup();
+      res.json({ message: "Backup created successfully", backup: result });
+    } catch (error) {
+      console.error("Error creating backup:", error);
+      res.status(500).json({ message: "Failed to create backup" });
+    }
+  });
+
+  app.get('/api/admin/backups', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const { getBackupList } = await import('./backup');
+      const backups = getBackupList();
+      res.json(backups);
+    } catch (error) {
+      console.error("Error listing backups:", error);
+      res.status(500).json({ message: "Failed to list backups" });
+    }
+  });
+
+  app.get('/api/admin/backups/:filename', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const { downloadBackup } = await import('./backup');
+      const filepath = downloadBackup(req.params.filename);
+      if (!filepath) {
+        return res.status(404).json({ message: "Backup not found" });
+      }
+      res.download(filepath);
+    } catch (error) {
+      console.error("Error downloading backup:", error);
+      res.status(500).json({ message: "Failed to download backup" });
     }
   });
 
@@ -6085,6 +6328,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message || 'Failed to run activity check' });
     }
   });
+
+  const { startScheduledBackups } = await import('./backup');
+  startScheduledBackups();
 
   return httpServer;
 }

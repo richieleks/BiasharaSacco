@@ -137,8 +137,28 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  // Skip token expiry check for local auth users
   if (user && user.authMethod === 'local') {
+    if (req.session && (req.session as any).lastActivity) {
+      try {
+        const allSettings = await storage.getAllSystemSettings();
+        let sessionTimeoutMin = 240;
+        for (const s of allSettings) {
+          if (s.settingKey === 'sessionTimeout') {
+            sessionTimeoutMin = parseInt(s.settingValue, 10) || 240;
+            break;
+          }
+        }
+        const timeoutMs = sessionTimeoutMin * 60 * 1000;
+        const elapsed = Date.now() - (req.session as any).lastActivity;
+        if (elapsed > timeoutMs) {
+          return req.session.destroy((err) => {
+            res.status(401).json({ message: "Session expired due to inactivity. Please log in again." });
+          });
+        }
+      } catch (e) {
+      }
+    }
+    (req.session as any).lastActivity = Date.now();
     return next();
   }
 
