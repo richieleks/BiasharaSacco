@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/useAuth";
@@ -115,6 +115,51 @@ function PageTransition({ children }: { children: React.ReactNode }) {
   );
 }
 
+function MaintenanceScreen({ announcement }: { announcement?: string }) {
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-white to-amber-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 px-4">
+      <div className="max-w-md w-full text-center space-y-6">
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/20 mx-auto">
+          <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+        </div>
+
+        <div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="text-maintenance-title">
+            System Under Maintenance
+          </h1>
+          <p className="mt-2 text-slate-600 dark:text-slate-400">
+            The Biashara SACCO system is currently undergoing scheduled maintenance. We apologize for the inconvenience.
+          </p>
+        </div>
+
+        {announcement && (
+          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4 text-left">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-300 mb-1">System Announcement</p>
+            <p className="text-sm text-amber-700 dark:text-amber-400" data-testid="text-maintenance-announcement">{announcement}</p>
+          </div>
+        )}
+
+        <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-4">
+          <p className="text-sm text-slate-600 dark:text-slate-400">
+            Please try again later. If this issue persists, contact your system administrator.
+          </p>
+        </div>
+
+        <button
+          onClick={() => window.location.reload()}
+          className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+          data-testid="button-refresh-maintenance"
+        >
+          Refresh Page
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function FullPageLoader() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -136,11 +181,19 @@ function FullPageLoader() {
 }
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
   const { canAccessRoute } = useRBAC();
   
   useWebSocket();
   useTheme();
+
+  const isAdmin = user?.role === 'admin' || (user as any)?.member?.roles?.includes('admin');
+
+  const { data: maintenanceStatus } = useQuery<{ maintenanceMode: boolean; systemAnnouncement: string }>({
+    queryKey: ['/api/system/maintenance-status'],
+    enabled: isAuthenticated,
+    refetchInterval: isAdmin ? 60_000 : 30_000,
+  });
 
   if (isLoading) {
     return <FullPageLoader />;
@@ -156,9 +209,23 @@ function Router() {
     );
   }
 
+  if (!isAdmin && maintenanceStatus?.maintenanceMode) {
+    return <MaintenanceScreen announcement={maintenanceStatus.systemAnnouncement} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <PageLoadingBar />
+      {isAdmin && maintenanceStatus?.maintenanceMode && (
+        <div className="bg-amber-500 text-white text-center py-2 px-4 text-sm font-medium" data-testid="banner-maintenance-active">
+          <span className="inline-flex items-center gap-2">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+            Maintenance mode is active — non-admin users cannot access the system
+          </span>
+        </div>
+      )}
       <Header />
       <div className="flex">
         <CollapsibleSidebar />

@@ -5,7 +5,7 @@ import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword } from "./localAuth";
 import passport from "passport";
-import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole } from "./rbac-middleware";
+import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "./rbac-middleware";
 import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
 import { z } from "zod";
@@ -155,6 +155,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
   await setupLocalAuth();
+
+  app.use('/api', checkMaintenanceMode());
+
+  app.get('/api/system/maintenance-status', isAuthenticated, async (req: any, res) => {
+    try {
+      const setting = await storage.getSystemSetting('maintenanceMode');
+      const isOn = setting?.settingValue === 'true';
+      const announcementSetting = await storage.getSystemSetting('systemAnnouncement');
+      res.json({
+        maintenanceMode: isOn,
+        systemAnnouncement: announcementSetting?.settingValue || '',
+      });
+    } catch (error) {
+      res.json({ maintenanceMode: false, systemAnnouncement: '' });
+    }
+  });
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -682,6 +698,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         else if (booleanFields.includes(key)) type = 'boolean';
 
         await storage.upsertSystemSetting(key, String(value), type, undefined, userId);
+      }
+
+      if ('maintenanceMode' in settings) {
+        clearMaintenanceModeCache();
       }
 
       res.json({ message: "Admin settings updated successfully", settings });

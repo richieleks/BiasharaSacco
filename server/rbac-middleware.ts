@@ -1,6 +1,22 @@
 import type { Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
 
+let maintenanceModeCache: { value: boolean; expiry: number } = { value: false, expiry: 0 };
+const MAINTENANCE_CACHE_TTL = 10_000;
+
+async function isMaintenanceModeOn(): Promise<boolean> {
+  const now = Date.now();
+  if (now < maintenanceModeCache.expiry) return maintenanceModeCache.value;
+  const setting = await storage.getSystemSetting('maintenanceMode');
+  const isOn = setting?.settingValue === 'true';
+  maintenanceModeCache = { value: isOn, expiry: now + MAINTENANCE_CACHE_TTL };
+  return isOn;
+}
+
+export function clearMaintenanceModeCache() {
+  maintenanceModeCache = { value: false, expiry: 0 };
+}
+
 export type UserRole = string;
 
 export interface AuthRequest extends Request {
@@ -28,6 +44,50 @@ function getAuthUserId(req: AuthRequest): string | undefined {
   if (!req.user) return undefined;
   if ((req.user as any).authMethod === 'local') return (req.user as any).id;
   return req.user.claims?.sub;
+}
+
+const MAINTENANCE_EXEMPT_PATHS = [
+  '/api/auth/login',
+  '/api/auth/logout',
+  '/api/auth/user',
+  '/api/auth/permissions',
+  '/api/auth/settings',
+  '/api/admin/settings',
+  '/api/system/maintenance-status',
+];
+
+export function checkMaintenanceMode() {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const checkPath = req.originalUrl || req.path;
+      if (MAINTENANCE_EXEMPT_PATHS.some(p => checkPath === p || checkPath.startsWith(p))) {
+        return next();
+      }
+
+      const isMaintenance = await isMaintenanceModeOn();
+      if (!isMaintenance) return next();
+
+      const userId = getAuthUserId(req);
+      if (!userId) return next();
+
+      const user = await storage.getUser(userId);
+      if (user?.role === 'admin') return next();
+
+      const member = userId ? await storage.getMemberByUserId(userId) : null;
+      if (member) {
+        const memberRoles = await storage.getMemberRoles(member.id);
+        if (memberRoles.includes('admin')) return next();
+      }
+
+      return res.status(503).json({
+        message: "System is currently under maintenance. Only administrators can access the system. Please try again later.",
+        maintenanceMode: true,
+      });
+    } catch (error) {
+      console.error("Maintenance mode check error:", error);
+      next();
+    }
+  };
 }
 
 export function requirePermission(action: string, resource: string) {
