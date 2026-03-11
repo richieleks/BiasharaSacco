@@ -8,8 +8,7 @@ channel = "stable-24_05"
 [deployment]
 deploymentTarget = "autoscale"
 build = ["npm", "run", "build"]
-run = ["node", "./dist/index.cjs"]
-publicDir = "dist/public"
+run = ["node", "dist/index.js"]
 
 [workflows]
 runButton = "Project"
