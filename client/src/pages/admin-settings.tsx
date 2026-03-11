@@ -570,9 +570,9 @@ export default function AdminSettingsPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Password Complexity</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger data-testid="select-password-complexity">
                                     <SelectValue placeholder="Select complexity level" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -1234,9 +1234,9 @@ export default function AdminSettingsPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Backup Frequency</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                  <SelectTrigger>
+                                  <SelectTrigger data-testid="select-backup-frequency">
                                     <SelectValue placeholder="Select frequency" />
                                   </SelectTrigger>
                                 </FormControl>
@@ -1548,7 +1548,7 @@ export default function AdminSettingsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Theme</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select a theme" />
@@ -1588,7 +1588,7 @@ export default function AdminSettingsPage() {
                         render={({ field }) => (
                           <FormItem>
                             <FormLabel>Language</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
                                 <SelectTrigger>
                                   <SelectValue placeholder="Select a language" />

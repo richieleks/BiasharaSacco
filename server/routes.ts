@@ -643,6 +643,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const numberFields = ['maxLoanAmount', 'maxLoanTerm', 'defaultInterestRate', 'sessionTimeout', 'maxLoginAttempts', 'smtpPort', 'minimumSavingsBalance', 'loanToSavingsRatio', 'membershipDurationMonths', 'minLoanApprovers', 'logRetentionDays', 'entranceFee', 'sharePrice', 'memberExitFee'];
       const booleanFields = ['maintenanceMode', 'twoFactorRequired', 'emailEnabled', 'systemNotifications', 'memberNotifications', 'loanNotifications', 'autoBackupEnabled'];
+      const enumFields: Record<string, string[]> = {
+        passwordComplexity: ['low', 'medium', 'high'],
+        backupFrequency: ['daily', 'weekly', 'monthly'],
+      };
+      const numberRanges: Record<string, { min: number; max: number }> = {
+        sessionTimeout: { min: 15, max: 1440 },
+        maxLoginAttempts: { min: 3, max: 10 },
+        logRetentionDays: { min: 30, max: 365 },
+        maxLoanTerm: { min: 1, max: 60 },
+        defaultInterestRate: { min: 0, max: 100 },
+        smtpPort: { min: 1, max: 65535 },
+        loanToSavingsRatio: { min: 1, max: 10 },
+        membershipDurationMonths: { min: 1, max: 12 },
+        minLoanApprovers: { min: 1, max: 10 },
+      };
+
+      const errors: string[] = [];
+      for (const [key, value] of Object.entries(settings)) {
+        if (enumFields[key] && !enumFields[key].includes(String(value))) {
+          errors.push(`${key} must be one of: ${enumFields[key].join(', ')}`);
+        }
+        if (numberFields.includes(key) && numberRanges[key]) {
+          const numVal = Number(value);
+          if (isNaN(numVal) || numVal < numberRanges[key].min || numVal > numberRanges[key].max) {
+            errors.push(`${key} must be between ${numberRanges[key].min} and ${numberRanges[key].max}`);
+          }
+        }
+      }
+
+      if (errors.length > 0) {
+        return res.status(400).json({ message: `Validation errors: ${errors.join('; ')}` });
+      }
 
       for (const [key, value] of Object.entries(settings)) {
         let type = 'string';
