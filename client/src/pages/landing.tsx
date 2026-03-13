@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
-import { PiggyBank, Users, HandCoins, TrendingUp, Shield, Globe, Landmark, ArrowRight, CheckCircle2, BarChart3, Lock, Sparkles } from "lucide-react";
+import { PiggyBank, Users, HandCoins, TrendingUp, Shield, Globe, ArrowRight, CheckCircle2, BarChart3, Lock, Sparkles } from "lucide-react";
+import { SaccoLogo } from "@/components/sacco-logo";
 import { motion } from "framer-motion";
 
 export default function Landing() {
@@ -102,12 +103,7 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-3">
-              <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-xl blur-lg opacity-40" />
-                <div className="relative bg-gradient-to-br from-blue-500 to-emerald-500 rounded-xl p-2.5">
-                  <Landmark className="h-5 w-5 text-white" />
-                </div>
-              </div>
+              <SaccoLogo size="sm" className="drop-shadow-lg" />
               <div>
                 <h1 className="text-lg font-bold text-white tracking-tight">Biashara SACCO</h1>
                 <p className="text-blue-300/60 text-[10px] font-medium tracking-wider uppercase">Management System</p>
@@ -298,8 +294,8 @@ export default function Landing() {
                   transition={{ duration: 0.6 }}
                   className="relative text-center"
                 >
-                  <div className="inline-flex rounded-3xl bg-gradient-to-br from-blue-500/20 to-emerald-500/20 border border-white/[0.08] p-8 mb-6">
-                    <Landmark className="h-16 w-16 text-blue-400" />
+                  <div className="inline-flex rounded-3xl bg-gradient-to-br from-blue-500/20 to-emerald-500/20 border border-white/[0.08] p-6 mb-6">
+                    <SaccoLogo size="xl" className="drop-shadow-lg" />
                   </div>
                   <h4 className="text-2xl font-bold text-white mb-2">Trusted Platform</h4>
                   <p className="text-sm text-slate-400 max-w-xs mx-auto">
@@ -349,9 +345,7 @@ export default function Landing() {
       <footer className="relative z-10 border-t border-white/[0.06] py-10 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto text-center">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="bg-gradient-to-br from-blue-500 to-emerald-500 rounded-xl p-2">
-              <Landmark className="h-4 w-4 text-white" />
-            </div>
+            <SaccoLogo size="sm" className="drop-shadow-lg" />
             <span className="text-sm font-semibold text-white">Biashara SACCO</span>
           </div>
           <p className="text-xs text-slate-600">

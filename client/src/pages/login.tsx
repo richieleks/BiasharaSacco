@@ -3,7 +3,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, LogIn, Building2, Shield, Users, PiggyBank, KeyRound, TrendingUp, Landmark, Lock, Eye, EyeOff } from "lucide-react";
+import { Loader2, LogIn, Building2, Shield, Users, PiggyBank, KeyRound, TrendingUp, Lock, Eye, EyeOff } from "lucide-react";
+import { SaccoLogo } from "@/components/sacco-logo";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -189,12 +190,7 @@ export function LoginPage() {
           transition={{ duration: 0.8, ease: "easeOut" }}
         >
           <div className="flex items-center gap-4 mb-8">
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-emerald-500 rounded-2xl blur-xl opacity-50" />
-              <div className="relative bg-gradient-to-br from-blue-500 to-emerald-500 rounded-2xl p-4">
-                <Landmark className="h-10 w-10 text-white" />
-              </div>
-            </div>
+            <SaccoLogo size="lg" className="drop-shadow-lg" />
             <div>
               <h1 className="text-3xl font-bold text-white tracking-tight">Biashara SACCO</h1>
               <p className="text-blue-300/70 text-sm font-medium tracking-wider uppercase">Management System</p>
@@ -239,9 +235,7 @@ export function LoginPage() {
           className="w-full max-w-md"
         >
           <div className="lg:hidden flex items-center justify-center gap-3 mb-10">
-            <div className="bg-gradient-to-br from-blue-500 to-emerald-500 rounded-xl p-3">
-              <Landmark className="h-7 w-7 text-white" />
-            </div>
+            <SaccoLogo size="md" className="drop-shadow-lg" />
             <div>
               <h1 className="text-xl font-bold text-white">Biashara SACCO</h1>
               <p className="text-blue-300/60 text-xs font-medium tracking-wider uppercase">Management System</p>

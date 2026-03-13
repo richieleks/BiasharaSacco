@@ -2,7 +2,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { PiggyBank, ChevronDown, User, Settings, LogOut, Shield, ArrowRightLeft, Check } from "lucide-react";
+import { ChevronDown, User, Settings, LogOut, Shield, ArrowRightLeft, Check } from "lucide-react";
+import { SaccoLogo } from "@/components/sacco-logo";
 import { NotificationBell } from "@/components/notifications/notification-bell";
 import {
   DropdownMenu,
@@ -50,10 +51,8 @@ export default function Header() {
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-3 ml-12 lg:ml-0">
-            <Link href="/dashboard" className="flex items-center gap-3 hover:opacity-90 transition-opacity">
-              <div className="w-9 h-9 sacco-gradient rounded-xl flex items-center justify-center shadow-sm">
-                <PiggyBank className="text-white h-5 w-5" />
-              </div>
+            <Link href="/dashboard" className="flex items-center gap-2.5 hover:opacity-90 transition-opacity">
+              <SaccoLogo size="sm" />
               <div className="hidden sm:block">
                 <h1 className="text-base font-bold tracking-tight text-slate-900 dark:text-slate-100 leading-none">Biashara SACCO</h1>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 font-medium mt-0.5">Savings & Loans Management</p>

@@ -6,6 +6,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { Menu, X, ChevronLeft, ChevronRight } from "lucide-react";
 import * as Icons from "lucide-react";
+import { SaccoLogo } from "@/components/sacco-logo";
 
 interface CollapsibleSidebarProps {
   className?: string;
@@ -59,9 +60,7 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
         <div className={cn("mb-5 px-3", isCollapsed && "px-2")}>
           {!isCollapsed ? (
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 sacco-gradient rounded-lg flex items-center justify-center shadow-sm">
-                <span className="text-white font-bold text-xs">BS</span>
-              </div>
+              <SaccoLogo size="sm" />
               <div>
                 <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-none">Biashara SACCO</h2>
                 <p className="text-[11px] text-slate-400 dark:text-slate-500 capitalize mt-0.5 font-medium">
@@ -70,18 +69,14 @@ export default function CollapsibleSidebar({ className }: CollapsibleSidebarProp
               </div>
             </div>
           ) : (
-            <div className="w-8 h-8 sacco-gradient rounded-lg flex items-center justify-center shadow-sm mx-auto">
-              <span className="text-white font-bold text-xs">BS</span>
-            </div>
+            <SaccoLogo size="sm" className="mx-auto" />
           )}
         </div>
       )}
 
       {mobile && (
         <div className="mb-5 flex items-center gap-2.5">
-          <div className="w-8 h-8 sacco-gradient rounded-lg flex items-center justify-center shadow-sm">
-            <span className="text-white font-bold text-xs">BS</span>
-          </div>
+          <SaccoLogo size="sm" />
           <div>
             <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-none">Biashara SACCO</h2>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 capitalize mt-0.5 font-medium">
