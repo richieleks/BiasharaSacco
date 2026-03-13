@@ -1368,91 +1368,9 @@ export default function AdminSettingsPage() {
                 </div>
               )}
 
-              {/* Loan Types Tab */}
-              {activeTab === 'loantypes' && (
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">Loan Type Management</h3>
-                    <p className="text-sm text-muted-foreground mb-6">
-                      Create and manage loan types, interest rates, and lending terms
-                    </p>
-                  </div>
-
-                  <Card>
-                    <CardHeader>
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <CreditCard className="h-4 w-4" />
-                          Loan Types
-                        </CardTitle>
-                        <LoanTypeFormDialog />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      {loanTypes && loanTypes.length > 0 ? (
-                        <div className="overflow-x-auto"><Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Name</TableHead>
-                              <TableHead>Interest Rate</TableHead>
-                              <TableHead>Min Amount</TableHead>
-                              <TableHead>Max Amount</TableHead>
-                              <TableHead>Min Term</TableHead>
-                              <TableHead>Max Term</TableHead>
-                              <TableHead>Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {loanTypes.map((loanType: any) => (
-                              <TableRow key={loanType.id}>
-                                <TableCell className="font-medium">
-                                  {loanType.displayName}
-                                </TableCell>
-                                <TableCell>{loanType.interestRate}%</TableCell>
-                                <TableCell>{formatCurrency(loanType.minAmount || 0)}</TableCell>
-                                <TableCell>{formatCurrency(loanType.maxAmount || 0)}</TableCell>
-                                <TableCell>{loanType.minTerm || loanType.minTermMonths} months</TableCell>
-                                <TableCell>{loanType.maxTerm || loanType.maxTermMonths} months</TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-2">
-                                    <LoanTypeFormDialog editLoanType={loanType} />
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      type="button"
-                                      className="text-red-600 hover:text-red-700"
-                                      onClick={() => {
-                                        if (confirm(`Are you sure you want to delete "${loanType.displayName}"?`)) {
-                                          deleteLoanTypeMutation.mutate(loanType.id);
-                                        }
-                                      }}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table></div>
-                      ) : (
-                        <div className="text-center py-8">
-                          <p className="text-muted-foreground mb-4">No loan types configured</p>
-                          <LoanTypeFormDialog />
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                </div>
-              )}
-
-              {activeTab === 'users' && (
-                <UserManagementTab />
-              )}
-
               {!['users', 'preferences', 'loantypes'].includes(activeTab) && (
                 <div className="flex justify-end gap-4 pt-4 border-t">
-                  <Button variant="outline" onClick={() => navigate('/')}>
+                  <Button variant="outline" type="button" onClick={() => navigate('/')}>
                     Cancel
                   </Button>
                   <Button 
@@ -1465,6 +1383,87 @@ export default function AdminSettingsPage() {
               )}
             </form>
           </Form>
+
+          {activeTab === 'users' && (
+            <UserManagementTab />
+          )}
+
+          {activeTab === 'loantypes' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-medium mb-4">Loan Type Management</h3>
+                <p className="text-sm text-muted-foreground mb-6">
+                  Create and manage loan types, interest rates, and lending terms
+                </p>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <CreditCard className="h-4 w-4" />
+                      Loan Types
+                    </CardTitle>
+                    <LoanTypeFormDialog />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loanTypes && loanTypes.length > 0 ? (
+                    <div className="overflow-x-auto"><Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Interest Rate</TableHead>
+                          <TableHead>Min Amount</TableHead>
+                          <TableHead>Max Amount</TableHead>
+                          <TableHead>Min Term</TableHead>
+                          <TableHead>Max Term</TableHead>
+                          <TableHead>Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loanTypes.map((loanType: any) => (
+                          <TableRow key={loanType.id}>
+                            <TableCell className="font-medium">
+                              {loanType.displayName}
+                            </TableCell>
+                            <TableCell>{loanType.interestRate}%</TableCell>
+                            <TableCell>{formatCurrency(loanType.minAmount || 0)}</TableCell>
+                            <TableCell>{formatCurrency(loanType.maxAmount || 0)}</TableCell>
+                            <TableCell>{loanType.minTerm || loanType.minTermMonths} months</TableCell>
+                            <TableCell>{loanType.maxTerm || loanType.maxTermMonths} months</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <LoanTypeFormDialog editLoanType={loanType} />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  type="button"
+                                  className="text-red-600 hover:text-red-700"
+                                  onClick={() => {
+                                    if (confirm(`Are you sure you want to delete "${loanType.displayName}"?`)) {
+                                      deleteLoanTypeMutation.mutate(loanType.id);
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table></div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground mb-4">No loan types configured</p>
+                      <LoanTypeFormDialog />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
 
           {/* Preferences Tab - separate form */}
           {activeTab === 'preferences' && (
