@@ -1455,45 +1455,43 @@ export class DatabaseStorage implements IStorage {
       .where(sql`${transactions.transactionDate} >= ${startOfMonth}`);
 
     // Repayment rate: 100% unless there are loans behind on scheduled payments
-    // For each active/disbursed loan, compare expected payments by now vs actual repayments
+    // Compare expected principal repaid by now vs actual principal repaid (both principal-based for consistency)
     const activeLoansData = await db
       .select({
         id: loans.id,
         principalAmount: loans.principalAmount,
         outstandingBalance: loans.outstandingBalance,
-        monthlyPayment: loans.monthlyPayment,
         termMonths: loans.termMonths,
         disbursementDate: loans.disbursementDate,
         approvedAt: loans.approvalDate,
         createdAt: loans.createdAt,
-        status: loans.status,
       })
       .from(loans)
       .where(sql`${loans.status} IN ('active', 'disbursed')`);
 
-    let totalExpectedByNow = 0;
-    let totalActualRepaid = 0;
+    let totalExpectedPrincipalByNow = 0;
+    let totalActualPrincipalRepaid = 0;
 
     for (const loan of activeLoansData) {
       const startDate = loan.disbursementDate || loan.approvedAt || loan.createdAt || new Date();
       const monthsElapsed = Math.max(0, Math.floor(
         (Date.now() - new Date(startDate).getTime()) / (30.44 * 24 * 60 * 60 * 1000)
       ));
-      const payment = parseFloat(loan.monthlyPayment?.toString() || '0');
       const principal = parseFloat(loan.principalAmount?.toString() || '0');
-      const totalLoanAmount = payment * (loan.termMonths || 1);
+      const term = loan.termMonths || 1;
+      const monthlyPrincipal = principal / term;
 
-      const expectedByNow = Math.min(payment * monthsElapsed, totalLoanAmount);
-      const actualRepaid = principal - parseFloat(loan.outstandingBalance?.toString() || '0');
+      const expectedPrincipalByNow = Math.min(monthlyPrincipal * monthsElapsed, principal);
+      const actualPrincipalRepaid = principal - parseFloat(loan.outstandingBalance?.toString() || '0');
 
-      totalExpectedByNow += expectedByNow;
-      totalActualRepaid += Math.max(0, actualRepaid);
+      totalExpectedPrincipalByNow += expectedPrincipalByNow;
+      totalActualPrincipalRepaid += Math.max(0, actualPrincipalRepaid);
     }
 
     const repaymentRate = activeLoansData.length === 0
       ? '100.0'
-      : totalExpectedByNow > 0
-        ? Math.min((totalActualRepaid / totalExpectedByNow) * 100, 100).toFixed(1)
+      : totalExpectedPrincipalByNow > 0
+        ? Math.min((totalActualPrincipalRepaid / totalExpectedPrincipalByNow) * 100, 100).toFixed(1)
         : '100.0';
 
     const currentMembers = memberCount?.count || 0;
