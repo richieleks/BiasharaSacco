@@ -56,7 +56,8 @@ app.use((req, res, next) => {
   // importantly only setup vite in development and after
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
-  if (app.get("env") === "development") {
+  const isDev = app.get("env") === "development" && !import.meta.dirname.includes("/dist");
+  if (isDev) {
     const { setupVite } = await import("./vite");
     await setupVite(app, server);
   } else {
