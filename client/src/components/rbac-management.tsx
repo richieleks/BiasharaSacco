@@ -443,7 +443,7 @@ export function RBACManagementTab() {
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-3">
-                {(roles as any[]).map((role: any) => {
+                {(roles as any[]).filter((role: any) => role.name !== 'admin').map((role: any) => {
                   const memberRoles: string[] = selectedMember.roles || ['member'];
                   const isAssigned = memberRoles.includes(role.name);
                   return (
@@ -451,7 +451,7 @@ export function RBACManagementTab() {
                       <Checkbox
                         checked={isAssigned}
                         onCheckedChange={(checked) => {
-                          const currentRoles: string[] = selectedMember.roles || ['member'];
+                          const currentRoles: string[] = memberRoles.filter((r: string) => r !== 'admin');
                           let newRoles: string[];
                           if (checked) {
                             newRoles = [...new Set([...currentRoles, role.name])];
@@ -471,6 +471,7 @@ export function RBACManagementTab() {
                   );
                 })}
               </div>
+              <p className="text-xs text-muted-foreground">Admin role can only be assigned through User Management. Members cannot be assigned the admin role.</p>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setSelectedMember(null)}>Cancel</Button>
                 <Button

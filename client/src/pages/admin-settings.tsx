@@ -2039,37 +2039,49 @@ function UserManagementTab() {
                       <FormMessage />
                     </FormItem>
                   )} />
-                  <FormField control={createForm.control} name="roles" render={({ field }) => (
+                  <FormField control={createForm.control} name="roles" render={({ field }) => {
+                    const currentRoles = field.value || [];
+                    const isAdminSelected = currentRoles.includes('admin');
+                    return (
                     <FormItem>
                       <FormLabel>Roles</FormLabel>
                       <div className="space-y-2">
-                        {dynamicRoles.length > 0 ? dynamicRoles.map((roleOption: any) => (
+                        {dynamicRoles.length > 0 ? dynamicRoles.map((roleOption: any) => {
+                          const isAdmin = roleOption.name === 'admin';
+                          const disabled = isAdmin ? false : isAdminSelected;
+                          return (
                           <div key={roleOption.id} className="flex items-center space-x-2">
                             <Checkbox
                               id={`create-role-${roleOption.name}`}
-                              checked={field.value?.includes(roleOption.name)}
+                              checked={currentRoles.includes(roleOption.name)}
+                              disabled={disabled}
                               onCheckedChange={(checked) => {
-                                const current = field.value || [];
                                 if (checked) {
-                                  field.onChange([...current, roleOption.name]);
+                                  if (isAdmin) {
+                                    field.onChange(['admin']);
+                                  } else {
+                                    field.onChange([...currentRoles.filter((r: string) => r !== 'admin'), roleOption.name]);
+                                  }
                                 } else {
-                                  const updated = current.filter((r: string) => r !== roleOption.name);
-                                  field.onChange(updated.length > 0 ? updated : current);
+                                  const updated = currentRoles.filter((r: string) => r !== roleOption.name);
+                                  field.onChange(updated.length > 0 ? updated : currentRoles);
                                 }
                               }}
                             />
-                            <label htmlFor={`create-role-${roleOption.name}`} className="text-sm font-medium cursor-pointer">
+                            <label htmlFor={`create-role-${roleOption.name}`} className={`text-sm font-medium cursor-pointer ${disabled ? 'text-muted-foreground' : ''}`}>
                               {roleOption.displayName}
                             </label>
                           </div>
-                        )) : (
+                          );
+                        }) : (
                           <p className="text-sm text-muted-foreground">Loading roles...</p>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">Select one or more roles. The first selected role will be the primary role.</p>
+                      <p className="text-xs text-muted-foreground mt-1">{isAdminSelected ? 'Admin role cannot be combined with other roles. Admin users do not have member profiles.' : 'Select one or more roles. The first selected role will be the primary role.'}</p>
                       <FormMessage />
                     </FormItem>
-                  )} />
+                    );
+                  }} />
                   <div className="flex justify-end gap-2 pt-2">
                     <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
                     <Button type="submit" disabled={createUserMutation.isPending}>
@@ -2222,37 +2234,49 @@ function UserManagementTab() {
                   <FormMessage />
                 </FormItem>
               )} />
-              <FormField control={editForm.control} name="roles" render={({ field }) => (
+              <FormField control={editForm.control} name="roles" render={({ field }) => {
+                const currentRoles = field.value || [];
+                const isAdminSelected = currentRoles.includes('admin');
+                return (
                 <FormItem>
                   <FormLabel>Roles</FormLabel>
                   <div className="space-y-2">
-                    {dynamicRoles.length > 0 ? dynamicRoles.map((roleOption: any) => (
+                    {dynamicRoles.length > 0 ? dynamicRoles.map((roleOption: any) => {
+                      const isAdmin = roleOption.name === 'admin';
+                      const disabled = isAdmin ? false : isAdminSelected;
+                      return (
                       <div key={roleOption.id} className="flex items-center space-x-2">
                         <Checkbox
                           id={`edit-role-${roleOption.name}`}
-                          checked={field.value?.includes(roleOption.name)}
+                          checked={currentRoles.includes(roleOption.name)}
+                          disabled={disabled}
                           onCheckedChange={(checked) => {
-                            const current = field.value || [];
                             if (checked) {
-                              field.onChange([...current, roleOption.name]);
+                              if (isAdmin) {
+                                field.onChange(['admin']);
+                              } else {
+                                field.onChange([...currentRoles.filter((r: string) => r !== 'admin'), roleOption.name]);
+                              }
                             } else {
-                              const updated = current.filter((r: string) => r !== roleOption.name);
-                              field.onChange(updated.length > 0 ? updated : current);
+                              const updated = currentRoles.filter((r: string) => r !== roleOption.name);
+                              field.onChange(updated.length > 0 ? updated : currentRoles);
                             }
                           }}
                         />
-                        <label htmlFor={`edit-role-${roleOption.name}`} className="text-sm font-medium cursor-pointer">
+                        <label htmlFor={`edit-role-${roleOption.name}`} className={`text-sm font-medium cursor-pointer ${disabled ? 'text-muted-foreground' : ''}`}>
                           {roleOption.displayName}
                         </label>
                       </div>
-                    )) : (
+                      );
+                    }) : (
                       <p className="text-sm text-muted-foreground">Loading roles...</p>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">Select one or more roles. The first selected role will be the primary role.</p>
+                  <p className="text-xs text-muted-foreground mt-1">{isAdminSelected ? 'Admin role cannot be combined with other roles. Admin users do not have member profiles.' : 'Select one or more roles. The first selected role will be the primary role.'}</p>
                   <FormMessage />
                 </FormItem>
-              )} />
+                );
+              }} />
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => setShowEditDialog(false)}>Cancel</Button>
                 <Button type="submit" disabled={updateUserMutation.isPending}>

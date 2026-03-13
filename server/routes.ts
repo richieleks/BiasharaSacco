@@ -182,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const member = await ensureMemberProfile(userId, {
+      const member = user.role === 'admin' ? null : await ensureMemberProfile(userId, {
         roles: [user.role || 'member'],
       });
       
@@ -280,7 +280,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         profileImageUrl: (req.user as any)?.claims?.profile_image_url || (req.user as any)?.profileImageUrl || null,
       });
 
-      const member = await ensureMemberProfile(userId);
+      const currentUser = await storage.getUser(userId);
+      const member = (currentUser?.role === 'admin') ? null : await ensureMemberProfile(userId);
       if (member) {
         const memberUpdates: any = {};
         const fullName = `${firstName || ''} ${lastName || ''}`.trim();
@@ -410,6 +411,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Username, password, and email are required" });
       }
 
+      if (assignedRoles.includes('admin') && assignedRoles.length > 1) {
+        return res.status(400).json({ message: "Admin role cannot be combined with other roles" });
+      }
+
       const secSettings = await getSecuritySettings();
       const complexityCheck = validatePasswordComplexity(password, secSettings.passwordComplexity);
       if (!complexityCheck.valid) {
@@ -438,7 +443,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: primaryRole
       });
 
-      const memberProfile = await ensureMemberProfile(newUser.id, {
+      const memberProfile = primaryRole === 'admin' ? null : await ensureMemberProfile(newUser.id, {
         roles: assignedRoles,
         approvedBy: getUserId(req),
       });
@@ -477,12 +482,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { username, email, firstName, lastName, role, roles, password } = req.body;
 
+      const assignedRoles: string[] = Array.isArray(roles) ? roles : [];
+      if (assignedRoles.includes('admin') && assignedRoles.length > 1) {
+        return res.status(400).json({ message: "Admin role cannot be combined with other roles" });
+      }
+
       const updateData: any = {};
       if (username) updateData.username = username;
       if (email) updateData.email = email;
       if (firstName) updateData.firstName = firstName;
       if (lastName) updateData.lastName = lastName;
-      const primaryRole = role || (Array.isArray(roles) && roles.length > 0 ? roles[0] : undefined);
+      const primaryRole = role || (assignedRoles.length > 0 ? assignedRoles[0] : undefined);
       if (primaryRole) updateData.role = primaryRole;
       if (password) {
         updateData.password = await hashPassword(password);
@@ -490,24 +500,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedUser = await storage.updateUser(id, updateData);
 
-      const member = await ensureMemberProfile(id, {
-        roles: Array.isArray(roles) && roles.length > 0 ? roles : undefined,
-        approvedBy: getUserId(req),
-      });
-
-      if (member) {
-        const memberUpdates: any = {};
-        if (firstName || lastName) {
-          memberUpdates.fullName = `${firstName || updatedUser.firstName || ''} ${lastName || updatedUser.lastName || ''}`.trim();
+      if (primaryRole === 'admin') {
+        const existingMember = await storage.getMemberByUserId(id);
+        if (existingMember) {
+          await storage.updateMember(existingMember.id, { userId: null } as any);
+          console.log(`Unlinked member profile ${existingMember.id} from admin user ${id}`);
         }
-        if (email) memberUpdates.email = email;
-        if (primaryRole) memberUpdates.role = primaryRole;
-        if (Object.keys(memberUpdates).length > 0) {
-          await storage.updateMember(member.id, memberUpdates);
-        }
+      } else {
+        const member = await ensureMemberProfile(id, {
+          roles: assignedRoles.length > 0 ? assignedRoles : undefined,
+          approvedBy: getUserId(req),
+        });
 
-        if (Array.isArray(roles) && roles.length > 0) {
-          await storage.replaceMemberRoles(member.id, roles, getUserId(req) || id);
+        if (member) {
+          const memberUpdates: any = {};
+          if (firstName || lastName) {
+            memberUpdates.fullName = `${firstName || updatedUser.firstName || ''} ${lastName || updatedUser.lastName || ''}`.trim();
+          }
+          if (email) memberUpdates.email = email;
+          if (primaryRole) memberUpdates.role = primaryRole;
+          if (Object.keys(memberUpdates).length > 0) {
+            await storage.updateMember(member.id, memberUpdates);
+          }
+
+          if (assignedRoles.length > 0) {
+            await storage.replaceMemberRoles(member.id, assignedRoles, getUserId(req) || id);
+          }
         }
       }
 
@@ -1076,6 +1094,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const hasApprovalRole = async (userId: string, requiredRole: string): Promise<boolean> => {
     const user = await storage.getUser(userId);
+    if (user?.role === 'admin') {
+      return requiredRole !== 'committee';
+    }
     
     const member = await storage.getMemberByUserId(userId);
     const roles = member ? await storage.getMemberRoles(member.id) : [];
@@ -1083,13 +1104,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (roles.length === 0 && user?.role) roles.push(user.role);
     
     if (requiredRole === 'committee') {
-      return roles.includes('committee') && !roles.includes('admin');
+      return roles.includes('committee');
     }
     if (requiredRole === 'treasurer' || requiredRole === 'teller') {
-      return roles.includes('treasurer') || roles.includes('teller') || roles.includes('admin');
+      return roles.includes('treasurer') || roles.includes('teller');
     }
     if (requiredRole === 'manager') {
-      return roles.includes('manager') || roles.includes('admin');
+      return roles.includes('manager');
     }
     
     return false;
@@ -1354,7 +1375,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Roles must be an array" });
       }
       
-      const validRoles = ['admin', 'manager', 'committee', 'teller', 'member'];
+      const validRoles = ['manager', 'committee', 'teller', 'member'];
+      if (roles.includes('admin')) {
+        return res.status(400).json({ message: "Admin role cannot be assigned through member roles. Use User Management instead." });
+      }
       if (!roles.every(role => validRoles.includes(role))) {
         return res.status(400).json({ message: "Invalid role(s)" });
       }
