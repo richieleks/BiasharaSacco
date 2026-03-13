@@ -136,13 +136,18 @@ export default function Loans() {
 
   const disburseLoanMutation = useMutation({
     mutationFn: async (loan: any) => {
-      await apiRequest('PATCH', `/api/loans/${loan.uuid}/disburse`);
+      const res = await apiRequest('PATCH', `/api/loans/${loan.uuid}/disburse`);
+      return await res.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans/stats'] });
-      toast({ title: "Success", description: "Loan disbursed successfully!", variant: "success" });
+      queryClient.invalidateQueries({ queryKey: ['/api/savings'] });
+      const feeMsg = data?.feesCollected?.length > 0 
+        ? ` Fees collected: ${data.feesCollected.join('; ')}.` 
+        : '';
+      toast({ title: "Success", description: `Loan disbursed successfully!${feeMsg}`, variant: "success" });
     },
     onError: (error) => {
       if (isUnauthorizedError(error)) {

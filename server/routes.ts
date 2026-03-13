@@ -2686,58 +2686,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           const member = await storage.getMember(loan.memberId);
 
-          // Auto-debit acceptance fee and application/processing fee from member's savings
-          try {
-            const loanTypeInfo = await storage.getLoanTypeByName(loan.loanType || '');
-            if (loanTypeInfo) {
-              const acceptanceFee = parseFloat(loanTypeInfo.acceptanceFee || '0');
-              const processingFeeRate = parseFloat(loanTypeInfo.processingFee || '0');
-              const principalAmount = parseFloat(loan.principalAmount || '0');
-              const applicationFee = processingFeeRate > 0 ? (processingFeeRate / 100) * principalAmount : 0;
-
-              const savingsAccounts = await storage.getSavingsAccountsByMember(loan.memberId);
-              const primarySavings = savingsAccounts.find((s: any) => s.accountType === 'regular') || savingsAccounts[0];
-
-              if (primarySavings) {
-                if (acceptanceFee > 0) {
-                  await storage.updateSavingsAccountBalance(primarySavings.id, acceptanceFee.toFixed(2), 'subtract');
-                  await storage.createTransaction({
-                    memberId: loan.memberId,
-                    savingsAccountId: primarySavings.id,
-                    loanId: loan.id,
-                    transactionType: 'withdrawal',
-                    amount: acceptanceFee.toFixed(2),
-                    description: `Loan acceptance fee for ${loan.loanNumber}`,
-                    referenceNumber: `ACCFEE-${loan.loanNumber}`,
-                    transactionDate: new Date(),
-                    status: 'completed',
-                    performedBy: userId,
-                  });
-                  await recordJournalEntry('loan_processing_fee', acceptanceFee, `Loan acceptance fee - ${loan.loanNumber}`, `ACCFEE-${loan.loanNumber}`, userId);
-                }
-
-                if (applicationFee > 0) {
-                  await storage.updateSavingsAccountBalance(primarySavings.id, applicationFee.toFixed(2), 'subtract');
-                  await storage.createTransaction({
-                    memberId: loan.memberId,
-                    savingsAccountId: primarySavings.id,
-                    loanId: loan.id,
-                    transactionType: 'withdrawal',
-                    amount: applicationFee.toFixed(2),
-                    description: `Loan processing fee (${processingFeeRate}%) for ${loan.loanNumber}`,
-                    referenceNumber: `PROCFEE-${loan.loanNumber}`,
-                    transactionDate: new Date(),
-                    status: 'completed',
-                    performedBy: userId,
-                  });
-                  await recordJournalEntry('loan_processing_fee', applicationFee, `Loan processing fee (${processingFeeRate}%) - ${loan.loanNumber}`, `PROCFEE-${loan.loanNumber}`, userId);
-                }
-              }
-            }
-          } catch (feeError) {
-            console.error('Error auto-debiting loan fees:', feeError);
-          }
-
           if (member) {
             await createAndBroadcastNotification({
               type: 'loan_approval',
@@ -3037,12 +2985,80 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await recordJournalEntry('loan_disbursement', loan.principalAmount, `Loan disbursement - ${loan.loanNumber}`, referenceNumber, userId);
 
+      const feesCollected: string[] = [];
+      try {
+        const loanTypeInfo = await storage.getLoanTypeByName(loan.loanType || '');
+        if (loanTypeInfo) {
+          const acceptanceFee = parseFloat(loanTypeInfo.acceptanceFee || '0');
+          const processingFeeRate = parseFloat(loanTypeInfo.processingFee || '0');
+          const principalAmount = parseFloat(loan.principalAmount || '0');
+          const processingFeeAmount = processingFeeRate > 0 ? (processingFeeRate / 100) * principalAmount : 0;
+
+          const savingsAccountsList = await storage.getSavingsAccountsByMember(loan.memberId);
+          const primarySavings = savingsAccountsList.find((s: any) => s.accountType === 'regular') || savingsAccountsList[0];
+
+          if (primarySavings) {
+            if (acceptanceFee > 0) {
+              const savingsBalance = parseFloat(primarySavings.balance || '0');
+              if (savingsBalance >= acceptanceFee) {
+                await storage.updateSavingsAccountBalance(primarySavings.id, acceptanceFee.toFixed(2), 'subtract');
+                await storage.createTransaction({
+                  memberId: loan.memberId,
+                  savingsAccountId: primarySavings.id,
+                  loanId: loan.id,
+                  transactionType: 'fee_charge',
+                  amount: acceptanceFee.toFixed(2),
+                  description: `Loan acceptance fee for ${loan.loanNumber}`,
+                  referenceNumber: `ACCFEE-${loan.loanNumber}`,
+                  transactionDate: new Date(),
+                  status: 'completed',
+                  processedBy: userId,
+                });
+                await recordJournalEntry('loan_processing_fee', acceptanceFee, `Loan acceptance fee - ${loan.loanNumber}`, `ACCFEE-${loan.loanNumber}`, userId);
+                feesCollected.push(`Acceptance fee: UGX ${acceptanceFee.toLocaleString()}`);
+              } else {
+                console.warn(`Insufficient savings balance (${savingsBalance}) for acceptance fee (${acceptanceFee}) on loan ${loan.loanNumber}`);
+              }
+            }
+
+            if (processingFeeAmount > 0) {
+              const updatedSavings = await storage.getSavingsAccount(primarySavings.id);
+              const currentBalance = parseFloat(updatedSavings?.balance || primarySavings.balance || '0');
+              if (currentBalance >= processingFeeAmount) {
+                await storage.updateSavingsAccountBalance(primarySavings.id, processingFeeAmount.toFixed(2), 'subtract');
+                await storage.createTransaction({
+                  memberId: loan.memberId,
+                  savingsAccountId: primarySavings.id,
+                  loanId: loan.id,
+                  transactionType: 'fee_charge',
+                  amount: processingFeeAmount.toFixed(2),
+                  description: `Loan processing fee (${processingFeeRate}%) for ${loan.loanNumber}`,
+                  referenceNumber: `PROCFEE-${loan.loanNumber}`,
+                  transactionDate: new Date(),
+                  status: 'completed',
+                  processedBy: userId,
+                });
+                await recordJournalEntry('loan_processing_fee', processingFeeAmount, `Loan processing fee (${processingFeeRate}%) - ${loan.loanNumber}`, `PROCFEE-${loan.loanNumber}`, userId);
+                feesCollected.push(`Processing fee (${processingFeeRate}%): UGX ${processingFeeAmount.toLocaleString()}`);
+              } else {
+                console.warn(`Insufficient savings balance (${currentBalance}) for processing fee (${processingFeeAmount}) on loan ${loan.loanNumber}`);
+              }
+            }
+          } else {
+            console.warn(`No savings account found for member ${loan.memberId} to deduct loan fees`);
+          }
+        }
+      } catch (feeError) {
+        console.error('Error collecting loan fees at disbursement:', feeError);
+      }
+
       const disburseMember = await storage.getMember(loan.memberId);
       if (disburseMember?.userId) {
+        const feeNote = feesCollected.length > 0 ? ` Fees deducted from savings: ${feesCollected.join(', ')}.` : '';
         await createAndBroadcastNotification({
           type: 'loan_approval',
           title: 'Loan Disbursed',
-          message: `Your loan ${loan.loanNumber} of UGX ${parseFloat(loan.principalAmount).toLocaleString()} has been disbursed. Please check your account.`,
+          message: `Your loan ${loan.loanNumber} of UGX ${parseFloat(loan.principalAmount).toLocaleString()} has been disbursed.${feeNote} Please check your account.`,
           priority: 'high',
           actionUrl: '/loans',
           memberId: loan.memberId,
@@ -3052,7 +3068,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       broadcastDataUpdate(['/api/loans', '/api/loans/approval', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans', '/api/sacco-accounts', '/api/sacco-journal-entries']);
-      res.json(loan);
+      res.json({ ...loan, feesCollected });
     } catch (error) {
       console.error("Error disbursing loan:", error);
       res.status(500).json({ message: "Failed to disburse loan" });
