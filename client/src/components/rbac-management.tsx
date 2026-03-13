@@ -99,6 +99,7 @@ export function RBACManagementTab() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/rbac/roles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/permissions"] });
       toast({ title: "Success", description: "Permissions updated successfully", variant: "success" });
       setIsPermissionsDialogOpen(false);
       setSelectedRole(null);
@@ -115,6 +116,8 @@ export function RBACManagementTab() {
     onSuccess: () => {
       toast({ title: "Roles Updated", description: "Member roles have been updated successfully.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/members'] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/permissions"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       setSelectedMember(null);
     },
     onError: (error: Error) => {
