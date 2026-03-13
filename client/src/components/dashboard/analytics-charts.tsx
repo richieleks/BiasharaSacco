@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { 
   PieChart, 
@@ -18,14 +19,61 @@ import {
 } from "recharts";
 import { Activity, TrendingUp, Users, DollarSign } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
+const PERIOD_OPTIONS = [
+  { value: "3", label: "3 months" },
+  { value: "6", label: "6 months" },
+  { value: "12", label: "12 months" },
+  { value: "18", label: "18 months" },
+  { value: "24", label: "24 months" },
+];
+
 export default function AnalyticsCharts() {
+  const [period, setPeriod] = useState("6");
+
   const { data: analytics, isLoading } = useQuery({
-    queryKey: ['/api/dashboard/analytics'],
+    queryKey: ['/api/dashboard/analytics', period],
+    queryFn: async () => {
+      const res = await fetch(`/api/dashboard/analytics?months=${period}`);
+      if (!res.ok) throw new Error('Failed to fetch analytics');
+      return res.json();
+    },
     refetchInterval: 60000,
   });
+
+  const formatTooltipValue = (value: number, name: string) => {
+    if (name.includes('Amount') || name.includes('Balance') || name.includes('Savings') || name.includes('Loans')) {
+      return formatCurrency(value);
+    }
+    return value.toLocaleString();
+  };
+
+  const formatYAxis = (value: number) => {
+    if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+    return value.toString();
+  };
+
+  const periodSelector = (
+    <Select value={period} onValueChange={setPeriod}>
+      <SelectTrigger className="w-[120px] h-8 text-xs">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {PERIOD_OPTIONS.map(opt => (
+          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const chartCardClass = "section-card";
+  const chartHeaderClass = "flex items-center gap-2.5 px-6 py-4 border-b border-slate-100 dark:border-slate-700";
+  const chartContentClass = "p-5";
 
   if (isLoading || !analytics) {
     return (
@@ -45,23 +93,8 @@ export default function AnalyticsCharts() {
     );
   }
 
-  const formatTooltipValue = (value: number, name: string) => {
-    if (name.includes('Amount') || name.includes('Balance') || name.includes('Savings') || name.includes('Loans')) {
-      return formatCurrency(value);
-    }
-    return value.toLocaleString();
-  };
-
-  const formatYAxis = (value: number) => {
-    if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
-    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-    return value.toString();
-  };
-
-  const chartCardClass = "section-card";
-  const chartHeaderClass = "flex items-center gap-2.5 px-6 py-4 border-b border-slate-100 dark:border-slate-700";
-  const chartContentClass = "p-5";
+  const periodLabel = PERIOD_OPTIONS.find(o => o.value === period)?.label || `${period} months`;
+  const showRotatedLabels = parseInt(period) > 6;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5">
@@ -70,7 +103,7 @@ export default function AnalyticsCharts() {
           <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center">
             <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Distribution by Type</h3>
             <p className="text-xs text-slate-400 dark:text-slate-500">Current loan portfolio breakdown</p>
           </div>
@@ -116,22 +149,30 @@ export default function AnalyticsCharts() {
           <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/50 flex items-center justify-center">
             <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Monthly Transaction Trends</h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Transaction volume over the last 6 months</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Transaction volume over the last {periodLabel}</p>
           </div>
+          {periodSelector}
         </div>
         <div className={chartContentClass}>
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={analytics.monthlyTransactions}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                angle={showRotatedLabels ? -45 : 0}
+                textAnchor={showRotatedLabels ? "end" : "middle"}
+                height={showRotatedLabels ? 50 : 30}
+                interval={showRotatedLabels ? 1 : 0}
+              />
               <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: '#94a3b8' }} width={55} />
               <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
-              <Line type="monotone" dataKey="deposits" stroke="#10b981" name="Deposits" strokeWidth={2.5} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="withdrawals" stroke="#ef4444" name="Withdrawals" strokeWidth={2.5} dot={{ r: 3 }} />
-              <Line type="monotone" dataKey="loanPayments" stroke="#3b82f6" name="Loan Payments" strokeWidth={2.5} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="deposits" stroke="#10b981" name="Deposits" strokeWidth={2.5} dot={{ r: showRotatedLabels ? 2 : 3 }} />
+              <Line type="monotone" dataKey="withdrawals" stroke="#ef4444" name="Withdrawals" strokeWidth={2.5} dot={{ r: showRotatedLabels ? 2 : 3 }} />
+              <Line type="monotone" dataKey="loanPayments" stroke="#3b82f6" name="Loan Payments" strokeWidth={2.5} dot={{ r: showRotatedLabels ? 2 : 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -142,9 +183,9 @@ export default function AnalyticsCharts() {
           <div className="w-8 h-8 rounded-lg bg-violet-50 dark:bg-violet-950/50 flex items-center justify-center">
             <Users className="h-4 w-4 text-violet-600 dark:text-violet-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Member Growth</h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500">New members joined over time</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">New members joined over the last {periodLabel}</p>
           </div>
         </div>
         <div className={chartContentClass}>
@@ -157,7 +198,14 @@ export default function AnalyticsCharts() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                angle={showRotatedLabels ? -45 : 0}
+                textAnchor={showRotatedLabels ? "end" : "middle"}
+                height={showRotatedLabels ? 50 : 30}
+                interval={showRotatedLabels ? 1 : 0}
+              />
               <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} />
               <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
               <Area type="monotone" dataKey="newMembers" stroke="#8b5cf6" fill="url(#colorMembers)" name="New Members" strokeWidth={2.5} />
@@ -171,16 +219,23 @@ export default function AnalyticsCharts() {
           <div className="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center">
             <Activity className="h-4 w-4 text-amber-600 dark:text-amber-400" />
           </div>
-          <div>
+          <div className="flex-1">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Savings vs Loans Balance</h3>
-            <p className="text-xs text-slate-400 dark:text-slate-500">Monthly comparison of balances</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500">Monthly comparison over the last {periodLabel}</p>
           </div>
         </div>
         <div className={chartContentClass}>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={analytics.savingsVsLoans} barGap={4}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <XAxis
+                dataKey="month"
+                tick={{ fontSize: 11, fill: '#94a3b8' }}
+                angle={showRotatedLabels ? -45 : 0}
+                textAnchor={showRotatedLabels ? "end" : "middle"}
+                height={showRotatedLabels ? 50 : 30}
+                interval={showRotatedLabels ? 1 : 0}
+              />
               <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: '#94a3b8' }} width={55} />
               <Tooltip formatter={formatTooltipValue} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
               <Legend wrapperStyle={{ fontSize: '12px' }} />

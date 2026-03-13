@@ -988,7 +988,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dashboard analytics API
   app.get('/api/dashboard/analytics', isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const analytics = await storage.getDashboardAnalytics();
+      const months = Math.min(Math.max(parseInt(req.query.months as string) || 6, 1), 24);
+      const analytics = await storage.getDashboardAnalytics(months);
       res.json(analytics);
     } catch (error) {
       console.error('Error fetching dashboard analytics:', error);

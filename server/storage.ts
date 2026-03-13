@@ -161,7 +161,7 @@ export interface IStorage {
     totalTransactionsThisMonth: number;
   }>;
   
-  getDashboardAnalytics(): Promise<{
+  getDashboardAnalytics(months?: number): Promise<{
     loanDistribution: Array<{ name: string; value: number }>;
     monthlyTransactions: Array<{ month: string; deposits: number; withdrawals: number; loanPayments: number }>;
     memberGrowth: Array<{ month: string; newMembers: number }>;
@@ -1513,12 +1513,14 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getDashboardAnalytics(): Promise<{
+  async getDashboardAnalytics(periodMonths: number = 6): Promise<{
     loanDistribution: Array<{ name: string; value: number }>;
     monthlyTransactions: Array<{ month: string; deposits: number; withdrawals: number; loanPayments: number }>;
     memberGrowth: Array<{ month: string; newMembers: number }>;
     savingsVsLoans: Array<{ month: string; totalSavings: number; totalLoans: number }>;
   }> {
+    const lookbackMonths = Math.min(Math.max(periodMonths, 1), 24);
+
     // Loan distribution by type
     const loanDistribution = await db
       .select({
@@ -1529,44 +1531,50 @@ export class DatabaseStorage implements IStorage {
       .where(inArray(loans.status, ['approved', 'active', 'disbursed']))
       .groupBy(loans.loanType);
 
-    // Monthly transaction trends (last 6 months)
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - lookbackMonths);
+
+    const useYearMonth = lookbackMonths > 12;
 
     const transactionTrends = await db
       .select({
-        month: sql<string>`to_char(created_at, 'Mon')`,
+        month: useYearMonth
+          ? sql<string>`to_char(created_at, 'Mon YY')`
+          : sql<string>`to_char(created_at, 'Mon')`,
         transactionType: transactions.transactionType,
         total: sql<number>`sum(amount)::numeric`,
       })
       .from(transactions)
       .where(
         and(
-          sql`created_at >= ${sixMonthsAgo}`,
+          sql`created_at >= ${startDate}`,
           eq(transactions.status, 'completed')
         )
       )
-      .groupBy(sql`to_char(created_at, 'Mon'), transaction_type`)
+      .groupBy(useYearMonth
+        ? sql`to_char(created_at, 'Mon YY'), transaction_type`
+        : sql`to_char(created_at, 'Mon'), transaction_type`)
       .orderBy(sql`min(created_at)`);
 
-    // Transform transaction data into monthly format
     const monthlyData = new Map<string, any>();
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    const currentMonth = new Date().getMonth();
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
     
-    // Initialize last 6 months
-    for (let i = 5; i >= 0; i--) {
-      const monthIndex = (currentMonth - i + 12) % 12;
-      const monthName = months[monthIndex];
-      monthlyData.set(monthName, {
-        month: monthName,
+    for (let i = lookbackMonths - 1; i >= 0; i--) {
+      const d = new Date(currentYear, currentMonth - i, 1);
+      const monthLabel = useYearMonth
+        ? `${monthNames[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
+        : monthNames[d.getMonth()];
+      monthlyData.set(monthLabel, {
+        month: monthLabel,
         deposits: 0,
         withdrawals: 0,
         loanPayments: 0,
       });
     }
 
-    // Fill in actual data
     transactionTrends.forEach(trend => {
       const monthData = monthlyData.get(trend.month);
       if (monthData) {
@@ -1576,36 +1584,123 @@ export class DatabaseStorage implements IStorage {
       }
     });
 
-    // Member growth (simplified - using created_at)
-    const memberGrowth = await db
+    const memberGrowthRaw = await db
       .select({
-        month: sql<string>`to_char(created_at, 'Mon')`,
+        month: useYearMonth
+          ? sql<string>`to_char(created_at, 'Mon YY')`
+          : sql<string>`to_char(created_at, 'Mon')`,
         count: sql<number>`count(*)::integer`,
       })
       .from(members)
-      .where(sql`created_at >= ${sixMonthsAgo}`)
-      .groupBy(sql`to_char(created_at, 'Mon')`)
+      .where(sql`created_at >= ${startDate}`)
+      .groupBy(useYearMonth
+        ? sql`to_char(created_at, 'Mon YY')`
+        : sql`to_char(created_at, 'Mon')`)
       .orderBy(sql`min(created_at)`);
 
-    // Savings vs Loans comparison
-    const savingsVsLoans = [];
-    for (let i = 5; i >= 0; i--) {
-      const monthIndex = (currentMonth - i + 12) % 12;
-      const monthName = months[monthIndex];
-      
-      // Get totals for each month (simplified - using current totals)
-      const [savings] = await db
-        .select({ total: sql<number>`COALESCE(sum(balance), 0)::numeric` })
-        .from(savingsAccounts);
-      
-      const [loansTotal] = await db
-        .select({ total: sql<number>`COALESCE(sum(outstanding_balance), 0)::numeric` })
-        .from(loans);
+    const memberGrowthMap = new Map<string, number>();
+    for (let i = lookbackMonths - 1; i >= 0; i--) {
+      const d = new Date(currentYear, currentMonth - i, 1);
+      const label = useYearMonth
+        ? `${monthNames[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
+        : monthNames[d.getMonth()];
+      memberGrowthMap.set(label, 0);
+    }
+    memberGrowthRaw.forEach(row => {
+      if (memberGrowthMap.has(row.month)) {
+        memberGrowthMap.set(row.month, row.count || 0);
+      }
+    });
 
-      savingsVsLoans.push({
-        month: monthName,
-        totalSavings: savings?.total || 0,
-        totalLoans: loansTotal?.total || 0,
+    const savingsByMonth = await db
+      .select({
+        month: useYearMonth
+          ? sql<string>`to_char(t.created_at, 'Mon YY')`
+          : sql<string>`to_char(t.created_at, 'Mon')`,
+        deposits: sql<number>`COALESCE(sum(CASE WHEN t.transaction_type = 'deposit' THEN t.amount ELSE 0 END), 0)::numeric`,
+        withdrawals: sql<number>`COALESCE(sum(CASE WHEN t.transaction_type = 'withdrawal' THEN t.amount ELSE 0 END), 0)::numeric`,
+      })
+      .from(sql`transactions t`)
+      .where(
+        and(
+          sql`t.created_at >= ${startDate}`,
+          sql`t.status = 'completed'`,
+          sql`t.transaction_type IN ('deposit', 'withdrawal')`
+        )
+      )
+      .groupBy(useYearMonth
+        ? sql`to_char(t.created_at, 'Mon YY')`
+        : sql`to_char(t.created_at, 'Mon')`)
+      .orderBy(sql`min(t.created_at)`);
+
+    const loanDisbursementsByMonth = await db
+      .select({
+        month: useYearMonth
+          ? sql<string>`to_char(disbursed_at, 'Mon YY')`
+          : sql<string>`to_char(disbursed_at, 'Mon')`,
+        total: sql<number>`COALESCE(sum(principal_amount), 0)::numeric`,
+      })
+      .from(loans)
+      .where(
+        and(
+          sql`disbursed_at >= ${startDate}`,
+          inArray(loans.status, ['approved', 'active', 'disbursed', 'closed'])
+        )
+      )
+      .groupBy(useYearMonth
+        ? sql`to_char(disbursed_at, 'Mon YY')`
+        : sql`to_char(disbursed_at, 'Mon')`)
+      .orderBy(sql`min(disbursed_at)`);
+
+    const savingsMap = new Map<string, number>();
+    const loansMap = new Map<string, number>();
+    savingsByMonth.forEach(row => {
+      const net = parseFloat(row.deposits?.toString() || '0') - parseFloat(row.withdrawals?.toString() || '0');
+      savingsMap.set(row.month, net);
+    });
+    loanDisbursementsByMonth.forEach(row => {
+      loansMap.set(row.month, parseFloat(row.total?.toString() || '0'));
+    });
+
+    const [currentSavingsTotal] = await db
+      .select({ total: sql<number>`COALESCE(sum(balance), 0)::numeric` })
+      .from(savingsAccounts);
+    const [currentLoansTotal] = await db
+      .select({ total: sql<number>`COALESCE(sum(outstanding_balance), 0)::numeric` })
+      .from(loans);
+
+    let runningSavings = parseFloat(currentSavingsTotal?.total?.toString() || '0');
+    let runningLoans = parseFloat(currentLoansTotal?.total?.toString() || '0');
+
+    const savingsVsLoansTimeline: Array<{ month: string; totalSavings: number; totalLoans: number }> = [];
+    const orderedLabels: string[] = [];
+    for (let i = lookbackMonths - 1; i >= 0; i--) {
+      const d = new Date(currentYear, currentMonth - i, 1);
+      const label = useYearMonth
+        ? `${monthNames[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`
+        : monthNames[d.getMonth()];
+      orderedLabels.push(label);
+    }
+
+    const savingsDeltas: number[] = [];
+    const loansDeltas: number[] = [];
+    for (const label of orderedLabels) {
+      savingsDeltas.push(savingsMap.get(label) || 0);
+      loansDeltas.push(loansMap.get(label) || 0);
+    }
+
+    const totalSavingsDelta = savingsDeltas.reduce((a, b) => a + b, 0);
+    const totalLoansDelta = loansDeltas.reduce((a, b) => a + b, 0);
+    let baseSavings = runningSavings - totalSavingsDelta;
+    let baseLoans = runningLoans - totalLoansDelta;
+
+    for (let i = 0; i < orderedLabels.length; i++) {
+      baseSavings += savingsDeltas[i];
+      baseLoans += loansDeltas[i];
+      savingsVsLoansTimeline.push({
+        month: orderedLabels[i],
+        totalSavings: Math.max(0, baseSavings),
+        totalLoans: Math.max(0, baseLoans),
       });
     }
 
@@ -1622,11 +1717,11 @@ export class DatabaseStorage implements IStorage {
         value: parseFloat(item.total?.toString() || '0'),
       })),
       monthlyTransactions,
-      memberGrowth: memberGrowth.map(item => ({
-        month: item.month || '',
-        newMembers: item.count || 0,
+      memberGrowth: Array.from(memberGrowthMap.entries()).map(([month, newMembers]) => ({
+        month,
+        newMembers,
       })),
-      savingsVsLoans: savingsVsLoans.map(item => ({
+      savingsVsLoans: savingsVsLoansTimeline.map(item => ({
         month: item.month,
         totalSavings: parseFloat(item.totalSavings?.toString() || '0'),
         totalLoans: parseFloat(item.totalLoans?.toString() || '0'),
