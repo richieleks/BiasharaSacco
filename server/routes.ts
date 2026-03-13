@@ -477,7 +477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { ...u, roles, memberId: member?.id || null };
       }));
 
-      const allMembers = await storage.getMembers();
+      const allMembers = await storage.getAllMembers();
       const linkedUserIds = new Set(allMembers.filter((m: any) => m.userId).map((m: any) => m.userId));
       const unlinkedMembers = allMembers.filter((m: any) => !m.userId).map((m: any) => ({
         id: `unlinked-member-${m.id}`,
