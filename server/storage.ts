@@ -2234,16 +2234,24 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Loan not found');
     }
 
-    const loanType = loan.loanType ?? 'personal';
-    const interestRate = await this.getInterestRateByProduct(loanType);
-    const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loanType, Number(loan.principalAmount));
+    const loanTypeName = loan.loanType ?? 'personal';
+    const interestRate = await this.getInterestRateByProduct(loanTypeName);
+    const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loanTypeName, Number(loan.principalAmount));
+
+    const activeLoanTypes = await this.getActiveLoanTypes();
+    const loanTypeConfig = activeLoanTypes.find(lt => lt.name === loanTypeName);
+    const interestType = (loanTypeConfig?.interestType as 'simple' | 'compound' | 'reducing_balance') || 'reducing_balance';
+    const compoundingFrequency = loanTypeConfig?.compoundingFrequency || 'monthly';
 
     const scheduleData = InterestCalculator.generateAmortizationSchedule(
       loanId,
       Number(loan.principalAmount),
       rate,
       loan.termMonths,
-      loan.disbursementDate || new Date()
+      loan.disbursementDate || new Date(),
+      'monthly',
+      interestType,
+      compoundingFrequency
     );
 
     return await this.createAmortizationSchedule(scheduleData);
@@ -2255,18 +2263,25 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Loan not found');
     }
 
-    // Delete existing schedule
     await db.delete(amortizationSchedules).where(eq(amortizationSchedules.loanId, loanId));
 
-    const loanType = loan.loanType ?? 'personal';
-    const rate = newRate || InterestCalculator.getRecommendedRate(loanType, Number(loan.principalAmount));
+    const loanTypeName = loan.loanType ?? 'personal';
+    const rate = newRate || InterestCalculator.getRecommendedRate(loanTypeName, Number(loan.principalAmount));
+
+    const activeLoanTypes = await this.getActiveLoanTypes();
+    const loanTypeConfig = activeLoanTypes.find(lt => lt.name === loanTypeName);
+    const interestType = (loanTypeConfig?.interestType as 'simple' | 'compound' | 'reducing_balance') || 'reducing_balance';
+    const compoundingFrequency = loanTypeConfig?.compoundingFrequency || 'monthly';
 
     const scheduleData = InterestCalculator.generateAmortizationSchedule(
       loanId,
       Number(loan.principalAmount),
       rate,
       loan.termMonths,
-      loan.disbursementDate || new Date()
+      loan.disbursementDate || new Date(),
+      'monthly',
+      interestType,
+      compoundingFrequency
     );
 
     return await this.createAmortizationSchedule(scheduleData);

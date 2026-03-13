@@ -64,6 +64,15 @@ export default function LoanDetails() {
     enabled: !!loan?.id,
   });
 
+  const { data: loanTypes = [] } = useQuery<any[]>({
+    queryKey: ['/api/loan-types/active'],
+    queryFn: async () => {
+      const res = await fetch('/api/loan-types/active');
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+
   const principal = parseFloat(loan?.principalAmount || '0');
   const monthlyPayment = parseFloat(loan?.monthlyPayment || '0');
   const termMonths = parseInt(loan?.termMonths || '0');
@@ -75,13 +84,19 @@ export default function LoanDetails() {
   const principalPaid = principal - outstandingBalance;
   const progressPercent = principal > 0 ? Math.min((principalPaid / principal) * 100, 100) : 0;
 
+  const loanTypeConfig = useMemo(() => {
+    if (!loan || !loanTypes.length) return null;
+    return loanTypes.find((lt: any) => lt.name === loan.loanType) || null;
+  }, [loan, loanTypes]);
+
+  const interestMethod = loanTypeConfig?.interestType || loanTypeConfig?.interest_type || 'reducing_balance';
+
   const repaymentSchedule = useMemo(() => {
     if (!loan || !principal || !monthlyPayment || !termMonths) return [];
 
     const startDate = loan.disbursedAt ? new Date(loan.disbursedAt) : 
                       loan.approvedAt ? new Date(loan.approvedAt) : 
                       loan.createdAt ? new Date(loan.createdAt) : new Date();
-    const monthlyRate = interestRate / 12;
     const schedule: Array<{
       month: number;
       dueDate: Date;
@@ -91,31 +106,78 @@ export default function LoanDetails() {
       balance: number;
     }> = [];
 
-    let balance = principal;
-    const totalMonthlyPayment = monthlyPayment;
+    if (interestMethod === 'simple') {
+      const totalInterest = principal * interestRate * (termMonths / 12);
+      const monthlyInterest = totalInterest / termMonths;
+      const monthlyPrincipal = principal / termMonths;
+      let balance = principal;
 
-    for (let i = 1; i <= termMonths; i++) {
-      const interestPortion = balance * monthlyRate;
-      const principalPortion = Math.min(totalMonthlyPayment - interestPortion, balance);
-      balance = Math.max(0, balance - principalPortion);
-      const dueDate = addMonths(startDate, i);
+      for (let i = 1; i <= termMonths; i++) {
+        const isLast = i === termMonths;
+        const principalPortion = isLast ? balance : Math.round(monthlyPrincipal * 100) / 100;
+        balance = Math.max(0, balance - principalPortion);
+        const dueDate = addMonths(startDate, i);
 
-      schedule.push({
-        month: i,
-        dueDate,
-        payment: i === termMonths ? principalPortion + interestPortion : totalMonthlyPayment,
-        principalPortion: i === termMonths ? balance + principalPortion : principalPortion,
-        interestPortion,
-        balance: i === termMonths ? 0 : balance,
-      });
+        schedule.push({
+          month: i,
+          dueDate,
+          payment: principalPortion + monthlyInterest,
+          principalPortion,
+          interestPortion: monthlyInterest,
+          balance,
+        });
+      }
+    } else if (interestMethod === 'compound') {
+      const compFreq = loanTypeConfig?.compoundingFrequency || loanTypeConfig?.compounding_frequency || 'monthly';
+      let n = 12;
+      if (compFreq === 'quarterly') n = 4;
+      if (compFreq === 'annually') n = 1;
+      const timeInYears = termMonths / 12;
+      const totalAmount = principal * Math.pow(1 + interestRate / n, n * timeInYears);
+      const totalInterest = totalAmount - principal;
+      const monthlyInterest = totalInterest / termMonths;
+      const monthlyPrincipal = principal / termMonths;
+      let balance = principal;
 
-      if (i === termMonths) {
-        schedule[i - 1].balance = 0;
+      for (let i = 1; i <= termMonths; i++) {
+        const isLast = i === termMonths;
+        const principalPortion = isLast ? balance : Math.round(monthlyPrincipal * 100) / 100;
+        balance = Math.max(0, balance - principalPortion);
+        const dueDate = addMonths(startDate, i);
+
+        schedule.push({
+          month: i,
+          dueDate,
+          payment: principalPortion + monthlyInterest,
+          principalPortion,
+          interestPortion: monthlyInterest,
+          balance,
+        });
+      }
+    } else {
+      const monthlyRate = interestRate / 12;
+      let balance = principal;
+
+      for (let i = 1; i <= termMonths; i++) {
+        const interestPortion = balance * monthlyRate;
+        const principalPortion = Math.min(monthlyPayment - interestPortion, balance);
+        balance = Math.max(0, balance - principalPortion);
+        const dueDate = addMonths(startDate, i);
+        const isLast = i === termMonths;
+
+        schedule.push({
+          month: i,
+          dueDate,
+          payment: isLast ? principalPortion + interestPortion : monthlyPayment,
+          principalPortion,
+          interestPortion,
+          balance: isLast ? 0 : balance,
+        });
       }
     }
 
     return schedule;
-  }, [loan, principal, monthlyPayment, termMonths, interestRate]);
+  }, [loan, principal, monthlyPayment, termMonths, interestRate, interestMethod, loanTypeConfig]);
 
   if (isLoading) {
     return (
@@ -506,7 +568,7 @@ export default function LoanDetails() {
                         Repayment Schedule
                       </CardTitle>
                       <CardDescription className="text-xs mt-1">
-                        Detailed breakdown of {termMonths} monthly payments at {(interestRate * 100).toFixed(1)}% per annum
+                        Detailed breakdown of {termMonths} monthly payments at {(interestRate * 100).toFixed(1)}% per annum ({interestMethod.replace(/_/g, ' ')})
                       </CardDescription>
                     </div>
                     <Button

@@ -98,44 +98,105 @@ export class InterestCalculator {
     annualRate: number,
     termInMonths: number,
     startDate: Date = new Date(),
-    paymentFrequency: 'monthly' | 'weekly' | 'quarterly' = 'monthly'
+    paymentFrequency: 'monthly' | 'weekly' | 'quarterly' = 'monthly',
+    interestType: 'simple' | 'compound' | 'reducing_balance' = 'reducing_balance',
+    compoundingFrequency: string = 'monthly'
   ): InsertAmortizationSchedule[] {
     const schedule: InsertAmortizationSchedule[] = [];
-    
-    const monthlyPayment = this.calculateReducingBalancePayment(
-      principal, 
-      annualRate, 
-      termInMonths
-    );
-    
-    const monthlyRate = (annualRate / 100) / 12;
-    let remainingBalance = principal;
-    
-    for (let i = 1; i <= termInMonths; i++) {
-      const interestPayment = remainingBalance * monthlyRate;
-      const principalPayment = monthlyPayment - interestPayment;
-      remainingBalance -= principalPayment;
-      
-      // Ensure final payment accounts for rounding
-      if (i === termInMonths) {
-        remainingBalance = 0;
+
+    if (interestType === 'simple') {
+      const timeInYears = termInMonths / 12;
+      const totalInterest = principal * (annualRate / 100) * timeInYears;
+      const monthlyInterest = totalInterest / termInMonths;
+      const monthlyPrincipal = principal / termInMonths;
+      let remainingBalance = principal;
+
+      for (let i = 1; i <= termInMonths; i++) {
+        const isLast = i === termInMonths;
+        const principalPayment = isLast ? remainingBalance : Math.round(monthlyPrincipal * 100) / 100;
+        remainingBalance = Math.max(0, remainingBalance - principalPayment);
+        const totalPayment = principalPayment + monthlyInterest;
+
+        const paymentDate = new Date(startDate);
+        paymentDate.setMonth(paymentDate.getMonth() + i);
+
+        schedule.push({
+          loanId,
+          paymentNumber: i,
+          paymentDate,
+          principalAmount: principalPayment.toFixed(2),
+          interestAmount: monthlyInterest.toFixed(2),
+          totalPayment: totalPayment.toFixed(2),
+          outstandingBalance: Math.max(0, remainingBalance).toFixed(2),
+          status: 'pending'
+        });
       }
-      
-      const paymentDate = new Date(startDate);
-      paymentDate.setMonth(paymentDate.getMonth() + i);
-      
-      schedule.push({
-        loanId,
-        paymentNumber: i,
-        paymentDate,
-        principalAmount: principalPayment.toFixed(2),
-        interestAmount: interestPayment.toFixed(2),
-        totalPayment: monthlyPayment.toFixed(2),
-        outstandingBalance: Math.max(0, remainingBalance).toFixed(2),
-        status: 'pending'
-      });
+    } else if (interestType === 'compound') {
+      let n = 12;
+      if (compoundingFrequency === 'quarterly') n = 4;
+      if (compoundingFrequency === 'annually') n = 1;
+      const timeInYears = termInMonths / 12;
+      const totalAmount = principal * Math.pow(1 + (annualRate / 100) / n, n * timeInYears);
+      const totalInterest = totalAmount - principal;
+      const monthlyInterest = totalInterest / termInMonths;
+      const monthlyPrincipal = principal / termInMonths;
+      let remainingBalance = principal;
+
+      for (let i = 1; i <= termInMonths; i++) {
+        const isLast = i === termInMonths;
+        const principalPayment = isLast ? remainingBalance : Math.round(monthlyPrincipal * 100) / 100;
+        remainingBalance = Math.max(0, remainingBalance - principalPayment);
+        const totalPayment = principalPayment + monthlyInterest;
+
+        const paymentDate = new Date(startDate);
+        paymentDate.setMonth(paymentDate.getMonth() + i);
+
+        schedule.push({
+          loanId,
+          paymentNumber: i,
+          paymentDate,
+          principalAmount: principalPayment.toFixed(2),
+          interestAmount: monthlyInterest.toFixed(2),
+          totalPayment: totalPayment.toFixed(2),
+          outstandingBalance: Math.max(0, remainingBalance).toFixed(2),
+          status: 'pending'
+        });
+      }
+    } else {
+      const monthlyPayment = this.calculateReducingBalancePayment(
+        principal,
+        annualRate,
+        termInMonths
+      );
+
+      const monthlyRate = (annualRate / 100) / 12;
+      let remainingBalance = principal;
+
+      for (let i = 1; i <= termInMonths; i++) {
+        const interestPayment = remainingBalance * monthlyRate;
+        const principalPayment = monthlyPayment - interestPayment;
+        remainingBalance -= principalPayment;
+
+        if (i === termInMonths) {
+          remainingBalance = 0;
+        }
+
+        const paymentDate = new Date(startDate);
+        paymentDate.setMonth(paymentDate.getMonth() + i);
+
+        schedule.push({
+          loanId,
+          paymentNumber: i,
+          paymentDate,
+          principalAmount: principalPayment.toFixed(2),
+          interestAmount: interestPayment.toFixed(2),
+          totalPayment: monthlyPayment.toFixed(2),
+          outstandingBalance: Math.max(0, remainingBalance).toFixed(2),
+          status: 'pending'
+        });
+      }
     }
-    
+
     return schedule;
   }
 
