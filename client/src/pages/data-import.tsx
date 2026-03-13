@@ -45,7 +45,7 @@ export default function DataImport() {
     enabled: importType === 'loans' || importType === 'loan-repayments',
   });
 
-  const canImport = hasPermission('update', 'system-settings');
+  const canImport = hasPermission('execute', 'data-import');
 
   useEffect(() => {
     if (!canImport) {

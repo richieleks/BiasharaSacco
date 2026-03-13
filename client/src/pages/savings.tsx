@@ -20,8 +20,10 @@ import { Search, Plus, ArrowUp, ArrowDown, Wallet, PiggyBank, FileText } from "l
 
 export default function Savings() {
   const [location] = useLocation();
-  const { activeRole } = useRBAC();
+  const { activeRole, hasPermission } = useRBAC();
   const isPersonalView = location === '/my-savings' || activeRole === 'member';
+  const canRecordDeposit = hasPermission('record', 'deposits');
+  const canRequestWithdrawal = hasPermission('request', 'withdrawals');
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false);
   const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
 
@@ -126,7 +128,7 @@ export default function Savings() {
               }
             </p>
           </div>
-          {isPersonalView && (
+          {isPersonalView && canRequestWithdrawal && (
             <div className="mt-4 sm:mt-0">
               <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
                 <DialogTrigger asChild>
@@ -147,43 +149,47 @@ export default function Savings() {
               </Dialog>
             </div>
           )}
-          {!isPersonalView && (
+          {!isPersonalView && (canRecordDeposit || canRequestWithdrawal) && (
             <div className="mt-4 sm:mt-0 flex flex-col sm:flex-row gap-3">
-              <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-record-deposit" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm">
-                    <ArrowUp className="w-4 h-4 mr-2" />
-                    Record Deposit
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[85vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Record Deposit</DialogTitle>
-                    <DialogDescription>
-                      Record a deposit transaction for a member's savings account
-                    </DialogDescription>
-                  </DialogHeader>
-                  <DepositForm onSuccess={() => setIsDepositModalOpen(false)} />
-                </DialogContent>
-              </Dialog>
+              {canRecordDeposit && (
+                <Dialog open={isDepositModalOpen} onOpenChange={setIsDepositModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button data-testid="button-record-deposit" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm">
+                      <ArrowUp className="w-4 h-4 mr-2" />
+                      Record Deposit
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Record Deposit</DialogTitle>
+                      <DialogDescription>
+                        Record a deposit transaction for a member's savings account
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DepositForm onSuccess={() => setIsDepositModalOpen(false)} />
+                  </DialogContent>
+                </Dialog>
+              )}
 
-              <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
-                <DialogTrigger asChild>
-                  <Button data-testid="button-withdrawal-request" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 dark:bg-red-950/50 rounded-xl shadow-sm">
-                    <ArrowDown className="w-4 h-4 mr-2" />
-                    Withdrawal Request
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-h-[85vh] overflow-y-auto">
-                  <DialogHeader>
-                    <DialogTitle>Process Withdrawal</DialogTitle>
-                    <DialogDescription>
-                      Process a withdrawal request from a member's savings account
-                    </DialogDescription>
-                  </DialogHeader>
-                  <WithdrawalForm onSuccess={() => setIsWithdrawModalOpen(false)} />
-                </DialogContent>
-              </Dialog>
+              {canRequestWithdrawal && (
+                <Dialog open={isWithdrawModalOpen} onOpenChange={setIsWithdrawModalOpen}>
+                  <DialogTrigger asChild>
+                    <Button data-testid="button-withdrawal-request" variant="outline" className="border-red-300 text-red-700 hover:bg-red-50 dark:bg-red-950/50 rounded-xl shadow-sm">
+                      <ArrowDown className="w-4 h-4 mr-2" />
+                      Withdrawal Request
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-h-[85vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Process Withdrawal</DialogTitle>
+                      <DialogDescription>
+                        Process a withdrawal request from a member's savings account
+                      </DialogDescription>
+                    </DialogHeader>
+                    <WithdrawalForm onSuccess={() => setIsWithdrawModalOpen(false)} />
+                  </DialogContent>
+                </Dialog>
+              )}
             </div>
           )}
         </div>

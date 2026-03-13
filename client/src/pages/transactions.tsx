@@ -18,8 +18,9 @@ import type { TransactionWithDetails } from "@shared/schema";
 
 export default function Transactions() {
   const [location] = useLocation();
-  const { activeRole } = useRBAC();
+  const { activeRole, hasPermission } = useRBAC();
   const isPersonalView = location === '/my-transactions' || activeRole === 'member';
+  const canApproveWithdrawals = hasPermission('approve', 'withdrawals');
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -285,7 +286,7 @@ export default function Transactions() {
                         <TableCell>
                           {transaction.status === 'pending' && (
                             transaction.transactionType === 'withdrawal'
-                              ? ['admin', 'treasurer'].includes(activeRole) && (
+                              ? canApproveWithdrawals && (
                                 <Button
                                   size="sm"
                                   onClick={() => approveTransactionMutation.mutate(transaction.id)}
@@ -297,7 +298,7 @@ export default function Transactions() {
                                   Approve Withdrawal
                                 </Button>
                               )
-                              : (
+                              : canApproveWithdrawals && (
                                 <Button
                                   size="sm"
                                   onClick={() => approveTransactionMutation.mutate(transaction.id)}

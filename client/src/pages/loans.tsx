@@ -43,9 +43,11 @@ const getLoanTypeColor = (type: string) => {
 
 export default function Loans() {
   const [location, setLocation] = useLocation();
-  const { activeRole, userRoles } = useRBAC();
+  const { activeRole, userRoles, hasPermission } = useRBAC();
   const isPersonalView = location === '/my-loans' || activeRole === 'member';
   const isTreasurer = userRoles?.includes('treasurer') || userRoles?.includes('teller');
+  const canDisburse = hasPermission('disburse', 'loans');
+  const canRecordRepayment = hasPermission('record', 'loan-repayments');
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
   const [isRepaymentModalOpen, setIsRepaymentModalOpen] = useState(false);
@@ -540,7 +542,7 @@ export default function Loans() {
                                 Pending committee approval
                               </p>
                             )}
-                            {loan.status === 'approved' && isTreasurer && (
+                            {loan.status === 'approved' && canDisburse && (
                               <Button
                                 size="sm"
                                 onClick={() => disburseLoanMutation.mutate(loan)}
@@ -552,14 +554,14 @@ export default function Loans() {
                                 Disburse
                               </Button>
                             )}
-                            {loan.status === 'approved' && !isTreasurer && (
+                            {loan.status === 'approved' && !canDisburse && (
                               <p className="text-sm text-amber-600">
                                 Awaiting treasurer disbursement
                               </p>
                             )}
                           </>
                         )}
-                        {!isPersonalView && (['active', 'disbursed'].includes(loan.status)) && parseFloat(loan.outstandingBalance || '0') > 0 && (
+                        {!isPersonalView && canRecordRepayment && (['active', 'disbursed'].includes(loan.status)) && parseFloat(loan.outstandingBalance || '0') > 0 && (
                           <Button
                             size="sm"
                             onClick={() => openRepaymentModal(loan)}

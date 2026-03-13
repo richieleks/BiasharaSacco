@@ -1951,7 +1951,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/savings/deposit', isAuthenticated, async (req, res) => {
+  app.post('/api/savings/deposit', isAuthenticated, requirePermission('record', 'deposits'), async (req, res) => {
     try {
       const { accountId, amount, description } = req.body;
       
@@ -2007,7 +2007,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/savings/withdraw', isAuthenticated, async (req: any, res) => {
+  app.post('/api/savings/withdraw', isAuthenticated, requirePermission('request', 'withdrawals'), async (req: any, res) => {
     try {
       const { accountId, amount, description } = req.body;
 
@@ -2948,19 +2948,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/loans/:id/disburse', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/loans/:id/disburse', isAuthenticated, requirePermission('disburse', 'loans'), async (req: any, res) => {
     try {
       const userId = getUserId(req)!;
-      const user = await storage.getUser(userId);
-      const member = await storage.getMemberByUserId(userId);
-      const roles = member ? await storage.getMemberRoles(member.id) : [];
-      if (roles.length === 0 && member?.role) roles.push(member.role);
-      if (roles.length === 0 && user?.role) roles.push(user.role);
-
-      const isTreasurer = roles.includes('treasurer') || roles.includes('teller');
-      if (!isTreasurer) {
-        return res.status(403).json({ message: "Only users with the treasurer role can disburse loans." });
-      }
 
       const loanId = await storage.resolveLoanId(req.params.id);
       const loanDetails = await storage.getLoan(loanId);
@@ -3095,7 +3085,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/loans/:id/payment', isAuthenticated, async (req, res) => {
+  app.post('/api/loans/:id/payment', isAuthenticated, requirePermission('record', 'loan-repayments'), async (req, res) => {
     try {
       const { amount, description } = req.body;
       const loanId = await storage.resolveLoanId(req.params.id);
@@ -3363,21 +3353,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch('/api/transactions/:id/approve', isAuthenticated, async (req: any, res) => {
+  app.patch('/api/transactions/:id/approve', isAuthenticated, requirePermission('approve', 'withdrawals'), async (req: any, res) => {
     try {
       const transactionId = await storage.resolveTransactionId(req.params.id);
       const transaction = await storage.getTransaction(transactionId);
       
       if (!transaction) {
         return res.status(404).json({ message: "Transaction not found" });
-      }
-
-      if (transaction.transactionType === 'withdrawal') {
-        const userId = getUserId(req)!;
-        const userRecord = await storage.getUser(userId);
-        if (!userRecord || !['admin', 'treasurer'].includes(userRecord.role)) {
-          return res.status(403).json({ message: "Only the treasurer can approve withdrawal requests" });
-        }
       }
 
       if (transaction.transactionType === 'withdrawal' && transaction.savingsAccountId) {
@@ -5413,7 +5395,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const multer = await import('multer');
   const upload = multer.default({ dest: 'uploads/' });
   
-  app.post('/api/import/savings', isAuthenticated, requirePermission('update', 'system-settings'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/savings', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
     try {
       const { importSavingsFromExcel } = await import('./importUtils');
       
@@ -5452,7 +5434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Import loans from Excel
-  app.post('/api/import/members', isAuthenticated, requirePermission('update', 'system-settings'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/members', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
     try {
       const { importMembersFromExcel } = await import('./importUtils');
       
@@ -5487,7 +5469,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/import/loans', isAuthenticated, requirePermission('update', 'system-settings'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/loans', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
     try {
       const { importLoansFromExcel } = await import('./importUtils');
       
@@ -5532,7 +5514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk CSV import for loan repayments
-  app.post('/api/import/loan-repayments', isAuthenticated, requirePermission('update', 'system-settings'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/loan-repayments', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
     try {
       const filePath = req.file ? req.file.path : null;
       if (!filePath) return res.status(400).json({ message: 'No file uploaded' });
@@ -5701,7 +5683,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk CSV import for savings deposits
-  app.post('/api/import/bulk-savings', isAuthenticated, requirePermission('update', 'system-settings'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/bulk-savings', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
     try {
       const filePath = req.file ? req.file.path : null;
       if (!filePath) return res.status(400).json({ message: 'No file uploaded' });
