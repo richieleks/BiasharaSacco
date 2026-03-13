@@ -1636,21 +1636,21 @@ export class DatabaseStorage implements IStorage {
     const loanDisbursementsByMonth = await db
       .select({
         month: useYearMonth
-          ? sql<string>`to_char(disbursed_at, 'Mon YY')`
-          : sql<string>`to_char(disbursed_at, 'Mon')`,
+          ? sql<string>`to_char(disbursement_date, 'Mon YY')`
+          : sql<string>`to_char(disbursement_date, 'Mon')`,
         total: sql<number>`COALESCE(sum(principal_amount), 0)::numeric`,
       })
       .from(loans)
       .where(
         and(
-          sql`disbursed_at >= ${startDate}`,
+          sql`disbursement_date >= ${startDate}`,
           inArray(loans.status, ['approved', 'active', 'disbursed', 'closed'])
         )
       )
       .groupBy(useYearMonth
-        ? sql`to_char(disbursed_at, 'Mon YY')`
-        : sql`to_char(disbursed_at, 'Mon')`)
-      .orderBy(sql`min(disbursed_at)`);
+        ? sql`to_char(disbursement_date, 'Mon YY')`
+        : sql`to_char(disbursement_date, 'Mon')`)
+      .orderBy(sql`min(disbursement_date)`);
 
     const savingsMap = new Map<string, number>();
     const loansMap = new Map<string, number>();
