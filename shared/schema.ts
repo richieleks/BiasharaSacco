@@ -38,6 +38,7 @@ export const users = pgTable("users", {
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
   role: varchar("role", { enum: ["admin", "manager", "committee", "teller", "member"] }).default("member"),
+  userType: varchar("user_type", { enum: ["system", "member"] }).default("member"),
   authMethod: varchar("auth_method", { enum: ["replit", "local"] }).default("local"),
   mustChangePassword: boolean("must_change_password").default(false),
   failedLoginAttempts: integer("failed_login_attempts").default(0),

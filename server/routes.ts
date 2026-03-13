@@ -182,7 +182,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const member = user.role === 'admin' ? null : await ensureMemberProfile(userId, {
+      const isSystemUser = (user as any).userType === 'system' || ['admin', 'manager', 'committee', 'teller'].includes(user.role || '');
+      const member = isSystemUser ? null : await ensureMemberProfile(userId, {
         roles: [user.role || 'member'],
       });
       
@@ -281,7 +282,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const currentUser = await storage.getUser(userId);
-      const member = (currentUser?.role === 'admin') ? null : await ensureMemberProfile(userId);
+      const isSystemUser = (currentUser as any)?.userType === 'system' || ['admin', 'manager', 'committee', 'teller'].includes(currentUser?.role || '');
+      const member = isSystemUser ? null : await ensureMemberProfile(userId);
       if (member) {
         const memberUpdates: any = {};
         const fullName = `${firstName || ''} ${lastName || ''}`.trim();
@@ -431,6 +433,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a unique user ID
       const userId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
+      const isSystemUser = ['admin', 'manager', 'committee', 'teller'].includes(primaryRole);
+      const userType = isSystemUser ? 'system' : 'member';
+
       // Create the user
       const newUser = await storage.upsertUser({
         id: userId,
@@ -440,10 +445,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         firstName,
         lastName,
         authMethod: 'local',
-        role: primaryRole
+        role: primaryRole,
+        userType,
       });
 
-      const memberProfile = primaryRole === 'admin' ? null : await ensureMemberProfile(newUser.id, {
+      const memberProfile = isSystemUser ? null : await ensureMemberProfile(newUser.id, {
         roles: assignedRoles,
         approvedBy: getUserId(req),
       });
@@ -498,15 +504,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.password = await hashPassword(password);
       }
 
+      const isSystemUser = primaryRole ? ['admin', 'manager', 'committee', 'teller'].includes(primaryRole) : false;
+      if (primaryRole) {
+        updateData.userType = isSystemUser ? 'system' : 'member';
+      }
+
       const updatedUser = await storage.updateUser(id, updateData);
 
-      if (primaryRole === 'admin') {
+      if (isSystemUser) {
         const existingMember = await storage.getMemberByUserId(id);
         if (existingMember) {
           await storage.updateMember(existingMember.id, { userId: null } as any);
-          console.log(`Unlinked member profile ${existingMember.id} from admin user ${id}`);
+          console.log(`Unlinked member profile ${existingMember.id} from system user ${id}`);
         }
-      } else {
+      } else if (primaryRole === 'member') {
         const member = await ensureMemberProfile(id, {
           roles: assignedRoles.length > 0 ? assignedRoles : undefined,
           approvedBy: getUserId(req),
@@ -518,7 +529,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
             memberUpdates.fullName = `${firstName || updatedUser.firstName || ''} ${lastName || updatedUser.lastName || ''}`.trim();
           }
           if (email) memberUpdates.email = email;
-          if (primaryRole) memberUpdates.role = primaryRole;
           if (Object.keys(memberUpdates).length > 0) {
             await storage.updateMember(member.id, memberUpdates);
           }

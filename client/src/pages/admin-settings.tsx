@@ -495,7 +495,7 @@ export default function AdminSettingsPage() {
           <TabButton
             tab="users"
             icon={Users}
-            label="Users & Roles"
+            label="System Users"
             isActive={activeTab === 'users'}
           />
           <TabButton
@@ -1848,6 +1848,9 @@ function UserManagementTab() {
     password: z.string().optional(),
   });
 
+  const systemRoleNames = ['admin', 'manager', 'committee', 'teller', 'treasurer'];
+  const systemRoles = dynamicRoles.filter((r: any) => systemRoleNames.includes(r.name));
+
   const createForm = useForm<z.infer<typeof createUserSchema>>({
     resolver: zodResolver(createUserSchema),
     defaultValues: {
@@ -1856,7 +1859,7 @@ function UserManagementTab() {
       email: "",
       firstName: "",
       lastName: "",
-      roles: ["member"],
+      roles: ["teller"],
     },
   });
 
@@ -1973,12 +1976,15 @@ function UserManagementTab() {
     }
   };
 
+  const systemUsers = allUsers.filter((u: any) => u.userType === 'system' || ['admin', 'manager', 'committee', 'teller'].includes(u.role));
+  const memberUsers = allUsers.filter((u: any) => u.userType === 'member' || u.role === 'member');
+
   return (
     <div className="space-y-8">
       <div>
-        <h3 className="text-lg font-medium mb-1">Users & Roles</h3>
+        <h3 className="text-lg font-medium mb-1">System Users & Roles</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Manage user accounts, roles, and access permissions
+          Manage system staff accounts separately from SACCO members. System users (admin, manager, committee, teller) operate the platform and do not have member profiles.
         </p>
       </div>
 
@@ -1986,7 +1992,7 @@ function UserManagementTab() {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-4 w-4" />
-            System Users ({allUsers.length})
+            System Staff ({systemUsers.length})
           </CardTitle>
           <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
             <DialogTrigger asChild>
@@ -1997,8 +2003,8 @@ function UserManagementTab() {
             </DialogTrigger>
             <DialogContent className="max-h-[85vh] overflow-y-auto">
               <DialogHeader>
-                <DialogTitle>Create New User</DialogTitle>
-                <DialogDescription>Add a new user account to the system.</DialogDescription>
+                <DialogTitle>Create System User</DialogTitle>
+                <DialogDescription>Add a new system staff account (admin, manager, committee, teller, treasurer).</DialogDescription>
               </DialogHeader>
               <Form {...createForm}>
                 <form onSubmit={createForm.handleSubmit((data) => createUserMutation.mutate(data))} className="space-y-4">
@@ -2046,7 +2052,7 @@ function UserManagementTab() {
                     <FormItem>
                       <FormLabel>Roles</FormLabel>
                       <div className="space-y-2">
-                        {dynamicRoles.length > 0 ? dynamicRoles.map((roleOption: any) => {
+                        {systemRoles.length > 0 ? systemRoles.map((roleOption: any) => {
                           const isAdmin = roleOption.name === 'admin';
                           const disabled = isAdmin ? false : isAdminSelected;
                           return (
@@ -2077,7 +2083,7 @@ function UserManagementTab() {
                           <p className="text-sm text-muted-foreground">Loading roles...</p>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1">{isAdminSelected ? 'Admin role cannot be combined with other roles. Admin users do not have member profiles.' : 'Select one or more roles. The first selected role will be the primary role.'}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{isAdminSelected ? 'Admin role cannot be combined with other roles. Admin users do not have member profiles.' : 'Only system roles are available here. Member accounts are created from the Members page.'}</p>
                       <FormMessage />
                     </FormItem>
                     );
@@ -2085,7 +2091,7 @@ function UserManagementTab() {
                   <div className="flex justify-end gap-2 pt-2">
                     <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>Cancel</Button>
                     <Button type="submit" disabled={createUserMutation.isPending}>
-                      {createUserMutation.isPending ? "Creating..." : "Create User"}
+                      {createUserMutation.isPending ? "Creating..." : "Create System User"}
                     </Button>
                   </div>
                 </form>
@@ -2096,7 +2102,7 @@ function UserManagementTab() {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Loading users...</div>
-          ) : allUsers.length > 0 ? (
+          ) : systemUsers.length > 0 ? (
             <div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
@@ -2109,7 +2115,7 @@ function UserManagementTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {allUsers.map((u: any) => (
+                {systemUsers.map((u: any) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.firstName} {u.lastName}</TableCell>
                     <TableCell>
@@ -2184,7 +2190,81 @@ function UserManagementTab() {
               </TableBody>
             </Table></div>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">No users found.</div>
+            <div className="text-center py-8 text-muted-foreground">No system users found. Create one using the button above.</div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            Member Login Accounts ({memberUsers.length})
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Login accounts linked to SACCO members. Member profiles are managed in the Members page.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {memberUsers.length > 0 ? (
+            <div className="overflow-x-auto"><Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Username</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Member ID</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {memberUsers.map((u: any) => (
+                  <TableRow key={u.id}>
+                    <TableCell className="font-medium">{u.firstName} {u.lastName}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {u.username}
+                        {u.lockedUntil && new Date(u.lockedUntil) > new Date() && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300">
+                            <Lock className="h-3 w-3" />
+                            Locked
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>{u.email}</TableCell>
+                    <TableCell>
+                      {u.memberId ? (
+                        <span className="text-xs font-mono bg-muted px-2 py-1 rounded">#{u.memberId}</span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">Not linked</span>
+                      )}
+                    </TableCell>
+                    <TableCell>{new Date(u.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {u.lockedUntil && new Date(u.lockedUntil) > new Date() && (
+                          <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700" title="Unlock account" onClick={() => unlockUserMutation.mutate(u.id)}>
+                            <Unlock className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => handleEditUser(u)} title="Edit user">
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700" title="Reset password" onClick={() => {
+                          if (confirm(`Reset password for "${u.username}"?`)) resetPasswordMutation.mutate(u.id);
+                        }}>
+                          <KeyRound className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table></div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">No member login accounts found. Member accounts are created from the Members page.</div>
           )}
         </CardContent>
       </Card>
@@ -2237,11 +2317,13 @@ function UserManagementTab() {
               <FormField control={editForm.control} name="roles" render={({ field }) => {
                 const currentRoles = field.value || [];
                 const isAdminSelected = currentRoles.includes('admin');
+                const isEditingSystemUser = editingUser?.userType === 'system' || systemRoleNames.includes(editingUser?.role);
+                const availableEditRoles = isEditingSystemUser ? systemRoles : dynamicRoles;
                 return (
                 <FormItem>
                   <FormLabel>Roles</FormLabel>
                   <div className="space-y-2">
-                    {dynamicRoles.length > 0 ? dynamicRoles.map((roleOption: any) => {
+                    {availableEditRoles.length > 0 ? availableEditRoles.map((roleOption: any) => {
                       const isAdmin = roleOption.name === 'admin';
                       const disabled = isAdmin ? false : isAdminSelected;
                       return (
