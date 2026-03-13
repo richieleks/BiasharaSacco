@@ -2220,23 +2220,31 @@ function UserManagementTab() {
               </TableHeader>
               <TableBody>
                 {memberUsers.map((u: any) => (
-                  <TableRow key={u.id}>
+                  <TableRow key={u.id} className={u.isUnlinked ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
                     <TableCell className="font-medium">{u.firstName} {u.lastName}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {u.username}
-                        {u.lockedUntil && new Date(u.lockedUntil) > new Date() && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300">
-                            <Lock className="h-3 w-3" />
-                            Locked
+                        {u.isUnlinked ? (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300">
+                            No login account
                           </span>
+                        ) : (
+                          <>
+                            {u.username}
+                            {u.lockedUntil && new Date(u.lockedUntil) > new Date() && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 dark:bg-red-950/50 text-red-700 dark:text-red-300">
+                                <Lock className="h-3 w-3" />
+                                Locked
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{u.email}</TableCell>
+                    <TableCell>{u.email || <span className="text-xs text-muted-foreground">—</span>}</TableCell>
                     <TableCell>
                       {u.memberId ? (
-                        <span className="text-xs font-mono bg-muted px-2 py-1 rounded">#{u.memberId}</span>
+                        <span className="text-xs font-mono bg-muted px-2 py-1 rounded">#{u.memberId}{u.memberNumber ? ` (${u.memberNumber})` : ''}</span>
                       ) : (
                         <span className="text-xs text-muted-foreground">Not linked</span>
                       )}
@@ -2244,19 +2252,25 @@ function UserManagementTab() {
                     <TableCell>{new Date(u.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {u.lockedUntil && new Date(u.lockedUntil) > new Date() && (
-                          <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700" title="Unlock account" onClick={() => unlockUserMutation.mutate(u.id)}>
-                            <Unlock className="h-4 w-4" />
-                          </Button>
+                        {u.isUnlinked ? (
+                          <span className="text-xs text-muted-foreground">Manage in Members page</span>
+                        ) : (
+                          <>
+                            {u.lockedUntil && new Date(u.lockedUntil) > new Date() && (
+                              <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700" title="Unlock account" onClick={() => unlockUserMutation.mutate(u.id)}>
+                                <Unlock className="h-4 w-4" />
+                              </Button>
+                            )}
+                            <Button variant="ghost" size="sm" onClick={() => handleEditUser(u)} title="Edit user">
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700" title="Reset password" onClick={() => {
+                              if (confirm(`Reset password for "${u.username}"?`)) resetPasswordMutation.mutate(u.id);
+                            }}>
+                              <KeyRound className="h-4 w-4" />
+                            </Button>
+                          </>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => handleEditUser(u)} title="Edit user">
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700" title="Reset password" onClick={() => {
-                          if (confirm(`Reset password for "${u.username}"?`)) resetPasswordMutation.mutate(u.id);
-                        }}>
-                          <KeyRound className="h-4 w-4" />
-                        </Button>
                       </div>
                     </TableCell>
                   </TableRow>

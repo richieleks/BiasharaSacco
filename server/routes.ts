@@ -476,7 +476,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const roles = member ? await storage.getMemberRoles(member.id) : [u.role || 'member'];
         return { ...u, roles, memberId: member?.id || null };
       }));
-      res.json(usersWithRoles);
+
+      const allMembers = await storage.getMembers();
+      const linkedUserIds = new Set(allMembers.filter((m: any) => m.userId).map((m: any) => m.userId));
+      const unlinkedMembers = allMembers.filter((m: any) => !m.userId).map((m: any) => ({
+        id: `unlinked-member-${m.id}`,
+        username: null,
+        email: null,
+        firstName: (m.fullName || '').split(' ')[0] || '',
+        lastName: (m.fullName || '').split(' ').slice(1).join(' ') || '',
+        role: 'member',
+        userType: 'member',
+        roles: ['member'],
+        memberId: m.id,
+        memberNumber: m.memberNumber,
+        createdAt: m.createdAt,
+        lockedUntil: null,
+        isUnlinked: true,
+      }));
+
+      res.json([...usersWithRoles, ...unlinkedMembers]);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
