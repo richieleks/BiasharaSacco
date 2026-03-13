@@ -16,7 +16,7 @@ export async function seedAdminUser() {
       
       await storage.upsertUser({
         id: adminId,
-        username: "dleku",
+        username: "admin",
         password: hashedPassword,
         firstName: "Admin",
         lastName: "User",
@@ -25,7 +25,7 @@ export async function seedAdminUser() {
         mustChangePassword: false,
       });
       
-      log("Admin user 'dleku' created successfully");
+      log("Admin user 'admin' created successfully");
     }
   } catch (error) {
     log(`Admin seed check: ${error}`);
