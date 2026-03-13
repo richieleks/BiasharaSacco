@@ -215,6 +215,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
         });
         
         member = await storage.createMember(validatedMemberData);
+        await storage.updateMember(member.id, { lastSavingsDate: new Date() } as any);
         result.importedMembers++;
         console.log(`Created new member: ${member.fullName} (${member.memberNumber})`);
       } else {
@@ -730,6 +731,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 
         const validatedMemberData = insertMemberSchema.parse(memberData);
         const createdMember = await storage.createMember(validatedMemberData);
+        await storage.updateMember(createdMember.id, { lastSavingsDate: new Date() } as any);
         result.importedMembers++;
         result.successfulImports++;
 
