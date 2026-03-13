@@ -2166,6 +2166,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate unique loan number
       const loanNumber = `LN${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
+      const totalRepayable = monthlyPayment * termMonths;
+      const initialOutstandingBalance = (interestMethod === 'simple' || interestMethod === 'compound')
+        ? totalRepayable.toFixed(2)
+        : principalAmount;
+
       const loan = await storage.createLoan({
         memberId,
         loanNumber,
@@ -2174,7 +2179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         interestRate: decimalInterestRate.toFixed(4),
         termMonths,
         monthlyPayment: monthlyPayment.toFixed(2),
-        outstandingBalance: principalAmount,
+        outstandingBalance: initialOutstandingBalance,
         status: 'pending',
         approvalStage: 'committee',
       });
@@ -2296,8 +2301,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const outstandingBalance = parseFloat(originalLoan.outstandingBalance || '0');
+      const originalPrincipal = parseFloat(originalLoan.principalAmount || '0');
+      const originalMonthlyPayment = parseFloat(originalLoan.monthlyPayment || '0');
+      const originalTermMonths = parseInt(originalLoan.termMonths || '0');
+      const originalTotalRepayable = originalMonthlyPayment * originalTermMonths;
+      const origLoanTypeConfig = topUpActiveLoanTypes.find(lt => lt.name === originalLoan.loanType);
+      const origInterestMethod = origLoanTypeConfig?.interestType || 'reducing_balance';
+      const isOrigFixedInterest = origInterestMethod === 'simple' || origInterestMethod === 'compound';
+      const remainingPrincipal = isOrigFixedInterest && originalTotalRepayable > 0
+        ? outstandingBalance * (originalPrincipal / originalTotalRepayable)
+        : outstandingBalance;
       const additionalAmount = parseFloat(topUpAmount);
-      const totalNewPrincipal = outstandingBalance + additionalAmount;
+      const totalNewPrincipal = remainingPrincipal + additionalAmount;
 
       if (additionalAmount <= 0) {
         return res.status(400).json({ message: "Top-up amount must be greater than zero" });
@@ -2340,10 +2355,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         if (maxAmount > 0) {
-          const maxTopUpAllowed = maxAmount - outstandingBalance;
+          const maxTopUpAllowed = maxAmount - remainingPrincipal;
           if (additionalAmount > maxTopUpAllowed) {
             return res.status(400).json({
-              message: `Top-up amount (${additionalAmount.toLocaleString()}) exceeds the maximum allowed of ${Math.max(0, maxTopUpAllowed).toLocaleString()} (loan limit ${maxAmount.toLocaleString()} minus outstanding balance ${outstandingBalance.toLocaleString()})`
+              message: `Top-up amount (${additionalAmount.toLocaleString()}) exceeds the maximum allowed of ${Math.max(0, maxTopUpAllowed).toLocaleString()} (loan limit ${maxAmount.toLocaleString()} minus remaining principal ${Math.round(remainingPrincipal).toLocaleString()})`
             });
           }
         }
@@ -2413,6 +2428,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const loanNumber = `LN${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
+      const topUpTotalRepayable = monthlyPayment * termMonths;
+      const topUpInitialOutstanding = (topUpInterestMethod === 'simple' || topUpInterestMethod === 'compound')
+        ? topUpTotalRepayable.toFixed(2)
+        : totalNewPrincipal.toFixed(2);
+
       const topUpLoan = await storage.createLoan({
         memberId: member.id,
         loanNumber,
@@ -2421,7 +2441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         interestRate: decimalInterestRate.toFixed(4),
         termMonths,
         monthlyPayment: monthlyPayment.toFixed(2),
-        outstandingBalance: totalNewPrincipal.toFixed(2),
+        outstandingBalance: topUpInitialOutstanding,
         status: 'pending',
         approvalStage: 'committee',
         isTopUp: true,
@@ -3080,13 +3100,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { amount, description } = req.body;
       const loanId = await storage.resolveLoanId(req.params.id);
       
-      // Update loan balance
-      await storage.updateLoanBalance(loanId, amount);
+      const loanBefore = await storage.getLoan(loanId);
+      if (!loanBefore) {
+        return res.status(404).json({ message: "Loan not found" });
+      }
+
+      const paymentAmount = parseFloat(amount);
+      if (!paymentAmount || isNaN(paymentAmount) || paymentAmount <= 0) {
+        return res.status(400).json({ message: "Payment amount must be a valid positive number" });
+      }
+      const currentOutstanding = parseFloat(loanBefore.outstandingBalance || '0');
+      const effectivePayment = Math.min(paymentAmount, currentOutstanding);
+
+      if (effectivePayment <= 0) {
+        return res.status(400).json({ message: "Loan is already fully paid" });
+      }
+
+      await storage.updateLoanBalance(loanId, effectivePayment.toFixed(2));
       
-      // Create payment transaction
       const loan = await storage.getLoan(loanId);
       if (!loan) {
         return res.status(404).json({ message: "Loan not found" });
+      }
+
+      const newOutstanding = parseFloat(loan.outstandingBalance || '0');
+      if (newOutstanding <= 0) {
+        await storage.updateLoanStatus(loanId, 'completed');
       }
 
       const referenceNumber = `PAY${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
@@ -3095,14 +3134,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         memberId: loan.memberId!,
         loanId,
         transactionType: 'loan_payment',
-        amount,
+        amount: effectivePayment.toFixed(2),
         referenceNumber,
         description: description || `Loan payment - ${loan.loanNumber}`,
         status: 'completed',
         processedBy: getUserId(req),
       });
 
-      await recordJournalEntry('loan_repayment_principal', amount, `Loan repayment - ${loan.loanNumber}`, referenceNumber, getUserId(req)!);
+      await recordJournalEntry('loan_repayment_principal', effectivePayment, `Loan repayment - ${loan.loanNumber}`, referenceNumber, getUserId(req)!);
 
       const paymentMember = await storage.getMember(loan.memberId!);
       if (paymentMember?.userId) {

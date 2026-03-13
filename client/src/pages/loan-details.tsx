@@ -79,10 +79,15 @@ export default function LoanDetails() {
   const interestRate = parseFloat(loan?.interestRate || '0');
 
   const totalInterestAmount = (monthlyPayment * termMonths) - principal;
-  const totalRepayable = principal + totalInterestAmount;
+  const totalRepayable = monthlyPayment * termMonths;
   const outstandingBalance = parseFloat(loan?.outstandingBalance || '0');
-  const principalPaid = principal - outstandingBalance;
-  const progressPercent = principal > 0 ? Math.min((principalPaid / principal) * 100, 100) : 0;
+
+  const loanTypeConfigForProgress = loanTypes?.find((lt: any) => lt.name === loan?.loanType);
+  const interestMethodForProgress = loanTypeConfigForProgress?.interestType || loanTypeConfigForProgress?.interest_type || 'reducing_balance';
+  const isFixedInterest = interestMethodForProgress === 'simple' || interestMethodForProgress === 'compound';
+  const progressTotal = isFixedInterest ? totalRepayable : principal;
+  const amountPaid = progressTotal - outstandingBalance;
+  const progressPercent = progressTotal > 0 ? Math.min((amountPaid / progressTotal) * 100, 100) : 0;
 
   const loanTypeConfig = useMemo(() => {
     if (!loan || !loanTypes.length) return null;
@@ -314,8 +319,8 @@ export default function LoanDetails() {
             />
           </div>
           <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
-            <span>Paid: {formatCurrency(principalPaid)}</span>
-            <span>Principal: {formatCurrency(principal)}</span>
+            <span>Paid: {formatCurrency(amountPaid)}</span>
+            <span>{isFixedInterest ? 'Total Repayable' : 'Principal'}: {formatCurrency(progressTotal)}</span>
           </div>
         </div>
       )}
