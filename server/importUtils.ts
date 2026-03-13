@@ -215,7 +215,6 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
         });
         
         member = await storage.createMember(validatedMemberData);
-        await storage.updateMember(member.id, { lastSavingsDate: new Date() } as any);
         result.importedMembers++;
         console.log(`Created new member: ${member.fullName} (${member.memberNumber})`);
       } else {
@@ -324,6 +323,17 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
         }
         console.log(`Imported ${transactionEntries.length} new transaction entries`);
       }
+
+      const depositEntries = transactionEntries.filter(t => t.transactionType === 'deposit' && t.transactionDate);
+      let latestSavingsDate: Date = new Date();
+      if (depositEntries.length > 0) {
+        latestSavingsDate = depositEntries.reduce((latest, t) => {
+          const d = new Date(t.transactionDate!);
+          return d > latest ? d : latest;
+        }, new Date(0));
+      }
+      await storage.updateMember(member.id, { lastSavingsDate: latestSavingsDate, isActiveSaver: true } as any);
+      console.log(`Updated member ${member.fullName} lastSavingsDate to ${latestSavingsDate.toISOString()}`);
 
       result.successfulImports = 1;
 
@@ -731,7 +741,8 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 
         const validatedMemberData = insertMemberSchema.parse(memberData);
         const createdMember = await storage.createMember(validatedMemberData);
-        await storage.updateMember(createdMember.id, { lastSavingsDate: new Date() } as any);
+        const memberLastSavingsDate = joinDate ? new Date(joinDate) : new Date();
+        await storage.updateMember(createdMember.id, { lastSavingsDate: memberLastSavingsDate } as any);
         result.importedMembers++;
         result.successfulImports++;
 
