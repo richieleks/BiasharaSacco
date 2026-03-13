@@ -46,6 +46,11 @@ export default function DepositForm({ onSuccess }: DepositFormProps) {
 
   const { data: accounts } = useQuery<any[]>({
     queryKey: ['/api/members', selectedMemberId, 'savings'],
+    queryFn: async () => {
+      const res = await fetch(`/api/members/${selectedMemberId}/savings`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch savings accounts');
+      return res.json();
+    },
     enabled: !!selectedMemberId,
   });
 
