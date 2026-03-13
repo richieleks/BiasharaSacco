@@ -52,6 +52,13 @@ export default function AnalyticsCharts() {
     return value.toLocaleString();
   };
 
+  const formatYAxis = (value: number) => {
+    if (value >= 1000000000) return `${(value / 1000000000).toFixed(1)}B`;
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+    return value.toString();
+  };
+
   const chartCardClass = "section-card";
   const chartHeaderClass = "flex items-center gap-2.5 px-6 py-4 border-b border-slate-100 dark:border-slate-700";
   const chartContentClass = "p-5";
@@ -119,8 +126,8 @@ export default function AnalyticsCharts() {
             <LineChart data={analytics.monthlyTransactions}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-              <YAxis tickFormatter={(value) => `${value / 1000}K`} tick={{ fontSize: 11, fill: '#94a3b8' }} />
-              <Tooltip formatter={formatTooltipValue} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
+              <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: '#94a3b8' }} width={55} />
+              <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
               <Line type="monotone" dataKey="deposits" stroke="#10b981" name="Deposits" strokeWidth={2.5} dot={{ r: 3 }} />
               <Line type="monotone" dataKey="withdrawals" stroke="#ef4444" name="Withdrawals" strokeWidth={2.5} dot={{ r: 3 }} />
@@ -174,7 +181,7 @@ export default function AnalyticsCharts() {
             <BarChart data={analytics.savingsVsLoans} barGap={4}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#94a3b8' }} />
-              <YAxis tickFormatter={(value) => `${value / 1000000}M`} tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 11, fill: '#94a3b8' }} width={55} />
               <Tooltip formatter={formatTooltipValue} contentStyle={{ borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
               <Legend wrapperStyle={{ fontSize: '12px' }} />
               <Bar dataKey="totalSavings" fill="#10b981" name="Total Savings" radius={[4, 4, 0, 0]} />

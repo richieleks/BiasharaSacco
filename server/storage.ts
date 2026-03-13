@@ -1609,17 +1609,28 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
+    const monthlyTransactions = Array.from(monthlyData.values()).map(item => ({
+      month: item.month,
+      deposits: parseFloat(item.deposits?.toString() || '0'),
+      withdrawals: parseFloat(item.withdrawals?.toString() || '0'),
+      loanPayments: parseFloat(item.loanPayments?.toString() || '0'),
+    }));
+
     return {
       loanDistribution: loanDistribution.map(item => ({
-        name: item.loanType || 'Unknown',
-        value: item.total || 0,
+        name: (item.loanType || 'Unknown').replace(/_/g, ' '),
+        value: parseFloat(item.total?.toString() || '0'),
       })),
-      monthlyTransactions: Array.from(monthlyData.values()),
+      monthlyTransactions,
       memberGrowth: memberGrowth.map(item => ({
         month: item.month || '',
         newMembers: item.count || 0,
       })),
-      savingsVsLoans,
+      savingsVsLoans: savingsVsLoans.map(item => ({
+        month: item.month,
+        totalSavings: parseFloat(item.totalSavings?.toString() || '0'),
+        totalLoans: parseFloat(item.totalLoans?.toString() || '0'),
+      })),
     };
   }
 
