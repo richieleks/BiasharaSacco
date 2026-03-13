@@ -48,6 +48,7 @@ export default function Loans() {
   const isTreasurer = userRoles?.includes('treasurer') || userRoles?.includes('teller');
   const canDisburse = hasPermission('disburse', 'loans');
   const canRecordRepayment = hasPermission('record', 'loan-repayments');
+  const canApplyForLoans = hasPermission('create', 'loan-applications');
   const [isApplicationModalOpen, setIsApplicationModalOpen] = useState(false);
   const [isTopUpModalOpen, setIsTopUpModalOpen] = useState(false);
   const [isRepaymentModalOpen, setIsRepaymentModalOpen] = useState(false);
@@ -262,15 +263,17 @@ export default function Loans() {
               />
             </div>
             <div className="flex gap-2">
-              <Button 
-                data-testid="button-new-loan"
-                className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm flex-1 sm:flex-none"
-                onClick={() => setIsApplicationModalOpen(true)}
-              >
-                <Plus className="mr-2 h-4 w-4" />
-                <span className="hidden sm:inline">{isPersonalView ? 'Apply for Loan' : 'New Loan Application'}</span>
-                <span className="sm:hidden">{isPersonalView ? 'Apply' : 'New Loan'}</span>
-              </Button>
+              {canApplyForLoans && (
+                <Button 
+                  data-testid="button-new-loan"
+                  className="sacco-gradient text-white hover:opacity-90 rounded-xl shadow-sm flex-1 sm:flex-none"
+                  onClick={() => setIsApplicationModalOpen(true)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  <span className="hidden sm:inline">{isPersonalView ? 'Apply for Loan' : 'New Loan Application'}</span>
+                  <span className="sm:hidden">{isPersonalView ? 'Apply' : 'New Loan'}</span>
+                </Button>
+              )}
               {isPersonalView && (
                 <Button
                   variant="outline"
