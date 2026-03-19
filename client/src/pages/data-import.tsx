@@ -1,10 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Users, PiggyBank, Shield, Banknote, CreditCard } from "lucide-react";
+import { Upload, FileSpreadsheet, CheckCircle, XCircle, AlertCircle, Users, PiggyBank, Shield, Banknote, CreditCard, Download } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,9 @@ export default function DataImport() {
   const [createNewMembers, setCreateNewMembers] = useState(true);
   const [updateExistingMembers, setUpdateExistingMembers] = useState(false);
   const [selectedLoanTypeId, setSelectedLoanTypeId] = useState<string>('');
+  const [importProgress, setImportProgress] = useState(0);
+  const [importStage, setImportStage] = useState('');
+  const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -66,11 +69,89 @@ export default function DataImport() {
     }
   }, [canImport, toast]);
 
+  const startProgress = useCallback(() => {
+    setImportProgress(0);
+    setImportStage('Uploading file...');
+    let progress = 0;
+    progressTimerRef.current = setInterval(() => {
+      progress += Math.random() * 8;
+      if (progress > 30 && progress < 60) {
+        setImportStage('Processing sheets...');
+      } else if (progress >= 60 && progress < 85) {
+        setImportStage('Importing records...');
+      } else if (progress >= 85) {
+        setImportStage('Finalizing...');
+      }
+      if (progress >= 92) {
+        progress = 92;
+        if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+      }
+      setImportProgress(Math.min(progress, 92));
+    }, 300);
+  }, []);
+
+  const stopProgress = useCallback((success: boolean) => {
+    if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    setImportProgress(100);
+    setImportStage(success ? 'Complete!' : 'Finished with errors');
+    setTimeout(() => {
+      setImportProgress(0);
+      setImportStage('');
+    }, 2000);
+  }, []);
+
+  const downloadExceptionsReport = useCallback(() => {
+    if (!importResult) return;
+    const lines: string[] = [];
+    lines.push('IMPORT EXCEPTIONS REPORT');
+    lines.push(`Date: ${new Date().toLocaleString()}`);
+    lines.push(`File: ${selectedFile?.name || 'Unknown'}`);
+    lines.push(`Import Type: ${importType}`);
+    lines.push('');
+    lines.push('=== SUMMARY ===');
+    lines.push(`Total Sheets: ${importResult.totalSheets ?? 'N/A'}`);
+    lines.push(`Processed: ${importResult.processedSheets ?? importResult.successfulImports}`);
+    lines.push(`Skipped: ${importResult.skippedSheets ?? 0}`);
+    lines.push(`Successful Imports: ${importResult.successfulImports}`);
+    lines.push(`Errors: ${importResult.errors?.length ?? 0}`);
+    lines.push(`Exceptions: ${importResult.exceptions?.length ?? 0}`);
+    lines.push('');
+
+    if (importResult.exceptions?.length > 0) {
+      lines.push('=== EXCEPTIONS ===');
+      lines.push('Sheet\tType\tDetail\tExtra Data');
+      for (const ex of importResult.exceptions) {
+        const extra = ex.data ? JSON.stringify(ex.data) : '';
+        lines.push(`${ex.sheet}\t${ex.type}\t${ex.detail}\t${extra}`);
+      }
+      lines.push('');
+    }
+
+    if (importResult.errors?.length > 0) {
+      lines.push('=== ERRORS ===');
+      lines.push('Row\tError\tData');
+      for (const err of importResult.errors) {
+        const extra = err.data ? JSON.stringify(err.data) : '';
+        lines.push(`${err.row}\t${err.error}\t${extra}`);
+      }
+    }
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/tab-separated-values' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `import-exceptions-${new Date().toISOString().slice(0, 10)}.tsv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [importResult, selectedFile, importType]);
+
   const importMutation = useMutation({
     mutationFn: async (): Promise<ImportResult> => {
       if (!selectedFile) {
         throw new Error('Please select a file to import');
       }
+
+      startProgress();
       
       const formData = new FormData();
       formData.append('file', selectedFile);
@@ -100,6 +181,7 @@ export default function DataImport() {
       return await response.json();
     },
     onSuccess: (data: ImportResult) => {
+      stopProgress(data.success);
       setImportResult(data);
       if (data && data.success) {
         const successMessage = importType === 'members'
@@ -128,6 +210,7 @@ export default function DataImport() {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
     },
     onError: (error) => {
+      stopProgress(false);
       console.error("Import failed:", error);
       toast({
         title: "Import Failed",
@@ -471,6 +554,16 @@ export default function DataImport() {
                 </>
               )}
             </Button>
+
+            {(importMutation.isPending || importProgress > 0) && (
+              <div className="space-y-2 mt-4">
+                <Progress value={importProgress} className="h-2" />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>{importStage}</span>
+                  <span>{Math.round(importProgress)}%</span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -659,10 +752,16 @@ export default function DataImport() {
             {importResult.exceptions && importResult.exceptions.length > 0 && (
               <div className="space-y-2">
                 <Separator />
-                <h4 className="font-medium text-orange-600 flex items-center gap-2">
-                  <AlertCircle className="h-4 w-4" />
-                  Exceptions Report ({importResult.exceptions.length})
-                </h4>
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium text-orange-600 flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4" />
+                    Exceptions Report ({importResult.exceptions.length})
+                  </h4>
+                  <Button variant="outline" size="sm" onClick={downloadExceptionsReport} className="gap-1.5 text-xs">
+                    <Download className="h-3.5 w-3.5" />
+                    Download Report
+                  </Button>
+                </div>
                 <div className="max-h-60 overflow-y-auto space-y-2">
                   {importResult.exceptions.map((ex, index) => {
                     const typeLabels: Record<string, string> = {
