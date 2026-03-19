@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -68,6 +69,49 @@ export default function DataImport() {
       });
     }
   }, [canImport, toast]);
+
+  const [, setLocation] = useLocation();
+
+  useEffect(() => {
+    if (!importMutation.isPending) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    const handleClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest('a[href]');
+      if (target) {
+        const href = target.getAttribute('href') || '';
+        if (href && !href.startsWith('#') && !href.startsWith('javascript:')) {
+          e.preventDefault();
+          e.stopPropagation();
+          toast({
+            title: "Import in Progress",
+            description: "Please wait for the import to complete before navigating away.",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+    const handlePopState = (e: PopStateEvent) => {
+      e.preventDefault();
+      window.history.pushState(null, '', window.location.href);
+      toast({
+        title: "Import in Progress",
+        description: "Please wait for the import to complete before navigating away.",
+        variant: "destructive",
+      });
+    };
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('click', handleClick, true);
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('click', handleClick, true);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [importMutation.isPending, toast]);
 
   const startProgress = useCallback(() => {
     setImportProgress(0);
