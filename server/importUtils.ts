@@ -154,11 +154,25 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
         }
       }
 
+      const isLikelyAccountNumber = (val: any) => {
+        if (!val) return false;
+        const str = val.toString().trim();
+        return /^\d{5,}$/.test(str);
+      };
+
+      const row1 = (rawData[0] as any[]) || [];
+      const row2 = (rawData[1] as any[]) || [];
+      if (isLikelyAccountNumber(row1[2])) accountNumbers.push(row1[2].toString().trim());  // C1
+      if (isLikelyAccountNumber(row2[2])) accountNumbers.push(row2[2].toString().trim());  // C2
+      if (isLikelyAccountNumber(row2[1])) accountNumbers.push(row2[1].toString().trim());  // B2
+
+      const uniqueAccountNumbers = [...new Set(accountNumbers)];
+
       let accountNumber = '';
-      if (accountNumbers.length > 0) {
-        const startsWith2 = accountNumbers.find(n => n.startsWith('2'));
-        const startsWith1 = accountNumbers.find(n => n.startsWith('1'));
-        accountNumber = startsWith2 || startsWith1 || accountNumbers[0];
+      if (uniqueAccountNumbers.length > 0) {
+        const startsWith2 = uniqueAccountNumbers.find(n => n.startsWith('2'));
+        const startsWith1 = uniqueAccountNumbers.find(n => n.startsWith('1'));
+        accountNumber = startsWith2 || startsWith1 || uniqueAccountNumbers[0];
       }
 
       console.log(`Sheet "${sheetName}" account info:`, { accountName, accountNumber, allAccountNumbers: accountNumbers, closingBalance });
