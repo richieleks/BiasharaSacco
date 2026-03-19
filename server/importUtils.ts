@@ -123,25 +123,6 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 
       console.log(`\n--- Processing sheet: "${sheetName}" (${rawData.length} rows) ---`);
 
-      let accountName = '';
-      let accountNumber = '';
-      let closingBalance = 0;
-
-      for (let i = 0; i < Math.min(5, rawData.length); i++) {
-        const row = rawData[i] as any[];
-        if (row[0] === 'ACCOUNT NAME: ' && row[1]) {
-          accountName = row[1];
-        }
-        if (row[0] === 'ACCOUNT NUMBER:' && row[1]) {
-          accountNumber = row[1].toString();
-        }
-        if (row[0] === 'ACCOUNT NAME: ' && row[4]) {
-          closingBalance = parseFloat(row[4]) || 0;
-        }
-      }
-
-      console.log(`Sheet "${sheetName}" account info:`, { accountName, accountNumber, closingBalance });
-
       let headerRowIndex = -1;
       for (let i = 0; i < rawData.length; i++) {
         const row = rawData[i] as any[];
@@ -152,15 +133,42 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
       }
 
       if (headerRowIndex === -1) {
-        result.errors.push({ row: 0, error: `Sheet "${sheetName}": Could not find transaction data header` });
+        console.log(`Sheet "${sheetName}": No statement structure found, skipping`);
         continue;
       }
+
+      let accountName = '';
+      const accountNumbers: string[] = [];
+      let closingBalance = 0;
+
+      for (let i = 0; i < Math.min(5, rawData.length); i++) {
+        const row = rawData[i] as any[];
+        if (row[0] === 'ACCOUNT NAME: ' && row[1]) {
+          accountName = row[1];
+        }
+        if (row[0] === 'ACCOUNT NUMBER:' && row[1]) {
+          accountNumbers.push(row[1].toString());
+        }
+        if (row[0] === 'ACCOUNT NAME: ' && row[4]) {
+          closingBalance = parseFloat(row[4]) || 0;
+        }
+      }
+
+      let accountNumber = '';
+      if (accountNumbers.length > 0) {
+        const startsWith2 = accountNumbers.find(n => n.startsWith('2'));
+        const startsWith1 = accountNumbers.find(n => n.startsWith('1'));
+        accountNumber = startsWith2 || startsWith1 || accountNumbers[0];
+      }
+
+      console.log(`Sheet "${sheetName}" account info:`, { accountName, accountNumber, allAccountNumbers: accountNumbers, closingBalance });
 
       const transactionRows = rawData.slice(headerRowIndex + 1);
       result.totalRows++;
 
       if (!accountName) {
-        result.errors.push({ row: 0, error: `Sheet "${sheetName}": Could not extract account holder name from statement` });
+        console.log(`Sheet "${sheetName}": No account name found, skipping`);
+        result.totalRows--;
         continue;
       }
 
