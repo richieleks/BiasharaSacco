@@ -55,7 +55,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, KeyRound, Building2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Edit, Trash2, KeyRound, Building2, ChevronLeft, ChevronRight, UserCog } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -1818,6 +1818,7 @@ export default function AdminSettingsPage() {
 function UserManagementTab() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, navigate] = useLocation();
   const [editingUser, setEditingUser] = useState<any>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
@@ -2277,16 +2278,19 @@ function UserManagementTab() {
                     <TableCell>{new Date(u.createdAt).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
-                        {u.isUnlinked ? (
-                          <span className="text-xs text-muted-foreground">Manage in Members page</span>
-                        ) : (
+                        {u.memberUuid && (
+                          <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-700" title="Edit member details" onClick={() => navigate(`/members/${u.memberUuid}`)}>
+                            <UserCog className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {!u.isUnlinked && (
                           <>
                             {u.lockedUntil && new Date(u.lockedUntil) > new Date() && (
                               <Button variant="ghost" size="sm" className="text-orange-600 hover:text-orange-700" title="Unlock account" onClick={() => unlockUserMutation.mutate(u.id)}>
                                 <Unlock className="h-4 w-4" />
                               </Button>
                             )}
-                            <Button variant="ghost" size="sm" onClick={() => handleEditUser(u)} title="Edit user">
+                            <Button variant="ghost" size="sm" onClick={() => handleEditUser(u)} title="Edit login account">
                               <Edit className="h-4 w-4" />
                             </Button>
                             <Button variant="ghost" size="sm" className="text-amber-600 hover:text-amber-700" title="Reset password" onClick={() => {

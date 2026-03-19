@@ -474,7 +474,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const usersWithRoles = await Promise.all(allUsers.map(async ({ password, twoFactorSecret, ...u }: any) => {
         const member = await storage.getMemberByUserId(u.id);
         const roles = member ? await storage.getMemberRoles(member.id) : [u.role || 'member'];
-        return { ...u, roles, memberId: member?.id || null };
+        return { ...u, roles, memberId: member?.id || null, memberUuid: member?.uuid || null, memberNumber: (member as any)?.memberNumber || null };
       }));
 
       const allMembers = await storage.getAllMembers();
@@ -489,6 +489,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userType: 'member',
         roles: ['member'],
         memberId: m.id,
+        memberUuid: m.uuid,
         memberNumber: m.memberNumber,
         createdAt: m.createdAt,
         lockedUntil: null,
