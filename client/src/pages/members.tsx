@@ -15,11 +15,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import MemberForm from "@/components/forms/member-form";
-import { Search, Plus, Eye, Users, UserCheck, UserX, AlertCircle } from "lucide-react";
+import { Search, Plus, Eye, Edit, Users, UserCheck, UserX, AlertCircle } from "lucide-react";
 import type { MemberWithDetails } from "@shared/schema";
 
 export default function Members() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [editingMember, setEditingMember] = useState<MemberWithDetails | null>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
@@ -107,6 +108,25 @@ export default function Members() {
         description: errorMessage,
         variant: "destructive",
       });
+    },
+  });
+
+  const editMemberMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+      await apiRequest('PATCH', `/api/members/${id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/members'] });
+      setEditingMember(null);
+      toast({ title: "Success", description: "Member updated successfully!", variant: "success" });
+    },
+    onError: (error: any) => {
+      if (isUnauthorizedError(error)) {
+        toast({ title: "Unauthorized", description: "You are logged out. Logging in again...", variant: "destructive" });
+        setTimeout(() => { window.location.href = "/api/login"; }, 500);
+        return;
+      }
+      toast({ title: "Update Error", description: error.message || "Failed to update member.", variant: "destructive" });
     },
   });
 
@@ -249,15 +269,30 @@ export default function Members() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setLocation(`/members/${member.uuid}`)}
-                      className="h-8 w-8 p-0"
-                      data-testid={`button-view-member-${member.id}`}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center justify-end gap-1">
+                      {hasPermission('update', 'members') && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setEditingMember(member)}
+                          className="h-8 w-8 p-0"
+                          title="Edit member"
+                          data-testid={`button-edit-member-${member.id}`}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setLocation(`/members/${member.uuid}`)}
+                        className="h-8 w-8 p-0"
+                        title="View details"
+                        data-testid={`button-view-member-${member.id}`}
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -288,6 +323,24 @@ export default function Members() {
           </div>
         </div>
       )}
+
+      <Dialog open={!!editingMember} onOpenChange={(open) => { if (!open) setEditingMember(null); }}>
+        <DialogContent className="max-w-[44.1rem] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Member</DialogTitle>
+            <DialogDescription>
+              Update member details. Changes will be saved immediately.
+            </DialogDescription>
+          </DialogHeader>
+          {editingMember && (
+            <MemberForm
+              member={editingMember}
+              onSubmit={(data) => editMemberMutation.mutate({ id: editingMember.id, data })}
+              isLoading={editMemberMutation.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
