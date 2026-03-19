@@ -68,9 +68,18 @@ export interface ImportResult {
     error: string;
     data?: any;
   }>;
+  exceptions: Array<{
+    sheet: string;
+    type: string;
+    detail: string;
+    data?: any;
+  }>;
   importedMembers: number;
   importedAccounts: number;
   importedLoans?: number;
+  totalSheets?: number;
+  processedSheets?: number;
+  skippedSheets?: number;
 }
 
 export type JournalEntryCallback = (mappingKey: string, amount: number, description: string, reference: string, userId: string) => Promise<void>;
@@ -82,32 +91,40 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
     successfulImports: 0,
     skippedDuplicates: 0,
     errors: [],
+    exceptions: [],
     importedMembers: 0,
-    importedAccounts: 0
+    importedAccounts: 0,
+    totalSheets: 0,
+    processedSheets: 0,
+    skippedSheets: 0
   };
 
   try {
-    // Dynamic import for XLSX with proper ES module handling
     const XLSX = await import('xlsx');
     const fs = await import('fs');
     
-    // Check if file exists
     if (!fs.existsSync(filePath)) {
       result.errors.push({ row: 0, error: `File not found: ${filePath}` });
       return result;
     }
     
-    // Read the Excel file using default export
     console.log('Reading file from:', filePath);
     const workbook = XLSX.default ? XLSX.default.readFile(filePath) : XLSX.readFile(filePath);
     const utils = XLSX.default ? XLSX.default.utils : XLSX.utils;
     console.log('Workbook sheets:', workbook.SheetNames);
+
+    result.totalSheets = workbook.SheetNames.length;
 
     const sheetsToProcess = workbook.SheetNames.filter(name => {
       const ws = workbook.Sheets[name];
       const data = utils.sheet_to_json(ws, { header: 1 });
       return data.length > 0;
     });
+
+    const emptySheets = workbook.SheetNames.filter(name => !sheetsToProcess.includes(name));
+    for (const name of emptySheets) {
+      result.exceptions.push({ sheet: name, type: 'skipped_empty', detail: 'Sheet has no data' });
+    }
 
     if (sheetsToProcess.length === 0) {
       result.errors.push({ row: 0, error: "File is empty — no sheets with data found" });
@@ -134,6 +151,8 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 
       if (headerRowIndex === -1) {
         console.log(`Sheet "${sheetName}": No statement structure found, skipping`);
+        result.skippedSheets!++;
+        result.exceptions.push({ sheet: sheetName, type: 'skipped_no_structure', detail: 'No transaction header found (expected POSTING DATE, DETAILS, BALANCE columns)' });
         continue;
       }
 
@@ -182,6 +201,16 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 
       if (!accountName) {
         console.log(`Sheet "${sheetName}": No account name found, skipping`);
+        result.skippedSheets!++;
+        result.exceptions.push({ sheet: sheetName, type: 'skipped_no_account_name', detail: 'Could not extract account holder name from statement header' });
+        result.totalRows--;
+        continue;
+      }
+
+      if (!accountNumber) {
+        console.log(`Sheet "${sheetName}": No account number found, skipping`);
+        result.skippedSheets!++;
+        result.exceptions.push({ sheet: sheetName, type: 'skipped_no_account_number', detail: 'Could not find an account number in any expected cell position', data: { accountName } });
         result.totalRows--;
         continue;
       }
@@ -354,6 +383,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
         console.log(`Updated member ${member.fullName} lastSavingsDate to ${latestSavingsDate.toISOString()}`);
 
         result.successfulImports++;
+        result.processedSheets!++;
 
       } catch (error) {
         result.errors.push({
@@ -361,11 +391,13 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
           error: `Sheet "${sheetName}": Failed to process — ${error instanceof Error ? error.message : 'Unknown error'}`,
           data: { accountName, accountNumber, closingBalance }
         });
+        result.exceptions.push({ sheet: sheetName, type: 'processing_error', detail: error instanceof Error ? error.message : 'Unknown error', data: { accountName, accountNumber } });
       }
     }
 
     result.success = result.successfulImports > 0;
     console.log('Import completed:', result);
+    console.log(`Sheets summary: ${result.totalSheets} total, ${result.processedSheets} processed, ${result.skippedSheets} skipped, ${result.exceptions.length} exceptions`);
     return result;
 
   } catch (error) {
@@ -386,6 +418,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
     successfulImports: 0,
     skippedDuplicates: 0,
     errors: [],
+    exceptions: [],
     importedMembers: 0,
     importedAccounts: 0
   };
@@ -828,6 +861,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
     successfulImports: 0,
     skippedDuplicates: 0,
     errors: [],
+    exceptions: [],
     importedMembers: 0,
     importedAccounts: 0,
     importedLoans: 0

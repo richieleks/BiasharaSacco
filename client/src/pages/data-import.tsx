@@ -23,9 +23,18 @@ interface ImportResult {
     error: string;
     data?: any;
   }>;
+  exceptions: Array<{
+    sheet: string;
+    type: string;
+    detail: string;
+    data?: any;
+  }>;
   importedMembers: number;
   importedAccounts: number;
   importedLoans?: number;
+  totalSheets?: number;
+  processedSheets?: number;
+  skippedSheets?: number;
 }
 
 export default function DataImport() {
@@ -622,6 +631,67 @@ export default function DataImport() {
                 <div className="text-xs sm:text-sm text-red-600">Other Errors</div>
               </div>
             </div>
+
+            {importResult.totalSheets != null && (
+              <div className="space-y-2">
+                <Separator />
+                <h4 className="font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                  <FileSpreadsheet className="h-4 w-4" />
+                  Sheets Summary
+                </h4>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="text-lg font-bold">{importResult.totalSheets}</div>
+                    <div className="text-xs text-muted-foreground">Total Sheets</div>
+                  </div>
+                  <div className="text-center p-2 bg-green-50 dark:bg-green-950/50 rounded-lg">
+                    <div className="text-lg font-bold text-green-600">{importResult.processedSheets || 0}</div>
+                    <div className="text-xs text-green-600">Processed</div>
+                  </div>
+                  <div className="text-center p-2 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                    <div className="text-lg font-bold text-gray-500">{importResult.skippedSheets || 0}</div>
+                    <div className="text-xs text-gray-500">Skipped</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {importResult.exceptions && importResult.exceptions.length > 0 && (
+              <div className="space-y-2">
+                <Separator />
+                <h4 className="font-medium text-orange-600 flex items-center gap-2">
+                  <AlertCircle className="h-4 w-4" />
+                  Exceptions Report ({importResult.exceptions.length})
+                </h4>
+                <div className="max-h-60 overflow-y-auto space-y-2">
+                  {importResult.exceptions.map((ex, index) => {
+                    const typeLabels: Record<string, string> = {
+                      skipped_empty: 'Empty Sheet',
+                      skipped_no_structure: 'Invalid Structure',
+                      skipped_no_account_name: 'Missing Account Name',
+                      skipped_no_account_number: 'Missing Account Number',
+                      processing_error: 'Processing Error',
+                    };
+                    const isError = ex.type === 'processing_error';
+                    return (
+                      <Alert key={index} className={isError ? '!border-red-300 dark:!border-red-700 !bg-red-50 dark:!bg-red-950/50' : '!border-orange-300 dark:!border-orange-700 !bg-orange-50 dark:!bg-orange-950/50'}>
+                        <AlertDescription className={isError ? 'text-red-900 dark:text-red-300' : 'text-orange-900 dark:text-orange-300'}>
+                          <div className="flex items-start gap-2">
+                            <Badge variant="outline" className={`shrink-0 text-xs ${isError ? 'border-red-400 text-red-700 dark:text-red-300' : 'border-orange-400 text-orange-700 dark:text-orange-300'}`}>
+                              {typeLabels[ex.type] || ex.type}
+                            </Badge>
+                            <div>
+                              <strong>Sheet: {ex.sheet}</strong> — {ex.detail}
+                              {ex.data?.accountName && <span className="ml-1 text-xs opacity-75">({ex.data.accountName})</span>}
+                            </div>
+                          </div>
+                        </AlertDescription>
+                      </Alert>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Errors List */}
             {importResult.errors && importResult.errors.length > 0 && (
