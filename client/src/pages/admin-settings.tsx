@@ -55,7 +55,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, KeyRound, Building2 } from "lucide-react";
+import { Plus, Edit, Trash2, KeyRound, Building2, ChevronLeft, ChevronRight } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -1821,6 +1821,9 @@ function UserManagementTab() {
   const [editingUser, setEditingUser] = useState<any>(null);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [systemPage, setSystemPage] = useState(1);
+  const [memberPage, setMemberPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const { data: allUsers = [], isLoading } = useQuery<any[]>({
     queryKey: ['/api/auth/users'],
@@ -1979,6 +1982,11 @@ function UserManagementTab() {
   const systemUsers = allUsers.filter((u: any) => u.userType === 'system' || ['admin', 'manager', 'committee', 'teller'].includes(u.role));
   const memberUsers = allUsers.filter((u: any) => u.userType === 'member' || u.role === 'member');
 
+  const systemTotalPages = Math.max(1, Math.ceil(systemUsers.length / PAGE_SIZE));
+  const paginatedSystemUsers = systemUsers.slice((systemPage - 1) * PAGE_SIZE, systemPage * PAGE_SIZE);
+  const memberTotalPages = Math.max(1, Math.ceil(memberUsers.length / PAGE_SIZE));
+  const paginatedMemberUsers = memberUsers.slice((memberPage - 1) * PAGE_SIZE, memberPage * PAGE_SIZE);
+
   return (
     <div className="space-y-8">
       <div>
@@ -2103,7 +2111,7 @@ function UserManagementTab() {
           {isLoading ? (
             <div className="text-center py-8 text-muted-foreground">Loading users...</div>
           ) : systemUsers.length > 0 ? (
-            <div className="overflow-x-auto"><Table>
+            <><div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -2115,7 +2123,7 @@ function UserManagementTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {systemUsers.map((u: any) => (
+                {paginatedSystemUsers.map((u: any) => (
                   <TableRow key={u.id}>
                     <TableCell className="font-medium">{u.firstName} {u.lastName}</TableCell>
                     <TableCell>
@@ -2189,6 +2197,23 @@ function UserManagementTab() {
                 ))}
               </TableBody>
             </Table></div>
+            {systemTotalPages > 1 && (
+              <div className="flex items-center justify-between pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Showing {(systemPage - 1) * PAGE_SIZE + 1}–{Math.min(systemPage * PAGE_SIZE, systemUsers.length)} of {systemUsers.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setSystemPage(p => Math.max(1, p - 1))} disabled={systemPage === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium">Page {systemPage} of {systemTotalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setSystemPage(p => Math.min(systemTotalPages, p + 1))} disabled={systemPage === systemTotalPages}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           ) : (
             <div className="text-center py-8 text-muted-foreground">No system users found. Create one using the button above.</div>
           )}
@@ -2207,7 +2232,7 @@ function UserManagementTab() {
         </CardHeader>
         <CardContent>
           {memberUsers.length > 0 ? (
-            <div className="overflow-x-auto"><Table>
+            <><div className="overflow-x-auto"><Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
@@ -2219,7 +2244,7 @@ function UserManagementTab() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {memberUsers.map((u: any) => (
+                {paginatedMemberUsers.map((u: any) => (
                   <TableRow key={u.id} className={u.isUnlinked ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
                     <TableCell className="font-medium">{u.firstName} {u.lastName}</TableCell>
                     <TableCell>
@@ -2277,6 +2302,23 @@ function UserManagementTab() {
                 ))}
               </TableBody>
             </Table></div>
+            {memberTotalPages > 1 && (
+              <div className="flex items-center justify-between pt-4">
+                <p className="text-sm text-muted-foreground">
+                  Showing {(memberPage - 1) * PAGE_SIZE + 1}–{Math.min(memberPage * PAGE_SIZE, memberUsers.length)} of {memberUsers.length}
+                </p>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => setMemberPage(p => Math.max(1, p - 1))} disabled={memberPage === 1}>
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm font-medium">Page {memberPage} of {memberTotalPages}</span>
+                  <Button variant="outline" size="sm" onClick={() => setMemberPage(p => Math.min(memberTotalPages, p + 1))} disabled={memberPage === memberTotalPages}>
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            </>
           ) : (
             <div className="text-center py-8 text-muted-foreground">No member login accounts found. Member accounts are created from the Members page.</div>
           )}
