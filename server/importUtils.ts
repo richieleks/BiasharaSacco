@@ -100,252 +100,249 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
     // Read the Excel file using default export
     console.log('Reading file from:', filePath);
     const workbook = XLSX.default ? XLSX.default.readFile(filePath) : XLSX.readFile(filePath);
-    console.log('Workbook sheets:', workbook.SheetNames);
-    const sheetName = workbook.SheetNames[0]; // Use first sheet
-    const worksheet = workbook.Sheets[sheetName];
-    
-    // Convert to JSON using utils
     const utils = XLSX.default ? XLSX.default.utils : XLSX.utils;
-    const rawData = utils.sheet_to_json(worksheet, { header: 1 });
-    
-    if (rawData.length === 0) {
-      result.errors.push({ row: 0, error: "File is empty" });
+    console.log('Workbook sheets:', workbook.SheetNames);
+
+    const sheetsToProcess = workbook.SheetNames.filter(name => {
+      const ws = workbook.Sheets[name];
+      const data = utils.sheet_to_json(ws, { header: 1 });
+      return data.length > 0;
+    });
+
+    if (sheetsToProcess.length === 0) {
+      result.errors.push({ row: 0, error: "File is empty — no sheets with data found" });
       return result;
     }
 
-    console.log('Excel data analysis:');
-    console.log('Total rows:', rawData.length);
-    console.log('First few rows:', rawData.slice(0, 8));
-    console.log('Sample transaction rows (rows 10-15):', rawData.slice(10, 16));
+    console.log(`Processing ${sheetsToProcess.length} sheet(s) with data: ${sheetsToProcess.join(', ')}`);
+    const allMembers = await storage.getAllMembers();
 
-    // This appears to be a bank statement format, not a member list
-    // Extract account holder information from the first rows
-    let accountName = '';
-    let accountNumber = '';
-    let closingBalance = 0;
+    for (const sheetName of sheetsToProcess) {
+      const worksheet = workbook.Sheets[sheetName];
+      const rawData = utils.sheet_to_json(worksheet, { header: 1 });
 
-    // Parse account information from the header rows
-    for (let i = 0; i < Math.min(5, rawData.length); i++) {
-      const row = rawData[i] as any[];
-      if (row[0] === 'ACCOUNT NAME: ' && row[1]) {
-        accountName = row[1];
+      console.log(`\n--- Processing sheet: "${sheetName}" (${rawData.length} rows) ---`);
+
+      let accountName = '';
+      let accountNumber = '';
+      let closingBalance = 0;
+
+      for (let i = 0; i < Math.min(5, rawData.length); i++) {
+        const row = rawData[i] as any[];
+        if (row[0] === 'ACCOUNT NAME: ' && row[1]) {
+          accountName = row[1];
+        }
+        if (row[0] === 'ACCOUNT NUMBER:' && row[1]) {
+          accountNumber = row[1].toString();
+        }
+        if (row[0] === 'ACCOUNT NAME: ' && row[4]) {
+          closingBalance = parseFloat(row[4]) || 0;
+        }
       }
-      if (row[0] === 'ACCOUNT NUMBER:' && row[1]) {
-        accountNumber = row[1].toString();
+
+      console.log(`Sheet "${sheetName}" account info:`, { accountName, accountNumber, closingBalance });
+
+      let headerRowIndex = -1;
+      for (let i = 0; i < rawData.length; i++) {
+        const row = rawData[i] as any[];
+        if (row.includes('POSTING DATE') && row.includes('DETAILS') && row.includes('BALANCE')) {
+          headerRowIndex = i;
+          break;
+        }
       }
-      if (row[0] === 'ACCOUNT NAME: ' && row[4]) {
-        closingBalance = parseFloat(row[4]) || 0;
+
+      if (headerRowIndex === -1) {
+        result.errors.push({ row: 0, error: `Sheet "${sheetName}": Could not find transaction data header` });
+        continue;
       }
-    }
 
-    console.log('Extracted account info:', { accountName, accountNumber, closingBalance });
+      const transactionRows = rawData.slice(headerRowIndex + 1);
+      result.totalRows++;
 
-    // Find the transaction data header row
-    let headerRowIndex = -1;
-    for (let i = 0; i < rawData.length; i++) {
-      const row = rawData[i] as any[];
-      if (row.includes('POSTING DATE') && row.includes('DETAILS') && row.includes('BALANCE')) {
-        headerRowIndex = i;
-        break;
+      if (!accountName) {
+        result.errors.push({ row: 0, error: `Sheet "${sheetName}": Could not extract account holder name from statement` });
+        continue;
       }
-    }
 
-    if (headerRowIndex === -1) {
-      result.errors.push({ row: 0, error: "Could not find transaction data header" });
-      return result;
-    }
+      try {
+        const shouldCreateMembers = options?.createNewMembers !== false;
 
-    const transactionRows = rawData.slice(headerRowIndex + 1);
-    result.totalRows = 1; // We're creating one member from this statement
+        let member;
+        const existingMember = allMembers.find(m =>
+          m.accountNumber === accountNumber ||
+          m.staffAccountNumber === accountNumber
+        );
 
-    if (!accountName) {
-      result.errors.push({ row: 0, error: "Could not extract account holder name from statement" });
-      return result;
-    }
+        if (existingMember) {
+          member = existingMember;
+          console.log(`Member already exists (matched by account number ${accountNumber}): ${member.fullName} (${member.memberNumber})`);
+        } else if (shouldCreateMembers) {
+          const memberData = {
+            fullName: accountName,
+            idNumber: accountNumber,
+            phoneNumber: '0700000000',
+            email: `${accountName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
+            department: 'Import',
+            monthlySavings: '100000',
+            shareContribution: '20000',
+            numberOfShares: 4,
+            status: 'active' as const,
+            gender: 'male' as const,
+            averageNetPay: Math.round(closingBalance / 12).toString(),
+            staffAccountNumber: accountNumber,
+            nextOfKinName: 'Next of Kin',
+            nextOfKinPhone: '0700000000',
+            dateOfBirth: '1990-01-01',
+            address: '123 Main Street',
+            maritalStatus: 'single' as const,
+            section: 'General',
+            termsOfService: 'permanent' as const,
+            accountNumber: accountNumber,
+            branch: 'Main Branch',
+            beneficiaryName: accountName,
+            beneficiaryRelationship: 'Self',
+            beneficiaryContact: '0700000000',
+            role: 'member' as const
+          };
 
-    try {
-      const shouldCreateMembers = options?.createNewMembers !== false;
-      
-      // Use account number as the unique reference to find existing members
-      let member;
-      const allMembers = await storage.getAllMembers();
-      const existingMember = allMembers.find(m => 
-        m.accountNumber === accountNumber || 
-        m.staffAccountNumber === accountNumber
-      );
-      
-      if (existingMember) {
-        member = existingMember;
-        console.log(`Member already exists (matched by account number ${accountNumber}): ${member.fullName} (${member.memberNumber})`);
-      } else if (shouldCreateMembers) {
-        const memberData = {
-          fullName: accountName,
-          idNumber: accountNumber,
-          phoneNumber: '0700000000',
-          email: `${accountName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
-          department: 'Import',
-          monthlySavings: '100000',
-          shareContribution: '20000', 
-          numberOfShares: 4,
-          status: 'active' as const,
-          gender: 'male' as const,
-          averageNetPay: Math.round(closingBalance / 12).toString(),
-          staffAccountNumber: accountNumber,
-          nextOfKinName: 'Next of Kin',
-          nextOfKinPhone: '0700000000',
-          dateOfBirth: '1990-01-01',
-          address: '123 Main Street',
-          maritalStatus: 'single' as const,
-          section: 'General',
-          termsOfService: 'permanent' as const,
-          accountNumber: accountNumber,
-          branch: 'Main Branch',
-          beneficiaryName: accountName,
-          beneficiaryRelationship: 'Self',
-          beneficiaryContact: '0700000000',
-          role: 'member' as const
-        };
+          const memberCount = await storage.getMembersCount();
+          const memberNumber = `BCS${String(memberCount + 1).padStart(6, '0')}`;
 
-        const memberCount = await storage.getMembersCount();
-        const memberNumber = `BCS${String(memberCount + 1).padStart(6, '0')}`;
-        
-        const validatedMemberData = insertMemberSchema.parse({
-          ...memberData,
-          memberNumber
-        });
-        
-        member = await storage.createMember(validatedMemberData);
-        result.importedMembers++;
-        console.log(`Created new member: ${member.fullName} (${member.memberNumber})`);
-      } else {
+          const validatedMemberData = insertMemberSchema.parse({
+            ...memberData,
+            memberNumber
+          });
+
+          member = await storage.createMember(validatedMemberData);
+          allMembers.push(member as any);
+          result.importedMembers++;
+          console.log(`Created new member: ${member.fullName} (${member.memberNumber})`);
+        } else {
+          result.errors.push({
+            row: result.totalRows,
+            error: `Sheet "${sheetName}": Member not found for account number "${accountNumber}" (${accountName}) and member creation is disabled`,
+            data: { accountName, accountNumber }
+          });
+          continue;
+        }
+
+        const savingsAccountRef = `SAV${accountNumber}`;
+        const existingAccounts = await storage.getSavingsAccountsByMember(member.id);
+        let regularAccount = existingAccounts.find(acc => acc.accountNumber === savingsAccountRef || acc.accountType === 'regular');
+
+        if (!regularAccount) {
+          const savingsData = {
+            memberId: member.id,
+            accountNumber: savingsAccountRef,
+            accountType: 'regular' as const,
+            balance: closingBalance.toString(),
+            status: 'active' as const
+          };
+
+          const validatedSavingsData = insertSavingsAccountSchema.parse(savingsData);
+          regularAccount = await storage.createSavingsAccount(validatedSavingsData);
+          result.importedAccounts++;
+          console.log(`Created savings account ${savingsAccountRef}: UGX ${closingBalance.toLocaleString()}`);
+        } else {
+          await storage.updateSavingsAccountBalanceDirect(regularAccount.id, closingBalance.toString());
+          console.log(`Updated savings account ${regularAccount.accountNumber} balance: UGX ${closingBalance.toLocaleString()}`);
+        }
+
+        const existingTransactions = await storage.getTransactionsByMember(member.id);
+        const existingRefNumbers = new Set(existingTransactions.map((t: any) => t.referenceNumber));
+
+        const transactionEntries = [];
+        let skippedDuplicates = 0;
+
+        for (let i = 0; i < transactionRows.length; i++) {
+          const row = transactionRows[i] as any[];
+
+          if (row.length >= 5 && row[0] && row[1]) {
+            const postingDate = excelDateToDate(row[0]);
+            if (i < 3) {
+              console.log(`Sheet "${sheetName}" row ${i + 1} raw date: ${JSON.stringify(row[0])} -> parsed: ${postingDate.toISOString()}`);
+            }
+            const details = row[1]?.toString() || '';
+            const debitAmount = parseFloat(row[2]) || 0;
+            const creditAmount = parseFloat(row[3]) || 0;
+
+            if (creditAmount > 0 || debitAmount > 0) {
+              const refNumber = `STMT-${accountNumber}-${i + 1}`;
+
+              if (existingRefNumbers.has(refNumber)) {
+                skippedDuplicates++;
+                continue;
+              }
+
+              const transactionData = {
+                memberId: member.id,
+                savingsAccountId: regularAccount.id,
+                transactionType: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
+                amount: (creditAmount > 0 ? creditAmount : debitAmount).toString(),
+                description: details,
+                transactionDate: postingDate,
+                referenceNumber: refNumber,
+                processedBy: options?.userId,
+                status: 'completed' as const
+              };
+
+              try {
+                const validatedTransactionData = insertTransactionSchema.parse(transactionData);
+                transactionEntries.push(validatedTransactionData);
+              } catch (error) {
+                console.log(`✗ Sheet "${sheetName}" invalid transaction on row ${i + 1}:`, error);
+              }
+            }
+          }
+        }
+
+        if (skippedDuplicates > 0) {
+          console.log(`Sheet "${sheetName}": Skipped ${skippedDuplicates} duplicate transactions`);
+        }
+
+        if (transactionEntries.length > 0) {
+          for (const transaction of transactionEntries) {
+            await storage.createTransaction(transaction);
+            if (options?.onJournalEntry && options?.userId) {
+              const mappingKey = transaction.transactionType === 'deposit' ? 'member_deposit' : 'member_withdrawal';
+              const amt = parseFloat(transaction.amount?.toString() || '0');
+              if (amt > 0) {
+                await options.onJournalEntry(
+                  mappingKey,
+                  amt,
+                  `Imported ${transaction.transactionType} - ${accountNumber}`,
+                  transaction.referenceNumber || `IMP-${Date.now()}`,
+                  options.userId
+                );
+              }
+            }
+          }
+          console.log(`Sheet "${sheetName}": Imported ${transactionEntries.length} new transaction entries`);
+        }
+
+        const depositEntries = transactionEntries.filter(t => t.transactionType === 'deposit' && t.transactionDate);
+        let latestSavingsDate: Date = new Date();
+        if (depositEntries.length > 0) {
+          latestSavingsDate = depositEntries.reduce((latest, t) => {
+            const d = new Date(t.transactionDate!);
+            return d > latest ? d : latest;
+          }, new Date(0));
+        }
+        await storage.updateMember(member.id, { lastSavingsDate: latestSavingsDate, isActiveSaver: true } as any);
+        console.log(`Updated member ${member.fullName} lastSavingsDate to ${latestSavingsDate.toISOString()}`);
+
+        result.successfulImports++;
+
+      } catch (error) {
         result.errors.push({
-          row: 1,
-          error: `Member not found for account number "${accountNumber}" (${accountName}) and member creation is disabled`,
-          data: { accountName, accountNumber }
+          row: result.totalRows,
+          error: `Sheet "${sheetName}": Failed to process — ${error instanceof Error ? error.message : 'Unknown error'}`,
+          data: { accountName, accountNumber, closingBalance }
         });
-        result.success = result.errors.length < result.totalRows;
-        return result;
       }
-
-      // Use account number as unique reference for savings account
-      const savingsAccountRef = `SAV${accountNumber}`;
-      const existingAccounts = await storage.getSavingsAccountsByMember(member.id);
-      let regularAccount = existingAccounts.find(acc => acc.accountNumber === savingsAccountRef || acc.accountType === 'regular');
-
-      if (!regularAccount) {
-        const savingsData = {
-          memberId: member.id,
-          accountNumber: savingsAccountRef,
-          accountType: 'regular' as const,
-          balance: closingBalance.toString(),
-          status: 'active' as const
-        };
-
-        const validatedSavingsData = insertSavingsAccountSchema.parse(savingsData);
-        regularAccount = await storage.createSavingsAccount(validatedSavingsData);
-        result.importedAccounts++;
-        console.log(`Created savings account ${savingsAccountRef}: UGX ${closingBalance.toLocaleString()}`);
-      } else {
-        await storage.updateSavingsAccountBalanceDirect(regularAccount.id, closingBalance.toString());
-        console.log(`Updated savings account ${regularAccount.accountNumber} balance: UGX ${closingBalance.toLocaleString()}`);
-      }
-
-      // Get existing transactions for this account to avoid duplicates
-      const existingTransactions = await storage.getTransactionsByMember(member.id);
-      const existingRefNumbers = new Set(existingTransactions.map((t: any) => t.referenceNumber));
-
-      // Process transaction entries from the bank statement
-      const transactionEntries = [];
-      let skippedDuplicates = 0;
-      
-      for (let i = 0; i < transactionRows.length; i++) {
-        const row = transactionRows[i] as any[];
-        
-        if (row.length >= 5 && row[0] && row[1]) {
-          const postingDate = excelDateToDate(row[0]);
-          if (i < 3) {
-            console.log(`Row ${i + 1} raw date value: ${JSON.stringify(row[0])} (type: ${typeof row[0]}) -> parsed: ${postingDate.toISOString()}`);
-          }
-          const details = row[1]?.toString() || '';
-          const debitAmount = parseFloat(row[2]) || 0;
-          const creditAmount = parseFloat(row[3]) || 0;
-
-          if (creditAmount > 0 || debitAmount > 0) {
-            const refNumber = `STMT-${accountNumber}-${i + 1}`;
-            
-            if (existingRefNumbers.has(refNumber)) {
-              skippedDuplicates++;
-              continue;
-            }
-
-            const transactionData = {
-              memberId: member.id,
-              savingsAccountId: regularAccount.id,
-              transactionType: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
-              amount: (creditAmount > 0 ? creditAmount : debitAmount).toString(),
-              description: details,
-              transactionDate: postingDate,
-              referenceNumber: refNumber,
-              processedBy: options?.userId,
-              status: 'completed' as const
-            };
-            
-            try {
-              const validatedTransactionData = insertTransactionSchema.parse(transactionData);
-              transactionEntries.push(validatedTransactionData);
-            } catch (error) {
-              console.log(`✗ Invalid transaction on row ${i + 1}:`, error);
-            }
-          }
-        }
-      }
-
-      if (skippedDuplicates > 0) {
-        console.log(`Skipped ${skippedDuplicates} duplicate transactions`);
-      }
-
-      if (transactionEntries.length > 0) {
-        for (const transaction of transactionEntries) {
-          await storage.createTransaction(transaction);
-          if (options?.onJournalEntry && options?.userId) {
-            const mappingKey = transaction.transactionType === 'deposit' ? 'member_deposit' : 'member_withdrawal';
-            const amt = parseFloat(transaction.amount?.toString() || '0');
-            if (amt > 0) {
-              await options.onJournalEntry(
-                mappingKey,
-                amt,
-                `Imported ${transaction.transactionType} - ${accountNumber}`,
-                transaction.referenceNumber || `IMP-${Date.now()}`,
-                options.userId
-              );
-            }
-          }
-        }
-        console.log(`Imported ${transactionEntries.length} new transaction entries`);
-      }
-
-      const depositEntries = transactionEntries.filter(t => t.transactionType === 'deposit' && t.transactionDate);
-      let latestSavingsDate: Date = new Date();
-      if (depositEntries.length > 0) {
-        latestSavingsDate = depositEntries.reduce((latest, t) => {
-          const d = new Date(t.transactionDate!);
-          return d > latest ? d : latest;
-        }, new Date(0));
-      }
-      await storage.updateMember(member.id, { lastSavingsDate: latestSavingsDate, isActiveSaver: true } as any);
-      console.log(`Updated member ${member.fullName} lastSavingsDate to ${latestSavingsDate.toISOString()}`);
-
-      result.successfulImports = 1;
-
-    } catch (error) {
-      result.errors.push({
-        row: 1,
-        error: `Failed to process bank statement: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        data: { accountName, accountNumber, closingBalance }
-      });
     }
 
-    result.success = result.errors.length < result.totalRows;
+    result.success = result.successfulImports > 0;
     console.log('Import completed:', result);
     return result;
 
