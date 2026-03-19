@@ -1422,7 +1422,7 @@ export class DatabaseStorage implements IStorage {
     const [memberCount] = await db
       .select({ count: sql<number>`count(*)` })
       .from(members)
-      .where(eq(members.status, 'active'));
+      .where(sql`${members.status} != 'exited'`);
 
     const [lastMonthMembers] = await db
       .select({ count: sql<number>`count(*)` })
