@@ -562,10 +562,19 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
           continue;
         }
 
-        const duplicateByIdNumber = allMembers.find(m => idNumber && m.idNumber === idNumber);
-        if (duplicateByIdNumber) {
+        let existingMember = allMembers.find(m => idNumber && m.idNumber === idNumber);
+        let matchedBy = 'idNumber';
+        if (!existingMember && accountNum) {
+          existingMember = allMembers.find(m => m.accountNumber === accountNum || m.staffAccountNumber === accountNum);
+          if (existingMember) matchedBy = 'accountNumber';
+        }
+        if (!existingMember && staffAccNum) {
+          existingMember = allMembers.find(m => m.staffAccountNumber === staffAccNum);
+          if (existingMember) matchedBy = 'staffAccountNumber';
+        }
+
+        if (existingMember) {
           if (updateExisting) {
-            // Parse all fields first, then update the existing member
             const rawGender = colMap.gender !== undefined ? (row[colMap.gender] || '').toString().trim().toLowerCase() : '';
             const gender = rawGender.startsWith('f') ? 'female' as const : 'male' as const;
             const rawMarital = colMap.maritalStatus !== undefined ? (row[colMap.maritalStatus] || '').toString().trim().toLowerCase() : '';
@@ -579,7 +588,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
             else if (rawTerms.includes('contract')) termsOfService = 'contract';
             else if (rawTerms.includes('ex')) termsOfService = 'ex-staff';
             const dobRaw = colMap.dateOfBirth !== undefined ? row[colMap.dateOfBirth] : null;
-            let dateOfBirth = duplicateByIdNumber.dateOfBirth || '1990-01-01';
+            let dateOfBirth = existingMember.dateOfBirth || '1990-01-01';
             if (dobRaw) {
               const parsed = excelDateToDate(dobRaw);
               if (!isNaN(parsed.getTime())) dateOfBirth = parsed.toISOString().split('T')[0];
@@ -602,6 +611,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 
             const updateData: Record<string, any> = {};
             if (fullName) updateData.fullName = fullName;
+            if (idNumber) updateData.idNumber = idNumber;
             if (dateOfBirth) updateData.dateOfBirth = dateOfBirth;
             updateData.gender = gender;
             updateData.maritalStatus = maritalStatus;
@@ -625,52 +635,28 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
             if (nextOfKinPhone) updateData.nextOfKinPhone = nextOfKinPhone;
 
             try {
-              await storage.updateMember(duplicateByIdNumber.id, updateData);
+              await storage.updateMember(existingMember.id, updateData);
               result.successfulImports++;
-              console.log(`Updated existing member ${rowNum}: ${fullName} (${duplicateByIdNumber.memberNumber})`);
+              console.log(`Updated existing member ${rowNum} (matched by ${matchedBy}): ${fullName} (${existingMember.memberNumber})`);
             } catch (updateErr) {
               result.errors.push({
                 row: rowNum,
                 error: `Failed to update member "${fullName}": ${updateErr instanceof Error ? updateErr.message : 'Unknown error'}`,
-                data: { fullName, idNumber }
+                data: { fullName, idNumber, matchedBy }
               });
             }
-            seenIdNumbers.add(idNumber);
+            if (idNumber) seenIdNumbers.add(idNumber);
+            if (staffAccNum) seenStaffAccounts.add(staffAccNum);
+            if (accountNum) seenBankAccounts.add(accountNum);
             continue;
           }
           result.skippedDuplicates++;
           result.errors.push({
             row: rowNum,
-            error: `Duplicate ID number "${idNumber}": matches existing member ${duplicateByIdNumber.fullName} (${duplicateByIdNumber.memberNumber})`,
-            data: { fullName, idNumber, matchedField: 'idNumber' }
+            error: `Duplicate ${matchedBy === 'accountNumber' ? 'account number' : matchedBy === 'staffAccountNumber' ? 'staff account' : 'ID number'}: matches existing member ${existingMember.fullName} (${existingMember.memberNumber})`,
+            data: { fullName, idNumber, matchedField: matchedBy }
           });
           continue;
-        }
-
-        if (staffAccNum) {
-          const duplicateByStaffAcc = allMembers.find(m => m.staffAccountNumber === staffAccNum);
-          if (duplicateByStaffAcc && (!updateExisting || duplicateByStaffAcc.idNumber !== idNumber)) {
-            result.skippedDuplicates++;
-            result.errors.push({
-              row: rowNum,
-              error: `Duplicate staff account "${staffAccNum}": matches existing member ${duplicateByStaffAcc.fullName} (${duplicateByStaffAcc.memberNumber})`,
-              data: { fullName, idNumber, matchedField: 'staffAccountNumber' }
-            });
-            continue;
-          }
-        }
-
-        if (accountNum) {
-          const duplicateByBankAcc = allMembers.find(m => m.accountNumber === accountNum);
-          if (duplicateByBankAcc && (!updateExisting || duplicateByBankAcc.idNumber !== idNumber)) {
-            result.skippedDuplicates++;
-            result.errors.push({
-              row: rowNum,
-              error: `Duplicate bank account "${accountNum}": matches existing member ${duplicateByBankAcc.fullName} (${duplicateByBankAcc.memberNumber})`,
-              data: { fullName, idNumber, matchedField: 'accountNumber' }
-            });
-            continue;
-          }
         }
 
         const rawGender = colMap.gender !== undefined ? (row[colMap.gender] || '').toString().trim().toLowerCase() : '';
