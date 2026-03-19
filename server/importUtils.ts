@@ -608,11 +608,18 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
             const beneficiaryContact = colMap.beneficiaryContact !== undefined ? (row[colMap.beneficiaryContact] || '').toString().trim() : '';
             const nextOfKinName = colMap.nextOfKinName !== undefined ? (row[colMap.nextOfKinName] || '').toString().trim() : '';
             const nextOfKinPhone = colMap.nextOfKinPhone !== undefined ? (row[colMap.nextOfKinPhone] || '').toString().trim() : '';
+            const dateJoinedRaw = colMap.dateJoined !== undefined ? row[colMap.dateJoined] : null;
+            let joinDate: Date | null = null;
+            if (dateJoinedRaw) {
+              const parsedJoinDate = excelDateToDate(dateJoinedRaw);
+              if (!isNaN(parsedJoinDate.getTime())) joinDate = parsedJoinDate;
+            }
 
             const updateData: Record<string, any> = {};
             if (fullName) updateData.fullName = fullName;
             if (idNumber) updateData.idNumber = idNumber;
             if (dateOfBirth) updateData.dateOfBirth = dateOfBirth;
+            if (joinDate) updateData.joinDate = joinDate;
             updateData.gender = gender;
             updateData.maritalStatus = maritalStatus;
             updateData.termsOfService = termsOfService;
