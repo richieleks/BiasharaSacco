@@ -35,6 +35,7 @@ import LoanWorkflow from "@/pages/loan-workflow";
 import MemberDetails from "@/pages/member-details";
 import NotificationsPage from "@/pages/notifications";
 import AdminSettings from "@/pages/admin-settings";
+import Settings from "@/pages/settings";
 import Profile from "@/pages/profile";
 import AccountStatement from "@/pages/account-statement";
 import LoanStatement from "@/pages/loan-statement";
@@ -359,6 +360,11 @@ function Router() {
             <Route path="/profile">
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            </Route>
+            <Route path="/settings">
+              <ProtectedRoute>
+                <Settings />
               </ProtectedRoute>
             </Route>
             <Route path="/admin-settings">
