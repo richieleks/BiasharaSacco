@@ -99,8 +99,9 @@ export default function LoanDetails() {
   const repaymentSchedule = useMemo(() => {
     if (!loan || !principal || !monthlyPayment || !termMonths) return [];
 
-    const startDate = loan.disbursedAt ? new Date(loan.disbursedAt) : 
-                      loan.approvedAt ? new Date(loan.approvedAt) : 
+    const startDate = loan.disbursementDate ? new Date(loan.disbursementDate) : 
+                      loan.applicationDate ? new Date(loan.applicationDate) :
+                      loan.approvalDate ? new Date(loan.approvalDate) : 
                       loan.createdAt ? new Date(loan.createdAt) : new Date();
     const schedule: Array<{
       month: number;
