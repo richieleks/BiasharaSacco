@@ -308,7 +308,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
         for (let i = 0; i < transactionRows.length; i++) {
           const row = transactionRows[i] as any[];
 
-          if (row.length >= 5 && row[0] && row[1]) {
+          if (row.length >= 2 && row[0] && row[1]) {
             const postingDate = excelDateToDate(row[0]);
             if (i < 3) {
               console.log(`Sheet "${sheetName}" row ${i + 1} raw date: ${JSON.stringify(row[0])} -> parsed: ${postingDate.toISOString()}`);
@@ -1149,13 +1149,17 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               ordinaryGroup.totalDisbursed += amount;
               if (!ordinaryGroup.firstDisbursementDate) ordinaryGroup.firstDisbursementDate = postingDate;
             }
-          } else if (amtDebited > 0 && (detailsLower.includes('installment') || detailsLower.includes('instalment'))) {
+          } else if (amtDebited > 0 && (detailsLower.includes('installment') || detailsLower.includes('instalment') || detailsLower.includes('repayment') || detailsLower.includes('loan repayment'))) {
             ordinaryGroup.repayments.push({ date: postingDate, amount: amtDebited, details, rowIndex: i });
             ordinaryGroup.totalRepaid += amtDebited;
             ordinaryGroup.lastInstallmentAmount = amtDebited;
           } else if (amtDebited > 0) {
             ordinaryGroup.repayments.push({ date: postingDate, amount: amtDebited, details, rowIndex: i });
             ordinaryGroup.totalRepaid += amtDebited;
+          } else if (principalRepyt > 0 && (detailsLower.includes('repayment') || detailsLower.includes('installment') || detailsLower.includes('instalment'))) {
+            ordinaryGroup.repayments.push({ date: postingDate, amount: principalRepyt, details, rowIndex: i });
+            ordinaryGroup.totalRepaid += principalRepyt;
+            ordinaryGroup.lastInstallmentAmount = principalRepyt;
           }
         }
 
