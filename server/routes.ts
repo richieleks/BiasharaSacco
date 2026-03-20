@@ -6,7 +6,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword, validatePasswordComplexity, getSecuritySettings, getPasswordRequirementsText } from "./localAuth";
 import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "./rbac-middleware";
-import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans } from "@shared/schema";
+import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
 import { z } from "zod";
 import { db } from "./db";
@@ -1935,6 +1935,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         exitReason: exitRequest.reason || null,
         exitFeeCharged: exitFee > 0 ? exitFee.toString() : null,
       } as any);
+
+      // Close all savings accounts for the exited member
+      for (const account of savingsAccounts) {
+        await db.update(savingsAccountsTable).set({
+          status: 'closed',
+          updatedAt: new Date(),
+        }).where(eq(savingsAccountsTable.id, account.id));
+      }
 
       await storage.createAuditLog({
         userId,
