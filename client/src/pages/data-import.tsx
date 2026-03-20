@@ -33,6 +33,7 @@ interface ImportResult {
   importedMembers: number;
   importedAccounts: number;
   importedLoans?: number;
+  skippedDuplicates?: number;
   totalSheets?: number;
   processedSheets?: number;
   skippedSheets?: number;
@@ -47,6 +48,7 @@ export default function DataImport() {
   const [selectedLoanTypeId, setSelectedLoanTypeId] = useState<string>('');
   const [importProgress, setImportProgress] = useState(0);
   const [importStage, setImportStage] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
   const progressTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -73,7 +75,7 @@ export default function DataImport() {
   const [, setLocation] = useLocation();
 
   useEffect(() => {
-    if (!importMutation.isPending) return;
+    if (!isImporting) return;
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = '';
@@ -111,7 +113,7 @@ export default function DataImport() {
       document.removeEventListener('click', handleClick, true);
       window.removeEventListener('popstate', handlePopState);
     };
-  }, [importMutation.isPending, toast]);
+  }, [isImporting, toast]);
 
   const startProgress = useCallback(() => {
     setImportProgress(0);
@@ -195,6 +197,7 @@ export default function DataImport() {
         throw new Error('Please select a file to import');
       }
 
+      setIsImporting(true);
       startProgress();
       
       const formData = new FormData();
@@ -225,6 +228,7 @@ export default function DataImport() {
       return await response.json();
     },
     onSuccess: (data: ImportResult) => {
+      setIsImporting(false);
       stopProgress(data.success);
       setImportResult(data);
       if (data && data.success) {
@@ -254,6 +258,7 @@ export default function DataImport() {
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
     },
     onError: (error) => {
+      setIsImporting(false);
       stopProgress(false);
       console.error("Import failed:", error);
       toast({
