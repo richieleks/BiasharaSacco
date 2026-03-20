@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { formatCurrency } from '@/lib/utils';
+import { Pagination } from '@/components/ui/pagination';
 import { Calculator, Calendar, DollarSign, FileText, TrendingUp, Users, Download, Plus, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 
 interface FinancialYear {
@@ -68,6 +69,10 @@ interface InterestPayment {
 
 export default function InterestCalculations() {
   const [selectedFinancialYear, setSelectedFinancialYear] = useState<number | null>(null);
+  const [calcPage, setCalcPage] = useState(1);
+  const [calcPageSize, setCalcPageSize] = useState(25);
+  const [payPage, setPayPage] = useState(1);
+  const [payPageSize, setPayPageSize] = useState(25);
   const [newFinancialYearData, setNewFinancialYearData] = useState({
     yearLabel: '',
     startDate: '',
@@ -594,6 +599,7 @@ export default function InterestCalculations() {
                     </p>
                   </div>
                 ) : (
+                  <>
                   <div className="rounded-md border">
                     <Table>
                       <TableHeader>
@@ -608,7 +614,9 @@ export default function InterestCalculations() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {calculations.map((calc: InterestCalculation) => (
+                        {calculations
+                          .slice((calcPage - 1) * calcPageSize, calcPage * calcPageSize)
+                          .map((calc: InterestCalculation) => (
                           <TableRow key={calc.id}>
                             <TableCell className="font-medium">{calc.memberName || 'Unknown'}</TableCell>
                             <TableCell>{calc.memberNumber || calc.memberId}</TableCell>
@@ -643,6 +651,14 @@ export default function InterestCalculations() {
                       </TableBody>
                     </Table>
                   </div>
+                  <Pagination
+                    totalItems={calculations.length}
+                    itemsPerPage={calcPageSize}
+                    currentPage={calcPage}
+                    onPageChange={(p) => setCalcPage(p)}
+                    onItemsPerPageChange={(s) => { setCalcPageSize(s); setCalcPage(1); }}
+                  />
+                  </>
                 )}
               </div>
             </CardContent>
@@ -669,6 +685,7 @@ export default function InterestCalculations() {
                   </p>
                 </div>
               ) : (
+                <>
                 <div className="rounded-md border">
                   <Table>
                     <TableHeader>
@@ -682,7 +699,9 @@ export default function InterestCalculations() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {payments.map((payment: InterestPayment) => (
+                      {payments
+                        .slice((payPage - 1) * payPageSize, payPage * payPageSize)
+                        .map((payment: InterestPayment) => (
                         <TableRow key={payment.id}>
                           <TableCell className="font-medium">{payment.memberName || 'Unknown'}</TableCell>
                           <TableCell>{payment.memberNumber || payment.memberId}</TableCell>
@@ -699,6 +718,14 @@ export default function InterestCalculations() {
                     </TableBody>
                   </Table>
                 </div>
+                <Pagination
+                  totalItems={payments.length}
+                  itemsPerPage={payPageSize}
+                  currentPage={payPage}
+                  onPageChange={(p) => setPayPage(p)}
+                  onItemsPerPageChange={(s) => { setPayPageSize(s); setPayPage(1); }}
+                />
+                </>
               )}
             </CardContent>
           </Card>

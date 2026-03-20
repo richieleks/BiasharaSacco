@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatCurrency } from "@/lib/utils";
+import { Pagination } from "@/components/ui/pagination";
 import { useRBAC } from "@/hooks/useRBAC";
 import { format, addMonths } from "date-fns";
 import {
@@ -33,6 +34,11 @@ export default function LoanDetails() {
   const { activeRole } = useRBAC();
   const loanId = params?.id;
   const backPath = activeRole === 'member' ? '/my-loans' : '/loans';
+
+  const [stmtPage, setStmtPage] = useState(1);
+  const [stmtPageSize, setStmtPageSize] = useState(25);
+  const [schedPage, setSchedPage] = useState(1);
+  const [schedPageSize, setSchedPageSize] = useState(25);
 
   const { data: loan, isLoading } = useQuery<any>({
     queryKey: ['/api/loans', loanId],
@@ -487,6 +493,7 @@ export default function LoanDetails() {
               {txnLoading ? (
                 <div className="text-center py-8 text-slate-500 dark:text-slate-400">Loading transactions...</div>
               ) : transactions && transactions.length > 0 ? (
+                <>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -500,11 +507,18 @@ export default function LoanDetails() {
                     </TableHeader>
                     <TableBody>
                       {(() => {
+                        const balances: number[] = [];
                         let runningBalance = 0;
-                        return sortedTransactions.map((txn: any) => {
+                        sortedTransactions.forEach((txn: any) => {
                           const amount = parseFloat(txn.amount || '0');
                           if (txn.transactionType === 'loan_disbursement') runningBalance += amount;
                           else if (txn.transactionType === 'loan_payment') runningBalance -= amount;
+                          balances.push(runningBalance);
+                        });
+                        const startIdx = (stmtPage - 1) * stmtPageSize;
+                        const pageItems = sortedTransactions.slice(startIdx, startIdx + stmtPageSize);
+                        return pageItems.map((txn: any, idx: number) => {
+                          const amount = parseFloat(txn.amount || '0');
                           return (
                             <TableRow key={txn.id}>
                               <TableCell className="text-xs whitespace-nowrap">
@@ -517,7 +531,7 @@ export default function LoanDetails() {
                               <TableCell className="text-xs text-right tabular-nums whitespace-nowrap">
                                 {txn.transactionType === 'loan_disbursement' ? formatCurrency(amount) : ''}
                               </TableCell>
-                              <TableCell className="text-xs text-right font-semibold tabular-nums whitespace-nowrap">{formatCurrency(runningBalance)}</TableCell>
+                              <TableCell className="text-xs text-right font-semibold tabular-nums whitespace-nowrap">{formatCurrency(balances[startIdx + idx])}</TableCell>
                             </TableRow>
                           );
                         });
@@ -525,6 +539,14 @@ export default function LoanDetails() {
                     </TableBody>
                   </Table>
                 </div>
+                <Pagination
+                  totalItems={sortedTransactions.length}
+                  itemsPerPage={stmtPageSize}
+                  currentPage={stmtPage}
+                  onPageChange={(p) => setStmtPage(p)}
+                  onItemsPerPageChange={(s) => { setStmtPageSize(s); setStmtPage(1); }}
+                />
+                </>
               ) : (
                 <div className="text-center py-8">
                   <CreditCard className="h-10 w-10 text-slate-300 mx-auto mb-2" />
@@ -619,7 +641,9 @@ export default function LoanDetails() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {repaymentSchedule.map((row) => (
+                        {repaymentSchedule
+                          .slice((schedPage - 1) * schedPageSize, schedPage * schedPageSize)
+                          .map((row) => (
                           <TableRow key={row.month}>
                             <TableCell className="text-xs font-medium">{row.month}</TableCell>
                             <TableCell className="text-xs whitespace-nowrap">{format(row.dueDate, 'MMM dd, yyyy')}</TableCell>
@@ -632,6 +656,13 @@ export default function LoanDetails() {
                       </TableBody>
                     </Table>
                   </div>
+                  <Pagination
+                    totalItems={repaymentSchedule.length}
+                    itemsPerPage={schedPageSize}
+                    currentPage={schedPage}
+                    onPageChange={(p) => setSchedPage(p)}
+                    onItemsPerPageChange={(s) => { setSchedPageSize(s); setSchedPage(1); }}
+                  />
                 </CardContent>
               </Card>
             </div>

@@ -20,6 +20,7 @@ import { format } from "date-fns";
 import { DollarSign, Users, TrendingUp, CheckCircle, Search, Plus, ArrowUpRight } from "lucide-react";
 import type { MemberWithDetails } from "@shared/schema";
 import { formatCurrency } from "@/lib/utils";
+import { Pagination } from "@/components/ui/pagination";
 
 const postShareCapitalSchema = z.object({
   amount: z.string().min(1, "Amount is required").refine(val => parseFloat(val) > 0, "Amount must be greater than zero"),
@@ -32,6 +33,10 @@ export default function ShareCapital() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedMember, setSelectedMember] = useState<MemberWithDetails | null>(null);
   const [isPostDialogOpen, setIsPostDialogOpen] = useState(false);
+  const [membersPage, setMembersPage] = useState(1);
+  const [membersPageSize, setMembersPageSize] = useState(25);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyPageSize, setHistoryPageSize] = useState(25);
   const { toast } = useToast();
   const { user } = useAuth();
   const canPost = user?.role === 'admin';
@@ -197,6 +202,7 @@ export default function ShareCapital() {
               {isLoading ? (
                 <p className="text-center py-8 text-muted-foreground">Loading members...</p>
               ) : (
+                <>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -212,7 +218,9 @@ export default function ShareCapital() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredMembers.map((member) => {
+                      {filteredMembers
+                        .slice((membersPage - 1) * membersPageSize, membersPage * membersPageSize)
+                        .map((member) => {
                         const perShare = systemSharePrice;
                         const shares = member.numberOfShares || 4;
                         const expected = perShare * shares;
@@ -272,6 +280,14 @@ export default function ShareCapital() {
                     </TableBody>
                   </Table>
                 </div>
+                <Pagination
+                  totalItems={filteredMembers.length}
+                  itemsPerPage={membersPageSize}
+                  currentPage={membersPage}
+                  onPageChange={(p) => setMembersPage(p)}
+                  onItemsPerPageChange={(s) => { setMembersPageSize(s); setMembersPage(1); }}
+                />
+                </>
               )}
             </CardContent>
           </Card>
@@ -285,6 +301,7 @@ export default function ShareCapital() {
             </CardHeader>
             <CardContent>
               {shareCapitalTransactions.length > 0 ? (
+                <>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -298,7 +315,9 @@ export default function ShareCapital() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {shareCapitalTransactions.map((tx: any) => (
+                      {shareCapitalTransactions
+                        .slice((historyPage - 1) * historyPageSize, historyPage * historyPageSize)
+                        .map((tx: any) => (
                         <TableRow key={tx.id}>
                           <TableCell className="hidden sm:table-cell">
                             {tx.createdAt ? (() => {
@@ -331,6 +350,14 @@ export default function ShareCapital() {
                     </TableBody>
                   </Table>
                 </div>
+                <Pagination
+                  totalItems={shareCapitalTransactions.length}
+                  itemsPerPage={historyPageSize}
+                  currentPage={historyPage}
+                  onPageChange={(p) => setHistoryPage(p)}
+                  onItemsPerPageChange={(s) => { setHistoryPageSize(s); setHistoryPage(1); }}
+                />
+                </>
               ) : (
                 <p className="text-center py-8 text-muted-foreground">No share capital payments recorded yet.</p>
               )}

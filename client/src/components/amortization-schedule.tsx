@@ -14,6 +14,7 @@ import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
+import { Pagination } from "@/components/ui/pagination";
 import type { AmortizationScheduleWithDetails, LoanWithDetails } from "@shared/schema";
 
 interface AmortizationScheduleProps {
@@ -30,6 +31,8 @@ type PaymentFormData = z.infer<typeof paymentSchema>;
 export default function AmortizationSchedule({ loan }: AmortizationScheduleProps) {
   const [selectedPayment, setSelectedPayment] = useState<AmortizationScheduleWithDetails | null>(null);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [amortPage, setAmortPage] = useState(1);
+  const [amortPageSize, setAmortPageSize] = useState(25);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -282,7 +285,9 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {schedule.map((payment: AmortizationScheduleWithDetails) => (
+                  {schedule
+                    .slice((amortPage - 1) * amortPageSize, amortPage * amortPageSize)
+                    .map((payment: AmortizationScheduleWithDetails) => (
                     <TableRow key={payment.id}>
                       <TableCell className="font-medium">
                         {payment.paymentNumber}
@@ -337,6 +342,13 @@ export default function AmortizationSchedule({ loan }: AmortizationScheduleProps
                 </TableBody>
               </Table>
             </div>
+            <Pagination
+              totalItems={schedule.length}
+              itemsPerPage={amortPageSize}
+              currentPage={amortPage}
+              onPageChange={(p) => setAmortPage(p)}
+              onItemsPerPageChange={(s) => { setAmortPageSize(s); setAmortPage(1); }}
+            />
           </CardContent>
         </Card>
       ) : (
