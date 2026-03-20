@@ -1026,19 +1026,15 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               interestRateValue = parseFloat(row[j + 1]) || 0;
             } else if (cellText.includes('TENURE') && row[j + 1] !== undefined) {
               tenure = parseInt(row[j + 1]) || 12;
-            } else if ((cellText.includes('TIME') && cellText.includes('MONTH')) && row[j + 1] !== undefined) {
-              const val = parseInt(row[j + 1]);
+            } else if ((cellText.includes('TIME') && cellText.includes('MONTH'))) {
+              const val = parseFloat(row[4]);
               if (val > 0) headerTermMonths = val;
-            } else if (cellText.includes('MONTHLY REPAYMENT') && row[j + 1] !== undefined) {
-              for (let k = j + 1; k < row.length; k++) {
-                const val = parseFloat(row[k]);
-                if (val > 0) headerMonthlyRepayment = val;
-              }
+            } else if (cellText.includes('MONTHLY REPAYMENT')) {
+              const val = parseFloat(row[4]);
+              if (val > 0) headerMonthlyRepayment = val;
             } else if ((cellText.includes('LOAN AMOUNT') || cellText === 'LOAN AMOUNT DISBURSED')) {
-              for (let k = j + 1; k < row.length; k++) {
-                const val = parseFloat(row[k]);
-                if (val > 0) headerLoanAmount = val;
-              }
+              const val = parseFloat(row[4]);
+              if (val > 0) headerLoanAmount = val;
             }
           }
         }
