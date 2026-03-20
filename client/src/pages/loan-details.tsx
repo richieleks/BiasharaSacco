@@ -438,12 +438,12 @@ export default function LoanDetails() {
                     {loan.status}
                   </Badge>
                 </div>
-                {loan.createdAt && (
+                {(loan.applicationDate || loan.createdAt) && (
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5" /> Application Date
                     </span>
-                    <span className="text-sm text-slate-900 dark:text-slate-100">{format(new Date(loan.createdAt), 'MMM dd, yyyy')}</span>
+                    <span className="text-sm text-slate-900 dark:text-slate-100">{format(new Date(loan.applicationDate || loan.createdAt), 'MMM dd, yyyy')}</span>
                   </div>
                 )}
                 {loan.purpose && (
