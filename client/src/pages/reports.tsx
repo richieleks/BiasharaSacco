@@ -15,6 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { BarChart3, Download, FileText, TrendingUp, Users, PiggyBank, HandCoins, Calendar, Filter, Printer, Mail, FileSpreadsheet, AlertTriangle, UserX, Clock, RefreshCw, Eye } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { Pagination } from "@/components/ui/pagination";
 
 interface ReportFilter {
   startDate?: Date;
@@ -53,6 +54,8 @@ interface ActivityReport {
 function MemberActivityTab() {
   const { toast } = useToast();
   const [activityView, setActivityView] = useState<'dormant' | 'inactive' | 'at-risk'>('dormant');
+  const [actPage, setActPage] = useState(1);
+  const [actPageSize, setActPageSize] = useState(25);
   const qc = useQueryClient();
 
   const { data: activityReport, isLoading: activityLoading } = useQuery<ActivityReport>({
@@ -119,7 +122,7 @@ function MemberActivityTab() {
             </div>
             <div
               className={`section-card p-4 cursor-pointer transition-all ${activityView === 'at-risk' ? 'ring-2 ring-amber-500' : ''}`}
-              onClick={() => setActivityView('at-risk')}
+              onClick={() => { setActivityView('at-risk'); setActPage(1); }}
             >
               <div className="flex items-center gap-2 mb-1">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -130,7 +133,7 @@ function MemberActivityTab() {
             </div>
             <div
               className={`section-card p-4 cursor-pointer transition-all ${activityView === 'inactive' ? 'ring-2 ring-orange-500' : ''}`}
-              onClick={() => setActivityView('inactive')}
+              onClick={() => { setActivityView('inactive'); setActPage(1); }}
             >
               <div className="flex items-center gap-2 mb-1">
                 <Clock className="h-4 w-4 text-orange-500" />
@@ -141,7 +144,7 @@ function MemberActivityTab() {
             </div>
             <div
               className={`section-card p-4 cursor-pointer transition-all ${activityView === 'dormant' ? 'ring-2 ring-red-500' : ''}`}
-              onClick={() => setActivityView('dormant')}
+              onClick={() => { setActivityView('dormant'); setActPage(1); }}
             >
               <div className="flex items-center gap-2 mb-1">
                 <UserX className="h-4 w-4 text-red-500" />
@@ -183,6 +186,7 @@ function MemberActivityTab() {
                   <p className="text-sm">No {activityView === 'at-risk' ? 'at-risk' : activityView} members found.</p>
                 </div>
               ) : (
+                <>
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -196,7 +200,9 @@ function MemberActivityTab() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {currentList.map((m) => (
+                    {currentList
+                      .slice((actPage - 1) * actPageSize, actPage * actPageSize)
+                      .map((m) => (
                       <TableRow key={m.id} data-testid={`row-activity-member-${m.id}`}>
                         <TableCell className="font-mono text-xs">{m.memberNumber}</TableCell>
                         <TableCell>
@@ -228,6 +234,17 @@ function MemberActivityTab() {
                     ))}
                   </TableBody>
                 </Table>
+                {currentList.length > 0 && (
+                  <Pagination
+                    currentPage={actPage}
+                    totalPages={Math.ceil(currentList.length / actPageSize)}
+                    onPageChange={setActPage}
+                    pageSize={actPageSize}
+                    onPageSizeChange={(size) => { setActPageSize(size); setActPage(1); }}
+                    totalItems={currentList.length}
+                  />
+                )}
+                </>
               )}
             </div>
           </div>
@@ -400,6 +417,10 @@ export default function Reports() {
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [filters, setFilters] = useState<ReportFilter>({});
+  const [rptPage, setRptPage] = useState(1);
+  const [rptPageSize, setRptPageSize] = useState(25);
+  const [delinqPage, setDelinqPage] = useState(1);
+  const [delinqPageSize, setDelinqPageSize] = useState(25);
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -534,7 +555,7 @@ export default function Reports() {
       </div>
 
       {/* Tabs for different report sections */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setRptPage(1); setDelinqPage(1); }} className="space-y-6">
         <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
@@ -635,6 +656,7 @@ export default function Reports() {
                       onClick={() => {
                         setActiveTab(report.id === 'financial' ? 'financial' : 'custom');
                         setSelectedReport(report.id);
+                        setRptPage(1);
                       }}
                       className="flex-1 rounded-xl"
                       variant="default"
@@ -755,7 +777,9 @@ export default function Reports() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reportData.map((row: any, idx: number) => (
+                    {reportData
+                      .slice((rptPage - 1) * rptPageSize, rptPage * rptPageSize)
+                      .map((row: any, idx: number) => (
                       <TableRow key={idx}>
                         <TableCell className="font-medium">{row.memberNumber}</TableCell>
                         <TableCell>{row.fullName}</TableCell>
@@ -773,6 +797,16 @@ export default function Reports() {
                     ))}
                   </TableBody>
                 </Table>
+                {reportData.length > 0 && (
+                  <Pagination
+                    currentPage={rptPage}
+                    totalPages={Math.ceil(reportData.length / rptPageSize)}
+                    onPageChange={setRptPage}
+                    pageSize={rptPageSize}
+                    onPageSizeChange={(size) => { setRptPageSize(size); setRptPage(1); }}
+                    totalItems={reportData.length}
+                  />
+                )}
               </div>
             </div>
           ) : reportData !== undefined ? (
@@ -934,7 +968,9 @@ export default function Reports() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {reportData.delinquent.loans.map((loan: any, idx: number) => (
+                            {reportData.delinquent.loans
+                              .slice((delinqPage - 1) * delinqPageSize, delinqPage * delinqPageSize)
+                              .map((loan: any, idx: number) => (
                               <TableRow key={idx}>
                                 <TableCell className="font-medium text-xs">{loan.loanNumber}</TableCell>
                                 <TableCell>
@@ -976,6 +1012,16 @@ export default function Reports() {
                             ))}
                           </TableBody>
                         </Table>
+                        {reportData.delinquent.loans.length > 0 && (
+                          <Pagination
+                            currentPage={delinqPage}
+                            totalPages={Math.ceil(reportData.delinquent.loans.length / delinqPageSize)}
+                            onPageChange={setDelinqPage}
+                            pageSize={delinqPageSize}
+                            onPageSizeChange={(size) => { setDelinqPageSize(size); setDelinqPage(1); }}
+                            totalItems={reportData.delinquent.loans.length}
+                          />
+                        )}
                       </div>
                     ) : (
                       <div className="text-center py-8 text-slate-500 dark:text-slate-400">
@@ -1017,7 +1063,7 @@ export default function Reports() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Select value={selectedReport || ''} onValueChange={(v) => { setSelectedReport(v); setActiveTab('custom'); }}>
+                  <Select value={selectedReport || ''} onValueChange={(v) => { setSelectedReport(v); setActiveTab('custom'); setRptPage(1); }}>
                     <SelectTrigger className="w-48">
                       <SelectValue placeholder="Select report..." />
                     </SelectTrigger>
@@ -1063,6 +1109,7 @@ export default function Reports() {
               </div>
               <div className="p-6 overflow-x-auto">
                 {selectedReport === 'savings' && (
+                  <>
                   <Table className="table-modern">
                     <TableHeader>
                       <TableRow>
@@ -1074,7 +1121,9 @@ export default function Reports() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {reportData.map((row: any, idx: number) => (
+                      {reportData
+                        .slice((rptPage - 1) * rptPageSize, rptPage * rptPageSize)
+                        .map((row: any, idx: number) => (
                         <TableRow key={idx}>
                           <TableCell className="font-medium">{row.accountNumber}</TableCell>
                           <TableCell>{row.memberName}</TableCell>
@@ -1087,8 +1136,20 @@ export default function Reports() {
                       ))}
                     </TableBody>
                   </Table>
+                  {reportData.length > 0 && (
+                    <Pagination
+                      currentPage={rptPage}
+                      totalPages={Math.ceil(reportData.length / rptPageSize)}
+                      onPageChange={setRptPage}
+                      pageSize={rptPageSize}
+                      onPageSizeChange={(size) => { setRptPageSize(size); setRptPage(1); }}
+                      totalItems={reportData.length}
+                    />
+                  )}
+                  </>
                 )}
                 {selectedReport === 'loans' && (
+                  <>
                   <Table className="table-modern">
                     <TableHeader>
                       <TableRow>
@@ -1101,7 +1162,9 @@ export default function Reports() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {reportData.map((row: any, idx: number) => (
+                      {reportData
+                        .slice((rptPage - 1) * rptPageSize, rptPage * rptPageSize)
+                        .map((row: any, idx: number) => (
                         <TableRow key={idx}>
                           <TableCell className="font-medium">{row.loanNumber}</TableCell>
                           <TableCell>{row.memberName}</TableCell>
@@ -1121,8 +1184,20 @@ export default function Reports() {
                       ))}
                     </TableBody>
                   </Table>
+                  {reportData.length > 0 && (
+                    <Pagination
+                      currentPage={rptPage}
+                      totalPages={Math.ceil(reportData.length / rptPageSize)}
+                      onPageChange={setRptPage}
+                      pageSize={rptPageSize}
+                      onPageSizeChange={(size) => { setRptPageSize(size); setRptPage(1); }}
+                      totalItems={reportData.length}
+                    />
+                  )}
+                  </>
                 )}
                 {selectedReport === 'transactions' && (
+                  <>
                   <Table className="table-modern">
                     <TableHeader>
                       <TableRow>
@@ -1135,7 +1210,9 @@ export default function Reports() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {reportData.map((row: any, idx: number) => (
+                      {reportData
+                        .slice((rptPage - 1) * rptPageSize, rptPage * rptPageSize)
+                        .map((row: any, idx: number) => (
                         <TableRow key={idx}>
                           <TableCell>{row.date ? new Date(row.date).toLocaleDateString() : '-'}</TableCell>
                           <TableCell className="font-medium text-xs">{row.referenceNumber}</TableCell>
@@ -1149,8 +1226,20 @@ export default function Reports() {
                       ))}
                     </TableBody>
                   </Table>
+                  {reportData.length > 0 && (
+                    <Pagination
+                      currentPage={rptPage}
+                      totalPages={Math.ceil(reportData.length / rptPageSize)}
+                      onPageChange={setRptPage}
+                      pageSize={rptPageSize}
+                      onPageSizeChange={(size) => { setRptPageSize(size); setRptPage(1); }}
+                      totalItems={reportData.length}
+                    />
+                  )}
+                  </>
                 )}
                 {selectedReport === 'audit' && (
+                  <>
                   <Table className="table-modern">
                     <TableHeader>
                       <TableRow>
@@ -1162,7 +1251,9 @@ export default function Reports() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {reportData.map((row: any, idx: number) => (
+                      {reportData
+                        .slice((rptPage - 1) * rptPageSize, rptPage * rptPageSize)
+                        .map((row: any, idx: number) => (
                         <TableRow key={idx}>
                           <TableCell className="text-xs">{row.timestamp ? new Date(row.timestamp).toLocaleString() : '-'}</TableCell>
                           <TableCell>{row.user}</TableCell>
@@ -1173,6 +1264,17 @@ export default function Reports() {
                       ))}
                     </TableBody>
                   </Table>
+                  {reportData.length > 0 && (
+                    <Pagination
+                      currentPage={rptPage}
+                      totalPages={Math.ceil(reportData.length / rptPageSize)}
+                      onPageChange={setRptPage}
+                      pageSize={rptPageSize}
+                      onPageSizeChange={(size) => { setRptPageSize(size); setRptPage(1); }}
+                      totalItems={reportData.length}
+                    />
+                  )}
+                  </>
                 )}
               </div>
             </div>
