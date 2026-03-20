@@ -9,6 +9,7 @@ import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Pagination } from "@/components/ui/pagination";
@@ -72,6 +73,7 @@ export default function Loans() {
   } = useServerPagination({ initialLimit: 10 });
 
   const [searchInput, setSearchInput] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -96,11 +98,14 @@ export default function Loans() {
 
   const queryParams = buildQueryParams();
   const baseUrl = isPersonalView ? '/api/loans/my-loans' : '/api/loans';
+  const fullQueryParams = statusFilter && statusFilter !== 'all' 
+    ? `${queryParams}&status=${statusFilter}` 
+    : queryParams;
 
   const { data: response, isLoading: pendingLoading } = useQuery<{ data: any[]; total: number }>({
-    queryKey: [baseUrl, queryParams],
+    queryKey: [baseUrl, fullQueryParams],
     queryFn: async () => {
-      const res = await fetch(`${baseUrl}?${queryParams}`, { credentials: 'include' });
+      const res = await fetch(`${baseUrl}?${fullQueryParams}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch loans');
       return res.json();
     },
@@ -255,15 +260,32 @@ export default function Loans() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2 mt-4 sm:mt-0 w-full sm:w-auto">
-            <div className="section-card p-4 relative flex items-center w-full sm:w-auto">
-              <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 h-4 w-4" />
-              <Input
-                data-testid="input-search-loans"
-                placeholder="Search loans..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                className="pl-10 w-full sm:w-64 border-0 bg-transparent focus-visible:ring-0"
-              />
+            <div className="flex gap-2 w-full sm:w-auto">
+              <div className="section-card p-4 relative flex items-center flex-1 sm:flex-none">
+                <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 h-4 w-4" />
+                <Input
+                  data-testid="input-search-loans"
+                  placeholder="Search loans..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  className="pl-10 w-full sm:w-64 border-0 bg-transparent focus-visible:ring-0"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={(value) => { setStatusFilter(value); setPage(1); }}>
+                <SelectTrigger className="w-[140px] rounded-xl border-slate-200 dark:border-slate-700">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="disbursed">Disbursed</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="rejected">Rejected</SelectItem>
+                  <SelectItem value="defaulted">Defaulted</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="flex gap-2">
               {canApplyForLoans && (

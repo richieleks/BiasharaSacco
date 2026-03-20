@@ -2555,22 +2555,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all loans
   app.get('/api/loans', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
-      const { search, page, limit } = req.query;
+      const { search, page, limit, status } = req.query;
 
       if (page || limit) {
         const pageNum = Math.max(1, parseInt(page as string) || 1);
         const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
+        const statusFilter = status && typeof status === 'string' ? status : undefined;
         const userRoles = req.member?.roles || ['member'];
         const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer', 'teller'].includes(role));
 
         if (isStaff) {
-          const result = await storage.getLoansPaginated(pageNum, limitNum, search as string);
+          const result = await storage.getLoansPaginated(pageNum, limitNum, search as string, undefined, statusFilter);
           return res.json(result);
         } else {
           const userId = getUserId(req);
           const member = userId ? await storage.getMemberByUserId(userId) : null;
           if (member) {
-            const result = await storage.getLoansPaginated(pageNum, limitNum, search as string, member.id);
+            const result = await storage.getLoansPaginated(pageNum, limitNum, search as string, member.id, statusFilter);
             return res.json(result);
           }
           return res.json({ data: [], total: 0 });
@@ -2641,11 +2642,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json([]);
       }
 
-      const { search, page, limit } = req.query;
+      const { search, page, limit, status } = req.query;
       if (page || limit) {
         const pageNum = Math.max(1, parseInt(page as string) || 1);
         const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
-        const result = await storage.getLoansPaginated(pageNum, limitNum, search as string, member.id);
+        const statusFilter = status && typeof status === 'string' ? status : undefined;
+        const result = await storage.getLoansPaginated(pageNum, limitNum, search as string, member.id, statusFilter);
         return res.json(result);
       }
 

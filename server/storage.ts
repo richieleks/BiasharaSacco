@@ -133,7 +133,7 @@ export interface IStorage {
 
   getMemberActiveLoans(memberId: number): Promise<LoanWithDetails[]>;
   getAllLoans(): Promise<LoanWithDetails[]>;
-  getLoansPaginated(page: number, limit: number, search?: string, memberId?: number): Promise<{ data: LoanWithDetails[]; total: number }>;
+  getLoansPaginated(page: number, limit: number, search?: string, memberId?: number, status?: string): Promise<{ data: LoanWithDetails[]; total: number }>;
   getLoanStats(memberId?: number): Promise<{ activeCount: number; totalOutstanding: number; defaultedCount: number; totalCount: number }>;
 
   // Transaction operations
@@ -914,10 +914,13 @@ export class DatabaseStorage implements IStorage {
     }));
   }
 
-  async getLoansPaginated(page: number, limit: number, search?: string, memberId?: number): Promise<{ data: LoanWithDetails[]; total: number }> {
+  async getLoansPaginated(page: number, limit: number, search?: string, memberId?: number, status?: string): Promise<{ data: LoanWithDetails[]; total: number }> {
     const conditions: any[] = [];
     if (memberId) {
       conditions.push(eq(loans.memberId, memberId));
+    }
+    if (status) {
+      conditions.push(eq(loans.status, status));
     }
     if (search) {
       conditions.push(
