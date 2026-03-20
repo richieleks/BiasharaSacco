@@ -220,8 +220,8 @@ export default function LoanDetails() {
   }
 
   const sortedTransactions = (transactions || []).slice().sort((a: any, b: any) => {
-    const dateA = new Date(a.createdAt || a.date || 0).getTime();
-    const dateB = new Date(b.createdAt || b.date || 0).getTime();
+    const dateA = new Date(a.transactionDate || a.createdAt || a.date || 0).getTime();
+    const dateB = new Date(b.transactionDate || b.createdAt || b.date || 0).getTime();
     if (dateA !== dateB) return dateA - dateB;
     const orderA = a.transactionType === 'loan_disbursement' ? 0 : 1;
     const orderB = b.transactionType === 'loan_disbursement' ? 0 : 1;
@@ -237,7 +237,7 @@ export default function LoanDetails() {
       if (txn.transactionType === 'loan_disbursement') runningBalance += amount;
       else if (txn.transactionType === 'loan_payment') runningBalance -= amount;
       return [
-        txn.createdAt ? format(new Date(txn.createdAt), 'yyyy-MM-dd') : 'N/A',
+        (txn.transactionDate || txn.createdAt) ? format(new Date(txn.transactionDate || txn.createdAt), 'yyyy-MM-dd') : 'N/A',
         txn.description || txn.transactionType || 'N/A',
         txn.transactionType === 'loan_payment' ? amount : '',
         txn.transactionType === 'loan_disbursement' ? amount : '',
@@ -507,7 +507,7 @@ export default function LoanDetails() {
                           return (
                             <TableRow key={txn.id}>
                               <TableCell className="text-xs whitespace-nowrap">
-                                {txn.createdAt ? format(new Date(txn.createdAt), 'MMM dd, yyyy') : 'N/A'}
+                                {(txn.transactionDate || txn.createdAt) ? format(new Date(txn.transactionDate || txn.createdAt), 'MMM dd, yyyy') : 'N/A'}
                               </TableCell>
                               <TableCell className="text-xs">{txn.description || txn.transactionType || 'N/A'}</TableCell>
                               <TableCell className="text-xs text-right tabular-nums whitespace-nowrap">

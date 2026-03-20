@@ -1171,7 +1171,10 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
         console.log(`Sheet "${sheetName}": Found ${loanGroups.length} loan group(s): ${loanGroups.map(g => `${g.category} (${g.disbursements.length} disbursements, ${g.repayments.length} repayments)`).join(', ')}`);
 
         for (const group of loanGroups) {
-          const disbursementDate = group.firstDisbursementDate || new Date();
+          const lastDisbursement = group.disbursements.length > 0
+            ? group.disbursements[group.disbursements.length - 1]
+            : null;
+          const disbursementDate = lastDisbursement ? lastDisbursement.date : (group.firstDisbursementDate || new Date());
 
           const principalAmount = (loanGroups.length === 1 && headerLoanAmount > 0)
             ? headerLoanAmount
