@@ -78,7 +78,7 @@ import {
 } from "@shared/schema";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
-import { eq, desc, sql, like, ilike, or, and, gte, lte, count, getTableColumns, inArray } from "drizzle-orm";
+import { eq, ne, desc, sql, like, ilike, or, and, gte, lte, count, getTableColumns, inArray } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -482,6 +482,7 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(members)
       .leftJoin(users, eq(members.userId, users.id))
+      .where(ne(members.status, 'exited'))
       .orderBy(desc(members.createdAt));
 
     const membersWithDetails = await Promise.all(
@@ -504,10 +505,13 @@ export class DatabaseStorage implements IStorage {
       .from(members)
       .leftJoin(users, eq(members.userId, users.id))
       .where(
-        or(
-          like(members.fullName, `%${query}%`),
-          like(members.memberNumber, `%${query}%`),
-          like(members.idNumber, `%${query}%`)
+        and(
+          ne(members.status, 'exited'),
+          or(
+            like(members.fullName, `%${query}%`),
+            like(members.memberNumber, `%${query}%`),
+            like(members.idNumber, `%${query}%`)
+          )
         )
       )
       .orderBy(desc(members.createdAt));
@@ -527,7 +531,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getMembersPaginated(page: number, limit: number, search?: string): Promise<{ data: MemberWithDetails[]; total: number }> {
-    const conditions: any[] = [];
+    const conditions: any[] = [ne(members.status, 'exited')];
     if (search) {
       conditions.push(
         or(
@@ -539,7 +543,7 @@ export class DatabaseStorage implements IStorage {
       );
     }
 
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    const whereClause = and(...conditions);
 
     const [countResult] = await db
       .select({ value: count() })
