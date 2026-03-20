@@ -236,7 +236,7 @@ export default function DataImport() {
           ? `Successfully processed ${data.successfulImports} loan repayments totaling UGX ${(data as any).totalAmount?.toLocaleString() || 0}.`
           : importType === 'bulk-savings'
           ? `Successfully processed ${data.successfulImports} savings deposits totaling UGX ${(data as any).totalAmount?.toLocaleString() || 0}.`
-          : `Successfully imported ${data.importedLoans || 0} loans.`;
+          : `Successfully imported ${data.importedLoans || 0} loan(s) from ${data.processedSheets || 1} of ${data.totalSheets || 1} sheet(s).`;
         
         toast({ title: "Import Successful",
           description: successMessage, variant: "success" });
