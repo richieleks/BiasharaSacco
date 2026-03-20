@@ -1121,7 +1121,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           const isSpecialDisbursement = detailsLower === 'special loan' || detailsLower.startsWith('special loan ');
           const isSpecialRepayment = detailsLower.includes('installment - special') || detailsLower.includes('instalment - special');
 
-          const isOrdinaryDisbursement = detailsLower.includes('disbursed') ||
+          const isOrdinaryDisbursement = detailsLower.includes('disburs') ||
                                           detailsLower.includes('loan amount') ||
                                           detailsLower.includes('top up') ||
                                           detailsLower.includes('top-up') ||
