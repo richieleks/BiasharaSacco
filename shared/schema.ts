@@ -128,7 +128,7 @@ export const loans = pgTable("loans", {
   uuid: uuid("uuid").defaultRandom().unique(),
   memberId: integer("member_id").references(() => members.id).notNull(),
   loanNumber: varchar("loan_number").unique().notNull(),
-  loanType: varchar("loan_type", { enum: ["personal", "business", "emergency", "asset", "development"] }).default("personal"),
+  loanType: varchar("loan_type").default("normal_loan"),
   principalAmount: decimal("principal_amount", { precision: 15, scale: 2 }).notNull(),
   interestRate: decimal("interest_rate", { precision: 5, scale: 4 }).notNull(),
   termMonths: integer("term_months").notNull(),

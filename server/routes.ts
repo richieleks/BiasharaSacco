@@ -5147,7 +5147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               disbursementDate: l.disbursementDate || null,
               daysOverdue,
               riskLevel,
-              loanType: l.loanType || 'personal',
+              loanType: l.loanType || 'normal_loan',
               interestRate: l.interestRate ? (parseFloat(l.interestRate) * 100).toFixed(1) + '%' : '-',
             };
           }).sort((a: any, b: any) => b.daysOverdue - a.daysOverdue);

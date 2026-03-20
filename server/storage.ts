@@ -2324,7 +2324,7 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Loan not found');
     }
 
-    const loanType = loan.loanType ?? 'personal';
+    const loanType = loan.loanType ?? 'normal_loan';
     const interestRate = await this.getInterestRateByProduct(loanType);
     const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loanType, Number(loan.principalAmount));
 
@@ -2363,7 +2363,7 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Loan not found');
     }
 
-    const loanTypeName = loan.loanType ?? 'personal';
+    const loanTypeName = loan.loanType ?? 'normal_loan';
     const interestRate = await this.getInterestRateByProduct(loanTypeName);
     const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loanTypeName, Number(loan.principalAmount));
 
@@ -2394,7 +2394,7 @@ export class DatabaseStorage implements IStorage {
 
     await db.delete(amortizationSchedules).where(eq(amortizationSchedules.loanId, loanId));
 
-    const loanTypeName = loan.loanType ?? 'personal';
+    const loanTypeName = loan.loanType ?? 'normal_loan';
     const rate = newRate || InterestCalculator.getRecommendedRate(loanTypeName, Number(loan.principalAmount));
 
     const activeLoanTypes = await this.getActiveLoanTypes();
@@ -2446,7 +2446,7 @@ export class DatabaseStorage implements IStorage {
     let revisedSchedule: AmortizationSchedule[] = [];
     if (newBalance > 0) {
       const remainingTerm = remainingSchedule.length;
-      const interestRate = await this.getInterestRateByProduct(loan.loanType ?? 'personal');
+      const interestRate = await this.getInterestRateByProduct(loan.loanType ?? 'normal_loan');
       const rate = interestRate ? Number(interestRate.baseRate) : 12;
 
       const newScheduleData = InterestCalculator.generateAmortizationSchedule(

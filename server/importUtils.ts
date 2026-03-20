@@ -900,23 +900,18 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
     const allMembers = await storage.getAllMembers();
     const allLoanTypes = await storage.getAllLoanTypes();
 
-    let fallbackLoanTypeName: 'personal' | 'business' | 'emergency' | 'asset' | 'development' = 'personal';
+    let fallbackLoanTypeName = 'normal_loan';
     if (options?.loanTypeId) {
       const loanTypeRecord = await storage.getLoanType(options.loanTypeId);
       if (loanTypeRecord) {
-        const nameMap: Record<string, 'personal' | 'business' | 'emergency' | 'asset' | 'development'> = {
-          'personal': 'personal', 'business': 'business', 'emergency': 'emergency',
-          'asset': 'asset', 'development': 'development'
-        };
-        fallbackLoanTypeName = nameMap[loanTypeRecord.name.toLowerCase()] || 'personal';
-        console.log(`Fallback loan type from dropdown: ${loanTypeRecord.displayName} (${fallbackLoanTypeName})`);
+        fallbackLoanTypeName = loanTypeRecord.name;
+        console.log(`Fallback loan type from dropdown: ${loanTypeRecord.displayName} (${loanTypeRecord.name})`);
       }
     }
 
-    const loanTypeEnum = ['personal', 'business', 'emergency', 'asset', 'development'] as const;
-    type LoanTypeEnum = typeof loanTypeEnum[number];
+    const defaultLoanType = allLoanTypes.length > 0 ? allLoanTypes[0].name : 'normal_loan';
 
-    const detectLoanTypeFromDetails = (transactionRows: any[], headerRowIdx: number): { detected: LoanTypeEnum; source: string } => {
+    const detectLoanTypeFromDetails = (transactionRows: any[], headerRowIdx: number): { detected: string; source: string } => {
       const detailTexts: string[] = [];
       for (let i = headerRowIdx + 1; i < transactionRows.length; i++) {
         const row = transactionRows[i] as any[];
@@ -926,28 +921,14 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
       }
       const allDetailsJoined = detailTexts.join(' ').toLowerCase();
 
-      const keywordMap: { keywords: string[]; type: LoanTypeEnum }[] = [
-        { keywords: ['emergency'], type: 'emergency' },
-        { keywords: ['business'], type: 'business' },
-        { keywords: ['asset financing', 'asset loan'], type: 'asset' },
-        { keywords: ['development', 'school fees', 'education'], type: 'development' },
-        { keywords: ['special loan', 'special'], type: 'development' },
-        { keywords: ['top up', 'top-up', 'topup'], type: 'personal' },
-        { keywords: ['personal'], type: 'personal' },
-      ];
-
-      const dbNameToEnum: Record<string, LoanTypeEnum> = {};
       for (const dbType of allLoanTypes) {
         const dbName = dbType.name.toLowerCase();
-        const directMatch = loanTypeEnum.find(e => e === dbName);
-        if (directMatch) {
-          dbNameToEnum[dbName] = directMatch;
-        } else {
-          for (const mapping of keywordMap) {
-            if (mapping.keywords.some(kw => dbName.includes(kw) || dbType.displayName.toLowerCase().includes(kw))) {
-              dbNameToEnum[dbName] = mapping.type;
-              break;
-            }
+        const dbDisplayName = dbType.displayName.toLowerCase();
+        for (const detail of detailTexts) {
+          const d = detail.toLowerCase();
+          if (d.includes(dbName) || d.includes(dbDisplayName) ||
+              d.includes(dbName.replace(/_/g, ' ')) || d.includes(dbDisplayName.replace(/_/g, ' '))) {
+            return { detected: dbType.name, source: `matched DB loan type "${dbType.displayName}" from detail: "${detail}"` };
           }
         }
       }
@@ -955,22 +936,9 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
       for (const dbType of allLoanTypes) {
         const dbName = dbType.name.toLowerCase();
         const dbDisplayName = dbType.displayName.toLowerCase();
-        for (const detail of detailTexts) {
-          const d = detail.toLowerCase();
-          if (d.includes(dbName) || d.includes(dbDisplayName)) {
-            const enumMatch = dbNameToEnum[dbName];
-            if (enumMatch) {
-              return { detected: enumMatch, source: `matched DB loan type "${dbType.displayName}" from detail: "${detail}"` };
-            }
-          }
-        }
-      }
-
-      for (const mapping of keywordMap) {
-        for (const kw of mapping.keywords) {
-          if (allDetailsJoined.includes(kw)) {
-            return { detected: mapping.type, source: `keyword "${kw}" detected in transaction details` };
-          }
+        if (allDetailsJoined.includes(dbName) || allDetailsJoined.includes(dbDisplayName) ||
+            allDetailsJoined.includes(dbName.replace(/_/g, ' ')) || allDetailsJoined.includes(dbDisplayName.replace(/_/g, ' '))) {
+          return { detected: dbType.name, source: `keyword match for DB loan type "${dbType.displayName}"` };
         }
       }
 
@@ -1090,7 +1058,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
 
         interface LoanGroup {
           category: string;
-          loanType: LoanTypeEnum;
+          loanType: string;
           disbursements: { date: Date; amount: number; details: string; rowIndex: number }[];
           repayments: { date: Date; amount: number; details: string; rowIndex: number }[];
           totalDisbursed: number;
@@ -1099,11 +1067,21 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           lastInstallmentAmount: number;
         }
 
-        const { detected: detectedOrdinaryType } = detectLoanTypeFromDetails(rawData, headerRowIndex);
+        const specialLoanType = allLoanTypes.find(lt =>
+          lt.name.toLowerCase().includes('special') || lt.displayName.toLowerCase().includes('special')
+        );
+
+        const normalLoanType = allLoanTypes.find(lt =>
+          lt.name.toLowerCase().includes('normal') || lt.displayName.toLowerCase().includes('normal')
+        ) || allLoanTypes.find(lt =>
+          !lt.name.toLowerCase().includes('special') && !lt.displayName.toLowerCase().includes('special')
+        );
+
+        const ordinaryLoanTypeName = normalLoanType ? normalLoanType.name : fallbackLoanTypeName;
 
         const ordinaryGroup: LoanGroup = {
           category: 'ordinary',
-          loanType: detectedOrdinaryType,
+          loanType: ordinaryLoanTypeName,
           disbursements: [],
           repayments: [],
           totalDisbursed: 0,
@@ -1114,7 +1092,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
 
         const specialGroup: LoanGroup = {
           category: 'special',
-          loanType: 'development' as LoanTypeEnum,
+          loanType: specialLoanType ? specialLoanType.name : fallbackLoanTypeName,
           disbursements: [],
           repayments: [],
           totalDisbursed: 0,
