@@ -880,6 +880,20 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(loans.id, id))
       .returning();
+
+    if (parseFloat(loan.outstandingBalance || '0') <= 0) {
+      const [completed] = await db
+        .update(loans)
+        .set({
+          status: 'completed',
+          outstandingBalance: '0',
+          updatedAt: new Date(),
+        })
+        .where(eq(loans.id, id))
+        .returning();
+      return completed;
+    }
+
     return loan;
   }
 
