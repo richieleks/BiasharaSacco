@@ -239,8 +239,8 @@ function MemberActivityTab() {
                     currentPage={actPage}
                     totalPages={Math.ceil(currentList.length / actPageSize)}
                     onPageChange={setActPage}
-                    pageSize={actPageSize}
-                    onPageSizeChange={(size) => { setActPageSize(size); setActPage(1); }}
+                    itemsPerPage={actPageSize}
+                    onItemsPerPageChange={(size) => { setActPageSize(size); setActPage(1); }}
                     totalItems={currentList.length}
                   />
                 )}
@@ -802,8 +802,8 @@ export default function Reports() {
                     currentPage={rptPage}
                     totalPages={Math.ceil(reportData.length / rptPageSize)}
                     onPageChange={setRptPage}
-                    pageSize={rptPageSize}
-                    onPageSizeChange={(size) => { setRptPageSize(size); setRptPage(1); }}
+                    itemsPerPage={rptPageSize}
+                    onItemsPerPageChange={(size) => { setRptPageSize(size); setRptPage(1); }}
                     totalItems={reportData.length}
                   />
                 )}
@@ -1017,8 +1017,8 @@ export default function Reports() {
                             currentPage={delinqPage}
                             totalPages={Math.ceil(reportData.delinquent.loans.length / delinqPageSize)}
                             onPageChange={setDelinqPage}
-                            pageSize={delinqPageSize}
-                            onPageSizeChange={(size) => { setDelinqPageSize(size); setDelinqPage(1); }}
+                            itemsPerPage={delinqPageSize}
+                            onItemsPerPageChange={(size) => { setDelinqPageSize(size); setDelinqPage(1); }}
                             totalItems={reportData.delinquent.loans.length}
                           />
                         )}
@@ -1141,8 +1141,8 @@ export default function Reports() {
                       currentPage={rptPage}
                       totalPages={Math.ceil(reportData.length / rptPageSize)}
                       onPageChange={setRptPage}
-                      pageSize={rptPageSize}
-                      onPageSizeChange={(size) => { setRptPageSize(size); setRptPage(1); }}
+                      itemsPerPage={rptPageSize}
+                      onItemsPerPageChange={(size) => { setRptPageSize(size); setRptPage(1); }}
                       totalItems={reportData.length}
                     />
                   )}
@@ -1189,8 +1189,8 @@ export default function Reports() {
                       currentPage={rptPage}
                       totalPages={Math.ceil(reportData.length / rptPageSize)}
                       onPageChange={setRptPage}
-                      pageSize={rptPageSize}
-                      onPageSizeChange={(size) => { setRptPageSize(size); setRptPage(1); }}
+                      itemsPerPage={rptPageSize}
+                      onItemsPerPageChange={(size) => { setRptPageSize(size); setRptPage(1); }}
                       totalItems={reportData.length}
                     />
                   )}
@@ -1231,8 +1231,8 @@ export default function Reports() {
                       currentPage={rptPage}
                       totalPages={Math.ceil(reportData.length / rptPageSize)}
                       onPageChange={setRptPage}
-                      pageSize={rptPageSize}
-                      onPageSizeChange={(size) => { setRptPageSize(size); setRptPage(1); }}
+                      itemsPerPage={rptPageSize}
+                      onItemsPerPageChange={(size) => { setRptPageSize(size); setRptPage(1); }}
                       totalItems={reportData.length}
                     />
                   )}
@@ -1269,8 +1269,8 @@ export default function Reports() {
                       currentPage={rptPage}
                       totalPages={Math.ceil(reportData.length / rptPageSize)}
                       onPageChange={setRptPage}
-                      pageSize={rptPageSize}
-                      onPageSizeChange={(size) => { setRptPageSize(size); setRptPage(1); }}
+                      itemsPerPage={rptPageSize}
+                      onItemsPerPageChange={(size) => { setRptPageSize(size); setRptPage(1); }}
                       totalItems={reportData.length}
                     />
                   )}
