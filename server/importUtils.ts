@@ -1007,6 +1007,9 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
       let closingBalance = 0;
       let interestRateValue = 0;
       let tenure = 0;
+      let headerLoanAmount = 0;
+      let headerMonthlyRepayment = 0;
+      let headerTermMonths = 0;
 
       for (let i = 0; i < Math.min(headerRowIndex, rawData.length); i++) {
         const row = rawData[i] as any[];
@@ -1023,12 +1026,25 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               interestRateValue = parseFloat(row[j + 1]) || 0;
             } else if (cellText.includes('TENURE') && row[j + 1] !== undefined) {
               tenure = parseInt(row[j + 1]) || 12;
+            } else if ((cellText.includes('TIME') && cellText.includes('MONTH')) && row[j + 1] !== undefined) {
+              const val = parseInt(row[j + 1]);
+              if (val > 0) headerTermMonths = val;
+            } else if (cellText.includes('MONTHLY REPAYMENT') && row[j + 1] !== undefined) {
+              for (let k = j + 1; k < row.length; k++) {
+                const val = parseFloat(row[k]);
+                if (val > 0) headerMonthlyRepayment = val;
+              }
+            } else if ((cellText.includes('LOAN AMOUNT') || cellText === 'LOAN AMOUNT DISBURSED')) {
+              for (let k = j + 1; k < row.length; k++) {
+                const val = parseFloat(row[k]);
+                if (val > 0) headerLoanAmount = val;
+              }
             }
           }
         }
       }
 
-      console.log(`Sheet "${sheetName}" loan info:`, { accountName, accountNumber, closingBalance, interestRateValue, tenure });
+      console.log(`Sheet "${sheetName}" loan info:`, { accountName, accountNumber, closingBalance, interestRateValue, tenure, headerLoanAmount, headerMonthlyRepayment, headerTermMonths });
 
       if (!accountName) {
         const sheetNameTrimmed = sheetName.trim();
@@ -1116,12 +1132,17 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           if (!row || row.length < 2 || !row[0]) continue;
 
           const postingDate = excelDateToDate(row[0]);
+          if (i <= headerRowIndex + 3) {
+            console.log(`Sheet "${sheetName}" loan row ${i - headerRowIndex}: raw date=${JSON.stringify(row[0])} (type=${typeof row[0]}), parsed=${postingDate.toISOString()}, details="${row[1]}", debit=${row[2]}, credit=${row[3]}`);
+          }
           const details = row[1]?.toString() || '';
           const detailsLower = details.toLowerCase().trim();
           if (!detailsLower) continue;
 
           const amtDebited = parseFloat(row[2]) || 0;
           const principalRepyt = parseFloat(row[3]) || 0;
+          const interestAmt = parseFloat(row[4]) || 0;
+          const balanceAmt = parseFloat(row[5]) || 0;
 
           const isSpecialDisbursement = detailsLower === 'special loan' || detailsLower.startsWith('special loan ');
           const isSpecialRepayment = detailsLower.includes('installment - special') || detailsLower.includes('instalment - special');
@@ -1141,10 +1162,11 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               if (!specialGroup.firstDisbursementDate) specialGroup.firstDisbursementDate = postingDate;
             }
           } else if (isSpecialRepayment) {
-            if (amtDebited > 0) {
-              specialGroup.repayments.push({ date: postingDate, amount: amtDebited, details, rowIndex: i });
-              specialGroup.totalRepaid += amtDebited;
-              specialGroup.lastInstallmentAmount = amtDebited;
+            const repayAmount = amtDebited > 0 ? amtDebited : Math.abs(principalRepyt);
+            if (repayAmount > 0) {
+              specialGroup.repayments.push({ date: postingDate, amount: repayAmount, details, rowIndex: i });
+              specialGroup.totalRepaid += repayAmount;
+              specialGroup.lastInstallmentAmount = repayAmount;
             }
           } else if (isOrdinaryDisbursement) {
             const amount = Math.abs(principalRepyt) || Math.abs(amtDebited);
@@ -1175,17 +1197,33 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
         console.log(`Sheet "${sheetName}": Found ${loanGroups.length} loan group(s): ${loanGroups.map(g => `${g.category} (${g.disbursements.length} disbursements, ${g.repayments.length} repayments)`).join(', ')}`);
 
         for (const group of loanGroups) {
-          const outstandingBalance = Math.max(0, group.totalDisbursed - group.totalRepaid);
           const disbursementDate = group.firstDisbursementDate || new Date();
+
+          const principalAmount = (loanGroups.length === 1 && headerLoanAmount > 0)
+            ? headerLoanAmount
+            : (headerLoanAmount > 0 && group.category === 'ordinary')
+              ? headerLoanAmount
+              : group.totalDisbursed;
+
+          const outstandingBalance = (loanGroups.length === 1 && closingBalance > 0)
+            ? closingBalance
+            : (closingBalance > 0 && group.category === 'ordinary')
+              ? closingBalance
+              : Math.max(0, group.totalDisbursed - group.totalRepaid);
+
+          const termMonths = headerTermMonths || tenure || 12;
+          const monthlyPayment = (group.category === 'ordinary' && headerMonthlyRepayment > 0)
+            ? headerMonthlyRepayment
+            : group.lastInstallmentAmount;
 
           const loanData = {
             memberId: member.id,
             loanNumber: `LOAN${String(Date.now()).slice(-6)}${group.category === 'special' ? 'S' : ''}`,
             loanType: group.loanType,
-            principalAmount: group.totalDisbursed.toString(),
+            principalAmount: principalAmount.toString(),
             interestRate: interestRateValue.toString(),
-            termMonths: tenure || 12,
-            monthlyPayment: group.lastInstallmentAmount.toString(),
+            termMonths: termMonths,
+            monthlyPayment: monthlyPayment.toString(),
             outstandingBalance: outstandingBalance.toString(),
             status: (outstandingBalance > 0 ? 'active' : 'completed') as 'active' | 'completed',
             purpose: `Imported from loan statement - ${group.category} loan`,
@@ -1199,7 +1237,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           const createdLoan = await storage.createLoan(validatedLoanData);
 
           result.importedLoans = (result.importedLoans || 0) + 1;
-          console.log(`✓ Sheet "${sheetName}": Created ${group.category} (${group.loanType}) loan ${loanData.loanNumber} for ${member.fullName} - Disbursed: UGX ${group.totalDisbursed.toLocaleString()}, Outstanding: UGX ${outstandingBalance.toLocaleString()}`);
+          console.log(`✓ Sheet "${sheetName}": Created ${group.category} (${group.loanType}) loan ${loanData.loanNumber} for ${member.fullName} - Principal: UGX ${principalAmount.toLocaleString()}, Outstanding: UGX ${outstandingBalance.toLocaleString()} (header loan amount: ${headerLoanAmount}, header closing balance: ${closingBalance})`);
 
           const transactionEntries = [];
 
