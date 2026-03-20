@@ -916,7 +916,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
     const loanTypeEnum = ['personal', 'business', 'emergency', 'asset', 'development'] as const;
     type LoanTypeEnum = typeof loanTypeEnum[number];
 
-    function detectLoanTypeFromDetails(transactionRows: any[], headerRowIdx: number): { detected: LoanTypeEnum; source: string } {
+    const detectLoanTypeFromDetails = (transactionRows: any[], headerRowIdx: number): { detected: LoanTypeEnum; source: string } => {
       const detailTexts: string[] = [];
       for (let i = headerRowIdx + 1; i < transactionRows.length; i++) {
         const row = transactionRows[i] as any[];
@@ -975,7 +975,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
       }
 
       return { detected: fallbackLoanTypeName, source: 'fallback (no loan type detected from details)' };
-    }
+    };
 
     for (const sheetName of sheetsWithData) {
       const worksheet = workbook.Sheets[sheetName];
@@ -1008,18 +1008,18 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
       let interestRateValue = 0;
       let tenure = 0;
 
-      for (let i = 0; i < Math.min(5, rawData.length); i++) {
+      for (let i = 0; i < Math.min(headerRowIndex, rawData.length); i++) {
         const row = rawData[i] as any[];
         if (row && row.length > 1) {
           for (let j = 0; j < row.length; j++) {
             const cellText = row[j]?.toString().toUpperCase().trim() || '';
-            if (cellText.includes('ACCOUNT NAME') && row[j + 1]) {
-              accountName = row[j + 1]?.toString() || '';
-            } else if (cellText.includes('ACCOUNT NUMBER') && row[j + 1]) {
-              accountNumber = row[j + 1]?.toString() || '';
+            if ((cellText.includes('ACCOUNT NAME') || cellText === 'ACCOUNT NAME:') && row[j + 1]) {
+              accountName = row[j + 1]?.toString().trim() || '';
+            } else if ((cellText.includes('ACCOUNT NUMBER') || cellText === 'ACCOUNT NUMBER:') && row[j + 1]) {
+              accountNumber = row[j + 1]?.toString().trim() || '';
             } else if (cellText.includes('CLOSING BALANCE') && row[j + 1] !== undefined) {
               closingBalance = parseFloat(row[j + 1]) || 0;
-            } else if (cellText === 'INTEREST RATE' && row[j + 1] !== undefined) {
+            } else if ((cellText === 'INTEREST RATE' || cellText === 'INT.' || cellText === 'INT') && row[j + 1] !== undefined) {
               interestRateValue = parseFloat(row[j + 1]) || 0;
             } else if (cellText.includes('TENURE') && row[j + 1] !== undefined) {
               tenure = parseInt(row[j + 1]) || 12;
@@ -1031,6 +1031,14 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
       console.log(`Sheet "${sheetName}" loan info:`, { accountName, accountNumber, closingBalance, interestRateValue, tenure });
 
       if (!accountName) {
+        const sheetNameTrimmed = sheetName.trim();
+        if (sheetNameTrimmed && sheetNameTrimmed.length > 2) {
+          accountName = sheetNameTrimmed;
+          console.log(`Sheet "${sheetName}": Using sheet name as account name: "${accountName}"`);
+        }
+      }
+
+      if (!accountName) {
         console.log(`Sheet "${sheetName}": No account name found, skipping`);
         result.skippedSheets = (result.skippedSheets || 0) + 1;
         result.exceptions.push({ sheet: sheetName, type: 'skipped_no_account_name', detail: 'Could not extract account holder name from statement header' });
@@ -1040,23 +1048,6 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
       result.totalRows++;
 
       try {
-        let firstDisbursementDate: Date | null = null;
-        let lastInstallmentAmount = 0;
-
-        for (let i = headerRowIndex + 1; i < rawData.length; i++) {
-          const row = rawData[i] as any[];
-          if (!row || row.length < 3) continue;
-          const details = row[1]?.toString().toLowerCase() || '';
-          const amt = parseFloat(row[2]) || 0;
-
-          if (!firstDisbursementDate && (details.includes('disbursed') || details.includes('loan amount'))) {
-            firstDisbursementDate = excelDateToDate(row[0]);
-          }
-          if (amt > 0 && (details.includes('installment') || details.includes('instalment'))) {
-            lastInstallmentAmount = amt;
-          }
-        }
-
         let member = allMembers.find(m =>
           m.accountNumber === accountNumber ||
           m.staffAccountNumber === accountNumber
@@ -1085,100 +1076,181 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
 
         console.log(`Sheet "${sheetName}": Matched to member ${member.fullName} (${member.memberNumber})`);
 
-        const { detected: detectedLoanType, source: loanTypeSource } = detectLoanTypeFromDetails(rawData, headerRowIndex);
-        console.log(`Sheet "${sheetName}": Loan type detected as "${detectedLoanType}" (${loanTypeSource})`);
+        interface LoanGroup {
+          category: string;
+          loanType: LoanTypeEnum;
+          disbursements: { date: Date; amount: number; details: string; rowIndex: number }[];
+          repayments: { date: Date; amount: number; details: string; rowIndex: number }[];
+          totalDisbursed: number;
+          totalRepaid: number;
+          firstDisbursementDate: Date | null;
+          lastInstallmentAmount: number;
+        }
 
-        const disbursementDate = firstDisbursementDate || new Date();
+        const { detected: detectedOrdinaryType } = detectLoanTypeFromDetails(rawData, headerRowIndex);
 
-        const loanData = {
-          memberId: member.id,
-          loanNumber: `LOAN${String(Date.now()).slice(-6)}`,
-          loanType: detectedLoanType,
-          principalAmount: closingBalance.toString(),
-          interestRate: interestRateValue.toString(),
-          termMonths: tenure || 12,
-          monthlyPayment: lastInstallmentAmount.toString(),
-          outstandingBalance: closingBalance.toString(),
-          status: 'active' as const,
-          purpose: `Imported from loan statement (${loanTypeSource})`,
-          applicationDate: disbursementDate,
-          approvalDate: disbursementDate,
-          disbursementDate: disbursementDate,
-          currentSavings: '0'
+        const ordinaryGroup: LoanGroup = {
+          category: 'ordinary',
+          loanType: detectedOrdinaryType,
+          disbursements: [],
+          repayments: [],
+          totalDisbursed: 0,
+          totalRepaid: 0,
+          firstDisbursementDate: null,
+          lastInstallmentAmount: 0,
         };
 
-        const validatedLoanData = insertLoanSchema.parse(loanData);
-        const createdLoan = await storage.createLoan(validatedLoanData);
+        const specialGroup: LoanGroup = {
+          category: 'special',
+          loanType: 'development' as LoanTypeEnum,
+          disbursements: [],
+          repayments: [],
+          totalDisbursed: 0,
+          totalRepaid: 0,
+          firstDisbursementDate: null,
+          lastInstallmentAmount: 0,
+        };
 
-        result.importedLoans = (result.importedLoans || 0) + 1;
-        console.log(`✓ Sheet "${sheetName}": Created ${detectedLoanType} loan ${loanData.loanNumber} for ${member.fullName} - Balance: UGX ${closingBalance.toLocaleString()}`);
-
-        const transactionEntries = [];
         for (let i = headerRowIndex + 1; i < rawData.length; i++) {
           const row = rawData[i] as any[];
-          if (!row || row.length < 3 || !row[0]) continue;
+          if (!row || row.length < 2 || !row[0]) continue;
 
           const postingDate = excelDateToDate(row[0]);
           const details = row[1]?.toString() || '';
-          const detailsLower = details.toLowerCase();
+          const detailsLower = details.toLowerCase().trim();
+          if (!detailsLower) continue;
+
           const amtDebited = parseFloat(row[2]) || 0;
           const principalRepyt = parseFloat(row[3]) || 0;
 
-          const isDisbursement = detailsLower.includes('disbursed') ||
-                                 detailsLower.includes('loan amount') ||
-                                 detailsLower.includes('top up') ||
-                                 detailsLower.includes('top-up') ||
-                                 detailsLower.includes('topup');
+          const isSpecialDisbursement = detailsLower === 'special loan' || detailsLower.startsWith('special loan ');
+          const isSpecialRepayment = detailsLower.includes('installment - special') || detailsLower.includes('instalment - special');
 
-          if (isDisbursement) {
+          const isOrdinaryDisbursement = detailsLower.includes('disbursed') ||
+                                          detailsLower.includes('loan amount') ||
+                                          detailsLower.includes('top up') ||
+                                          detailsLower.includes('top-up') ||
+                                          detailsLower.includes('topup') ||
+                                          detailsLower.includes('loan topup');
+
+          if (isSpecialDisbursement) {
             const amount = Math.abs(principalRepyt) || Math.abs(amtDebited);
             if (amount > 0) {
-              transactionEntries.push({
-                memberId: member.id,
-                loanId: createdLoan.id,
-                transactionType: 'loan_disbursement' as const,
-                amount: amount.toString(),
-                description: details,
-                referenceNumber: `LTX${Date.now()}_${i}`,
-                status: 'completed' as const,
-                processedBy: options?.userId,
-                transactionDate: postingDate
-              });
+              specialGroup.disbursements.push({ date: postingDate, amount, details, rowIndex: i });
+              specialGroup.totalDisbursed += amount;
+              if (!specialGroup.firstDisbursementDate) specialGroup.firstDisbursementDate = postingDate;
             }
+          } else if (isSpecialRepayment) {
+            if (amtDebited > 0) {
+              specialGroup.repayments.push({ date: postingDate, amount: amtDebited, details, rowIndex: i });
+              specialGroup.totalRepaid += amtDebited;
+              specialGroup.lastInstallmentAmount = amtDebited;
+            }
+          } else if (isOrdinaryDisbursement) {
+            const amount = Math.abs(principalRepyt) || Math.abs(amtDebited);
+            if (amount > 0) {
+              ordinaryGroup.disbursements.push({ date: postingDate, amount, details, rowIndex: i });
+              ordinaryGroup.totalDisbursed += amount;
+              if (!ordinaryGroup.firstDisbursementDate) ordinaryGroup.firstDisbursementDate = postingDate;
+            }
+          } else if (amtDebited > 0 && (detailsLower.includes('installment') || detailsLower.includes('instalment'))) {
+            ordinaryGroup.repayments.push({ date: postingDate, amount: amtDebited, details, rowIndex: i });
+            ordinaryGroup.totalRepaid += amtDebited;
+            ordinaryGroup.lastInstallmentAmount = amtDebited;
           } else if (amtDebited > 0) {
+            ordinaryGroup.repayments.push({ date: postingDate, amount: amtDebited, details, rowIndex: i });
+            ordinaryGroup.totalRepaid += amtDebited;
+          }
+        }
+
+        const loanGroups = [ordinaryGroup, specialGroup].filter(g =>
+          g.disbursements.length > 0 || g.repayments.length > 0
+        );
+
+        if (loanGroups.length === 0) {
+          result.exceptions.push({ sheet: sheetName, type: 'processing_error', detail: 'No loan transactions found in this sheet' });
+          continue;
+        }
+
+        console.log(`Sheet "${sheetName}": Found ${loanGroups.length} loan group(s): ${loanGroups.map(g => `${g.category} (${g.disbursements.length} disbursements, ${g.repayments.length} repayments)`).join(', ')}`);
+
+        for (const group of loanGroups) {
+          const outstandingBalance = Math.max(0, group.totalDisbursed - group.totalRepaid);
+          const disbursementDate = group.firstDisbursementDate || new Date();
+
+          const loanData = {
+            memberId: member.id,
+            loanNumber: `LOAN${String(Date.now()).slice(-6)}${group.category === 'special' ? 'S' : ''}`,
+            loanType: group.loanType,
+            principalAmount: group.totalDisbursed.toString(),
+            interestRate: interestRateValue.toString(),
+            termMonths: tenure || 12,
+            monthlyPayment: group.lastInstallmentAmount.toString(),
+            outstandingBalance: outstandingBalance.toString(),
+            status: (outstandingBalance > 0 ? 'active' : 'completed') as 'active' | 'completed',
+            purpose: `Imported from loan statement - ${group.category} loan`,
+            applicationDate: disbursementDate,
+            approvalDate: disbursementDate,
+            disbursementDate: disbursementDate,
+            currentSavings: '0'
+          };
+
+          const validatedLoanData = insertLoanSchema.parse(loanData);
+          const createdLoan = await storage.createLoan(validatedLoanData);
+
+          result.importedLoans = (result.importedLoans || 0) + 1;
+          console.log(`✓ Sheet "${sheetName}": Created ${group.category} (${group.loanType}) loan ${loanData.loanNumber} for ${member.fullName} - Disbursed: UGX ${group.totalDisbursed.toLocaleString()}, Outstanding: UGX ${outstandingBalance.toLocaleString()}`);
+
+          const transactionEntries = [];
+
+          for (const d of group.disbursements) {
+            transactionEntries.push({
+              memberId: member.id,
+              loanId: createdLoan.id,
+              transactionType: 'loan_disbursement' as const,
+              amount: d.amount.toString(),
+              description: d.details,
+              referenceNumber: `LTX${Date.now()}_${d.rowIndex}`,
+              status: 'completed' as const,
+              processedBy: options?.userId,
+              transactionDate: d.date
+            });
+          }
+
+          for (const r of group.repayments) {
             transactionEntries.push({
               memberId: member.id,
               loanId: createdLoan.id,
               transactionType: 'loan_payment' as const,
-              amount: amtDebited.toString(),
-              description: details,
-              referenceNumber: `LTX${Date.now()}_${i}`,
+              amount: r.amount.toString(),
+              description: r.details,
+              referenceNumber: `LTX${Date.now()}_${r.rowIndex}`,
               status: 'completed' as const,
               processedBy: options?.userId,
-              transactionDate: postingDate
+              transactionDate: r.date
             });
           }
-        }
 
-        if (transactionEntries.length > 0) {
-          for (const transaction of transactionEntries) {
-            const validatedTransactionData = insertTransactionSchema.parse(transaction);
-            await storage.createTransaction(validatedTransactionData);
-            if (options?.onJournalEntry && options?.userId) {
-              const mappingKey = transaction.transactionType === 'loan_disbursement' ? 'loan_disbursement' : 'loan_repayment_principal';
-              const amt = parseFloat(transaction.amount?.toString() || '0');
-              if (amt > 0) {
-                await options.onJournalEntry(
-                  mappingKey,
-                  amt,
-                  `Imported ${transaction.transactionType === 'loan_disbursement' ? 'loan disbursement' : 'loan repayment'} - ${member.memberNumber}`,
-                  transaction.referenceNumber || `IMP-L-${Date.now()}`,
-                  options.userId
-                );
+          if (transactionEntries.length > 0) {
+            for (const transaction of transactionEntries) {
+              const validatedTransactionData = insertTransactionSchema.parse(transaction);
+              await storage.createTransaction(validatedTransactionData);
+              if (options?.onJournalEntry && options?.userId) {
+                const mappingKey = transaction.transactionType === 'loan_disbursement' ? 'loan_disbursement' : 'loan_repayment_principal';
+                const amt = parseFloat(transaction.amount?.toString() || '0');
+                if (amt > 0) {
+                  await options.onJournalEntry(
+                    mappingKey,
+                    amt,
+                    `Imported ${transaction.transactionType === 'loan_disbursement' ? 'loan disbursement' : 'loan repayment'} - ${member.memberNumber} (${group.category})`,
+                    transaction.referenceNumber || `IMP-L-${Date.now()}`,
+                    options.userId
+                  );
+                }
               }
             }
+            console.log(`Sheet "${sheetName}": Imported ${transactionEntries.length} ${group.category} loan transactions`);
           }
-          console.log(`Sheet "${sheetName}": Imported ${transactionEntries.length} loan transactions`);
         }
 
         result.successfulImports++;
