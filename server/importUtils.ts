@@ -898,8 +898,9 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
 
     console.log(`Processing ${sheetsWithData.length} sheet(s) with data: ${sheetsWithData.join(', ')}`);
     const allMembers = await storage.getAllMembers();
+    const allLoanTypes = await storage.getAllLoanTypes();
 
-    let loanTypeName: 'personal' | 'business' | 'emergency' | 'asset' | 'development' = 'personal';
+    let fallbackLoanTypeName: 'personal' | 'business' | 'emergency' | 'asset' | 'development' = 'personal';
     if (options?.loanTypeId) {
       const loanTypeRecord = await storage.getLoanType(options.loanTypeId);
       if (loanTypeRecord) {
@@ -907,9 +908,73 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           'personal': 'personal', 'business': 'business', 'emergency': 'emergency',
           'asset': 'asset', 'development': 'development'
         };
-        loanTypeName = nameMap[loanTypeRecord.name.toLowerCase()] || 'personal';
-        console.log(`Using loan type: ${loanTypeRecord.displayName} (${loanTypeName})`);
+        fallbackLoanTypeName = nameMap[loanTypeRecord.name.toLowerCase()] || 'personal';
+        console.log(`Fallback loan type from dropdown: ${loanTypeRecord.displayName} (${fallbackLoanTypeName})`);
       }
+    }
+
+    const loanTypeEnum = ['personal', 'business', 'emergency', 'asset', 'development'] as const;
+    type LoanTypeEnum = typeof loanTypeEnum[number];
+
+    function detectLoanTypeFromDetails(transactionRows: any[], headerRowIdx: number): { detected: LoanTypeEnum; source: string } {
+      const detailTexts: string[] = [];
+      for (let i = headerRowIdx + 1; i < transactionRows.length; i++) {
+        const row = transactionRows[i] as any[];
+        if (!row || row.length < 2) continue;
+        const detail = row[1]?.toString() || '';
+        if (detail.trim()) detailTexts.push(detail);
+      }
+      const allDetailsJoined = detailTexts.join(' ').toLowerCase();
+
+      const keywordMap: { keywords: string[]; type: LoanTypeEnum }[] = [
+        { keywords: ['emergency'], type: 'emergency' },
+        { keywords: ['business'], type: 'business' },
+        { keywords: ['asset financing', 'asset loan'], type: 'asset' },
+        { keywords: ['development', 'school fees', 'education'], type: 'development' },
+        { keywords: ['special loan', 'special'], type: 'development' },
+        { keywords: ['top up', 'top-up', 'topup'], type: 'personal' },
+        { keywords: ['personal'], type: 'personal' },
+      ];
+
+      const dbNameToEnum: Record<string, LoanTypeEnum> = {};
+      for (const dbType of allLoanTypes) {
+        const dbName = dbType.name.toLowerCase();
+        const directMatch = loanTypeEnum.find(e => e === dbName);
+        if (directMatch) {
+          dbNameToEnum[dbName] = directMatch;
+        } else {
+          for (const mapping of keywordMap) {
+            if (mapping.keywords.some(kw => dbName.includes(kw) || dbType.displayName.toLowerCase().includes(kw))) {
+              dbNameToEnum[dbName] = mapping.type;
+              break;
+            }
+          }
+        }
+      }
+
+      for (const dbType of allLoanTypes) {
+        const dbName = dbType.name.toLowerCase();
+        const dbDisplayName = dbType.displayName.toLowerCase();
+        for (const detail of detailTexts) {
+          const d = detail.toLowerCase();
+          if (d.includes(dbName) || d.includes(dbDisplayName)) {
+            const enumMatch = dbNameToEnum[dbName];
+            if (enumMatch) {
+              return { detected: enumMatch, source: `matched DB loan type "${dbType.displayName}" from detail: "${detail}"` };
+            }
+          }
+        }
+      }
+
+      for (const mapping of keywordMap) {
+        for (const kw of mapping.keywords) {
+          if (allDetailsJoined.includes(kw)) {
+            return { detected: mapping.type, source: `keyword "${kw}" detected in transaction details` };
+          }
+        }
+      }
+
+      return { detected: fallbackLoanTypeName, source: 'fallback (no loan type detected from details)' };
     }
 
     for (const sheetName of sheetsWithData) {
@@ -1020,19 +1085,22 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
 
         console.log(`Sheet "${sheetName}": Matched to member ${member.fullName} (${member.memberNumber})`);
 
+        const { detected: detectedLoanType, source: loanTypeSource } = detectLoanTypeFromDetails(rawData, headerRowIndex);
+        console.log(`Sheet "${sheetName}": Loan type detected as "${detectedLoanType}" (${loanTypeSource})`);
+
         const disbursementDate = firstDisbursementDate || new Date();
 
         const loanData = {
           memberId: member.id,
           loanNumber: `LOAN${String(Date.now()).slice(-6)}`,
-          loanType: loanTypeName,
+          loanType: detectedLoanType,
           principalAmount: closingBalance.toString(),
           interestRate: interestRateValue.toString(),
           termMonths: tenure || 12,
           monthlyPayment: lastInstallmentAmount.toString(),
           outstandingBalance: closingBalance.toString(),
           status: 'active' as const,
-          purpose: 'Imported from loan statement',
+          purpose: `Imported from loan statement (${loanTypeSource})`,
           applicationDate: disbursementDate,
           approvalDate: disbursementDate,
           disbursementDate: disbursementDate,
@@ -1043,7 +1111,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
         const createdLoan = await storage.createLoan(validatedLoanData);
 
         result.importedLoans = (result.importedLoans || 0) + 1;
-        console.log(`✓ Sheet "${sheetName}": Created loan ${loanData.loanNumber} for ${member.fullName} - Balance: UGX ${closingBalance.toLocaleString()}`);
+        console.log(`✓ Sheet "${sheetName}": Created ${detectedLoanType} loan ${loanData.loanNumber} for ${member.fullName} - Balance: UGX ${closingBalance.toLocaleString()}`);
 
         const transactionEntries = [];
         for (let i = headerRowIndex + 1; i < rawData.length; i++) {

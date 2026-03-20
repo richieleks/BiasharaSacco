@@ -5534,11 +5534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: 'No file uploaded' });
       }
 
-      if (!loanTypeId) {
-        return res.status(400).json({ message: 'Loan type is required. Please select a loan type before uploading.' });
-      }
-
-      console.log('Starting loan import from:', filePath, 'with loanTypeId:', loanTypeId);
+      console.log('Starting loan import from:', filePath, 'with loanTypeId:', loanTypeId || 'auto-detect');
       const result = await importLoansFromExcel(filePath, { userId: getUserId(req), loanTypeId, onJournalEntry: recordJournalEntry });
       
       await storage.createAuditLog({

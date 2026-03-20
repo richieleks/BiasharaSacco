@@ -303,12 +303,10 @@ export default function DataImport() {
       });
       return;
     }
-    if ((importType === 'loans' || importType === 'loan-repayments') && !selectedLoanTypeId) {
+    if (importType === 'loan-repayments' && !selectedLoanTypeId) {
       toast({
         title: "Loan Type Required",
-        description: importType === 'loan-repayments' 
-          ? "Please select a loan type to apply repayments to"
-          : "Please select a loan type before importing loan data",
+        description: "Please select a loan type to apply repayments to",
         variant: "destructive",
       });
       return;
@@ -552,13 +550,14 @@ export default function DataImport() {
             {(importType === 'loans' || importType === 'loan-repayments') && (
               <div className="space-y-2 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
                 <Label htmlFor="loanType" className="text-sm font-medium">
-                  Loan Type <span className="text-red-500">*</span>
+                  Loan Type {importType === 'loan-repayments' && <span className="text-red-500">*</span>}
+                  {importType === 'loans' && <span className="text-muted-foreground text-xs ml-1">(optional fallback)</span>}
                 </Label>
                 <Select value={selectedLoanTypeId} onValueChange={setSelectedLoanTypeId}>
                   <SelectTrigger id="loanType">
                     <SelectValue placeholder={importType === 'loan-repayments' 
                       ? "Select loan type to apply repayments to" 
-                      : "Select loan type for imported loans"} />
+                      : "Auto-detect from details (or select fallback)"} />
                   </SelectTrigger>
                   <SelectContent>
                     {loanTypes && loanTypes.length > 0 ? (
@@ -575,7 +574,7 @@ export default function DataImport() {
                 <p className="text-xs text-muted-foreground">
                   {importType === 'loan-repayments' 
                     ? "Repayments will only be applied to active loans of this type. Members without a matching loan will be skipped."
-                    : "All imported loans will be assigned to this loan type. The interest rate and settings from the selected type will be applied."}
+                    : "Loan types are auto-detected from the transaction details column (e.g. \"Top Up\", \"Special Loan\", \"Emergency\"). Select a type here only as a fallback if detection fails. Values are imported as-is from the Excel without recalculation."}
                 </p>
               </div>
             )}
@@ -583,7 +582,7 @@ export default function DataImport() {
             {/* Import Button */}
             <Button 
               onClick={handleImport}
-              disabled={importMutation.isPending || !selectedFile || ((importType === 'loans' || importType === 'loan-repayments') && !selectedLoanTypeId)}
+              disabled={importMutation.isPending || !selectedFile || (importType === 'loan-repayments' && !selectedLoanTypeId)}
               className="w-full rounded-xl"
             >
               {importMutation.isPending ? (
