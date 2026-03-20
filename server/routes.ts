@@ -1632,6 +1632,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateUser(updatedMember.userId, userSyncUpdates);
         }
       }
+
+      if (updates.staffAccountNumber || updates.accountNumber) {
+        const accountNum = updates.staffAccountNumber || updates.accountNumber || updatedMember.staffAccountNumber || updatedMember.accountNumber;
+        if (accountNum) {
+          await db
+            .update(loans)
+            .set({ staffAccountNumber: accountNum })
+            .where(eq(loans.memberId, memberId));
+        }
+      }
       
       if (requestingMember) {
         await storage.createAuditLog({
@@ -1645,7 +1655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      broadcastDataUpdate(['/api/members', '/api/dashboard']);
+      broadcastDataUpdate(['/api/members', '/api/dashboard', '/api/loans']);
       res.json(updatedMember);
     } catch (error) {
       console.error("Error updating member:", error);
