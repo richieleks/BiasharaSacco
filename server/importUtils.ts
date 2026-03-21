@@ -160,16 +160,20 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
       const accountNumbers: string[] = [];
       let closingBalance = 0;
 
-      for (let i = 0; i < Math.min(5, rawData.length); i++) {
+      for (let i = 0; i < Math.min(headerRowIndex > 0 ? headerRowIndex : 10, rawData.length); i++) {
         const row = rawData[i] as any[];
-        if (row[0] === 'ACCOUNT NAME: ' && row[1]) {
-          accountName = row[1];
-        }
-        if (row[0] === 'ACCOUNT NUMBER:' && row[1]) {
-          accountNumbers.push(row[1].toString());
-        }
-        if (row[0] === 'ACCOUNT NAME: ' && row[4]) {
-          closingBalance = parseFloat(row[4]) || 0;
+        if (!row || row.length < 2) continue;
+        for (let j = 0; j < row.length; j++) {
+          const cellText = row[j]?.toString().toUpperCase().trim() || '';
+          if ((cellText.includes('ACCOUNT NAME') || cellText === 'ACCOUNT NAME:') && row[j + 1]) {
+            accountName = row[j + 1]?.toString().trim() || '';
+          }
+          if ((cellText.includes('ACCOUNT NUMBER') || cellText === 'ACCOUNT NUMBER:') && row[j + 1]) {
+            accountNumbers.push(row[j + 1].toString().trim());
+          }
+          if (cellText.includes('CLOSING BALANCE') && row[j + 1] !== undefined) {
+            closingBalance = parseFloat(row[j + 1]) || 0;
+          }
         }
       }
 
