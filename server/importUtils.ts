@@ -308,45 +308,53 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 
         const transactionEntries = [];
         let skippedDuplicates = 0;
+        let lastKnownDate: Date | null = null;
 
         for (let i = 0; i < transactionRows.length; i++) {
           const row = transactionRows[i] as any[];
+          if (!row || row.length < 2) continue;
 
-          if (row.length >= 2 && row[0] && row[1]) {
-            const postingDate = excelDateToDate(row[0]);
-            if (i < 3) {
-              console.log(`Sheet "${sheetName}" row ${i + 1} raw date: ${JSON.stringify(row[0])} -> parsed: ${postingDate.toISOString()}`);
+          if (row[0]) {
+            lastKnownDate = excelDateToDate(row[0]);
+          }
+
+          const details = row[1]?.toString().trim() || '';
+          if (!details) continue;
+
+          const postingDate = row[0] ? excelDateToDate(row[0]) : lastKnownDate;
+          if (!postingDate) continue;
+
+          if (i < 3) {
+            console.log(`Sheet "${sheetName}" row ${i + 1} raw date: ${JSON.stringify(row[0])} -> parsed: ${postingDate.toISOString()}${!row[0] ? ' (carried forward)' : ''}`);
+          }
+          const debitAmount = parseFloat(row[2]) || 0;
+          const creditAmount = parseFloat(row[3]) || 0;
+
+          if (creditAmount > 0 || debitAmount > 0) {
+            const refNumber = `STMT-${accountNumber}-${i + 1}`;
+
+            if (existingRefNumbers.has(refNumber)) {
+              skippedDuplicates++;
+              continue;
             }
-            const details = row[1]?.toString() || '';
-            const debitAmount = parseFloat(row[2]) || 0;
-            const creditAmount = parseFloat(row[3]) || 0;
 
-            if (creditAmount > 0 || debitAmount > 0) {
-              const refNumber = `STMT-${accountNumber}-${i + 1}`;
+            const transactionData = {
+              memberId: member.id,
+              savingsAccountId: regularAccount.id,
+              transactionType: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
+              amount: (creditAmount > 0 ? creditAmount : debitAmount).toString(),
+              description: details,
+              transactionDate: postingDate,
+              referenceNumber: refNumber,
+              processedBy: options?.userId,
+              status: 'completed' as const
+            };
 
-              if (existingRefNumbers.has(refNumber)) {
-                skippedDuplicates++;
-                continue;
-              }
-
-              const transactionData = {
-                memberId: member.id,
-                savingsAccountId: regularAccount.id,
-                transactionType: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
-                amount: (creditAmount > 0 ? creditAmount : debitAmount).toString(),
-                description: details,
-                transactionDate: postingDate,
-                referenceNumber: refNumber,
-                processedBy: options?.userId,
-                status: 'completed' as const
-              };
-
-              try {
-                const validatedTransactionData = insertTransactionSchema.parse(transactionData);
-                transactionEntries.push(validatedTransactionData);
-              } catch (error) {
-                console.log(`✗ Sheet "${sheetName}" invalid transaction on row ${i + 1}:`, error);
-              }
+            try {
+              const validatedTransactionData = insertTransactionSchema.parse(transactionData);
+              transactionEntries.push(validatedTransactionData);
+            } catch (error) {
+              console.log(`✗ Sheet "${sheetName}" invalid transaction on row ${i + 1}:`, error);
             }
           }
         }
@@ -1105,17 +1113,26 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           lastInstallmentAmount: 0,
         };
 
+        let lastKnownLoanDate: Date | null = null;
+
         for (let i = headerRowIndex + 1; i < rawData.length; i++) {
           const row = rawData[i] as any[];
-          if (!row || row.length < 2 || !row[0]) continue;
+          if (!row || row.length < 2) continue;
 
-          const postingDate = excelDateToDate(row[0]);
-          if (i <= headerRowIndex + 3) {
-            console.log(`Sheet "${sheetName}" loan row ${i - headerRowIndex}: raw date=${JSON.stringify(row[0])} (type=${typeof row[0]}), parsed=${postingDate.toISOString()}, details="${row[1]}", debit=${row[2]}, credit=${row[3]}`);
+          if (row[0]) {
+            lastKnownLoanDate = excelDateToDate(row[0]);
           }
+
           const details = row[1]?.toString() || '';
           const detailsLower = details.toLowerCase().trim();
           if (!detailsLower) continue;
+
+          const postingDate = row[0] ? excelDateToDate(row[0]) : lastKnownLoanDate;
+          if (!postingDate) continue;
+
+          if (i <= headerRowIndex + 3) {
+            console.log(`Sheet "${sheetName}" loan row ${i - headerRowIndex}: raw date=${JSON.stringify(row[0])} (type=${typeof row[0]}), parsed=${postingDate.toISOString()}${!row[0] ? ' (carried forward)' : ''}, details="${row[1]}", debit=${row[2]}, credit=${row[3]}`);
+          }
 
           const amtDebited = parseFloat(row[2]) || 0;
           const principalRepyt = parseFloat(row[3]) || 0;
