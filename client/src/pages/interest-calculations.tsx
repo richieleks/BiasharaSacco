@@ -556,11 +556,24 @@ export default function InterestCalculations() {
                     <SelectContent>
                       {financialYears.map((year: FinancialYear) => (
                         <SelectItem key={year.id} value={year.id.toString()}>
-                          {year.yearLabel}
+                          {year.yearLabel} ({formatPercentage(year.interestRate)})
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedFinancialYear && (() => {
+                    const fy = financialYears.find((y: FinancialYear) => y.id === selectedFinancialYear);
+                    const totalInterestPaid = calculations.reduce((sum: number, c: InterestCalculation) => sum + parseFloat(c.grossInterest || '0'), 0);
+                    return fy ? (
+                      <div className="flex items-center gap-3 px-3 py-1.5 bg-primary/10 border border-primary/20 rounded-lg text-sm">
+                        <span className="font-medium">{fy.yearLabel}</span>
+                        <span className="text-muted-foreground">|</span>
+                        <span>Rate: <strong>{formatPercentage(fy.interestRate)}</strong></span>
+                        <span className="text-muted-foreground">|</span>
+                        <span>Total Interest: <strong>{formatCurrency(totalInterestPaid)}</strong></span>
+                      </div>
+                    ) : null;
+                  })()}
                   {selectedFinancialYear && calculations.length > 0 && (
                     <div className="flex gap-2">
                       {calculations.some((c: InterestCalculation) => c.status === 'calculated') && (
@@ -740,6 +753,17 @@ export default function InterestCalculations() {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {selectedFinancialYear && (() => {
+                const fy = financialYears.find((y: FinancialYear) => y.id === selectedFinancialYear);
+                return fy ? (
+                  <div className="mb-4 flex items-center gap-3 px-3 py-2 bg-primary/10 border border-primary/20 rounded-lg text-sm">
+                    <TrendingUp className="w-4 h-4" />
+                    <span>Selected: <strong>{fy.yearLabel}</strong></span>
+                    <span className="text-muted-foreground">|</span>
+                    <span>Interest Rate: <strong>{formatPercentage(fy.interestRate)}</strong></span>
+                  </div>
+                ) : null;
+              })()}
               <div className="grid gap-4 md:grid-cols-2">
                 <Card>
                   <CardHeader>
