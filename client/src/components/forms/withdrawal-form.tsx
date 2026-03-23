@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -8,10 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { formatCurrency } from "@/lib/utils";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const withdrawalFormSchema = z.object({
   memberId: z.string().min(1, "Please select a member"),
@@ -28,6 +32,7 @@ interface WithdrawalFormProps {
 
 export default function WithdrawalForm({ onSuccess }: WithdrawalFormProps) {
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
+  const [memberSearchOpen, setMemberSearchOpen] = useState(false);
   const { toast } = useToast();
 
   const form = useForm<WithdrawalFormData>({
@@ -53,6 +58,16 @@ export default function WithdrawalForm({ onSuccess }: WithdrawalFormProps) {
     },
     enabled: !!selectedMemberId,
   });
+
+  const memberOptions = useMemo(() => {
+    return (members || []).map((member: any) => ({
+      value: member.id.toString(),
+      label: `${member.memberNumber} - ${member.fullName || `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim() || 'Unknown'}`,
+      searchText: `${member.memberNumber} ${member.fullName || ''} ${member.user?.firstName || ''} ${member.user?.lastName || ''} ${member.user?.email || ''}`.toLowerCase(),
+    }));
+  }, [members]);
+
+  const selectedMemberLabel = memberOptions.find(m => m.value === selectedMemberId)?.label;
 
   const withdrawalMutation = useMutation({
     mutationFn: async (data: { accountId: number; amount: string; description?: string }) => {
@@ -109,7 +124,8 @@ export default function WithdrawalForm({ onSuccess }: WithdrawalFormProps) {
   const handleMemberChange = (memberId: string) => {
     setSelectedMemberId(memberId);
     form.setValue("memberId", memberId);
-    form.setValue("accountId", ""); // Reset account selection
+    form.setValue("accountId", "");
+    setMemberSearchOpen(false);
   };
 
   const selectedAccount = accounts?.find((account: any) => account.id.toString() === form.watch("accountId"));
@@ -121,22 +137,55 @@ export default function WithdrawalForm({ onSuccess }: WithdrawalFormProps) {
           control={form.control}
           name="memberId"
           render={({ field }) => (
-            <FormItem>
+            <FormItem className="flex flex-col">
               <FormLabel>Member *</FormLabel>
-              <Select onValueChange={handleMemberChange} value={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select member" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  {members?.map((member: any) => (
-                    <SelectItem key={member.id} value={member.id.toString()}>
-                      {member.memberNumber} - {member.fullName || `${member.user?.firstName || ''} ${member.user?.lastName || ''}`.trim() || 'Unknown'}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={memberSearchOpen} onOpenChange={setMemberSearchOpen}>
+                <PopoverTrigger asChild>
+                  <FormControl>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={memberSearchOpen}
+                      className={cn(
+                        "w-full justify-between font-normal",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      {selectedMemberLabel || "Search and select member..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </FormControl>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <Command filter={(value, search) => {
+                    const option = memberOptions.find(m => m.value === value);
+                    if (!option) return 0;
+                    return option.searchText.includes(search.toLowerCase()) ? 1 : 0;
+                  }}>
+                    <CommandInput placeholder="Type name or member number..." />
+                    <CommandList>
+                      <CommandEmpty>No member found.</CommandEmpty>
+                      <CommandGroup>
+                        {memberOptions.map((option) => (
+                          <CommandItem
+                            key={option.value}
+                            value={option.value}
+                            onSelect={handleMemberChange}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                selectedMemberId === option.value ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {option.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
               <FormMessage />
             </FormItem>
           )}
