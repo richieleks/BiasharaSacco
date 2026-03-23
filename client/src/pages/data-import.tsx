@@ -72,6 +72,12 @@ export default function DataImport() {
     }
   }, [canImport, toast]);
 
+  useEffect(() => {
+    return () => {
+      if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+    };
+  }, []);
+
   const [, setLocation] = useLocation();
 
   useEffect(() => {
@@ -115,36 +121,84 @@ export default function DataImport() {
     };
   }, [isImporting, toast]);
 
-  const startProgress = useCallback(() => {
-    setImportProgress(0);
-    setImportStage('Uploading file...');
-    let progress = 0;
-    progressTimerRef.current = setInterval(() => {
-      progress += Math.random() * 8;
-      if (progress > 30 && progress < 60) {
-        setImportStage('Processing sheets...');
-      } else if (progress >= 60 && progress < 85) {
-        setImportStage('Importing records...');
-      } else if (progress >= 85) {
-        setImportStage('Finalizing...');
-      }
-      if (progress >= 92) {
-        progress = 92;
-        if (progressTimerRef.current) clearInterval(progressTimerRef.current);
-      }
-      setImportProgress(Math.min(progress, 92));
-    }, 300);
-  }, []);
-
-  const stopProgress = useCallback((success: boolean) => {
+  const pollJobStatus = useCallback((jobId: string) => {
     if (progressTimerRef.current) clearInterval(progressTimerRef.current);
-    setImportProgress(100);
-    setImportStage(success ? 'Complete!' : 'Finished with errors');
-    setTimeout(() => {
-      setImportProgress(0);
-      setImportStage('');
-    }, 2000);
-  }, []);
+    let failCount = 0;
+
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/import/status/${jobId}`, { credentials: 'include' });
+        if (!response.ok) {
+          failCount++;
+          if (response.status === 404 || response.status === 403 || failCount > 30) {
+            if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+            setIsImporting(false);
+            setImportStage('');
+            setImportProgress(0);
+            toast({ title: "Import Status Lost", description: "Could not retrieve import status. The import may still be running on the server.", variant: "destructive" });
+          }
+          return;
+        }
+        failCount = 0;
+        const status = await response.json();
+        setImportProgress(status.progress || 0);
+        setImportStage(status.stage || 'Processing...');
+
+        if (status.status === 'complete') {
+          if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+          setImportProgress(100);
+          setImportStage('Complete!');
+          setIsImporting(false);
+          setImportResult(status.result);
+
+          const data = status.result;
+          if (data && data.success) {
+            const successMessage = importType === 'members'
+              ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
+              : importType === 'savings' 
+              ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
+              : importType === 'loan-repayments'
+              ? `Successfully processed ${data.successfulImports} loan repayments totaling UGX ${data.totalAmount?.toLocaleString() || 0}.`
+              : importType === 'bulk-savings'
+              ? `Successfully processed ${data.successfulImports} savings deposits totaling UGX ${data.totalAmount?.toLocaleString() || 0}.`
+              : `Successfully imported ${data.importedLoans || 0} loan(s) from ${data.processedSheets || 1} of ${data.totalSheets || 1} sheet(s).`;
+            toast({ title: "Import Successful", description: successMessage, variant: "success" });
+          } else if (data) {
+            toast({
+              title: "Import Completed with Errors",
+              description: `Imported ${data.successfulImports} records with ${data.errors?.length || 0} errors.`,
+              variant: "destructive",
+            });
+          }
+
+          queryClient.invalidateQueries({ queryKey: ['/api/members'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/savings-accounts'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
+          queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
+
+          setTimeout(() => { setImportProgress(0); setImportStage(''); }, 3000);
+        } else if (status.status === 'error') {
+          if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+          setIsImporting(false);
+          setImportStage('Failed');
+          toast({ title: "Import Failed", description: status.error || "Unknown error occurred", variant: "destructive" });
+          setTimeout(() => { setImportProgress(0); setImportStage(''); }, 3000);
+        }
+      } catch {
+        failCount++;
+        if (failCount > 30) {
+          if (progressTimerRef.current) clearInterval(progressTimerRef.current);
+          setIsImporting(false);
+          setImportStage('');
+          setImportProgress(0);
+          toast({ title: "Connection Lost", description: "Lost connection while tracking import progress. The import may still be running on the server.", variant: "destructive" });
+        }
+      }
+    };
+
+    progressTimerRef.current = setInterval(poll, 2000);
+    poll();
+  }, [importType, toast, queryClient]);
 
   const downloadExceptionsReport = useCallback(() => {
     if (!importResult) return;
@@ -192,13 +246,14 @@ export default function DataImport() {
   }, [importResult, selectedFile, importType]);
 
   const importMutation = useMutation({
-    mutationFn: async (): Promise<ImportResult> => {
+    mutationFn: async (): Promise<{ jobId: string }> => {
       if (!selectedFile) {
         throw new Error('Please select a file to import');
       }
 
       setIsImporting(true);
-      startProgress();
+      setImportProgress(0);
+      setImportStage('Uploading file...');
       
       const formData = new FormData();
       formData.append('file', selectedFile);
@@ -222,44 +277,21 @@ export default function DataImport() {
       });
       
       if (!response.ok) {
-        throw new Error(`Import failed: ${response.statusText}`);
+        const errData = await response.json().catch(() => null);
+        throw new Error(errData?.message || `Import failed: ${response.statusText}`);
       }
       
       return await response.json();
     },
-    onSuccess: (data: ImportResult) => {
-      setIsImporting(false);
-      stopProgress(data.success);
-      setImportResult(data);
-      if (data && data.success) {
-        const successMessage = importType === 'members'
-          ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
-          : importType === 'savings' 
-          ? `Successfully imported ${data.importedMembers} members and ${data.importedAccounts} savings accounts.`
-          : importType === 'loan-repayments'
-          ? `Successfully processed ${data.successfulImports} loan repayments totaling UGX ${(data as any).totalAmount?.toLocaleString() || 0}.`
-          : importType === 'bulk-savings'
-          ? `Successfully processed ${data.successfulImports} savings deposits totaling UGX ${(data as any).totalAmount?.toLocaleString() || 0}.`
-          : `Successfully imported ${data.importedLoans || 0} loan(s) from ${data.processedSheets || 1} of ${data.totalSheets || 1} sheet(s).`;
-        
-        toast({ title: "Import Successful",
-          description: successMessage, variant: "success" });
-      } else if (data) {
-        toast({
-          title: "Import Completed with Errors",
-          description: `Imported ${data.successfulImports} records with ${data.errors?.length || 0} errors.`,
-          variant: "destructive",
-        });
-      }
-      
-      queryClient.invalidateQueries({ queryKey: ['/api/members'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/savings-accounts'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/dashboard/metrics'] });
+    onSuccess: (data: { jobId: string }) => {
+      setImportStage('Processing...');
+      setImportProgress(2);
+      pollJobStatus(data.jobId);
     },
     onError: (error) => {
       setIsImporting(false);
-      stopProgress(false);
+      setImportProgress(0);
+      setImportStage('');
       console.error("Import failed:", error);
       toast({
         title: "Import Failed",
@@ -587,10 +619,10 @@ export default function DataImport() {
             {/* Import Button */}
             <Button 
               onClick={handleImport}
-              disabled={importMutation.isPending || !selectedFile || (importType === 'loan-repayments' && !selectedLoanTypeId)}
+              disabled={isImporting || importMutation.isPending || !selectedFile || (importType === 'loan-repayments' && !selectedLoanTypeId)}
               className="w-full rounded-xl"
             >
-              {importMutation.isPending ? (
+              {isImporting || importMutation.isPending ? (
                 <>
                   <Upload className="w-4 h-4 mr-2 animate-spin" />
                   Importing Data...
@@ -603,7 +635,7 @@ export default function DataImport() {
               )}
             </Button>
 
-            {(importMutation.isPending || importProgress > 0) && (
+            {(isImporting || importProgress > 0) && (
               <div className="space-y-2 mt-4">
                 <Progress value={importProgress} className="h-2" />
                 <div className="flex justify-between text-xs text-muted-foreground">

@@ -13,6 +13,57 @@ import { db } from "./db";
 import { eq, and, inArray, sql, lt, isNull, or, not } from "drizzle-orm";
 import * as XLSX from "xlsx";
 
+interface ImportJob {
+  id: string;
+  userId: string;
+  status: 'uploading' | 'processing' | 'complete' | 'error';
+  progress: number;
+  stage: string;
+  processedSheets: number;
+  totalSheets: number;
+  importedMembers: number;
+  importedAccounts: number;
+  result: any | null;
+  error: string | null;
+  startedAt: Date;
+  completedAt: Date | null;
+}
+
+const importJobs = new Map<string, ImportJob>();
+
+function createImportJob(userId: string): ImportJob {
+  const id = `job_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const job: ImportJob = {
+    id,
+    userId,
+    status: 'uploading',
+    progress: 0,
+    stage: 'Uploading file...',
+    processedSheets: 0,
+    totalSheets: 0,
+    importedMembers: 0,
+    importedAccounts: 0,
+    result: null,
+    error: null,
+    startedAt: new Date(),
+    completedAt: null,
+  };
+  importJobs.set(id, job);
+  return job;
+}
+
+function cleanupCompletedJobs() {
+  const cutoff = Date.now() - 30 * 60 * 1000;
+  for (const [id, job] of importJobs) {
+    if (job.completedAt && job.completedAt.getTime() < cutoff) {
+      importJobs.delete(id);
+    } else if (!job.completedAt && job.startedAt.getTime() < cutoff - 30 * 60 * 1000) {
+      importJobs.delete(id);
+    }
+  }
+}
+setInterval(cleanupCompletedJobs, 5 * 60 * 1000);
+
 function generateDefaultPassword(fullName: string): string {
   const namePart = fullName.trim().split(/\s+/)[0] || 'Member';
   return `${namePart}@2026!`;
@@ -5469,430 +5520,547 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const multer = await import('multer');
   const upload = multer.default({ dest: 'uploads/' });
   
-  app.post('/api/import/savings', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
-    try {
-      const { importSavingsFromExcel } = await import('./importUtils');
-      
-      // Use uploaded file or fallback to attached file
-      const filePath = req.file ? req.file.path : './attached_assets/savings_1772043613995.xlsx';
-      const createNewMembers = req.body?.createNewMembers !== 'false';
-      
-      console.log('Starting import from:', filePath, '| createNewMembers:', createNewMembers);
-      const result = await importSavingsFromExcel(filePath, { createNewMembers, userId: getUserId(req), onJournalEntry: recordJournalEntry });
-      
-      // Create audit log
-      await storage.createAuditLog({
-        userId: getUserId(req) || '',
-        action: 'import',
-        resource: 'savings_accounts',
-        resourceId: 'bulk_import',
-        details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
-      });
-
-      broadcastDataUpdate(['/api/members', '/api/savings', '/api/transactions', '/api/dashboard', '/api/sacco-accounts', '/api/sacco-journal-entries']);
-      res.json(result);
-    } catch (error) {
-      console.error('Error importing savings data:', error);
-      res.status(500).json({ message: 'Failed to import savings data', error: error instanceof Error ? error.message : 'Unknown error' });
-    } finally {
-      // Clean up uploaded file if it exists
-      if (req.file) {
-        const fs = await import('fs');
-        try {
-          await fs.promises.unlink(req.file.path);
-        } catch (unlinkError) {
-          console.error('Error cleaning up uploaded file:', unlinkError);
-        }
-      }
+  app.get('/api/import/status/:jobId', isAuthenticated, (req: any, res) => {
+    const job = importJobs.get(req.params.jobId);
+    if (!job) {
+      return res.status(404).json({ message: 'Import job not found' });
     }
+    const currentUserId = getUserId(req);
+    if (job.userId !== currentUserId) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+    res.json({
+      id: job.id,
+      status: job.status,
+      progress: job.progress,
+      stage: job.stage,
+      processedSheets: job.processedSheets,
+      totalSheets: job.totalSheets,
+      importedMembers: job.importedMembers,
+      importedAccounts: job.importedAccounts,
+      result: job.result,
+      error: job.error,
+    });
   });
 
-  // Import loans from Excel
-  app.post('/api/import/members', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
-    try {
-      const { importMembersFromExcel } = await import('./importUtils');
-      
-      const filePath = req.file ? req.file.path : './attached_assets/members_1772094048114.xlsx';
-      
-      const updateExisting = req.body?.updateExisting === 'true';
-      console.log('Starting member import from:', filePath, '| updateExisting:', updateExisting);
-      const result = await importMembersFromExcel(filePath, { userId: getUserId(req), updateExisting });
-      
-      await storage.createAuditLog({
-        userId: getUserId(req) || '',
-        action: 'import',
-        resource: 'members',
-        resourceId: 'bulk_import',
-        details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
-      });
+  app.post('/api/import/savings', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Authentication required' });
+    const job = createImportJob(userId);
+    const filePath = req.file ? req.file.path : './attached_assets/savings_1772043613995.xlsx';
+    const createNewMembers = req.body?.createNewMembers !== 'false';
 
-      broadcastDataUpdate(['/api/members', '/api/savings', '/api/dashboard']);
-      res.json(result);
-    } catch (error) {
-      console.error('Error importing member data:', error);
-      res.status(500).json({ message: 'Failed to import member data', error: error instanceof Error ? error.message : 'Unknown error' });
-    } finally {
-      if (req.file) {
-        const fs = await import('fs');
-        try {
-          await fs.promises.unlink(req.file.path);
-        } catch (unlinkError) {
-          console.error('Error cleaning up uploaded file:', unlinkError);
+    res.json({ jobId: job.id, message: 'Import started' });
+
+    (async () => {
+      try {
+        const { importSavingsFromExcel } = await import('./importUtils');
+        job.status = 'processing';
+        job.stage = 'Processing file...';
+        job.progress = 5;
+
+        console.log('Starting import from:', filePath, '| createNewMembers:', createNewMembers);
+        const result = await importSavingsFromExcel(filePath, { createNewMembers, userId, onJournalEntry: recordJournalEntry, onProgress: (info: any) => {
+          if (info.totalSheets) job.totalSheets = info.totalSheets;
+          if (info.processedSheets !== undefined) job.processedSheets = info.processedSheets;
+          if (info.importedMembers !== undefined) job.importedMembers = info.importedMembers;
+          if (info.importedAccounts !== undefined) job.importedAccounts = info.importedAccounts;
+          if (info.stage) job.stage = info.stage;
+          if (job.totalSheets > 0) {
+            job.progress = Math.min(95, Math.round((job.processedSheets / job.totalSheets) * 95));
+          }
+        }});
+
+        await storage.createAuditLog({
+          userId: userId || '',
+          action: 'import',
+          resource: 'savings_accounts',
+          resourceId: 'bulk_import',
+          details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
+        });
+
+        broadcastDataUpdate(['/api/members', '/api/savings', '/api/transactions', '/api/dashboard', '/api/sacco-accounts', '/api/sacco-journal-entries']);
+        job.status = 'complete';
+        job.progress = 100;
+        job.stage = 'Complete!';
+        job.result = result;
+        job.completedAt = new Date();
+      } catch (error) {
+        console.error('Error importing savings data:', error);
+        job.status = 'error';
+        job.error = error instanceof Error ? error.message : 'Unknown error';
+        job.stage = 'Failed';
+        job.completedAt = new Date();
+      } finally {
+        if (req.file) {
+          const fs = await import('fs');
+          try { await fs.promises.unlink(req.file.path); } catch (e) {}
         }
       }
-    }
+    })();
+  });
+
+  app.post('/api/import/members', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Authentication required' });
+    const job = createImportJob(userId);
+    const filePath = req.file ? req.file.path : './attached_assets/members_1772094048114.xlsx';
+    const updateExisting = req.body?.updateExisting === 'true';
+
+    res.json({ jobId: job.id, message: 'Import started' });
+
+    (async () => {
+      try {
+        const { importMembersFromExcel } = await import('./importUtils');
+        job.status = 'processing';
+        job.stage = 'Processing members...';
+        job.progress = 5;
+
+        console.log('Starting member import from:', filePath, '| updateExisting:', updateExisting);
+        const result = await importMembersFromExcel(filePath, { userId, updateExisting });
+
+        await storage.createAuditLog({
+          userId: userId || '',
+          action: 'import',
+          resource: 'members',
+          resourceId: 'bulk_import',
+          details: `Imported ${result.importedMembers} members and ${result.importedAccounts} savings accounts. ${result.errors?.length || 0} errors.`,
+        });
+
+        broadcastDataUpdate(['/api/members', '/api/savings', '/api/dashboard']);
+        job.status = 'complete';
+        job.progress = 100;
+        job.stage = 'Complete!';
+        job.result = result;
+        job.completedAt = new Date();
+      } catch (error) {
+        console.error('Error importing member data:', error);
+        job.status = 'error';
+        job.error = error instanceof Error ? error.message : 'Unknown error';
+        job.stage = 'Failed';
+        job.completedAt = new Date();
+      } finally {
+        if (req.file) {
+          const fs = await import('fs');
+          try { await fs.promises.unlink(req.file.path); } catch (e) {}
+        }
+      }
+    })();
   });
 
   app.post('/api/import/loans', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
-    try {
-      const { importLoansFromExcel } = await import('./importUtils');
-      
-      const filePath = req.file ? req.file.path : '';
-      const loanTypeId = req.body?.loanTypeId ? parseInt(req.body.loanTypeId) : undefined;
-      
-      if (!filePath) {
-        return res.status(400).json({ message: 'No file uploaded' });
-      }
+    const filePath = req.file ? req.file.path : '';
+    const loanTypeId = req.body?.loanTypeId ? parseInt(req.body.loanTypeId) : undefined;
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Authentication required' });
 
-      console.log('Starting loan import from:', filePath, 'with loanTypeId:', loanTypeId || 'auto-detect');
-      const result = await importLoansFromExcel(filePath, { userId: getUserId(req), loanTypeId, onJournalEntry: recordJournalEntry });
-      
-      await storage.createAuditLog({
-        userId: getUserId(req) || '',
-        action: 'import',
-        resource: 'loans',
-        resourceId: 'bulk_import',
-        details: `Imported ${result.importedLoans || 0} loans. ${result.errors?.length || 0} errors.`,
-      });
+    if (!filePath) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
 
-      broadcastDataUpdate(['/api/loans', '/api/dashboard', '/api/sacco-accounts', '/api/sacco-journal-entries']);
-      res.json(result);
-    } catch (error) {
-      console.error('Error importing loan data:', error);
-      res.status(500).json({ message: 'Failed to import loan data', error: error instanceof Error ? error.message : 'Unknown error' });
-    } finally {
-      // Clean up uploaded file if it exists
-      if (req.file) {
-        const fs = await import('fs');
-        try {
-          await fs.promises.unlink(req.file.path);
-        } catch (unlinkError) {
-          console.error('Error cleaning up uploaded file:', unlinkError);
+    const job = createImportJob(userId);
+    res.json({ jobId: job.id, message: 'Import started' });
+
+    (async () => {
+      try {
+        const { importLoansFromExcel } = await import('./importUtils');
+        job.status = 'processing';
+        job.stage = 'Processing loans...';
+        job.progress = 5;
+
+        console.log('Starting loan import from:', filePath, 'with loanTypeId:', loanTypeId || 'auto-detect');
+        const result = await importLoansFromExcel(filePath, { userId, loanTypeId, onJournalEntry: recordJournalEntry });
+
+        await storage.createAuditLog({
+          userId: userId || '',
+          action: 'import',
+          resource: 'loans',
+          resourceId: 'bulk_import',
+          details: `Imported ${result.importedLoans || 0} loans. ${result.errors?.length || 0} errors.`,
+        });
+
+        broadcastDataUpdate(['/api/loans', '/api/dashboard', '/api/sacco-accounts', '/api/sacco-journal-entries']);
+        job.status = 'complete';
+        job.progress = 100;
+        job.stage = 'Complete!';
+        job.result = result;
+        job.completedAt = new Date();
+      } catch (error) {
+        console.error('Error importing loan data:', error);
+        job.status = 'error';
+        job.error = error instanceof Error ? error.message : 'Unknown error';
+        job.stage = 'Failed';
+        job.completedAt = new Date();
+      } finally {
+        if (req.file) {
+          const fs = await import('fs');
+          try { await fs.promises.unlink(req.file.path); } catch (e) {}
         }
       }
-    }
+    })();
   });
 
-  // Bulk CSV import for loan repayments
   app.post('/api/import/loan-repayments', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
-    try {
-      const filePath = req.file ? req.file.path : null;
-      if (!filePath) return res.status(400).json({ message: 'No file uploaded' });
+    const filePath = req.file ? req.file.path : null;
+    if (!filePath) return res.status(400).json({ message: 'No file uploaded' });
 
-      const fs = await import('fs');
-      let csvContent = await fs.promises.readFile(filePath, 'utf-8');
-      csvContent = csvContent.replace(/^\uFEFF/, '');
-      const lines = csvContent.split('\n').map(l => l.replace(/\r$/, '').trim()).filter(l => l.length > 0);
-
-      if (lines.length < 3) {
-        return res.status(400).json({ message: 'CSV file has insufficient rows' });
-      }
-
-      const loanTypeId = req.body?.loanTypeId ? parseInt(req.body.loanTypeId) : null;
-      if (!loanTypeId) {
-        return res.status(400).json({ message: 'Loan type is required for loan repayment imports' });
-      }
-
-      const loanType = await storage.getLoanType(loanTypeId);
-      if (!loanType) {
-        return res.status(400).json({ message: 'Invalid loan type selected' });
-      }
-
-      const sanitize = (val: string | undefined) =>
-        (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF]/g, '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
-      const sanitizeAmount = (val: string | undefined) =>
-        (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF"'\s]/g, '').replace(/,/g, '');
-
-      const allMembers = await storage.getAllMembers();
-      const existingTxns = await storage.getRecentTransactions(10000);
-      const existingRefs = new Set(existingTxns.filter((t: any) => t.referenceNumber).map((t: any) => t.referenceNumber));
-      const userId = getUserId(req)!;
-      const errors: any[] = [];
-      let successCount = 0;
-      let totalAmount = 0;
-      let skippedNoMember = 0;
-      let skippedNoLoan = 0;
-
-      for (let i = 2; i < lines.length; i++) {
-        try {
-          const cols = lines[i].split(',').map(c => sanitize(c));
-          if (cols.length < 12) { errors.push({ row: i + 1, error: 'Insufficient columns' }); continue; }
-
-          const txStatus = cols[6].toLowerCase();
-          if (txStatus && txStatus !== 'success') {
-            errors.push({ row: i + 1, error: `Transaction status: ${txStatus}`, data: { account: cols[10] } });
-            continue;
-          }
-
-          const remitterAccount = cols[10];
-          const amount = parseFloat(sanitizeAmount(cols[9]) || '0');
-          const reference = cols[7];
-          const description = cols[11] || 'Loan Repayment';
-
-          if (!remitterAccount || amount <= 0) {
-            errors.push({ row: i + 1, error: 'Missing account number or invalid amount' });
-            continue;
-          }
-
-          if (reference && existingRefs.has(reference)) {
-            errors.push({ row: i + 1, error: `Duplicate reference: ${reference}`, data: { remitterAccount, amount } });
-            continue;
-          }
-
-          const member = allMembers.find((m: any) => {
-            const staffAcc = sanitize(m.staffAccountNumber);
-            const accNum = sanitize(m.accountNumber);
-            const idNum = sanitize(m.idNumber);
-            return (staffAcc && staffAcc === remitterAccount) ||
-              (accNum && accNum === remitterAccount) ||
-              (idNum && idNum === remitterAccount);
-          });
-
-          if (!member) {
-            skippedNoMember++;
-            errors.push({ row: i + 1, error: `No member found for account: ${remitterAccount}`, data: { remitterAccount, amount } });
-            continue;
-          }
-
-          const activeLoans = await storage.getMemberActiveLoans(member.id);
-          const matchingLoan = activeLoans.find((l: any) => 
-            (l.loanType === loanType.name || l.loanType === loanType.displayName || l.loanTypeId === loanTypeId)
-            && (l.status === 'active' || l.status === 'disbursed')
-          );
-          if (!matchingLoan) {
-            skippedNoLoan++;
-            errors.push({ row: i + 1, error: `No active ${loanType.displayName} loan for member: ${member.fullName} (${member.memberNumber})`, data: { remitterAccount, amount } });
-            continue;
-          }
-
-          const loan = matchingLoan;
-          const outstandingBalance = parseFloat(loan.outstandingBalance || '0');
-          const repaymentAmount = Math.min(amount, outstandingBalance);
-
-          if (repaymentAmount <= 0) {
-            errors.push({ row: i + 1, error: `Loan already fully paid for ${member.fullName}`, data: { remitterAccount, amount } });
-            continue;
-          }
-
-          const savingsAccounts = await storage.getSavingsAccountsByMember(member.id);
-          const savingsAccount = savingsAccounts.find((s: any) => s.accountType === 'regular') || savingsAccounts[0];
-
-          await storage.updateLoanBalance(loan.id, repaymentAmount.toFixed(2));
-
-          const newBalance = Math.max(0, outstandingBalance - repaymentAmount);
-          if (newBalance <= 0) {
-            await storage.updateLoanStatus(loan.id, 'completed');
-          }
-
-          await storage.createTransaction({
-            memberId: member.id,
-            savingsAccountId: savingsAccount?.id || null,
-            loanId: loan.id,
-            transactionType: 'loan_payment',
-            amount: repaymentAmount.toFixed(2),
-            description: description,
-            referenceNumber: reference,
-            performedBy: userId,
-            status: 'completed',
-          });
-
-          await recordJournalEntry(
-            'loan_repayment_principal',
-            repaymentAmount,
-            `Imported loan repayment - ${member.memberNumber}`,
-            reference || `IMP-LR-${Date.now()}-${i}`,
-            userId
-          );
-
-          if (reference) existingRefs.add(reference);
-          successCount++;
-          totalAmount += repaymentAmount;
-        } catch (rowError: any) {
-          errors.push({ row: i + 1, error: rowError.message || 'Unknown error' });
-        }
-      }
-
-      await storage.createAuditLog({
-        userId,
-        action: 'import',
-        resource: 'loan_repayments',
-        details: `Bulk loan repayment import (${loanType.displayName}): ${successCount} payments totaling UGX ${totalAmount.toLocaleString()}. ${errors.length} errors. ${skippedNoMember} unmatched accounts. ${skippedNoLoan} no matching loan.`,
-      });
-
-      broadcastDataUpdate(['/api/loans', '/api/transactions', '/api/dashboard', '/api/savings', '/api/sacco-accounts', '/api/sacco-journal-entries']);
-
-      res.json({
-        success: true,
-        totalRows: lines.length - 2,
-        successfulImports: successCount,
-        totalAmount,
-        skippedNoMember,
-        importedMembers: 0,
-        importedAccounts: 0,
-        errors,
-      });
-    } catch (error) {
-      console.error('Error importing loan repayments:', error);
-      res.status(500).json({ message: 'Failed to import loan repayments', error: error instanceof Error ? error.message : 'Unknown error' });
-    } finally {
+    const cleanupFile = async () => {
       if (req.file) {
         const fs = await import('fs');
-        try { await fs.promises.unlink(req.file.path); } catch (e) {}
+        try { await fs.promises.unlink(filePath!); } catch (e) {}
       }
-    }
+    };
+
+    const loanTypeId = req.body?.loanTypeId ? parseInt(req.body.loanTypeId) : null;
+    if (!loanTypeId) { await cleanupFile(); return res.status(400).json({ message: 'Loan type is required for loan repayment imports' }); }
+
+    const loanType = await storage.getLoanType(loanTypeId);
+    if (!loanType) { await cleanupFile(); return res.status(400).json({ message: 'Invalid loan type selected' }); }
+
+    const userId = getUserId(req);
+    if (!userId) { await cleanupFile(); return res.status(401).json({ message: 'Authentication required' }); }
+    const job = createImportJob(userId);
+    res.json({ jobId: job.id, message: 'Import started' });
+
+    (async () => {
+      try {
+        job.status = 'processing';
+        job.stage = 'Processing loan repayments...';
+        job.progress = 5;
+
+        const fs = await import('fs');
+        let csvContent = await fs.promises.readFile(filePath, 'utf-8');
+        csvContent = csvContent.replace(/^\uFEFF/, '');
+        const lines = csvContent.split('\n').map(l => l.replace(/\r$/, '').trim()).filter(l => l.length > 0);
+
+        if (lines.length < 3) {
+          job.status = 'error';
+          job.error = 'CSV file has insufficient rows';
+          job.stage = 'Failed';
+          job.completedAt = new Date();
+          return;
+        }
+
+        const sanitize = (val: string | undefined) =>
+          (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF]/g, '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+        const sanitizeAmount = (val: string | undefined) =>
+          (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF"'\s]/g, '').replace(/,/g, '');
+
+        const allMembers = await storage.getAllMembers();
+        const existingTxns = await storage.getRecentTransactions(10000);
+        const existingRefs = new Set(existingTxns.filter((t: any) => t.referenceNumber).map((t: any) => t.referenceNumber));
+        const userId = getUserId(req)!;
+        const errors: any[] = [];
+        let successCount = 0;
+        let totalAmount = 0;
+        let skippedNoMember = 0;
+        let skippedNoLoan = 0;
+        const totalRows = lines.length - 2;
+
+        for (let i = 2; i < lines.length; i++) {
+          try {
+            const cols = lines[i].split(',').map(c => sanitize(c));
+            if (cols.length < 12) { errors.push({ row: i + 1, error: 'Insufficient columns' }); continue; }
+
+            const txStatus = cols[6].toLowerCase();
+            if (txStatus && txStatus !== 'success') {
+              errors.push({ row: i + 1, error: `Transaction status: ${txStatus}`, data: { account: cols[10] } });
+              continue;
+            }
+
+            const remitterAccount = cols[10];
+            const amount = parseFloat(sanitizeAmount(cols[9]) || '0');
+            const reference = cols[7];
+            const description = cols[11] || 'Loan Repayment';
+
+            if (!remitterAccount || amount <= 0) {
+              errors.push({ row: i + 1, error: 'Missing account number or invalid amount' });
+              continue;
+            }
+
+            if (reference && existingRefs.has(reference)) {
+              errors.push({ row: i + 1, error: `Duplicate reference: ${reference}`, data: { remitterAccount, amount } });
+              continue;
+            }
+
+            const member = allMembers.find((m: any) => {
+              const staffAcc = sanitize(m.staffAccountNumber);
+              const accNum = sanitize(m.accountNumber);
+              const idNum = sanitize(m.idNumber);
+              return (staffAcc && staffAcc === remitterAccount) ||
+                (accNum && accNum === remitterAccount) ||
+                (idNum && idNum === remitterAccount);
+            });
+
+            if (!member) {
+              skippedNoMember++;
+              errors.push({ row: i + 1, error: `No member found for account: ${remitterAccount}`, data: { remitterAccount, amount } });
+              continue;
+            }
+
+            const activeLoans = await storage.getMemberActiveLoans(member.id);
+            const matchingLoan = activeLoans.find((l: any) => 
+              (l.loanType === loanType.name || l.loanType === loanType.displayName || l.loanTypeId === loanTypeId)
+              && (l.status === 'active' || l.status === 'disbursed')
+            );
+            if (!matchingLoan) {
+              skippedNoLoan++;
+              errors.push({ row: i + 1, error: `No active ${loanType.displayName} loan for member: ${member.fullName} (${member.memberNumber})`, data: { remitterAccount, amount } });
+              continue;
+            }
+
+            const loan = matchingLoan;
+            const outstandingBalance = parseFloat(loan.outstandingBalance || '0');
+            const repaymentAmount = Math.min(amount, outstandingBalance);
+
+            if (repaymentAmount <= 0) {
+              errors.push({ row: i + 1, error: `Loan already fully paid for ${member.fullName}`, data: { remitterAccount, amount } });
+              continue;
+            }
+
+            const savingsAccounts = await storage.getSavingsAccountsByMember(member.id);
+            const savingsAccount = savingsAccounts.find((s: any) => s.accountType === 'regular') || savingsAccounts[0];
+
+            await storage.updateLoanBalance(loan.id, repaymentAmount.toFixed(2));
+
+            const newBalance = Math.max(0, outstandingBalance - repaymentAmount);
+            if (newBalance <= 0) {
+              await storage.updateLoanStatus(loan.id, 'completed');
+            }
+
+            await storage.createTransaction({
+              memberId: member.id,
+              savingsAccountId: savingsAccount?.id || null,
+              loanId: loan.id,
+              transactionType: 'loan_payment',
+              amount: repaymentAmount.toFixed(2),
+              description: description,
+              referenceNumber: reference,
+              performedBy: userId,
+              status: 'completed',
+            });
+
+            await recordJournalEntry(
+              'loan_repayment_principal',
+              repaymentAmount,
+              `Imported loan repayment - ${member.memberNumber}`,
+              reference || `IMP-LR-${Date.now()}-${i}`,
+              userId
+            );
+
+            if (reference) existingRefs.add(reference);
+            successCount++;
+            totalAmount += repaymentAmount;
+          } catch (rowError: any) {
+            errors.push({ row: i + 1, error: rowError.message || 'Unknown error' });
+          }
+          job.progress = Math.min(95, Math.round(((i - 1) / totalRows) * 95));
+          job.stage = `Processing row ${i - 1} of ${totalRows}...`;
+        }
+
+        await storage.createAuditLog({
+          userId,
+          action: 'import',
+          resource: 'loan_repayments',
+          details: `Bulk loan repayment import (${loanType.displayName}): ${successCount} payments totaling UGX ${totalAmount.toLocaleString()}. ${errors.length} errors. ${skippedNoMember} unmatched accounts. ${skippedNoLoan} no matching loan.`,
+        });
+
+        broadcastDataUpdate(['/api/loans', '/api/transactions', '/api/dashboard', '/api/savings', '/api/sacco-accounts', '/api/sacco-journal-entries']);
+
+        job.status = 'complete';
+        job.progress = 100;
+        job.stage = 'Complete!';
+        job.result = {
+          success: true,
+          totalRows,
+          successfulImports: successCount,
+          totalAmount,
+          skippedNoMember,
+          importedMembers: 0,
+          importedAccounts: 0,
+          errors,
+        };
+        job.completedAt = new Date();
+      } catch (error) {
+        console.error('Error importing loan repayments:', error);
+        job.status = 'error';
+        job.error = error instanceof Error ? error.message : 'Unknown error';
+        job.stage = 'Failed';
+        job.completedAt = new Date();
+      } finally {
+        if (req.file) {
+          const fs = await import('fs');
+          try { await fs.promises.unlink(filePath); } catch (e) {}
+        }
+      }
+    })();
   });
 
-  // Bulk CSV import for savings deposits
   app.post('/api/import/bulk-savings', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
-    try {
-      const filePath = req.file ? req.file.path : null;
-      if (!filePath) return res.status(400).json({ message: 'No file uploaded' });
+    const filePath = req.file ? req.file.path : null;
+    if (!filePath) return res.status(400).json({ message: 'No file uploaded' });
 
-      const fs = await import('fs');
-      let csvContent = await fs.promises.readFile(filePath, 'utf-8');
-      csvContent = csvContent.replace(/^\uFEFF/, '');
-      const lines = csvContent.split('\n').map(l => l.replace(/\r$/, '').trim()).filter(l => l.length > 0);
+    const userId = getUserId(req);
+    if (!userId) return res.status(401).json({ message: 'Authentication required' });
+    const job = createImportJob(userId);
+    res.json({ jobId: job.id, message: 'Import started' });
 
-      if (lines.length < 3) {
-        return res.status(400).json({ message: 'CSV file has insufficient rows' });
-      }
+    (async () => {
+      try {
+        job.status = 'processing';
+        job.stage = 'Processing savings deposits...';
+        job.progress = 5;
 
-      const sanitize = (val: string | undefined) =>
-        (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF]/g, '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
-      const sanitizeAmount = (val: string | undefined) =>
-        (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF"'\s]/g, '').replace(/,/g, '');
+        const fs = await import('fs');
+        let csvContent = await fs.promises.readFile(filePath, 'utf-8');
+        csvContent = csvContent.replace(/^\uFEFF/, '');
+        const lines = csvContent.split('\n').map(l => l.replace(/\r$/, '').trim()).filter(l => l.length > 0);
 
-      const allMembers = await storage.getAllMembers();
-      const existingTxns = await storage.getRecentTransactions(10000);
-      const existingRefs = new Set(existingTxns.filter((t: any) => t.referenceNumber).map((t: any) => t.referenceNumber));
-      const userId = getUserId(req)!;
-      const errors: any[] = [];
-      let successCount = 0;
-      let totalAmount = 0;
-      let skippedNoMember = 0;
+        if (lines.length < 3) {
+          job.status = 'error';
+          job.error = 'CSV file has insufficient rows';
+          job.stage = 'Failed';
+          job.completedAt = new Date();
+          return;
+        }
 
-      for (let i = 2; i < lines.length; i++) {
-        try {
-          const cols = lines[i].split(',').map(c => sanitize(c));
-          if (cols.length < 12) { errors.push({ row: i + 1, error: 'Insufficient columns' }); continue; }
+        const sanitize = (val: string | undefined) =>
+          (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF]/g, '').replace(/^["'\s]+|["'\s]+$/g, '').trim();
+        const sanitizeAmount = (val: string | undefined) =>
+          (val || '').replace(/[\t\r\n\x00-\x1F\x7F\uFEFF"'\s]/g, '').replace(/,/g, '');
 
-          const txStatus = cols[6].toLowerCase();
-          if (txStatus && txStatus !== 'success') {
-            errors.push({ row: i + 1, error: `Transaction status: ${txStatus}`, data: { account: cols[10] } });
-            continue;
+        const allMembers = await storage.getAllMembers();
+        const existingTxns = await storage.getRecentTransactions(10000);
+        const existingRefs = new Set(existingTxns.filter((t: any) => t.referenceNumber).map((t: any) => t.referenceNumber));
+        const userId = getUserId(req)!;
+        const errors: any[] = [];
+        let successCount = 0;
+        let totalAmount = 0;
+        let skippedNoMember = 0;
+        const totalRows = lines.length - 2;
+
+        for (let i = 2; i < lines.length; i++) {
+          try {
+            const cols = lines[i].split(',').map(c => sanitize(c));
+            if (cols.length < 12) { errors.push({ row: i + 1, error: 'Insufficient columns' }); continue; }
+
+            const txStatus = cols[6].toLowerCase();
+            if (txStatus && txStatus !== 'success') {
+              errors.push({ row: i + 1, error: `Transaction status: ${txStatus}`, data: { account: cols[10] } });
+              continue;
+            }
+
+            const remitterAccount = cols[10];
+            const amount = parseFloat(sanitizeAmount(cols[9]) || '0');
+            const reference = cols[7];
+            const description = cols[11] || 'Savings Deposit';
+
+            if (!remitterAccount || amount <= 0) {
+              errors.push({ row: i + 1, error: 'Missing account number or invalid amount' });
+              continue;
+            }
+
+            if (reference && existingRefs.has(reference)) {
+              errors.push({ row: i + 1, error: `Duplicate reference: ${reference}`, data: { remitterAccount, amount } });
+              continue;
+            }
+
+            const member = allMembers.find((m: any) => {
+              const staffAcc = sanitize(m.staffAccountNumber);
+              const accNum = sanitize(m.accountNumber);
+              const idNum = sanitize(m.idNumber);
+              return (staffAcc && staffAcc === remitterAccount) ||
+                (accNum && accNum === remitterAccount) ||
+                (idNum && idNum === remitterAccount);
+            });
+
+            if (!member) {
+              skippedNoMember++;
+              errors.push({ row: i + 1, error: `No member found for account: ${remitterAccount}`, data: { remitterAccount, amount } });
+              continue;
+            }
+
+            const savingsAccounts = await storage.getSavingsAccountsByMember(member.id);
+            let savingsAccount = savingsAccounts.find((s: any) => s.accountType === 'regular') || savingsAccounts[0];
+
+            if (!savingsAccount) {
+              errors.push({ row: i + 1, error: `No savings account for member: ${member.fullName} (${member.memberNumber})`, data: { remitterAccount, amount } });
+              continue;
+            }
+
+            await storage.updateSavingsAccountBalance(savingsAccount.id, amount.toFixed(2), 'add');
+
+            await storage.createTransaction({
+              memberId: member.id,
+              savingsAccountId: savingsAccount.id,
+              transactionType: 'deposit',
+              amount: amount.toFixed(2),
+              description: description,
+              referenceNumber: reference,
+              performedBy: userId,
+              status: 'completed',
+            });
+
+            await recordJournalEntry(
+              'member_deposit',
+              amount,
+              `Imported savings deposit - ${member.memberNumber}`,
+              reference || `IMP-SD-${Date.now()}-${i}`,
+              userId
+            );
+
+            await db.update(members).set({
+              lastSavingsDate: new Date(),
+              lastActivityDate: new Date(),
+              isActiveSaver: true,
+            }).where(eq(members.id, member.id));
+
+            if (reference) existingRefs.add(reference);
+            successCount++;
+            totalAmount += amount;
+          } catch (rowError: any) {
+            errors.push({ row: i + 1, error: rowError.message || 'Unknown error' });
           }
+          job.progress = Math.min(95, Math.round(((i - 1) / totalRows) * 95));
+          job.stage = `Processing row ${i - 1} of ${totalRows}...`;
+        }
 
-          const remitterAccount = cols[10];
-          const amount = parseFloat(sanitizeAmount(cols[9]) || '0');
-          const reference = cols[7];
-          const description = cols[11] || 'Savings Deposit';
+        await storage.createAuditLog({
+          userId,
+          action: 'import',
+          resource: 'bulk_savings',
+          details: `Bulk savings deposit import: ${successCount} deposits totaling UGX ${totalAmount.toLocaleString()}. ${errors.length} errors. ${skippedNoMember} unmatched accounts.`,
+        });
 
-          if (!remitterAccount || amount <= 0) {
-            errors.push({ row: i + 1, error: 'Missing account number or invalid amount' });
-            continue;
-          }
+        broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard', '/api/members', '/api/sacco-accounts', '/api/sacco-journal-entries']);
 
-          if (reference && existingRefs.has(reference)) {
-            errors.push({ row: i + 1, error: `Duplicate reference: ${reference}`, data: { remitterAccount, amount } });
-            continue;
-          }
-
-          const member = allMembers.find((m: any) => {
-            const staffAcc = sanitize(m.staffAccountNumber);
-            const accNum = sanitize(m.accountNumber);
-            const idNum = sanitize(m.idNumber);
-            return (staffAcc && staffAcc === remitterAccount) ||
-              (accNum && accNum === remitterAccount) ||
-              (idNum && idNum === remitterAccount);
-          });
-
-          if (!member) {
-            skippedNoMember++;
-            errors.push({ row: i + 1, error: `No member found for account: ${remitterAccount}`, data: { remitterAccount, amount } });
-            continue;
-          }
-
-          const savingsAccounts = await storage.getSavingsAccountsByMember(member.id);
-          let savingsAccount = savingsAccounts.find((s: any) => s.accountType === 'regular') || savingsAccounts[0];
-
-          if (!savingsAccount) {
-            errors.push({ row: i + 1, error: `No savings account for member: ${member.fullName} (${member.memberNumber})`, data: { remitterAccount, amount } });
-            continue;
-          }
-
-          await storage.updateSavingsAccountBalance(savingsAccount.id, amount.toFixed(2), 'add');
-
-          await storage.createTransaction({
-            memberId: member.id,
-            savingsAccountId: savingsAccount.id,
-            transactionType: 'deposit',
-            amount: amount.toFixed(2),
-            description: description,
-            referenceNumber: reference,
-            performedBy: userId,
-            status: 'completed',
-          });
-
-          await recordJournalEntry(
-            'member_deposit',
-            amount,
-            `Imported savings deposit - ${member.memberNumber}`,
-            reference || `IMP-SD-${Date.now()}-${i}`,
-            userId
-          );
-
-          await db.update(members).set({
-            lastSavingsDate: new Date(),
-            lastActivityDate: new Date(),
-            isActiveSaver: true,
-          }).where(eq(members.id, member.id));
-
-          if (reference) existingRefs.add(reference);
-          successCount++;
-          totalAmount += amount;
-        } catch (rowError: any) {
-          errors.push({ row: i + 1, error: rowError.message || 'Unknown error' });
+        job.status = 'complete';
+        job.progress = 100;
+        job.stage = 'Complete!';
+        job.result = {
+          success: true,
+          totalRows,
+          successfulImports: successCount,
+          totalAmount,
+          skippedNoMember,
+          importedMembers: 0,
+          importedAccounts: 0,
+          errors,
+        };
+        job.completedAt = new Date();
+      } catch (error) {
+        console.error('Error importing bulk savings:', error);
+        job.status = 'error';
+        job.error = error instanceof Error ? error.message : 'Unknown error';
+        job.stage = 'Failed';
+        job.completedAt = new Date();
+      } finally {
+        if (req.file) {
+          const fs = await import('fs');
+          try { await fs.promises.unlink(filePath); } catch (e) {}
         }
       }
-
-      await storage.createAuditLog({
-        userId,
-        action: 'import',
-        resource: 'bulk_savings',
-        details: `Bulk savings deposit import: ${successCount} deposits totaling UGX ${totalAmount.toLocaleString()}. ${errors.length} errors. ${skippedNoMember} unmatched accounts.`,
-      });
-
-      broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard', '/api/members', '/api/sacco-accounts', '/api/sacco-journal-entries']);
-
-      res.json({
-        success: true,
-        totalRows: lines.length - 2,
-        successfulImports: successCount,
-        totalAmount,
-        skippedNoMember,
-        importedMembers: 0,
-        importedAccounts: 0,
-        errors,
-      });
-    } catch (error) {
-      console.error('Error importing bulk savings:', error);
-      res.status(500).json({ message: 'Failed to import bulk savings', error: error instanceof Error ? error.message : 'Unknown error' });
-    } finally {
-      if (req.file) {
-        const fs = await import('fs');
-        try { await fs.promises.unlink(req.file.path); } catch (e) {}
-      }
-    }
+    })();
   });
 
   // ===== INTEREST CALCULATIONS ROUTES =====

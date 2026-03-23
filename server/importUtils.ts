@@ -95,7 +95,7 @@ export interface ImportResult {
 
 export type JournalEntryCallback = (mappingKey: string, amount: number, description: string, reference: string, userId: string) => Promise<void>;
 
-export async function importSavingsFromExcel(filePath: string, options?: { createNewMembers?: boolean; userId?: string; onJournalEntry?: JournalEntryCallback }): Promise<ImportResult> {
+export async function importSavingsFromExcel(filePath: string, options?: { createNewMembers?: boolean; userId?: string; onJournalEntry?: JournalEntryCallback; onProgress?: (info: { totalSheets?: number; processedSheets?: number; importedMembers?: number; importedAccounts?: number; stage?: string }) => void }): Promise<ImportResult> {
   const result: ImportResult = {
     success: false,
     totalRows: 0,
@@ -125,6 +125,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
     console.log('Workbook sheets:', workbook.SheetNames);
 
     result.totalSheets = workbook.SheetNames.length;
+    const onProgress = options?.onProgress;
 
     const sheetsToProcess = workbook.SheetNames.filter(name => {
       const ws = workbook.Sheets[name];
@@ -141,6 +142,8 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
       result.errors.push({ row: 0, error: "File is empty — no sheets with data found" });
       return result;
     }
+
+    onProgress?.({ totalSheets: sheetsToProcess.length, stage: 'Reading file...' });
 
     console.log(`Processing ${sheetsToProcess.length} sheet(s) with data: ${sheetsToProcess.join(', ')}`);
     const allMembers = await storage.getAllMembers();
@@ -463,6 +466,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 
         result.successfulImports++;
         result.processedSheets!++;
+        onProgress?.({ processedSheets: result.processedSheets!, importedMembers: result.importedMembers, importedAccounts: result.importedAccounts, stage: `Processing: ${sheetName}` });
 
       } catch (error) {
         result.errors.push({
@@ -471,6 +475,8 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
           data: { accountName, accountNumber, closingBalance }
         });
         result.exceptions.push({ sheet: sheetName, type: 'processing_error', detail: error instanceof Error ? error.message : 'Unknown error', data: { accountName, accountNumber } });
+        result.processedSheets!++;
+        onProgress?.({ processedSheets: result.processedSheets!, stage: `Processing: ${sheetName}` });
       }
     }
 
