@@ -1724,7 +1724,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return { eligible: false, blockers: ['Member has already exited'], canUseSavingsForLoan: false, totalOutstandingLoan: 0, totalSavings: 0, exitFee: 0, member };
     }
 
-    // Check for pending exit request
+    const savingsAccounts = await storage.getSavingsAccountsByMember(memberId);
+    const actualTotalSavings = savingsAccounts.reduce((sum: number, s: any) => sum + parseFloat(s.balance || '0'), 0);
+
     const existingRequest = await db.select().from(memberExitRequests)
       .where(eq(memberExitRequests.memberId, memberId));
     const pendingRequest = existingRequest.find(r => r.status === 'pending_treasurer');
@@ -1733,7 +1735,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     let canUseSavingsForLoan = false;
     let totalOutstandingLoan = 0;
 
-    // Check for active/running loans
     const activeLoans = await storage.getMemberActiveLoans(memberId);
     const runningLoans = activeLoans.filter((l: any) =>
       ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved'].includes(l.status)
@@ -1741,16 +1742,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     if (runningLoans.length > 0) {
       totalOutstandingLoan = runningLoans.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
-      const totalSavingsVal = parseFloat(member.totalSavings || '0');
-      if (totalSavingsVal >= totalOutstandingLoan) {
+      if (actualTotalSavings >= totalOutstandingLoan) {
         canUseSavingsForLoan = true;
-        // Not a blocker - savings can cover the loan
       } else {
-        blockers.push(`Member has ${runningLoans.length} active loan(s) with total outstanding balance of UGX ${totalOutstandingLoan.toLocaleString()} which exceeds available savings of UGX ${totalSavingsVal.toLocaleString()}`);
+        blockers.push(`Member has ${runningLoans.length} active loan(s) with total outstanding balance of UGX ${totalOutstandingLoan.toLocaleString()} which exceeds available savings of UGX ${actualTotalSavings.toLocaleString()}`);
       }
     }
 
-    // Check for guaranteed loans still outstanding
     const guaranteedLoans = await storage.getGuarantorsByMember(memberId);
     for (const g of guaranteedLoans as any[]) {
       if (g.status === 'approved' && g.loan) {
@@ -1770,14 +1768,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       blockers,
       canUseSavingsForLoan,
       totalOutstandingLoan,
-      totalSavings: parseFloat(member.totalSavings || '0'),
+      totalSavings: actualTotalSavings,
       exitFee,
       pendingRequest: pendingRequest || null,
       member: {
         id: member.id,
         fullName: member.fullName,
         memberNumber: member.memberNumber,
-        totalSavings: member.totalSavings,
+        totalSavings: actualTotalSavings.toFixed(2),
         shareCapital: member.shareCapital,
         status: member.status,
       },
@@ -1885,10 +1883,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Enrich with member data
       const enriched = await Promise.all(filtered.map(async (r) => {
         const member = await storage.getMember(r.memberId);
+        const memberSavings = await storage.getSavingsAccountsByMember(r.memberId);
+        const actualSavings = memberSavings.reduce((sum: number, s: any) => sum + parseFloat(s.balance || '0'), 0);
         const requestedByUser = await storage.getUser(r.requestedBy);
         return {
           ...r,
-          member: member ? { id: member.id, fullName: member.fullName, memberNumber: member.memberNumber, totalSavings: member.totalSavings, shareCapital: member.shareCapital } : null,
+          member: member ? { id: member.id, fullName: member.fullName, memberNumber: member.memberNumber, totalSavings: actualSavings.toFixed(2), shareCapital: member.shareCapital } : null,
           requestedByUser: requestedByUser ? { id: requestedByUser.id, firstName: requestedByUser.firstName, lastName: requestedByUser.lastName, username: requestedByUser.username } : null,
         };
       }));
@@ -1934,7 +1934,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let actualLoanRepayment = 0;
       if (runningLoans.length > 0) {
         actualLoanRepayment = runningLoans.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
-        const currentSavings = parseFloat(member.totalSavings || '0');
+        const currentSavings = savingsAccounts.reduce((sum: number, s: any) => sum + parseFloat(s.balance || '0'), 0);
         if (currentSavings < actualLoanRepayment) {
           return res.status(400).json({ message: `Cannot approve: member savings (UGX ${currentSavings.toLocaleString()}) are insufficient to cover outstanding loans (UGX ${actualLoanRepayment.toLocaleString()})` });
         }
@@ -4960,6 +4960,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allMembers = await db.select().from(members)
         .where(not(inArray(members.status, ['pending', 'rejected', 'exited'])));
 
+      const savingsTotals = await db
+        .select({
+          memberId: savingsAccountsTable.memberId,
+          total: sql<string>`COALESCE(SUM(${savingsAccountsTable.balance}::numeric), 0)`,
+        })
+        .from(savingsAccountsTable)
+        .groupBy(savingsAccountsTable.memberId);
+      const savingsMap = new Map(savingsTotals.map(s => [s.memberId, s.total]));
+
       const now = new Date();
       const threeMonthsAgo = new Date(now);
       threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
@@ -4971,37 +4980,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dormantCount = allMembers.filter(m => m.status === 'dormant').length;
       const suspendedCount = allMembers.filter(m => m.status === 'suspended').length;
 
+      const mapMember = (m: typeof allMembers[0]) => ({
+        id: m.id,
+        memberNumber: m.memberNumber,
+        fullName: m.fullName,
+        status: m.status,
+        lastSavingsDate: m.lastSavingsDate,
+        totalSavings: savingsMap.get(m.id) || '0',
+        phoneNumber: m.phoneNumber,
+        joinDate: m.joinDate,
+        daysSinceLastSaving: m.lastSavingsDate
+          ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
+          : null,
+      });
+
       const inactiveMembers = allMembers
         .filter(m => m.status === 'inactive')
-        .map(m => ({
-          id: m.id,
-          memberNumber: m.memberNumber,
-          fullName: m.fullName,
-          status: m.status,
-          lastSavingsDate: m.lastSavingsDate,
-          totalSavings: m.totalSavings,
-          phoneNumber: m.phoneNumber,
-          joinDate: m.joinDate,
-          daysSinceLastSaving: m.lastSavingsDate
-            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
-            : null,
-        }));
+        .map(mapMember);
 
       const dormantMembers = allMembers
         .filter(m => m.status === 'dormant')
-        .map(m => ({
-          id: m.id,
-          memberNumber: m.memberNumber,
-          fullName: m.fullName,
-          status: m.status,
-          lastSavingsDate: m.lastSavingsDate,
-          totalSavings: m.totalSavings,
-          phoneNumber: m.phoneNumber,
-          joinDate: m.joinDate,
-          daysSinceLastSaving: m.lastSavingsDate
-            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
-            : null,
-        }));
+        .map(mapMember);
 
       const twoMonthsAgo = new Date(now);
       twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
@@ -5021,19 +5020,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (!baseline) return false;
           return baseline < twoMonthsAgo;
         })
-        .map(m => ({
-          id: m.id,
-          memberNumber: m.memberNumber,
-          fullName: m.fullName,
-          status: m.status,
-          lastSavingsDate: m.lastSavingsDate,
-          totalSavings: m.totalSavings,
-          phoneNumber: m.phoneNumber,
-          joinDate: m.joinDate,
-          daysSinceLastSaving: m.lastSavingsDate
-            ? Math.floor((now.getTime() - new Date(m.lastSavingsDate).getTime()) / (1000 * 60 * 60 * 24))
-            : null,
-        }));
+        .map(mapMember);
 
       res.json({
         summary: {
