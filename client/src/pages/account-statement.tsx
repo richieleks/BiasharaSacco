@@ -70,6 +70,8 @@ export default function AccountStatement() {
     totalDeposits: number;
     totalWithdrawals: number;
     totalInterest: number;
+    totalInterestCalculated: number;
+    financialYearInterestRate: string | null;
     page: number;
     limit: number;
     totalPages: number;
@@ -209,7 +211,10 @@ export default function AccountStatement() {
               <div>
                 <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Interest Rate</p>
                 <p className="text-sm sm:text-lg font-semibold text-blue-600">
-                  {(parseFloat(statementData.account.interestRate || '0') * 100).toFixed(2)}% p.a.
+                  {statementData.financialYearInterestRate
+                    ? `${(parseFloat(statementData.financialYearInterestRate) * 100).toFixed(2)}% p.a.`
+                    : `${(parseFloat(statementData.account.interestRate || '0') * 100).toFixed(2)}% p.a.`
+                  }
                 </p>
               </div>
               <div>

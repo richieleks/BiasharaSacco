@@ -6,7 +6,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword, validatePasswordComplexity, getSecuritySettings, getPasswordRequirementsText } from "./localAuth";
 import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "./rbac-middleware";
-import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions } from "@shared/schema";
+import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
 import { z } from "zod";
 import { db } from "./db";
@@ -3460,13 +3460,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         limit,
       });
 
+      const activeFinancialYear = await storage.getActiveFinancialYear();
+      const fyInterestRate = activeFinancialYear?.interestRate || null;
+
+      const allInterestCalcs = await db
+        .select({
+          totalPosted: sql<string>`COALESCE(SUM(CASE WHEN ${interestCalculations.status} IN ('posted', 'paid') THEN ${interestCalculations.grossInterest}::numeric ELSE 0 END), 0)`,
+          totalAll: sql<string>`COALESCE(SUM(${interestCalculations.grossInterest}::numeric), 0)`,
+        })
+        .from(interestCalculations)
+        .where(eq(interestCalculations.savingsAccountId, savingsAccountId));
+      const totalInterestEarned = parseFloat(allInterestCalcs[0]?.totalPosted || '0');
+      const totalInterestCalculated = parseFloat(allInterestCalcs[0]?.totalAll || '0');
+
       res.json({
         account,
         transactions: result.transactions,
         total: result.total,
         totalDeposits: result.totalDeposits,
         totalWithdrawals: result.totalWithdrawals,
-        totalInterest: result.totalInterest,
+        totalInterest: totalInterestEarned > 0 ? totalInterestEarned : result.totalInterest,
+        totalInterestCalculated,
+        financialYearInterestRate: fyInterestRate,
         page,
         limit,
         totalPages: Math.ceil(result.total / limit),
