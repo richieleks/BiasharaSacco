@@ -313,9 +313,9 @@ function ReconciliationTab() {
 
   const filtered = searchTerm
     ? records.filter(r =>
-        r.memberName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.memberNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        r.accountNumber.toLowerCase().includes(searchTerm.toLowerCase())
+        (r.memberName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (r.memberNumber || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (r.accountNumber || '').toLowerCase().includes(searchTerm.toLowerCase())
       )
     : records;
 
@@ -456,10 +456,16 @@ function ReconciliationTab() {
             </Table>
           </div>
 
-          {totalPages > 1 && (
+          {filtered.length > recPageSize && (
             <div className="flex justify-between items-center">
-              <p className="text-sm text-slate-500">{filtered.length} records</p>
-              <Pagination currentPage={recPage} totalPages={totalPages} onPageChange={setRecPage} />
+              <Pagination
+                totalItems={filtered.length}
+                itemsPerPage={recPageSize}
+                currentPage={recPage}
+                onPageChange={setRecPage}
+                onItemsPerPageChange={() => {}}
+                showItemsPerPage={false}
+              />
             </div>
           )}
 
