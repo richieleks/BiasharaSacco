@@ -105,7 +105,11 @@ export default function MetricsGrid() {
             <div className="flex items-start justify-between">
               <div className="space-y-1 min-w-0 flex-1">
                 <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wide">{metric.title}</p>
-                <p className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight truncate">{metric.value}</p>
+                <p className={`font-bold text-slate-900 dark:text-slate-100 tracking-tight break-all leading-tight ${
+                  metric.value.length > 15 ? 'text-sm sm:text-base lg:text-lg' :
+                  metric.value.length > 10 ? 'text-base sm:text-lg lg:text-xl' :
+                  'text-lg sm:text-2xl'
+                }`}>{metric.value}</p>
               </div>
               <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center ${metric.iconBg} transition-transform group-hover:scale-105 shrink-0 ml-2`}>
                 <metric.icon className="h-4 w-4 sm:h-5 sm:w-5" />
