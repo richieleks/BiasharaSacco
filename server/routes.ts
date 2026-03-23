@@ -1456,11 +1456,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Roles must be an array" });
       }
       
-      const validRoles = ['manager', 'committee', 'member', 'treasurer'];
       if (roles.includes('admin')) {
         return res.status(400).json({ message: "Admin role cannot be assigned through member roles. Use User Management instead." });
       }
-      if (!roles.every(role => validRoles.includes(role))) {
+      const dbRoles = await storage.getAllRoles();
+      const validRoleNames = dbRoles.map(r => r.name).filter(n => n !== 'admin');
+      if (!roles.every((role: string) => validRoleNames.includes(role))) {
         return res.status(400).json({ message: "Invalid role(s)" });
       }
 
