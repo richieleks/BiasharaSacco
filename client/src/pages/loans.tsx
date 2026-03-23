@@ -541,6 +541,10 @@ export default function Loans() {
                         <p className="text-sm text-slate-500 dark:text-slate-400">Monthly Payment</p>
                         <p className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(loan.monthlyPayment)}</p>
                       </div>
+                      <div>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Loan Balance</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(loan.outstandingBalance)}</p>
+                      </div>
                     </div>
 
                     {loan.isTopUp && loan.previousLoanBalance && (
