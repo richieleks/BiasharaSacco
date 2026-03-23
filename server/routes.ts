@@ -1023,7 +1023,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard metrics
-  app.get('/api/dashboard/metrics', isAuthenticated, async (req, res) => {
+  app.get('/api/dashboard/metrics', isAuthenticated, requirePermission('read', 'dashboard'), async (req, res) => {
     try {
       const metrics = await storage.getDashboardMetrics();
       res.json(metrics);
@@ -1034,7 +1034,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Dashboard analytics API
-  app.get('/api/dashboard/analytics', isAuthenticated, async (req: AuthRequest, res) => {
+  app.get('/api/dashboard/analytics', isAuthenticated, requirePermission('read', 'dashboard'), async (req: AuthRequest, res) => {
     try {
       const months = Math.min(Math.max(parseInt(req.query.months as string) || 6, 1), 24);
       const analytics = await storage.getDashboardAnalytics(months);
@@ -1046,7 +1046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Recent transactions
-  app.get('/api/dashboard/recent-transactions', isAuthenticated, filterDataByRole(), async (req: any, res) => {
+  app.get('/api/dashboard/recent-transactions', isAuthenticated, requirePermission('read', 'dashboard'), filterDataByRole(), async (req: any, res) => {
     try {
       const allTransactions = await storage.getRecentTransactions(50); // Get more to filter
       // Filter transactions based on user role
@@ -1059,7 +1059,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Pending approvals
-  app.get('/api/dashboard/pending-approvals', isAuthenticated, filterDataByRole(), async (req: any, res) => {
+  app.get('/api/dashboard/pending-approvals', isAuthenticated, requirePermission('read', 'dashboard'), filterDataByRole(), async (req: any, res) => {
     try {
       const approvals = await storage.getPendingApprovals();
       

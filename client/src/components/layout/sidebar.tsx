@@ -1,42 +1,50 @@
 import { Link, useLocation } from "wouter";
 import { cn } from "@/lib/utils";
 import { PieChart, Users, Wallet, HandCoins, Receipt, BarChart3, UserCheck, Settings, HelpCircle } from "lucide-react";
+import { useRBAC } from "@/hooks/useRBAC";
 
 const navigation = [
   {
     name: "Dashboard",
     href: "/",
     icon: PieChart,
+    permission: { action: "read", resource: "dashboard" },
   },
   {
     name: "Members",
     href: "/members",
     icon: Users,
+    permission: { action: "read", resource: "members" },
   },
   {
     name: "Savings",
     href: "/savings",
     icon: Wallet,
+    permission: { action: "read", resource: "savings" },
   },
   {
     name: "Loans",
     href: "/loans",
     icon: HandCoins,
+    permission: { action: "read", resource: "loans" },
   },
   {
     name: "Transactions",
     href: "/transactions",
     icon: Receipt,
+    permission: { action: "read", resource: "transactions" },
   },
   {
     name: "Guarantors",
     href: "/guarantors", 
     icon: UserCheck,
+    permission: { action: "read", resource: "guarantors" },
   },
   {
     name: "Reports",
     href: "/reports",
     icon: BarChart3,
+    permission: { action: "read", resource: "reports" },
   },
 ];
 
@@ -55,12 +63,18 @@ const secondaryNavigation = [
 
 export default function Sidebar() {
   const [location] = useLocation();
+  const { hasPermission } = useRBAC();
+
+  const visibleNavigation = navigation.filter((item) => {
+    if (!item.permission) return true;
+    return hasPermission(item.permission.action, item.permission.resource);
+  });
 
   return (
     <aside className="hidden lg:block w-64 bg-white dark:bg-slate-900 shadow-sm h-screen sticky top-16 border-r border-slate-200 dark:border-slate-700">
       <nav className="p-4 space-y-2">
         <div className="space-y-1">
-          {navigation.map((item) => {
+          {visibleNavigation.map((item) => {
             const isActive = location === item.href || (item.href !== "/" && location.startsWith(item.href));
             return (
               <Link key={item.name} href={item.href}>

@@ -235,12 +235,12 @@ function Router() {
           <PageTransition>
           <Switch>
             <Route path="/">
-              <ProtectedRoute>
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'dashboard' }}>
                 <Dashboard />
               </ProtectedRoute>
             </Route>
             <Route path="/dashboard">
-              <ProtectedRoute>
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'dashboard' }}>
                 <Dashboard />
               </ProtectedRoute>
             </Route>
