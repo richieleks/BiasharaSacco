@@ -1824,6 +1824,8 @@ function UserManagementTab() {
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [systemPage, setSystemPage] = useState(1);
   const [memberPage, setMemberPage] = useState(1);
+  const [memberFilter, setMemberFilter] = useState<'all' | 'linked' | 'unlinked'>('all');
+  const [memberSearch, setMemberSearch] = useState('');
   const PAGE_SIZE = 10;
 
   const { data: allUsers = [], isLoading } = useQuery<any[]>({
@@ -1981,7 +1983,23 @@ function UserManagementTab() {
   };
 
   const systemUsers = allUsers.filter((u: any) => u.userType === 'system' || ['admin', 'manager', 'committee', 'teller'].includes(u.role));
-  const memberUsers = allUsers.filter((u: any) => u.userType === 'member' || u.role === 'member');
+  const allMemberUsers = allUsers.filter((u: any) => u.userType === 'member' || u.role === 'member');
+  const linkedCount = allMemberUsers.filter((u: any) => !u.isUnlinked).length;
+  const unlinkedCount = allMemberUsers.filter((u: any) => u.isUnlinked).length;
+
+  const memberUsers = allMemberUsers.filter((u: any) => {
+    if (memberFilter === 'linked' && u.isUnlinked) return false;
+    if (memberFilter === 'unlinked' && !u.isUnlinked) return false;
+    if (memberSearch) {
+      const q = memberSearch.toLowerCase();
+      const name = `${u.firstName || ''} ${u.lastName || ''}`.toLowerCase();
+      const username = (u.username || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const memberNum = (u.memberNumber || '').toLowerCase();
+      return name.includes(q) || username.includes(q) || email.includes(q) || memberNum.includes(q);
+    }
+    return true;
+  });
 
   const systemTotalPages = Math.max(1, Math.ceil(systemUsers.length / PAGE_SIZE));
   const paginatedSystemUsers = systemUsers.slice((systemPage - 1) * PAGE_SIZE, systemPage * PAGE_SIZE);
@@ -2225,11 +2243,32 @@ function UserManagementTab() {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-4 w-4" />
-            Member Login Accounts ({memberUsers.length})
+            Member Login Accounts ({allMemberUsers.length})
           </CardTitle>
           <p className="text-sm text-muted-foreground">
             Login accounts linked to SACCO members. Member profiles are managed in the Members page.
           </p>
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Input
+                placeholder="Search by name, username, email, or member number..."
+                value={memberSearch}
+                onChange={(e) => { setMemberSearch(e.target.value); setMemberPage(1); }}
+                className="pl-9"
+              />
+            </div>
+            <Select value={memberFilter} onValueChange={(v: any) => { setMemberFilter(v); setMemberPage(1); }}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All ({allMemberUsers.length})</SelectItem>
+                <SelectItem value="linked">With Login ({linkedCount})</SelectItem>
+                <SelectItem value="unlinked">Without Login ({unlinkedCount})</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </CardHeader>
         <CardContent>
           {memberUsers.length > 0 ? (
@@ -2298,6 +2337,11 @@ function UserManagementTab() {
                             }}>
                               <KeyRound className="h-4 w-4" />
                             </Button>
+                            <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700" title="Delete login account" onClick={() => {
+                              if (confirm(`Are you sure you want to delete the login account for "${u.username}"? This will remove their ability to log in but will NOT delete their member profile.`)) deleteUserMutation.mutate(u.id);
+                            }}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </>
                         )}
                       </div>
@@ -2324,7 +2368,11 @@ function UserManagementTab() {
             )}
             </>
           ) : (
-            <div className="text-center py-8 text-muted-foreground">No member login accounts found. Member accounts are created from the Members page.</div>
+            <div className="text-center py-8 text-muted-foreground">
+              {memberSearch || memberFilter !== 'all' 
+                ? "No members match the current filter criteria." 
+                : "No member login accounts found. Member accounts are created from the Members page."}
+            </div>
           )}
         </CardContent>
       </Card>
