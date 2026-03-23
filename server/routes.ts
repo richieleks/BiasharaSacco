@@ -1456,7 +1456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Roles must be an array" });
       }
       
-      const validRoles = ['manager', 'committee', 'member'];
+      const validRoles = ['manager', 'committee', 'member', 'treasurer'];
       if (roles.includes('admin')) {
         return res.status(400).json({ message: "Admin role cannot be assigned through member roles. Use User Management instead." });
       }
