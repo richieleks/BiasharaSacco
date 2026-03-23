@@ -110,6 +110,8 @@ export interface IStorage {
   getSavingsAccount(id: number): Promise<SavingsAccount | undefined>;
   getSavingsAccountsByMember(memberId: number): Promise<SavingsAccount[]>;
   updateSavingsAccountBalance(id: number, amount: string, operation: 'add' | 'subtract'): Promise<SavingsAccount>;
+  syncMemberTotalSavings(memberId: number): Promise<void>;
+  syncAllMemberTotalSavings(): Promise<{ updated: number }>;
   getAllSavingsAccounts(): Promise<SavingsAccount[]>;
   getSavingsAccountsPaginated(page: number, limit: number, search?: string, memberId?: number): Promise<{ data: any[]; total: number }>;
 
@@ -725,6 +727,43 @@ export class DatabaseStorage implements IStorage {
     return { data, total: Number(countResult.value) };
   }
 
+  async syncMemberTotalSavings(memberId: number): Promise<void> {
+    try {
+      const [result] = await db
+        .select({ total: sql<string>`COALESCE(SUM(${savingsAccounts.balance}::numeric), 0)` })
+        .from(savingsAccounts)
+        .where(eq(savingsAccounts.memberId, memberId));
+      await db.update(members)
+        .set({ totalSavings: result.total || '0' })
+        .where(eq(members.id, memberId));
+    } catch (err) {
+      console.error(`Failed to sync total_savings for member ${memberId}:`, err);
+    }
+  }
+
+  async syncAllMemberTotalSavings(): Promise<{ updated: number }> {
+    const totals = await db
+      .select({
+        memberId: savingsAccounts.memberId,
+        total: sql<string>`COALESCE(SUM(${savingsAccounts.balance}::numeric), 0)`,
+      })
+      .from(savingsAccounts)
+      .groupBy(savingsAccounts.memberId);
+
+    const savingsMap = new Map(totals.map(t => [t.memberId, t.total || '0']));
+
+    const allMembers = await db.select({ id: members.id }).from(members);
+    let updated = 0;
+    for (const m of allMembers) {
+      const total = savingsMap.get(m.id) || '0';
+      await db.update(members)
+        .set({ totalSavings: total })
+        .where(eq(members.id, m.id));
+      updated++;
+    }
+    return { updated };
+  }
+
   async updateSavingsAccountBalance(id: number, amount: string, operation: 'add' | 'subtract'): Promise<SavingsAccount> {
     const operator = operation === 'add' ? '+' : '-';
     const [account] = await db
@@ -735,6 +774,7 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(savingsAccounts.id, id))
       .returning();
+    this.syncMemberTotalSavings(account.memberId);
     return account;
   }
 
@@ -747,6 +787,7 @@ export class DatabaseStorage implements IStorage {
       })
       .where(eq(savingsAccounts.id, id))
       .returning();
+    this.syncMemberTotalSavings(account.memberId);
     return account;
   }
 
@@ -2997,6 +3038,7 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date()
         })
         .where(eq(savingsAccounts.id, calculation.savingsAccountId));
+      this.syncMemberTotalSavings(calculation.memberId);
 
       await this.createTransaction({
         memberId: calculation.memberId,
@@ -3095,6 +3137,7 @@ export class DatabaseStorage implements IStorage {
           updatedAt: new Date()
         })
         .where(eq(savingsAccounts.id, payment.savingsAccountId));
+      this.syncMemberTotalSavings(payment.memberId);
 
       // Create a transaction record
       await this.createTransaction({

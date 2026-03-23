@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { BarChart3, Download, FileText, TrendingUp, Users, PiggyBank, HandCoins, Calendar, Filter, Printer, Mail, FileSpreadsheet, AlertTriangle, UserX, Clock, RefreshCw, Eye } from "lucide-react";
+import { BarChart3, Download, FileText, TrendingUp, Users, PiggyBank, HandCoins, Calendar, Filter, Printer, Mail, FileSpreadsheet, AlertTriangle, UserX, Clock, RefreshCw, Eye, CheckCircle, Scale, Search } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 
@@ -247,6 +247,224 @@ function MemberActivityTab() {
                 </>
               )}
             </div>
+          </div>
+        </>
+      ) : null}
+    </TabsContent>
+  );
+}
+
+interface ReconciliationRecord {
+  accountId: number;
+  accountNumber: string;
+  memberId: number;
+  memberName: string;
+  memberNumber: string;
+  currentBalance: string;
+  totalCredits: string;
+  totalDebits: string;
+  expectedBalance: string;
+  difference: string;
+  transactionCount: number;
+  status: 'matched' | 'discrepancy';
+}
+
+interface ReconciliationData {
+  summary: {
+    totalAccounts: number;
+    matchedAccounts: number;
+    discrepancyAccounts: number;
+    totalDiscrepancyAmount: string;
+    reconciliationDate: string;
+  };
+  discrepancies: ReconciliationRecord[];
+  matched: ReconciliationRecord[];
+}
+
+function ReconciliationTab() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [view, setView] = useState<'discrepancies' | 'matched' | 'all'>('discrepancies');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [recPage, setRecPage] = useState(1);
+  const recPageSize = 25;
+
+  const { data, isLoading } = useQuery<ReconciliationData>({
+    queryKey: ['/api/reports/reconciliation'],
+  });
+
+  const syncMutation = useMutation({
+    mutationFn: async () => await apiRequest("POST", "/api/admin/sync-savings-totals"),
+    onSuccess: () => {
+      toast({ title: "Savings Totals Synced", description: "Member total savings have been recalculated from account balances.", variant: "success" });
+      qc.invalidateQueries({ queryKey: ['/api/reports/reconciliation'] });
+      qc.invalidateQueries({ queryKey: ['/api/members'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Sync Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const records = view === 'discrepancies'
+    ? data?.discrepancies || []
+    : view === 'matched'
+    ? data?.matched || []
+    : [...(data?.discrepancies || []), ...(data?.matched || [])];
+
+  const filtered = searchTerm
+    ? records.filter(r =>
+        r.memberName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.memberNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.accountNumber.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+    : records;
+
+  const totalPages = Math.ceil(filtered.length / recPageSize);
+  const paginated = filtered.slice((recPage - 1) * recPageSize, recPage * recPageSize);
+
+  return (
+    <TabsContent value="reconciliation" className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Savings Reconciliation Report</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Compare savings account balances against transaction history to identify discrepancies
+          </p>
+        </div>
+        <Button
+          onClick={() => syncMutation.mutate()}
+          disabled={syncMutation.isPending}
+          size="sm"
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${syncMutation.isPending ? 'animate-spin' : ''}`} />
+          {syncMutation.isPending ? 'Syncing...' : 'Sync Member Totals'}
+        </Button>
+      </div>
+
+      {isLoading ? (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="section-card p-4">
+              <Skeleton className="h-4 w-20 mb-2" />
+              <Skeleton className="h-8 w-16" />
+            </div>
+          ))}
+        </div>
+      ) : data ? (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="section-card p-4">
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mb-1">
+                <Scale className="w-4 h-4" />
+                Total Accounts
+              </div>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{data.summary.totalAccounts}</p>
+            </div>
+            <div className="section-card p-4">
+              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400 mb-1">
+                <CheckCircle className="w-4 h-4" />
+                Matched
+              </div>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{data.summary.matchedAccounts}</p>
+            </div>
+            <div className="section-card p-4">
+              <div className="flex items-center gap-2 text-sm text-red-600 dark:text-red-400 mb-1">
+                <AlertTriangle className="w-4 h-4" />
+                Discrepancies
+              </div>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{data.summary.discrepancyAccounts}</p>
+            </div>
+            <div className="section-card p-4">
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mb-1">
+                <HandCoins className="w-4 h-4" />
+                Total Variance
+              </div>
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{formatCurrency(parseFloat(data.summary.totalDiscrepancyAmount))}</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex gap-2">
+              <Button variant={view === 'discrepancies' ? 'default' : 'outline'} size="sm" onClick={() => { setView('discrepancies'); setRecPage(1); }}>
+                <AlertTriangle className="w-3.5 h-3.5 mr-1.5" />
+                Discrepancies ({data.summary.discrepancyAccounts})
+              </Button>
+              <Button variant={view === 'matched' ? 'default' : 'outline'} size="sm" onClick={() => { setView('matched'); setRecPage(1); }}>
+                <CheckCircle className="w-3.5 h-3.5 mr-1.5" />
+                Matched ({data.summary.matchedAccounts})
+              </Button>
+              <Button variant={view === 'all' ? 'default' : 'outline'} size="sm" onClick={() => { setView('all'); setRecPage(1); }}>
+                All ({data.summary.totalAccounts})
+              </Button>
+            </div>
+            <div className="relative flex-1 max-w-xs">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Search by name, member # or account #"
+                value={searchTerm}
+                onChange={(e) => { setSearchTerm(e.target.value); setRecPage(1); }}
+                className="pl-9"
+              />
+            </div>
+          </div>
+
+          <div className="section-card overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Member</TableHead>
+                  <TableHead>Account #</TableHead>
+                  <TableHead className="text-right">Total Credits</TableHead>
+                  <TableHead className="text-right">Total Debits</TableHead>
+                  <TableHead className="text-right">Expected Balance</TableHead>
+                  <TableHead className="text-right">Current Balance</TableHead>
+                  <TableHead className="text-right">Difference</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginated.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+                      {searchTerm ? 'No matching records found.' : view === 'discrepancies' ? 'No discrepancies found — all accounts match!' : 'No records to display.'}
+                    </TableCell>
+                  </TableRow>
+                ) : paginated.map((r) => (
+                  <TableRow key={r.accountId}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-sm">{r.memberName}</p>
+                        <p className="text-xs text-slate-500">{r.memberNumber}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-sm">{r.accountNumber}</TableCell>
+                    <TableCell className="text-right text-sm">{formatCurrency(parseFloat(r.totalCredits))}</TableCell>
+                    <TableCell className="text-right text-sm">{formatCurrency(parseFloat(r.totalDebits))}</TableCell>
+                    <TableCell className="text-right text-sm">{formatCurrency(parseFloat(r.expectedBalance))}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{formatCurrency(parseFloat(r.currentBalance))}</TableCell>
+                    <TableCell className={`text-right text-sm font-semibold ${parseFloat(r.difference) !== 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                      {parseFloat(r.difference) > 0 ? '+' : ''}{formatCurrency(parseFloat(r.difference))}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={r.status === 'matched' ? 'default' : 'destructive'} className={r.status === 'matched' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : ''}>
+                        {r.status === 'matched' ? 'Matched' : 'Discrepancy'}
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {totalPages > 1 && (
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-slate-500">{filtered.length} records</p>
+              <Pagination currentPage={recPage} totalPages={totalPages} onPageChange={setRecPage} />
+            </div>
+          )}
+
+          <div className="text-xs text-slate-400 dark:text-slate-500">
+            Reconciliation run: {new Date(data.summary.reconciliationDate).toLocaleString()}
           </div>
         </>
       ) : null}
@@ -556,12 +774,13 @@ export default function Reports() {
 
       {/* Tabs for different report sections */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setRptPage(1); setDelinqPage(1); }} className="space-y-6">
-        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="financial">Financial</TabsTrigger>
           <TabsTrigger value="activity">Member Activity</TabsTrigger>
           <TabsTrigger value="schedules">Bank Schedules</TabsTrigger>
+          <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
           <TabsTrigger value="custom">Custom Reports</TabsTrigger>
         </TabsList>
 
@@ -1048,6 +1267,9 @@ export default function Reports() {
 
         {/* Bank Schedules Tab */}
         <BankSchedulesTab />
+
+        {/* Reconciliation Tab */}
+        <ReconciliationTab />
 
         {/* Custom/Detail Reports Tab */}
         <TabsContent value="custom" className="space-y-6">

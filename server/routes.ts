@@ -6,11 +6,11 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword, validatePasswordComplexity, getSecuritySettings, getPasswordRequirementsText } from "./localAuth";
 import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "./rbac-middleware";
-import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable } from "@shared/schema";
+import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
 import { z } from "zod";
 import { db } from "./db";
-import { eq, and, inArray, sql, lt, isNull, or, not } from "drizzle-orm";
+import { eq, and, inArray, sql, lt, isNull, isNotNull, or, not } from "drizzle-orm";
 import * as XLSX from "xlsx";
 
 interface ImportJob {
@@ -5041,6 +5041,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/reports/reconciliation', isAuthenticated, requirePermission('read', 'reports'), async (req: any, res) => {
+    try {
+      const allAccounts = await db
+        .select({
+          accountId: savingsAccountsTable.id,
+          memberId: savingsAccountsTable.memberId,
+          accountNumber: savingsAccountsTable.accountNumber,
+          currentBalance: savingsAccountsTable.balance,
+        })
+        .from(savingsAccountsTable);
+
+      const memberIds = [...new Set(allAccounts.map(a => a.memberId))];
+      const memberMap = new Map<number, { fullName: string; memberNumber: string }>();
+      for (const mid of memberIds) {
+        const m = await storage.getMember(mid);
+        if (m) memberMap.set(mid, { fullName: m.fullName, memberNumber: m.memberNumber || '' });
+      }
+
+      const txSums = await db
+        .select({
+          savingsAccountId: transactions.savingsAccountId,
+          totalCredits: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} IN ('deposit', 'interest_credit', 'share_capital') AND ${transactions.status} = 'completed' THEN ${transactions.amount}::numeric ELSE 0 END), 0)`,
+          totalDebits: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} IN ('withdrawal', 'fee_charge') AND ${transactions.status} = 'completed' THEN ${transactions.amount}::numeric ELSE 0 END), 0)`,
+          transactionCount: sql<number>`COUNT(*)::int`,
+        })
+        .from(transactions)
+        .where(isNotNull(transactions.savingsAccountId))
+        .groupBy(transactions.savingsAccountId);
+
+      const txMap = new Map(txSums.map(t => [t.savingsAccountId, t]));
+
+      const discrepancies: any[] = [];
+      const matched: any[] = [];
+      let totalDiscrepancyAmount = 0;
+
+      for (const acct of allAccounts) {
+        const tx = txMap.get(acct.accountId);
+        const currentBalance = parseFloat(acct.currentBalance || '0');
+        const totalCredits = parseFloat(tx?.totalCredits || '0');
+        const totalDebits = parseFloat(tx?.totalDebits || '0');
+        const expectedBalance = totalCredits - totalDebits;
+        const difference = Math.round((currentBalance - expectedBalance) * 100) / 100;
+        const member = memberMap.get(acct.memberId);
+
+        const record = {
+          accountId: acct.accountId,
+          accountNumber: acct.accountNumber,
+          memberId: acct.memberId,
+          memberName: member?.fullName || 'Unknown',
+          memberNumber: member?.memberNumber || '',
+          currentBalance: currentBalance.toFixed(2),
+          totalCredits: totalCredits.toFixed(2),
+          totalDebits: totalDebits.toFixed(2),
+          expectedBalance: expectedBalance.toFixed(2),
+          difference: difference.toFixed(2),
+          transactionCount: tx?.transactionCount || 0,
+          status: Math.abs(difference) < 0.01 ? 'matched' : 'discrepancy',
+        };
+
+        if (Math.abs(difference) >= 0.01) {
+          discrepancies.push(record);
+          totalDiscrepancyAmount += Math.abs(difference);
+        } else {
+          matched.push(record);
+        }
+      }
+
+      discrepancies.sort((a, b) => Math.abs(parseFloat(b.difference)) - Math.abs(parseFloat(a.difference)));
+
+      res.json({
+        summary: {
+          totalAccounts: allAccounts.length,
+          matchedAccounts: matched.length,
+          discrepancyAccounts: discrepancies.length,
+          totalDiscrepancyAmount: totalDiscrepancyAmount.toFixed(2),
+          reconciliationDate: new Date().toISOString(),
+        },
+        discrepancies,
+        matched,
+      });
+    } catch (error: any) {
+      console.error('Error generating reconciliation report:', error);
+      res.status(500).json({ message: error.message || 'Failed to generate reconciliation report' });
+    }
+  });
+
+  app.post('/api/admin/sync-savings-totals', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const result = await storage.syncAllMemberTotalSavings();
+      res.json({ message: `Successfully synced total savings for ${result.updated} members`, ...result });
+    } catch (error: any) {
+      console.error('Error syncing savings totals:', error);
+      res.status(500).json({ message: error.message || 'Failed to sync savings totals' });
+    }
+  });
+
   // Reports API endpoints (generic - must be after specific report routes)
   app.get('/api/reports/:reportType', isAuthenticated, async (req: any, res) => {
     try {
@@ -6590,6 +6686,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: error.message || 'Failed to run activity check' });
     }
   });
+
+  setTimeout(async () => {
+    try {
+      const result = await storage.syncAllMemberTotalSavings();
+      console.log(`[savings-sync] Startup sync: updated total_savings for ${result.updated} members`);
+    } catch (error) {
+      console.error('[savings-sync] Startup sync failed:', error);
+    }
+  }, 8000);
 
   const { startScheduledBackups } = await import('./backup');
   startScheduledBackups();

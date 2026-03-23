@@ -38,6 +38,8 @@ The system employs a `client/` (React frontend) and `server/` (Express.js backen
 - **System Settings**: Differentiated user and admin settings for personal preferences and system-wide configurations (e.g., loan limits, security policies, email setup, business rules).
 - **Security Features**: Includes session timeout based on inactivity, configurable password complexity, login lockout after failed attempts, and Two-Factor Authentication (TOTP) with setup, verification, and disable options.
 - **Database Backup System**: Exports major tables to JSON files. Supports manual and scheduled backups with automatic cleanup of old backups.
+- **Savings Total Sync**: `members.total_savings` is automatically kept in sync with actual `savings_accounts` balances. Sync triggers on every balance change (deposits, withdrawals, interest credits, payment credits) and runs a bulk startup sync. Admin can manually trigger sync via `/api/admin/sync-savings-totals`.
+- **Reconciliation Report**: Compares savings account balances against transaction history (credits: deposits, interest, share capital vs debits: withdrawals, fees) to identify discrepancies. Available in Reports > Reconciliation tab with summary stats, searchable table, and pagination.
 
 ## External Dependencies
 - **Database**: Neon PostgreSQL (serverless)
