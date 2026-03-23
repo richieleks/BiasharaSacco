@@ -745,6 +745,7 @@ export default function RoleBasedDashboard() {
   
   switch (userRole) {
     case 'admin':
+    case 'treasurer':
       return <AdminDashboard />;
     case 'manager':
       return <ManagerDashboard />;
