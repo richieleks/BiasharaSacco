@@ -2649,16 +2649,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/loans/stats', isAuthenticated, async (req: any, res) => {
+  app.get('/api/loans/stats', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
       const userRoles = req.member?.roles || ['member'];
       const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer'].includes(role));
 
       let memberId: number | undefined;
       if (!isStaff) {
-        const userId = getUserId(req);
-        const member = userId ? await storage.getMemberByUserId(userId) : null;
-        memberId = member?.id;
+        memberId = req.member?.id;
         if (!memberId) {
           return res.json({ activeCount: 0, totalOutstanding: 0, defaultedCount: 0, totalCount: 0 });
         }
