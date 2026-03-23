@@ -16,6 +16,17 @@ function generateUsername(fullName: string): string {
   return `${firstName[0]}${lastName}`.toLowerCase();
 }
 
+async function generateUniqueUsername(fullName: string): Promise<string> {
+  const baseUsername = generateUsername(fullName);
+  let username = baseUsername;
+  let suffix = 1;
+  while (await storage.getUserByUsername(username)) {
+    username = `${baseUsername}${suffix}`;
+    suffix++;
+  }
+  return username;
+}
+
 function excelDateToDate(excelDate: any): Date {
   if (typeof excelDate === 'number') {
     const excelEpoch = new Date(1900, 0, 1);
@@ -231,6 +242,35 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
         if (existingMember) {
           member = existingMember;
           console.log(`Member already exists (matched by account number ${accountNumber}): ${member.fullName} (${member.memberNumber})`);
+
+          if (!member.userId) {
+            try {
+              const username = await generateUniqueUsername(member.fullName);
+              const defaultPassword = generateDefaultPassword(member.fullName);
+              const hashedPwd = await hashPassword(defaultPassword);
+              const nameParts = member.fullName.split(' ');
+              const firstName = nameParts[0] || '';
+              const lastName = nameParts.slice(1).join(' ') || '';
+              const newUser = await storage.upsertUser({
+                id: `member-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+                username,
+                password: hashedPwd,
+                email: member.email || `${member.fullName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
+                firstName,
+                lastName,
+                role: 'member',
+                authMethod: 'local',
+                mustChangePassword: true,
+                userType: 'member',
+              });
+              await storage.updateMember(member.id, { userId: newUser.id } as any);
+              member.userId = newUser.id;
+              console.log(`Created user account for existing member ${member.fullName}: username=${username}`);
+            } catch (userErr) {
+              console.log(`Warning: Could not create user account for existing member ${member.fullName}:`, userErr);
+              result.exceptions.push({ sheet: sheetName, type: 'user_creation_failed', detail: `Could not create user account for ${member.fullName}` });
+            }
+          }
         } else if (shouldCreateMembers) {
           const memberData = {
             fullName: accountName,
@@ -272,6 +312,33 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
           allMembers.push(member as any);
           result.importedMembers++;
           console.log(`Created new member: ${member.fullName} (${member.memberNumber})`);
+
+          try {
+            const username = await generateUniqueUsername(accountName);
+            const defaultPassword = generateDefaultPassword(accountName);
+            const hashedPwd = await hashPassword(defaultPassword);
+            const nameParts = accountName.split(' ');
+            const firstName = nameParts[0] || '';
+            const lastName = nameParts.slice(1).join(' ') || '';
+            const newUser = await storage.upsertUser({
+              id: `member-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
+              username,
+              password: hashedPwd,
+              email: `${accountName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
+              firstName,
+              lastName,
+              role: 'member',
+              authMethod: 'local',
+              mustChangePassword: true,
+              userType: 'member',
+            });
+            await storage.updateMember(member.id, { userId: newUser.id } as any);
+            member.userId = newUser.id;
+            console.log(`Created user account for ${accountName}: username=${username}`);
+          } catch (userErr) {
+            console.log(`Warning: Could not create user account for ${accountName}:`, userErr);
+            result.exceptions.push({ sheet: sheetName, type: 'user_creation_failed', detail: `Could not create user account for ${accountName}` });
+          }
         } else {
           result.errors.push({
             row: result.totalRows,
@@ -756,7 +823,7 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
               mustChangePassword: true,
             });
             newUserId = newUser.id;
-            console.log(`Created user account for ${fullName}: username=${username}, password=${defaultPassword}`);
+            console.log(`Created user account for ${fullName}: username=${username}`);
           } else {
             newUserId = existingUser.id;
             console.log(`User account already exists for ${fullName}: username=${username}`);
