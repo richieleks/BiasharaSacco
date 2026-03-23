@@ -169,7 +169,6 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "request", resource: "withdrawals" },
     { action: "read", resource: "loans" },
     { action: "create", resource: "loans" },
-    { action: "approve", resource: "loans" },
     { action: "record", resource: "loan-repayments" },
     { action: "create", resource: "loan-applications" },
     { action: "read", resource: "transactions" },
