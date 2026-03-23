@@ -73,7 +73,7 @@ export default function Loans() {
   } = useServerPagination({ initialLimit: 10 });
 
   const [searchInput, setSearchInput] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("active");
 
   useEffect(() => {
     const timer = setTimeout(() => {
