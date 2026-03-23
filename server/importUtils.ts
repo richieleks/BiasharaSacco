@@ -728,6 +728,16 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 
             try {
               await storage.updateMember(existingMember.id, updateData);
+              if (fullName && existingMember.userId) {
+                try {
+                  const nameParts = fullName.split(/\s+/);
+                  const syncFirst = nameParts[0] || '';
+                  const syncLast = nameParts.slice(1).join(' ') || '';
+                  await storage.updateUser(existingMember.userId, { firstName: syncFirst, lastName: syncLast });
+                } catch (syncErr) {
+                  console.log(`Warning: Could not sync user name for member ${existingMember.memberNumber}:`, syncErr);
+                }
+              }
               result.successfulImports++;
               console.log(`Updated existing member ${rowNum} (matched by ${matchedBy}): ${fullName} (${existingMember.memberNumber})`);
             } catch (updateErr) {
