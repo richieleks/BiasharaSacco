@@ -1854,7 +1854,7 @@ function UserManagementTab() {
     password: z.string().optional(),
   });
 
-  const systemRoleNames = ['admin', 'manager', 'committee', 'teller', 'treasurer'];
+  const systemRoleNames = ['admin', 'manager', 'committee', 'treasurer'];
   const systemRoles = dynamicRoles.filter((r: any) => systemRoleNames.includes(r.name));
 
   const createForm = useForm<z.infer<typeof createUserSchema>>({
@@ -1865,7 +1865,7 @@ function UserManagementTab() {
       email: "",
       firstName: "",
       lastName: "",
-      roles: ["teller"],
+      roles: ["committee"],
     },
   });
 
@@ -1977,12 +1977,12 @@ function UserManagementTab() {
       case 'admin': return 'bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300';
       case 'manager': return 'bg-purple-100 text-purple-800 dark:text-purple-300';
       case 'committee': return 'bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300';
-      case 'teller': return 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300';
+      case 'treasurer': return 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300';
       default: return 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200';
     }
   };
 
-  const systemUsers = allUsers.filter((u: any) => u.userType === 'system' || ['admin', 'manager', 'committee', 'teller'].includes(u.role));
+  const systemUsers = allUsers.filter((u: any) => u.userType === 'system' || ['admin', 'manager', 'committee'].includes(u.role));
   const allMemberUsers = allUsers.filter((u: any) => u.userType === 'member' || u.role === 'member');
   const linkedCount = allMemberUsers.filter((u: any) => !u.isUnlinked).length;
   const unlinkedCount = allMemberUsers.filter((u: any) => u.isUnlinked).length;
@@ -2011,7 +2011,7 @@ function UserManagementTab() {
       <div>
         <h3 className="text-lg font-medium mb-1">System Users & Roles</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Manage system staff accounts separately from SACCO members. System users (admin, manager, committee, teller) operate the platform and do not have member profiles.
+          Manage system staff accounts separately from SACCO members. System users (admin, manager, committee) operate the platform and do not have member profiles.
         </p>
       </div>
 
@@ -2031,7 +2031,7 @@ function UserManagementTab() {
             <DialogContent className="max-h-[85vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Create System User</DialogTitle>
-                <DialogDescription>Add a new system staff account (admin, manager, committee, teller, treasurer).</DialogDescription>
+                <DialogDescription>Add a new system staff account (admin, manager, committee, treasurer).</DialogDescription>
               </DialogHeader>
               <Form {...createForm}>
                 <form onSubmit={createForm.handleSubmit((data) => createUserMutation.mutate(data))} className="space-y-4">

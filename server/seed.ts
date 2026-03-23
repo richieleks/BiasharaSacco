@@ -36,7 +36,6 @@ const SYSTEM_ROLES = [
   { name: "admin", displayName: "Administrator", description: "Full system access — can view and modify all data, manage roles, and configure system settings" },
   { name: "treasurer", displayName: "Treasurer", description: "Financial operations, final loan approvals (UGX 100k–500k), access to all financial reports and analytics" },
   { name: "committee", displayName: "Committee", description: "Policy enforcement, initial loan reviews, member registration, deposits/withdrawals processing" },
-  { name: "teller", displayName: "Teller", description: "Transaction processing, member registration, daily operations" },
   { name: "member", displayName: "Member", description: "Self-service access to personal account information, loan applications, and statements" },
 ];
 
@@ -175,22 +174,6 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "reports" },
     { action: "read", resource: "notifications" },
     { action: "read", resource: "sacco-accounts" },
-  ],
-  teller: [
-    { action: "read", resource: "dashboard" },
-    { action: "read", resource: "members" },
-    { action: "create", resource: "members" },
-    { action: "read", resource: "savings" },
-    { action: "create", resource: "savings" },
-    { action: "record", resource: "deposits" },
-    { action: "request", resource: "withdrawals" },
-    { action: "record", resource: "loan-repayments" },
-    { action: "read", resource: "loans" },
-    { action: "read", resource: "transactions" },
-    { action: "create", resource: "transactions" },
-    { action: "read", resource: "share-capital" },
-    { action: "read", resource: "guarantors" },
-    { action: "read", resource: "notifications" },
   ],
   member: [
     { action: "read", resource: "dashboard" },

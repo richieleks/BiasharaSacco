@@ -31,7 +31,7 @@ export default function LoanApprovalWorkflow() {
   const { user } = useAuth();
 
   const userRoles = user?.member?.roles || (user?.member?.role ? [user.member.role] : (user?.role ? [user.role] : []));
-  const mappedRoles = userRoles.map((role: any) => role === 'teller' ? 'treasurer' : role);
+  const mappedRoles = userRoles;
   const isAdmin = hasAnyRole(mappedRoles as any, ['admin']);
   const canAccessTreasurer = hasAnyRole(mappedRoles as any, ['treasurer']);
   const canViewTreasurer = hasAnyRole(mappedRoles as any, ['treasurer', 'admin']);
@@ -42,7 +42,7 @@ export default function LoanApprovalWorkflow() {
   useState(() => {
     const primaryRole = (user?.member?.role || user?.role) as string | undefined;
     if (primaryRole === 'committee') setActiveTab('committee');
-    else if (primaryRole && (primaryRole === 'treasurer' || primaryRole === 'teller')) setActiveTab('treasurer');
+    else if (primaryRole && primaryRole === 'treasurer') setActiveTab('treasurer');
   });
 
   // Fetch loans for each approval stage
@@ -240,10 +240,7 @@ export default function LoanApprovalWorkflow() {
 
             <div className="text-xs text-muted-foreground space-y-1">
               {loan.committeeApprovedAt && (
-                <p>✓ Committee reviewed: {new Date(loan.committeeApprovedAt).toLocaleDateString()}</p>
-              )}
-              {loan.tellerApprovedAt && (
-                <p>✓ Treasurer approved: {new Date(loan.tellerApprovedAt).toLocaleDateString()}</p>
+                <p>✓ Committee approved: {new Date(loan.committeeApprovedAt).toLocaleDateString()}</p>
               )}
               {loan.managerApprovedAt && (
                 <p>✓ Admin approved: {new Date(loan.managerApprovedAt).toLocaleDateString()}</p>

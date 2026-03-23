@@ -138,7 +138,7 @@ export async function setupLocalAuth() {
             await storage.updateUser(user.id, { failedLoginAttempts: 0, lockedUntil: null });
           }
 
-          const staffRoles = ['admin', 'manager', 'committee', 'teller', 'treasurer'];
+          const staffRoles = ['admin', 'manager', 'committee', 'treasurer'];
           const isStaffUser = user.role && staffRoles.includes(user.role);
           
           if (!isStaffUser) {

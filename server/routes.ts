@@ -110,7 +110,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
     member?: {
       id: number;
-      role: 'admin' | 'manager' | 'committee' | 'teller' | 'member';
+      role: 'admin' | 'manager' | 'committee' | 'member';
       userId: string;
       memberNumber: string;
       status: string;
@@ -182,7 +182,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "User not found" });
       }
 
-      const isSystemUser = (user as any).userType === 'system' || ['admin', 'manager', 'committee', 'teller'].includes(user.role || '');
+      const isSystemUser = (user as any).userType === 'system' || ['admin', 'manager', 'committee'].includes(user.role || '');
       const member = isSystemUser ? null : await ensureMemberProfile(userId, {
         roles: [user.role || 'member'],
       });
@@ -282,7 +282,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const currentUser = await storage.getUser(userId);
-      const isSystemUser = (currentUser as any)?.userType === 'system' || ['admin', 'manager', 'committee', 'teller'].includes(currentUser?.role || '');
+      const isSystemUser = (currentUser as any)?.userType === 'system' || ['admin', 'manager', 'committee'].includes(currentUser?.role || '');
       const member = isSystemUser ? null : await ensureMemberProfile(userId);
       if (member) {
         const memberUpdates: any = {};
@@ -433,7 +433,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate a unique user ID
       const userId = `local_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-      const isSystemUser = ['admin', 'manager', 'committee', 'teller'].includes(primaryRole);
+      const isSystemUser = ['admin', 'manager', 'committee'].includes(primaryRole);
       const userType = isSystemUser ? 'system' : 'member';
 
       // Create the user
@@ -524,7 +524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         updateData.password = await hashPassword(password);
       }
 
-      const isSystemUser = primaryRole ? ['admin', 'manager', 'committee', 'teller'].includes(primaryRole) : false;
+      const isSystemUser = primaryRole ? ['admin', 'manager', 'committee'].includes(primaryRole) : false;
       if (primaryRole) {
         updateData.userType = isSystemUser ? 'system' : 'member';
       }
@@ -1067,7 +1067,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userRoles = req.member?.roles || ['member'];
       let filteredApprovals: any = { loanApplications: [], withdrawalRequests: [] };
       
-      if (userRoles.some((role: string) => ['admin', 'manager', 'committee', 'teller'].includes(role))) {
+      if (userRoles.some((role: string) => ['admin', 'manager', 'committee', 'treasurer'].includes(role))) {
         // Staff can see all pending approvals
         filteredApprovals = approvals;
       } else {
@@ -1100,13 +1100,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   const isStaffUser = async (userId: string): Promise<boolean> => {
     const user = await storage.getUser(userId);
-    if (user?.role && ['admin', 'manager', 'committee', 'teller', 'treasurer'].includes(user.role)) return true;
+    if (user?.role && ['admin', 'manager', 'committee', 'treasurer'].includes(user.role)) return true;
     
     const member = await storage.getMemberByUserId(userId);
     if (!member) return false;
     
     const roles = await storage.getMemberRoles(member.id);
-    return roles.some(role => ['admin', 'manager', 'committee', 'teller', 'treasurer'].includes(role));
+    return roles.some(role => ['admin', 'manager', 'committee', 'treasurer'].includes(role));
   };
 
   const getUserRoleNames = async (userId: string): Promise<string[]> => {
@@ -1136,8 +1136,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (requiredRole === 'committee') {
       return roles.includes('committee');
     }
-    if (requiredRole === 'treasurer' || requiredRole === 'teller') {
-      return roles.includes('treasurer') || roles.includes('teller');
+    if (requiredRole === 'treasurer') {
+      return roles.includes('treasurer');
     }
     if (requiredRole === 'manager') {
       return roles.includes('manager');
@@ -1164,7 +1164,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const currentUser = await storage.getUser(currentUserId);
       const currentMember = await storage.getMemberByUserId(currentUserId);
       const currentRoles = currentMember ? await storage.getMemberRoles(currentMember.id) : (currentUser?.role ? [currentUser.role] : []);
-      const isStaff = currentUser?.role === 'admin' || currentRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      const isStaff = currentUser?.role === 'admin' || currentRoles.some(role => ['admin', 'manager', 'committee', 'treasurer'].includes(role));
       const canAutoApprove = currentUser?.role === 'admin';
 
       let newUserId = currentUserId;
@@ -1370,7 +1370,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (page || limit) {
         const userRoles = req.member?.roles || ['member'];
-        const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer', 'teller'].includes(role));
+        const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer'].includes(role));
 
         if (isStaff) {
           const result = await storage.getMembersPaginated(pageNum, limitNum, search as string);
@@ -1405,7 +1405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Roles must be an array" });
       }
       
-      const validRoles = ['manager', 'committee', 'teller', 'member'];
+      const validRoles = ['manager', 'committee', 'member'];
       if (roles.includes('admin')) {
         return res.status(400).json({ message: "Admin role cannot be assigned through member roles. Use User Management instead." });
       }
@@ -1469,8 +1469,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Access control logic:
       // 1. Members can only view their own data
-      // 2. Staff (teller, committee, manager, admin) can view any member data
-      const isStaff = isUserAdmin || effectiveRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      // 2. Staff (committee, manager, admin) can view any member data
+      const isStaff = isUserAdmin || effectiveRoles.some(role => ['admin', 'manager', 'committee', 'treasurer'].includes(role));
       const isOwnRecord = requestingMember?.id === memberId;
 
       if (!isStaff && !isOwnRecord) {
@@ -1607,7 +1607,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const effectiveRoles = roleNames.length > 0 ? roleNames : (updatingUser?.role ? [updatingUser.role] : []);
 
       // Access control: members can only update their own data, staff can update any
-      const isStaff = isUpdatingAdmin || effectiveRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      const isStaff = isUpdatingAdmin || effectiveRoles.some(role => ['admin', 'manager', 'committee', 'treasurer'].includes(role));
       const isOwnRecord = requestingMember?.id === memberId;
 
       if (!isStaff && !isOwnRecord) {
@@ -1684,7 +1684,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     // Check for active/running loans
     const activeLoans = await storage.getMemberActiveLoans(memberId);
     const runningLoans = activeLoans.filter((l: any) =>
-      ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved'].includes(l.status)
+      ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved'].includes(l.status)
     );
 
     if (runningLoans.length > 0) {
@@ -1703,7 +1703,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     for (const g of guaranteedLoans as any[]) {
       if (g.status === 'approved' && g.loan) {
         const loan = g.loan as any;
-        const loanActive = ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved'].includes(loan.status);
+        const loanActive = ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved'].includes(loan.status);
         if (loanActive && parseFloat(loan.outstandingBalance || '0') > 0) {
           blockers.push(`Member is a guarantor on loan ${loan.loanNumber} which has not been fully repaid (outstanding: UGX ${parseFloat(loan.outstandingBalance).toLocaleString()})`);
         }
@@ -1876,7 +1876,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // If member has active loans, re-compute current outstanding and verify savings sufficiency
       const activeLoans = await storage.getMemberActiveLoans(exitRequest.memberId);
       const runningLoans = activeLoans.filter((l: any) =>
-        ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved', 'teller_approved'].includes(l.status)
+        ['active', 'disbursed', 'approved', 'manager_approved', 'committee_approved'].includes(l.status)
       );
 
       let actualLoanRepayment = 0;
@@ -2090,7 +2090,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userId = getUserId(req)!;
       const userRecord = await storage.getUser(userId);
-      const isStaff = userRecord && ['admin', 'treasurer', 'teller'].includes(userRecord.role);
+      const isStaff = userRecord && ['admin', 'treasurer'].includes(userRecord.role);
 
       if (!isStaff) {
         const member = await storage.getMemberByUserId(userId);
@@ -2276,7 +2276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const staffMember of staffMembers) {
           // Only notify members who have staff roles
           const roles = await storage.getMemberRoles(staffMember.id);
-          const hasStaffRole = roles.some(role => ['admin', 'manager', 'committee', 'treasurer', 'teller'].includes(role));
+          const hasStaffRole = roles.some(role => ['admin', 'manager', 'committee', 'treasurer'].includes(role));
           
           if (hasStaffRole) {
             await createAndBroadcastNotification({
@@ -2539,7 +2539,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const staffMember of allMembers) {
           if (staffMember.id === member.id) continue;
           const roles = await storage.getMemberRoles(staffMember.id);
-          const hasStaffRole = roles.some(role => ['admin', 'manager', 'committee', 'treasurer', 'teller'].includes(role));
+          const hasStaffRole = roles.some(role => ['admin', 'manager', 'committee', 'treasurer'].includes(role));
           if (hasStaffRole) {
             await createAndBroadcastNotification({
               type: 'loan_application',
@@ -2572,7 +2572,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
         const statusFilter = status && typeof status === 'string' ? status : undefined;
         const userRoles = req.member?.roles || ['member'];
-        const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer', 'teller'].includes(role));
+        const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer'].includes(role));
 
         if (isStaff) {
           const result = await storage.getLoansPaginated(pageNum, limitNum, search as string, undefined, statusFilter);
@@ -2600,7 +2600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/loans/stats', isAuthenticated, async (req: any, res) => {
     try {
       const userRoles = req.member?.roles || ['member'];
-      const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer', 'teller'].includes(role));
+      const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer'].includes(role));
 
       let memberId: number | undefined;
       if (!isStaff) {
@@ -2721,8 +2721,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "No role found" });
       }
 
-      const canViewCommittee = userRoles.includes('committee') || userRoles.includes('treasurer') || userRoles.includes('teller') || userRoles.includes('admin');
-      const canViewTreasurer = userRoles.includes('treasurer') || userRoles.includes('teller') || userRoles.includes('admin');
+      const canViewCommittee = userRoles.includes('committee') || userRoles.includes('treasurer') || userRoles.includes('admin');
+      const canViewTreasurer = userRoles.includes('treasurer') || userRoles.includes('admin');
 
       if (stage === 'committee' && !canViewCommittee) {
         return res.status(403).json({ message: "Committee, treasurer, or admin role required to view committee loans" });
@@ -3311,7 +3311,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const roleNames = requestingMember ? await storage.getMemberRoles(requestingMember.id) : [];
       const effectiveRoles = roleNames.length > 0 ? roleNames : (savingsUser?.role ? [savingsUser.role] : []);
 
-      const isStaff = isSavingsAdmin || effectiveRoles.some(role => ['admin', 'manager', 'committee', 'teller'].includes(role));
+      const isStaff = isSavingsAdmin || effectiveRoles.some(role => ['admin', 'manager', 'committee', 'treasurer'].includes(role));
 
       const { search, page, limit } = req.query;
 
@@ -5013,7 +5013,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const reportUser = await storage.getUser(userId!);
       const reportMember = await storage.getMemberByUserId(userId!);
       const reportRoles = reportMember ? await storage.getMemberRoles(reportMember.id) : (reportUser?.role ? [reportUser.role] : []);
-      const canAccessReports = reportRoles.some((r: string) => ['admin', 'manager', 'committee', 'teller'].includes(r));
+      const canAccessReports = reportRoles.some((r: string) => ['admin', 'manager', 'committee', 'treasurer'].includes(r));
       if (!canAccessReports) {
         return res.status(403).json({ message: "Access denied" });
       }
@@ -5227,7 +5227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dlUser = await storage.getUser(userId!);
       const dlMember = await storage.getMemberByUserId(userId!);
       const dlRoles = dlMember ? await storage.getMemberRoles(dlMember.id) : (dlUser?.role ? [dlUser.role] : []);
-      const canDl = dlRoles.some((r: string) => ['admin', 'manager', 'committee', 'teller'].includes(r));
+      const canDl = dlRoles.some((r: string) => ['admin', 'manager', 'committee', 'treasurer'].includes(r));
       if (!canDl) return res.status(403).json({ message: "Access denied" });
 
       let rows: Record<string, any>[] = [];

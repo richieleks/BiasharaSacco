@@ -37,7 +37,7 @@ export const users = pgTable("users", {
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
   profileImageUrl: varchar("profile_image_url"),
-  role: varchar("role", { enum: ["admin", "manager", "committee", "teller", "member"] }).default("member"),
+  role: varchar("role", { enum: ["admin", "manager", "committee", "member"] }).default("member"),
   userType: varchar("user_type", { enum: ["system", "member"] }).default("member"),
   authMethod: varchar("auth_method", { enum: ["replit", "local"] }).default("local"),
   mustChangePassword: boolean("must_change_password").default(false),
@@ -78,7 +78,7 @@ export const members = pgTable("members", {
   beneficiaryContact: varchar("beneficiary_contact").default(""),
   nextOfKinName: varchar("next_of_kin_name"),
   nextOfKinPhone: varchar("next_of_kin_phone"),
-  role: varchar("role", { enum: ["admin", "manager", "committee", "teller", "member"] }).default("member"),
+  role: varchar("role", { enum: ["admin", "manager", "committee", "member"] }).default("member"),
   status: varchar("status", { enum: ["pending", "active", "inactive", "dormant", "suspended", "rejected", "exited"] }).default("pending"),
   lastSavingsDate: timestamp("last_savings_date"),
   exitedAt: timestamp("exited_at"),
@@ -137,11 +137,8 @@ export const loans = pgTable("loans", {
   // Business rule compliance fields
   maxAllowedAmount: decimal("max_allowed_amount", { precision: 15, scale: 2 }), // Based on 1:2.5 savings ratio
   savingsToLoanRatio: decimal("savings_to_loan_ratio", { precision: 5, scale: 2 }), // Track compliance with 1:2.5 rule
-  status: varchar("status", { enum: ["pending", "teller_approved", "committee_approved", "manager_approved", "approved", "rejected", "disbursed", "active", "completed", "defaulted"] }).default("pending"),
-  approvalStage: varchar("approval_stage", { enum: ["teller", "committee", "manager", "completed"] }).default("committee"),
-  tellerApprovedBy: varchar("teller_approved_by").references(() => users.id),
-  tellerApprovedAt: timestamp("teller_approved_at"),
-  tellerComments: text("teller_comments"),
+  status: varchar("status", { enum: ["pending", "committee_approved", "manager_approved", "approved", "rejected", "disbursed", "active", "completed", "defaulted"] }).default("pending"),
+  approvalStage: varchar("approval_stage", { enum: ["committee", "manager", "completed"] }).default("committee"),
   committeeApprovedBy: varchar("committee_approved_by").references(() => users.id),
   committeeApprovedAt: timestamp("committee_approved_at"),
   committeeComments: text("committee_comments"),
@@ -472,7 +469,7 @@ export const balanceSnapshotsRelations = relations(balanceSnapshots, ({ one }) =
 export const memberRoles = pgTable("member_roles", {
   id: serial("id").primaryKey(),
   memberId: integer("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
-  role: varchar("role").notNull(), // admin, manager, committee, teller, member
+  role: varchar("role").notNull(), // admin, manager, committee, member
   assignedBy: varchar("assigned_by").references(() => users.id),
   assignedAt: timestamp("assigned_at").defaultNow().notNull(),
 });

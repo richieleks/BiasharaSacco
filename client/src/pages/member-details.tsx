@@ -116,7 +116,7 @@ export default function MemberDetails() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
-  const isStaff = ['admin', 'manager', 'committee', 'teller', 'treasurer'].includes(user?.role || '');
+  const isStaff = ['admin', 'manager', 'committee', 'treasurer'].includes(user?.role || '');
 
   const memberId = params?.id;
 

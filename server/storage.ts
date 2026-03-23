@@ -1048,14 +1048,6 @@ export class DatabaseStorage implements IStorage {
         committeeApprovedAt: currentTime,
         committeeComments: comments,
       };
-    } else if (stage === 'teller') {
-      updateData = {
-        status: 'approved',
-        approvalStage: 'completed',
-        tellerApprovedBy: approvedBy,
-        tellerApprovedAt: currentTime,
-        tellerComments: comments,
-      };
     } else if (stage === 'manager') {
       updateData = {
         status: 'approved',
@@ -1142,11 +1134,6 @@ export class DatabaseStorage implements IStorage {
       currentStage: loan.approvalStage,
       currentStatus: loan.status,
       stages: {
-        teller: {
-          approvedBy: loan.tellerApprovedBy,
-          approvedAt: loan.tellerApprovedAt,
-          comments: loan.tellerComments,
-        },
         committee: {
           approvedBy: loan.committeeApprovedBy,
           approvedAt: loan.committeeApprovedAt,

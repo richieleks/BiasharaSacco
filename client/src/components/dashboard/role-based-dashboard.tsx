@@ -750,8 +750,6 @@ export default function RoleBasedDashboard() {
       return <ManagerDashboard />;
     case 'committee':
       return <CommitteeDashboard />;
-    case 'teller':
-      return <TellerDashboard />;
     case 'member':
       return <MemberDashboard />;
     default:

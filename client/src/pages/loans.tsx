@@ -49,7 +49,7 @@ export default function Loans() {
   const [location, setLocation] = useLocation();
   const { activeRole, userRoles, hasPermission } = useRBAC();
   const isPersonalView = location === '/my-loans' || activeRole === 'member';
-  const isTreasurer = userRoles?.includes('treasurer') || userRoles?.includes('teller');
+  const isTreasurer = userRoles?.includes('treasurer');
   const canDisburse = hasPermission('disburse', 'loans');
   const canRecordRepayment = hasPermission('record', 'loan-repayments');
   const canApplyForLoans = hasPermission('create', 'loan-applications');

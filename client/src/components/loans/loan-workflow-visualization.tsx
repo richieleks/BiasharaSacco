@@ -146,7 +146,7 @@ export default function LoanWorkflowVisualization({
   const getRoleIcon = (role: string) => {
     switch (role.toLowerCase()) {
       case 'member': return User;
-      case 'teller': return User;
+      case 'treasurer': return User;
       case 'committee': return Users;
       case 'manager': return Building2;
       case 'system': return CreditCard;
