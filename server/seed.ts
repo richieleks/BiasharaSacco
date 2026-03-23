@@ -79,6 +79,9 @@ const SYSTEM_PERMISSIONS = [
   { resource: "personal-guarantors", action: "read", displayName: "View Guarantor Requests", category: "Finance" },
   { resource: "sacco-accounts", action: "read", displayName: "View SACCO Accounts", category: "Finance" },
   { resource: "sacco-accounts", action: "update", displayName: "Manage SACCO Accounts", category: "Finance" },
+  { resource: "exit-requests", action: "read", displayName: "View Exit Requests", category: "Main" },
+  { resource: "exit-requests", action: "approve", displayName: "Approve/Reject Exit Requests", category: "Main" },
+  { resource: "exit-requests", action: "create", displayName: "Submit Exit Request", category: "Main" },
 ];
 
 const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]> = {
@@ -117,6 +120,8 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "audit-logs" },
     { action: "read", resource: "sacco-accounts" },
     { action: "update", resource: "sacco-accounts" },
+    { action: "read", resource: "exit-requests" },
+    { action: "approve", resource: "exit-requests" },
   ],
   treasurer: [
     { action: "read", resource: "dashboard" },
@@ -149,6 +154,8 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "read", resource: "notifications" },
     { action: "read", resource: "sacco-accounts" },
     { action: "update", resource: "sacco-accounts" },
+    { action: "read", resource: "exit-requests" },
+    { action: "approve", resource: "exit-requests" },
   ],
   committee: [
     { action: "read", resource: "dashboard" },
@@ -186,6 +193,7 @@ const ROLE_PERMISSION_MAP: Record<string, { action: string; resource: string }[]
     { action: "create", resource: "loan-applications" },
     { action: "read", resource: "notifications" },
     { action: "read", resource: "guarantors" },
+    { action: "create", resource: "exit-requests" },
   ],
 };
 

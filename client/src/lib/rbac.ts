@@ -18,7 +18,7 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Share Capital', path: '/share-capital', icon: 'ArrowUpRight', group: 'Finance', permission: { action: 'read', resource: 'share-capital' } },
   { name: 'Guarantors', path: '/guarantors', icon: 'UserCheck', group: 'Finance', permission: { action: 'read', resource: 'guarantors' } },
   { name: 'Guarantor Requests', path: '/guarantor-requests', icon: 'ShieldCheck', group: 'Finance', permission: { action: 'read', resource: 'personal-guarantors' } },
-  { name: 'Exit Requests', path: '/exit-requests', icon: 'LogOut', group: 'Main', permission: { action: 'approve', resource: 'members' } },
+  { name: 'Exit Requests', path: '/exit-requests', icon: 'LogOut', group: 'Main', permission: { action: 'read', resource: 'exit-requests' } },
   { name: 'Interest Rates', path: '/interest-rates', icon: 'Percent', group: 'Finance', permission: { action: 'read', resource: 'interest-rates' } },
   { name: 'Interest Calculations', path: '/interest-calculations', icon: 'Calculator', group: 'Finance', permission: { action: 'read', resource: 'interest-calculations' } },
   { name: 'Reports', path: '/reports', icon: 'BarChart3', group: 'Reports', permission: { action: 'read', resource: 'reports' } },

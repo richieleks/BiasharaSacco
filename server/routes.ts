@@ -1785,7 +1785,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Member exit eligibility check
-  app.get('/api/members/:id/exit-eligibility', isAuthenticated, requirePermission('update', 'members'), async (req: any, res) => {
+  app.get('/api/members/:id/exit-eligibility', isAuthenticated, requirePermission('create', 'exit-requests'), async (req: any, res) => {
     try {
       const memberId = await storage.resolveMemberId(req.params.id);
       const details = await getExitEligibilityDetails(memberId);
@@ -1797,7 +1797,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Submit member exit request (creates a pending_treasurer request)
-  app.post('/api/members/:id/exit', isAuthenticated, requirePermission('update', 'members'), async (req: any, res) => {
+  app.post('/api/members/:id/exit', isAuthenticated, requirePermission('create', 'exit-requests'), async (req: any, res) => {
     try {
       const memberId = await storage.resolveMemberId(req.params.id);
       const { reason } = req.body;
@@ -1857,7 +1857,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // List all exit requests (Treasurer/Admin only)
-  app.get('/api/exit-requests', isAuthenticated, requirePermission('approve', 'members'), async (req: any, res) => {
+  app.get('/api/exit-requests', isAuthenticated, requirePermission('read', 'exit-requests'), async (req: any, res) => {
     try {
       const { status } = req.query;
       let query = db.select({
@@ -1901,7 +1901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Treasurer approves an exit request - processes the actual exit
-  app.post('/api/exit-requests/:id/approve', isAuthenticated, requirePermission('approve', 'members'), async (req: any, res) => {
+  app.post('/api/exit-requests/:id/approve', isAuthenticated, requirePermission('approve', 'exit-requests'), async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
       const { comments } = req.body;
@@ -2026,7 +2026,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Treasurer rejects an exit request
-  app.post('/api/exit-requests/:id/reject', isAuthenticated, requirePermission('approve', 'members'), async (req: any, res) => {
+  app.post('/api/exit-requests/:id/reject', isAuthenticated, requirePermission('approve', 'exit-requests'), async (req: any, res) => {
     try {
       const requestId = parseInt(req.params.id);
       const { reason } = req.body;
