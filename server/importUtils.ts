@@ -728,14 +728,20 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
 
             try {
               await storage.updateMember(existingMember.id, updateData);
-              if (fullName && existingMember.userId) {
+              if (existingMember.userId) {
                 try {
-                  const nameParts = fullName.split(/\s+/);
-                  const syncFirst = nameParts[0] || '';
-                  const syncLast = nameParts.slice(1).join(' ') || '';
-                  await storage.updateUser(existingMember.userId, { firstName: syncFirst, lastName: syncLast });
+                  const userSyncData: Record<string, any> = {};
+                  if (fullName) {
+                    const nameParts = fullName.split(/\s+/);
+                    userSyncData.firstName = nameParts[0] || '';
+                    userSyncData.lastName = nameParts.slice(1).join(' ') || '';
+                  }
+                  if (emailVal) userSyncData.email = emailVal;
+                  if (Object.keys(userSyncData).length > 0) {
+                    await storage.updateUser(existingMember.userId, userSyncData);
+                  }
                 } catch (syncErr) {
-                  console.log(`Warning: Could not sync user name for member ${existingMember.memberNumber}:`, syncErr);
+                  console.log(`Warning: Could not sync user details for member ${existingMember.memberNumber}:`, syncErr);
                 }
               }
               result.successfulImports++;
