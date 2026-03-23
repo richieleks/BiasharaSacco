@@ -275,7 +275,10 @@ export default function LoanDetails() {
             <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
               Loan Details
             </h2>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{loan.loanNumber}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+              {loan.member?.fullName && <span className="font-medium text-slate-700 dark:text-slate-300">{loan.member.fullName} — </span>}
+              {loan.loanNumber}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
