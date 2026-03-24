@@ -1259,14 +1259,14 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               ordinaryGroup.totalDisbursed += amount;
               if (!ordinaryGroup.firstDisbursementDate) ordinaryGroup.firstDisbursementDate = postingDate;
             }
-          } else if (amtDebited > 0 && (detailsLower.includes('installment') || detailsLower.includes('instalment') || detailsLower.includes('repayment') || detailsLower.includes('loan repayment'))) {
+          } else if (amtDebited > 0 && (detailsLower.includes('installment') || detailsLower.includes('instalment') || detailsLower.includes('repayment') || detailsLower.includes('loan repayment') || detailsLower.includes('loan payment') || detailsLower.includes('payment using savings'))) {
             ordinaryGroup.repayments.push({ date: postingDate, amount: amtDebited, details, rowIndex: i });
             ordinaryGroup.totalRepaid += amtDebited;
             ordinaryGroup.lastInstallmentAmount = amtDebited;
           } else if (amtDebited > 0) {
             ordinaryGroup.repayments.push({ date: postingDate, amount: amtDebited, details, rowIndex: i });
             ordinaryGroup.totalRepaid += amtDebited;
-          } else if (principalRepyt > 0 && (detailsLower.includes('repayment') || detailsLower.includes('installment') || detailsLower.includes('instalment'))) {
+          } else if (principalRepyt > 0 && (detailsLower.includes('repayment') || detailsLower.includes('installment') || detailsLower.includes('instalment') || detailsLower.includes('loan payment') || detailsLower.includes('payment using savings'))) {
             ordinaryGroup.repayments.push({ date: postingDate, amount: principalRepyt, details, rowIndex: i });
             ordinaryGroup.totalRepaid += principalRepyt;
             ordinaryGroup.lastInstallmentAmount = principalRepyt;
