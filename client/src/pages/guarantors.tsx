@@ -5,14 +5,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, Clock, CheckCircle, XCircle, FileText, DollarSign, CreditCard, UserCheck, Plus, Trash2, RefreshCw } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Users, Clock, CheckCircle, XCircle, FileText, DollarSign, CreditCard, UserCheck, Plus, Trash2, RefreshCw, ChevronsUpDown, Check } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { isUnauthorizedError } from "@/lib/authUtils";
 import { queryClient, apiRequest } from "@/lib/queryClient";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 import type { GuarantorWithDetails, MemberWithDetails } from "@shared/schema";
 
 export default function Guarantors() {
@@ -25,6 +26,7 @@ export default function Guarantors() {
   const [selectedLoanForGuarantors, setSelectedLoanForGuarantors] = useState<any>(null);
   const [isGuarantorSelectionOpen, setIsGuarantorSelectionOpen] = useState(false);
   const [selectedGuarantors, setSelectedGuarantors] = useState<Array<{memberId: number, guaranteeAmount: string}>>([]);
+  const [guarantorSearchOpen, setGuarantorSearchOpen] = useState<number | null>(null);
 
   const { data: allMembers = [] } = useQuery<MemberWithDetails[]>({
     queryKey: ['/api/guarantors/eligible-members'],
@@ -885,21 +887,50 @@ export default function Guarantors() {
                     <div key={index} className="flex flex-col sm:flex-row sm:items-end gap-3 sm:gap-4 p-4 border rounded-lg">
                       <div className="flex-1">
                         <Label htmlFor={`guarantor-${index}`}>Select Member</Label>
-                        <Select 
-                          value={guarantor.memberId.toString()}
-                          onValueChange={(value) => updateGuarantorRow(index, 'memberId', parseInt(value))}
-                        >
-                          <SelectTrigger id={`guarantor-${index}`}>
-                            <SelectValue placeholder="Choose a member" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getEligibleGuarantors(selectedLoanForGuarantors).map((member) => (
-                              <SelectItem key={member.id} value={member.id.toString()}>
-                                {member.fullName} ({member.memberNumber})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Popover open={guarantorSearchOpen === index} onOpenChange={(open) => setGuarantorSearchOpen(open ? index : null)}>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              role="combobox"
+                              aria-expanded={guarantorSearchOpen === index}
+                              className="w-full justify-between font-normal"
+                            >
+                              {guarantor.memberId > 0
+                                ? (() => {
+                                    const m = getEligibleGuarantors(selectedLoanForGuarantors).find(m => m.id === guarantor.memberId);
+                                    return m ? `${m.fullName} (${m.memberNumber})` : "Choose a member";
+                                  })()
+                                : "Search and select a member..."}
+                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Search by name or member number..." className="h-9" />
+                              <CommandList>
+                                <CommandEmpty>No eligible members found.</CommandEmpty>
+                                <CommandGroup>
+                                  {getEligibleGuarantors(selectedLoanForGuarantors).map((member) => (
+                                    <CommandItem
+                                      key={member.id}
+                                      value={`${member.fullName} ${member.memberNumber}`}
+                                      onSelect={() => {
+                                        updateGuarantorRow(index, 'memberId', member.id);
+                                        setGuarantorSearchOpen(null);
+                                      }}
+                                    >
+                                      <div className="flex flex-col">
+                                        <span className="font-medium">{member.fullName}</span>
+                                        <span className="text-xs text-muted-foreground">{member.memberNumber}</span>
+                                      </div>
+                                      <Check className={cn("ml-auto h-4 w-4", guarantor.memberId === member.id ? "opacity-100" : "opacity-0")} />
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
                       </div>
                       
                       <div className="w-full sm:w-48">

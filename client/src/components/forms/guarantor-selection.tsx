@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Trash2, Plus, UserPlus, DollarSign, AlertCircle } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Trash2, Plus, UserPlus, DollarSign, AlertCircle, ChevronsUpDown, Check } from "lucide-react";
+import { formatCurrency, cn } from "@/lib/utils";
 import type { Member } from "@shared/schema";
 
 interface GuarantorData {
@@ -37,6 +38,7 @@ export default function GuarantorSelection({
   const [selectedMemberId, setSelectedMemberId] = useState<string>("");
   const [guaranteeAmount, setGuaranteeAmount] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
+  const [memberSearchOpen, setMemberSearchOpen] = useState(false);
 
   const { data: members = [] } = useQuery<Member[]>({
     queryKey: ['/api/guarantors/eligible-members'],
@@ -126,27 +128,52 @@ export default function GuarantorSelection({
                   <strong>Note:</strong> Only approved/active SACCO members can serve as guarantors for loan applications.
                 </div>
                 
-                <div>
-                  <Label htmlFor="member">Select Member</Label>
-                  <Select value={selectedMemberId} onValueChange={setSelectedMemberId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a member..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableMembers.length === 0 ? (
-                        <div className="p-2 text-sm text-slate-500 dark:text-slate-400">
-                          No approved members available as guarantors
-                        </div>
-                      ) : (
-                        availableMembers.map((member) => (
-                          <SelectItem key={member.id} value={member.id.toString()}>
-                            {member.fullName || member.memberNumber} 
-                            ({member.memberNumber})
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-1">
+                  <Label>Select Member</Label>
+                  <Popover open={memberSearchOpen} onOpenChange={setMemberSearchOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={memberSearchOpen}
+                        className="w-full justify-between font-normal"
+                      >
+                        {selectedMemberId
+                          ? (() => {
+                              const m = availableMembers.find(m => m.id.toString() === selectedMemberId);
+                              return m ? `${m.fullName || m.memberNumber} (${m.memberNumber})` : "Choose a member...";
+                            })()
+                          : "Search and select a member..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search by name or member number..." className="h-9" />
+                        <CommandList>
+                          <CommandEmpty>No eligible members found.</CommandEmpty>
+                          <CommandGroup>
+                            {availableMembers.map((member) => (
+                              <CommandItem
+                                key={member.id}
+                                value={`${member.fullName} ${member.memberNumber}`}
+                                onSelect={() => {
+                                  setSelectedMemberId(member.id.toString());
+                                  setMemberSearchOpen(false);
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-medium">{member.fullName || member.memberNumber}</span>
+                                  <span className="text-xs text-muted-foreground">{member.memberNumber}</span>
+                                </div>
+                                <Check className={cn("ml-auto h-4 w-4", selectedMemberId === member.id.toString() ? "opacity-100" : "opacity-0")} />
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 
                 <div>
