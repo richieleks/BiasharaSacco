@@ -27,7 +27,7 @@ export default function Guarantors() {
   const [selectedGuarantors, setSelectedGuarantors] = useState<Array<{memberId: number, guaranteeAmount: string}>>([]);
 
   const { data: allMembers = [] } = useQuery<MemberWithDetails[]>({
-    queryKey: ['/api/members'],
+    queryKey: ['/api/guarantors/eligible-members'],
     enabled: !!user?.id,
   });
 
@@ -327,7 +327,6 @@ export default function Guarantors() {
 
   const getEligibleGuarantors = (loan: any) => {
     return allMembers.filter(member => 
-      member.status === 'active' && 
       member.id !== currentMember?.id &&
       member.id !== loan.memberId
     );
