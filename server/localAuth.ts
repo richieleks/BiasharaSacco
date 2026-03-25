@@ -143,8 +143,8 @@ export async function setupLocalAuth() {
           
           if (!isStaffUser) {
             const member = await storage.getMemberByUserId(user.id);
-            if (member && member.status !== 'active') {
-              return done(null, false, { message: "Your account is pending approval. Please contact the SACCO administrator." });
+            if (member && ['exited', 'suspended'].includes(member.status)) {
+              return done(null, false, { message: member.status === 'exited' ? "Your membership has been closed. Please contact the SACCO administrator." : "Your account has been suspended. Please contact the SACCO administrator." });
             }
           }
 
