@@ -2103,13 +2103,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await recordJournalEntry('member_deposit', amount, `Savings deposit - ${account.accountNumber}`, referenceNumber, getUserId(req)!);
 
-      await db.update(members).set({
+      const memberBeforeUpdate = await storage.getMember(account.memberId);
+      const updateFields: any = {
         lastSavingsDate: new Date(),
         lastActivityDate: new Date(),
         isActiveSaver: true,
-      }).where(eq(members.id, account.memberId));
+      };
+      if (memberBeforeUpdate && ['inactive', 'dormant'].includes(memberBeforeUpdate.status)) {
+        updateFields.status = 'active';
+      }
+      await db.update(members).set(updateFields).where(eq(members.id, account.memberId));
 
-      const member = await storage.getMember(account.memberId);
+      const member = memberBeforeUpdate;
       if (member?.userId) {
         await createAndBroadcastNotification({
           type: 'transaction_completed',
@@ -3259,6 +3264,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await recordJournalEntry('loan_repayment_principal', effectivePayment, `Loan repayment - ${loan.loanNumber}`, referenceNumber, getUserId(req)!);
 
       const paymentMember = await storage.getMember(loan.memberId!);
+      if (paymentMember && ['inactive', 'dormant'].includes(paymentMember.status)) {
+        await db.update(members).set({
+          status: 'active' as any,
+          lastActivityDate: new Date(),
+          isActiveSaver: true,
+          updatedAt: new Date(),
+        }).where(eq(members.id, loan.memberId!));
+      } else if (paymentMember) {
+        await db.update(members).set({
+          lastActivityDate: new Date(),
+        }).where(eq(members.id, loan.memberId!));
+      }
+
       if (paymentMember?.userId) {
         await createAndBroadcastNotification({
           type: 'payment_received',
@@ -5946,6 +5964,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               userId
             );
 
+            if (['inactive', 'dormant'].includes(member.status)) {
+              await db.update(members).set({
+                status: 'active' as any,
+                lastActivityDate: new Date(),
+                isActiveSaver: true,
+                updatedAt: new Date(),
+              }).where(eq(members.id, member.id));
+            }
+
             if (reference) existingRefs.add(reference);
             successCount++;
             totalAmount += repaymentAmount;
@@ -6107,11 +6134,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               userId
             );
 
-            await db.update(members).set({
+            const importUpdateFields: any = {
               lastSavingsDate: new Date(),
               lastActivityDate: new Date(),
               isActiveSaver: true,
-            }).where(eq(members.id, member.id));
+            };
+            if (['inactive', 'dormant'].includes(member.status)) {
+              importUpdateFields.status = 'active';
+            }
+            await db.update(members).set(importUpdateFields).where(eq(members.id, member.id));
 
             if (reference) existingRefs.add(reference);
             successCount++;
