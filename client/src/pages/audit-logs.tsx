@@ -56,7 +56,7 @@ export default function AuditLogs() {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="section-card max-w-md">
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             <div className="py-16 text-center">
               <Shield className="h-12 w-12 mx-auto text-gray-400 dark:text-gray-500 mb-4" />
               <h3 className="text-lg font-semibold">Access Denied</h3>
@@ -132,7 +132,7 @@ export default function AuditLogs() {
             Search and filter audit logs by user, action, resource, or details
           </p>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 h-4 w-4" />

@@ -799,7 +799,7 @@ export default function Reports() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="section-card">
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     <Skeleton className="h-4 w-24 mb-2 bg-slate-100 dark:bg-slate-800 rounded-lg" />
                     <Skeleton className="h-8 w-32 bg-slate-100 dark:bg-slate-800 rounded-lg" />
                   </div>
@@ -912,7 +912,7 @@ export default function Reports() {
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Member Reports</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Generate reports for member data and activities</p>
             </div>
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -964,7 +964,7 @@ export default function Reports() {
 
           {reportLoading ? (
             <div className="section-card">
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Skeleton key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800 rounded-lg" />
@@ -991,7 +991,7 @@ export default function Reports() {
                   </div>
                 </div>
               </div>
-              <div className="p-6 overflow-x-auto">
+              <div className="p-4 sm:p-6 overflow-x-auto">
                 <Table className="table-modern">
                   <TableHeader>
                     <TableRow>
@@ -1038,7 +1038,7 @@ export default function Reports() {
             </div>
           ) : reportData !== undefined ? (
             <div className="section-card">
-              <div className="p-6 text-center py-8 text-slate-500 dark:text-slate-400">
+              <div className="p-4 sm:p-6 text-center py-8 text-slate-500 dark:text-slate-400">
                 No data available for the selected criteria
               </div>
             </div>
@@ -1049,7 +1049,7 @@ export default function Reports() {
         <TabsContent value="financial" className="space-y-6">
           {reportLoading ? (
             <div className="section-card">
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <div className="space-y-3">
                   {Array.from({ length: 4 }).map((_, i) => (
                     <Skeleton key={i} className="h-20 w-full bg-slate-100 dark:bg-slate-800 rounded-lg" />
@@ -1101,7 +1101,7 @@ export default function Reports() {
                 <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Summary</h3>
                 </div>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <Table className="table-modern">
                     <TableHeader>
                       <TableRow>
@@ -1163,7 +1163,7 @@ export default function Reports() {
                     </div>
                   </div>
 
-                  <div className="p-6">
+                  <div className="p-4 sm:p-6">
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
                       <div className="bg-red-50 dark:bg-red-950/50 border border-red-200 rounded-xl p-4">
                         <p className="text-xs font-medium text-red-600">Delinquent Loans</p>
@@ -1263,7 +1263,7 @@ export default function Reports() {
             </>
           ) : (
             <div className="section-card">
-              <div className="p-6 text-center py-8 text-slate-500 dark:text-slate-400">
+              <div className="p-4 sm:p-6 text-center py-8 text-slate-500 dark:text-slate-400">
                 No financial data available
               </div>
             </div>
@@ -1310,7 +1310,7 @@ export default function Reports() {
 
           {reportLoading ? (
             <div className="section-card">
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <div className="space-y-3">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Skeleton key={i} className="h-12 w-full bg-slate-100 dark:bg-slate-800 rounded-lg" />
@@ -1337,7 +1337,7 @@ export default function Reports() {
                   </div>
                 </div>
               </div>
-              <div className="p-6 overflow-x-auto">
+              <div className="p-4 sm:p-6 overflow-x-auto">
                 {selectedReport === 'savings' && (
                   <>
                   <Table className="table-modern">
@@ -1510,13 +1510,13 @@ export default function Reports() {
             </div>
           ) : selectedReport ? (
             <div className="section-card">
-              <div className="p-6 text-center py-8 text-slate-500 dark:text-slate-400">
+              <div className="p-4 sm:p-6 text-center py-8 text-slate-500 dark:text-slate-400">
                 No data available for this report
               </div>
             </div>
           ) : (
             <div className="section-card">
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <div className="py-16 text-center">
                   <FileText className="w-12 h-12 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
                   <h3 className="text-lg font-medium mb-2">Select a Report</h3>

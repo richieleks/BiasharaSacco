@@ -212,7 +212,7 @@ export default function Savings() {
         <div className="space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="section-card animate-pulse">
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
                     <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-lg"></div>
@@ -232,7 +232,7 @@ export default function Savings() {
           <div className="space-y-4">
             {savingsAccounts.map((account: any) => (
               <div key={account.id} className="section-card hover:shadow-md hover:border-slate-300 dark:border-slate-600/60 transition-all duration-200" data-testid={`card-savings-${account.id}`}>
-                <div className="p-6">
+                <div className="p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-700 dark:to-slate-600 rounded-lg flex items-center justify-center shrink-0">

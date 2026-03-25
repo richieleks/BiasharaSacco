@@ -408,13 +408,13 @@ export default function Guarantors() {
       {/* Tab Content */}
       {activeTab === 'my-loans' && (
         <div className="section-card">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-700">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               My Loan Applications Awaiting Guarantors ({loansNeedingGuarantors.length})
             </h3>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {loadingMyLoans || loanGuarantors.isLoading ? (
               <div className="py-16 text-center">
                 <div className="text-muted-foreground">Loading your loans...</div>
@@ -448,8 +448,8 @@ export default function Guarantors() {
                           </Badge>
                         </div>
                       </div>
-                      <div className="p-6">
-                        <div className="grid md:grid-cols-2 gap-6">
+                      <div className="p-4 sm:p-6">
+                        <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                           {/* Loan Details */}
                           <div className="space-y-3">
                             <h4 className="font-medium text-slate-900 dark:text-slate-100">Loan Details</h4>
@@ -593,13 +593,13 @@ export default function Guarantors() {
 
       {activeTab === 'requests' && (
         <div className="section-card">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-700">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <Clock className="h-4 w-4" />
               Requests for Me to Guarantee ({guarantorRequests.length})
             </h3>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {loadingRequests ? (
               <div className="py-16 text-center">
                 <div className="text-muted-foreground">Loading guarantor requests...</div>
@@ -628,8 +628,8 @@ export default function Guarantors() {
                         </Badge>
                       </div>
                     </div>
-                    <div className="p-6">
-                      <div className="grid md:grid-cols-2 gap-6">
+                    <div className="p-4 sm:p-6">
+                      <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
                         {/* Loan Details */}
                         <div className="space-y-3">
                           <h4 className="font-medium text-slate-900 dark:text-slate-100">Loan Details</h4>
@@ -714,13 +714,13 @@ export default function Guarantors() {
 
       {activeTab === 'provided' && (
         <div className="section-card">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 dark:border-slate-700">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
               <Users className="h-4 w-4" />
               Guarantees I've Provided ({providedGuarantees.length})
             </h3>
           </div>
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {loadingProvided ? (
               <div className="py-16 text-center">
                 <div className="text-muted-foreground">Loading guarantees...</div>

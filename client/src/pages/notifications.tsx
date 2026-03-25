@@ -127,7 +127,7 @@ export default function NotificationsPage() {
             Find specific notifications using filters and search
           </p>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -204,7 +204,7 @@ export default function NotificationsPage() {
         <TabsContent value={activeTab} className="space-y-4">
           {isLoading ? (
             <div className="section-card">
-              <div className="p-6">
+              <div className="p-4 sm:p-6">
                 <div className="py-16 text-center text-muted-foreground">
                   Loading notifications...
                 </div>

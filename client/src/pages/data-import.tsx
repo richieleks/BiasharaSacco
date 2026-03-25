@@ -401,7 +401,7 @@ export default function DataImport() {
             Choose the type of data you want to import
           </p>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             <button
               onClick={() => handleImportTypeChange('members')}

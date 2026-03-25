@@ -564,14 +564,14 @@ export default function Loans() {
       </div>
 
       <div className="section-card">
-        <div className="p-6 border-b border-slate-200 dark:border-slate-700/60">
+        <div className="p-4 sm:p-6 border-b border-slate-200 dark:border-slate-700/60">
           <div className="flex items-center space-x-2">
             {isPersonalView ? (
               <HandCoins className="w-5 h-5 text-blue-600" />
             ) : (
               <HandCoins className="w-5 h-5 text-blue-600" />
             )}
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">
               {isPersonalView ? 'My Loan Applications' : 'Loan Applications'}
             </h3>
             {pendingLoans && (
@@ -581,13 +581,13 @@ export default function Loans() {
             )}
           </div>
         </div>
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {pendingLoans && pendingLoans.length > 0 ? (
             <div className="space-y-4">
               {pendingLoans.map((loan: any) => (
                 <div key={loan.id} className="border border-slate-200 dark:border-slate-700/60 rounded-lg hover:shadow-sm transition-all" data-testid={`card-loan-${loan.id}`}>
                   <div
-                    className="p-6 cursor-pointer"
+                    className="p-4 sm:p-6 cursor-pointer"
                     onClick={() => loan.uuid && setLocation(`/loans/${loan.uuid}/details`)}
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">

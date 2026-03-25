@@ -204,7 +204,7 @@ export default function Transactions() {
       </div>
 
       <div className="section-card">
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {transactionsLoading ? (
             <div className="space-y-4">
               {Array.from({ length: 5 }).map((_, i) => (
