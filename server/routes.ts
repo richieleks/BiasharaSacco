@@ -1764,7 +1764,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const exitFee = exitFeeSetting ? parseFloat(exitFeeSetting.settingValue) : 0;
 
     return {
-      eligible: blockers.length === 0,
+      eligible: blockers.length === 0 && !canUseSavingsForLoan,
       blockers,
       canUseSavingsForLoan,
       totalOutstandingLoan,
