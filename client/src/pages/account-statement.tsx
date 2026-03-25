@@ -376,23 +376,37 @@ export default function AccountStatement() {
 
             <div className="lg:col-span-2">
               <Label className="text-xs font-medium text-teal-700 dark:text-teal-400 mb-1 block">From</Label>
-              <Input
+              <input
                 type="date"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
                 disabled={!isUserDefined}
-                className="h-10 text-sm"
+                className={cn(
+                  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+                  "file:border-0 file:bg-transparent file:text-sm file:font-medium",
+                  "placeholder:text-muted-foreground",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  "disabled:cursor-not-allowed disabled:opacity-50",
+                  "[color-scheme:light] dark:[color-scheme:dark]"
+                )}
               />
             </div>
 
             <div className="lg:col-span-2">
               <Label className="text-xs font-medium text-teal-700 dark:text-teal-400 mb-1 block">To</Label>
-              <Input
+              <input
                 type="date"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
                 disabled={!isUserDefined}
-                className="h-10 text-sm"
+                className={cn(
+                  "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background",
+                  "file:border-0 file:bg-transparent file:text-sm file:font-medium",
+                  "placeholder:text-muted-foreground",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+                  "disabled:cursor-not-allowed disabled:opacity-50",
+                  "[color-scheme:light] dark:[color-scheme:dark]"
+                )}
               />
             </div>
 
