@@ -237,12 +237,12 @@ export default function SettingsPage() {
           <TabsTrigger value="user" className="data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm">
             User Settings
           </TabsTrigger>
-          {hasPermission('read', 'roles') && (
+          {hasPermission('update', 'system-settings') && (
             <TabsTrigger value="rbac" className="data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm">
               RBAC Management
             </TabsTrigger>
           )}
-          {hasPermission('update', 'members') && (
+          {hasPermission('update', 'system-settings') && (
             <TabsTrigger value="roles" className="data-[state=active]:bg-white dark:bg-slate-900 data-[state=active]:shadow-sm">
               Role Management
             </TabsTrigger>
