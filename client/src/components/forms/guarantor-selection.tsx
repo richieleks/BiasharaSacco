@@ -39,13 +39,12 @@ export default function GuarantorSelection({
   const [formError, setFormError] = useState<string | null>(null);
 
   const { data: members = [] } = useQuery<Member[]>({
-    queryKey: ['/api/members'],
+    queryKey: ['/api/guarantors/eligible-members'],
     enabled: isDialogOpen,
   });
 
-  // Filter out already selected guarantors and only show approved members
+  // Filter out already selected guarantors
   const availableMembers = members.filter(member => 
-    member.status === 'active' && 
     !guarantors.some(g => g.guarantorMemberId === member.id)
   );
 

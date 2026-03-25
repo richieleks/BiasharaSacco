@@ -3598,6 +3598,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Eligible guarantors — returns active members with basic info for guarantor selection
+  app.get('/api/guarantors/eligible-members', isAuthenticated, async (req: any, res) => {
+    try {
+      const allMembers = await storage.getAllMembers();
+      const eligible = allMembers
+        .filter((m: any) => m.status === 'active')
+        .map((m: any) => ({
+          id: m.id,
+          uuid: m.uuid,
+          memberNumber: m.memberNumber,
+          fullName: m.fullName,
+          status: m.status,
+          totalSavings: m.totalSavings,
+        }));
+      res.json(eligible);
+    } catch (error) {
+      console.error("Error fetching eligible guarantors:", error);
+      res.status(500).json({ message: "Failed to fetch eligible guarantors" });
+    }
+  });
+
   // Guarantor routes
   app.post('/api/guarantors', isAuthenticated, async (req: any, res) => {
     try {

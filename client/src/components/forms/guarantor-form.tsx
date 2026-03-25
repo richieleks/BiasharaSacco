@@ -47,7 +47,7 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
   });
 
   const { data: allMembers = [] } = useQuery<MemberWithDetails[]>({
-    queryKey: ['/api/members'],
+    queryKey: ['/api/guarantors/eligible-members'],
   });
 
   const { data: currentMember } = useQuery<MemberWithDetails>({
@@ -87,7 +87,6 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
   const amountToGuarantee = Math.max(0, loanAmount - totalSavings);
 
   const eligibleMembers = allMembers.filter(member => 
-    member.status === 'active' && 
     member.id !== currentMember?.id &&
     member.id !== loanDetails?.memberId &&
     !existingGuarantorMemberIds.includes(member.id)
