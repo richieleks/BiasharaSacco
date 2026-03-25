@@ -137,7 +137,7 @@ export const loans = pgTable("loans", {
   // Business rule compliance fields
   maxAllowedAmount: decimal("max_allowed_amount", { precision: 15, scale: 2 }), // Based on 1:2.5 savings ratio
   savingsToLoanRatio: decimal("savings_to_loan_ratio", { precision: 5, scale: 2 }), // Track compliance with 1:2.5 rule
-  status: varchar("status", { enum: ["pending", "committee_approved", "manager_approved", "approved", "rejected", "disbursed", "active", "completed", "defaulted"] }).default("pending"),
+  status: varchar("status", { enum: ["pending", "committee_approved", "manager_approved", "approved", "rejected", "recalled", "disbursed", "active", "completed", "defaulted"] }).default("pending"),
   approvalStage: varchar("approval_stage", { enum: ["committee", "manager", "completed"] }).default("committee"),
   committeeApprovedBy: varchar("committee_approved_by").references(() => users.id),
   committeeApprovedAt: timestamp("committee_approved_at"),

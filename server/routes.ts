@@ -2689,6 +2689,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/loans/:id/recall', isAuthenticated, async (req: any, res) => {
+    try {
+      const loanId = await storage.resolveLoanId(req.params.id);
+      const loan = await storage.getLoan(loanId);
+      if (!loan) return res.status(404).json({ message: "Loan not found" });
+
+      if (loan.status !== 'pending') {
+        return res.status(400).json({ message: "Only pending loans can be recalled. This loan has already moved to the next stage." });
+      }
+
+      const userId = getUserId(req)!;
+      const user = await storage.getUser(userId);
+      const member = await storage.getMemberByUserId(userId);
+      const memberRoles = member ? await storage.getMemberRoles(member.id) : (user?.role ? [user.role] : []);
+      const isStaff = memberRoles.some((r: string) => ['admin', 'treasurer'].includes(r));
+      const isApplicant = member && loan.memberId === member.id;
+
+      if (!isStaff && !isApplicant) {
+        return res.status(403).json({ message: "You can only recall your own loan applications" });
+      }
+
+      const { reason } = req.body;
+
+      await storage.updateLoanStatus(loanId, 'recalled');
+
+      await storage.createAuditLog({
+        userId,
+        memberId: loan.memberId || undefined,
+        action: 'recall',
+        resource: 'loan',
+        resourceId: loanId.toString(),
+        details: `Loan ${loan.loanNumber} recalled${isApplicant ? ' by applicant' : ' by staff'}. Reason: ${reason || 'Not specified'}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      if (loan.memberId) {
+        const loanMember = await storage.getMember(loan.memberId);
+        if (loanMember?.userId && loanMember.userId !== userId) {
+          await createAndBroadcastNotification({
+            type: 'loan_update',
+            title: 'Loan Application Recalled',
+            message: `Loan application ${loan.loanNumber} for UGX ${parseFloat(loan.principalAmount || '0').toLocaleString()} has been recalled. Reason: ${reason || 'Not specified'}`,
+            priority: 'medium',
+            actionUrl: '/loans',
+            memberId: loan.memberId,
+            userId: loanMember.userId,
+            isRead: false,
+          });
+        }
+      }
+
+      broadcastDataUpdate(['/api/loans', '/api/loans/pending', '/api/loans/my-loans', '/api/dashboard', '/api/dashboard/pending-approvals']);
+      res.json({ message: "Loan application recalled successfully.", loan });
+    } catch (error: any) {
+      console.error("Error recalling loan:", error);
+      res.status(500).json({ message: error.message || "Failed to recall loan" });
+    }
+  });
+
   app.get('/api/loans/member/:id', isAuthenticated, async (req: any, res) => {
     try {
       const memberId = await storage.resolveMemberId(req.params.id);

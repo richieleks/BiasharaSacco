@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import LoanApplicationForm from "@/components/forms/loan-application-form";
 import LoanTopUpForm from "@/components/forms/loan-topup-form";
 import { formatCurrency } from "@/lib/utils";
-import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, ArrowUpCircle, Banknote, Loader2 } from "lucide-react";
+import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, ArrowUpCircle, Banknote, Loader2, Undo2 } from "lucide-react";
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -27,6 +27,7 @@ const getStatusColor = (status: string) => {
     case 'disbursed': return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
     case 'active': return 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50';
     case 'completed': return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
+    case 'recalled': return 'bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700/50';
     case 'defaulted': return 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50';
     default: return 'bg-slate-50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-200 border-slate-200 dark:border-slate-700/50';
   }
@@ -59,6 +60,9 @@ export default function Loans() {
   const [repaymentLoan, setRepaymentLoan] = useState<any>(null);
   const [repaymentAmount, setRepaymentAmount] = useState("");
   const [repaymentDescription, setRepaymentDescription] = useState("");
+  const [isRecallDialogOpen, setIsRecallDialogOpen] = useState(false);
+  const [recallLoan, setRecallLoan] = useState<any>(null);
+  const [recallReason, setRecallReason] = useState("");
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -223,6 +227,27 @@ export default function Loans() {
       description: repaymentDescription || `Loan repayment - ${repaymentLoan.loanNumber}`,
     });
   };
+
+  const recallLoanMutation = useMutation({
+    mutationFn: async ({ loanUuid, reason }: { loanUuid: string; reason: string }) => {
+      const res = await apiRequest('POST', `/api/loans/${loanUuid}/recall`, { reason });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/my-loans'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/pending'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      toast({ title: "Loan Recalled", description: data.message || "Loan application has been recalled.", variant: "success" });
+      setIsRecallDialogOpen(false);
+      setRecallLoan(null);
+      setRecallReason("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to recall loan.", variant: "destructive" });
+    },
+  });
 
   if (pendingLoading) {
     return (
@@ -459,6 +484,82 @@ export default function Loans() {
               )}
             </DialogContent>
           </Dialog>
+
+          <Dialog open={isRecallDialogOpen} onOpenChange={(open) => {
+            setIsRecallDialogOpen(open);
+            if (!open) { setRecallLoan(null); setRecallReason(""); }
+          }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Undo2 className="h-5 w-5 text-red-600" />
+                  Recall Loan Application
+                </DialogTitle>
+                <DialogDescription>
+                  This will withdraw the loan application before committee review
+                </DialogDescription>
+              </DialogHeader>
+              {recallLoan && (
+                <div className="space-y-4">
+                  <div className="p-4 bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-lg space-y-2 text-sm">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <span className="text-red-600 dark:text-red-400">Loan Number:</span>
+                        <span className="ml-1 font-medium text-red-900 dark:text-red-200">{recallLoan.loanNumber}</span>
+                      </div>
+                      <div>
+                        <span className="text-red-600 dark:text-red-400">Member:</span>
+                        <span className="ml-1 font-medium text-red-900 dark:text-red-200">{recallLoan.member?.fullName || 'N/A'}</span>
+                      </div>
+                      <div>
+                        <span className="text-red-600 dark:text-red-400">Amount:</span>
+                        <span className="ml-1 font-bold text-red-900 dark:text-red-200">{formatCurrency(recallLoan.principalAmount || '0')}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="recall-reason">Reason for Recall (Optional)</Label>
+                    <Textarea
+                      id="recall-reason"
+                      value={recallReason}
+                      onChange={(e) => setRecallReason(e.target.value)}
+                      placeholder="e.g. Incorrect amount, changed plans, need to update details..."
+                      rows={3}
+                    />
+                  </div>
+
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => setIsRecallDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="flex-1"
+                      onClick={() => recallLoanMutation.mutate({ loanUuid: recallLoan.uuid, reason: recallReason })}
+                      disabled={recallLoanMutation.isPending}
+                    >
+                      {recallLoanMutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Recalling...
+                        </>
+                      ) : (
+                        <>
+                          <Undo2 className="mr-2 h-4 w-4" />
+                          Recall Application
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -560,19 +661,51 @@ export default function Loans() {
                     <div className="flex items-center justify-between">
                       <div className="flex flex-wrap gap-2 items-center" onClick={(e) => e.stopPropagation()}>
                         {isPersonalView ? (
-                          <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {loan.status === 'pending' && loan.isTopUp ? 'Your top-up request is under review.' :
-                             loan.status === 'pending' ? 'Your application is under review.' :
-                             loan.status === 'approved' ? 'Your loan has been approved and is awaiting disbursement.' :
-                             loan.status === 'active' || loan.status === 'disbursed' ? 'Your loan is active.' :
-                             loan.status === 'rejected' ? 'Your application was not approved.' :
-                             loan.status === 'completed' ? 'This loan has been fully repaid.' : ''}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm text-slate-500 dark:text-slate-400">
+                              {loan.status === 'pending' && loan.isTopUp ? 'Your top-up request is under review.' :
+                               loan.status === 'pending' ? 'Your application is under review.' :
+                               loan.status === 'approved' ? 'Your loan has been approved and is awaiting disbursement.' :
+                               loan.status === 'active' || loan.status === 'disbursed' ? 'Your loan is active.' :
+                               loan.status === 'rejected' ? 'Your application was not approved.' :
+                               loan.status === 'recalled' ? 'This application was recalled.' :
+                               loan.status === 'completed' ? 'This loan has been fully repaid.' : ''}
+                            </p>
+                            {loan.status === 'pending' && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="border-red-200/50 text-red-600 hover:bg-red-50 dark:border-red-800/50 dark:text-red-400 dark:hover:bg-red-950/30 rounded-xl"
+                                onClick={() => { setRecallLoan(loan); setRecallReason(""); setIsRecallDialogOpen(true); }}
+                              >
+                                <Undo2 className="w-3.5 h-3.5 mr-1" />
+                                Recall
+                              </Button>
+                            )}
+                          </div>
                         ) : (
                           <>
                             {loan.status === 'pending' && (
-                              <p className="text-sm text-amber-600">
-                                Pending committee approval
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm text-amber-600">
+                                  Pending committee approval
+                                </p>
+                                {canDisburse && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="border-red-200/50 text-red-600 hover:bg-red-50 dark:border-red-800/50 dark:text-red-400 dark:hover:bg-red-950/30 rounded-xl"
+                                    onClick={() => { setRecallLoan(loan); setRecallReason(""); setIsRecallDialogOpen(true); }}
+                                  >
+                                    <Undo2 className="w-3.5 h-3.5 mr-1" />
+                                    Recall
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                            {loan.status === 'recalled' && (
+                              <p className="text-sm text-slate-500">
+                                Application recalled
                               </p>
                             )}
                             {loan.status === 'approved' && canDisburse && (
