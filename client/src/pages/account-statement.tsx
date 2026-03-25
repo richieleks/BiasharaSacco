@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useRoute } from 'wouter';
+import { useRoute, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
@@ -17,14 +17,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Pagination } from '@/components/ui/pagination';
-import { ArrowLeft, Download, FileText, Search, Calendar } from 'lucide-react';
+import { ArrowLeft, Download, FileText, Search, Calendar, ChevronsUpDown, Check } from 'lucide-react';
 import { Link } from 'wouter';
-import { formatCurrency } from '@/lib/utils';
+import { formatCurrency, cn } from '@/lib/utils';
+import { apiRequest } from '@/lib/queryClient';
 
 type PeriodOption = 'current_month' | 'last_2_months' | 'last_3_months' | 'last_6_months' | 'user_defined';
 
@@ -57,10 +59,13 @@ function getDateRange(period: PeriodOption): { start: string; end: string } {
 
 export default function AccountStatement() {
   const [, params] = useRoute('/savings/:id/statement');
-  const accountId = params?.id || null;
+  const urlAccountId = params?.id || null;
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
 
+  const [selectedAccountId, setSelectedAccountId] = useState<string>(urlAccountId || '');
+  const [accountSearchOpen, setAccountSearchOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [period, setPeriod] = useState<PeriodOption | ''>('');
@@ -72,6 +77,12 @@ export default function AccountStatement() {
   const [keyword, setKeyword] = useState('');
 
   const isUserDefined = period === 'user_defined';
+
+  useEffect(() => {
+    if (urlAccountId && urlAccountId !== selectedAccountId) {
+      setSelectedAccountId(urlAccountId);
+    }
+  }, [urlAccountId]);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -86,6 +97,37 @@ export default function AccountStatement() {
       return;
     }
   }, [isAuthenticated, isLoading, toast]);
+
+  const { data: accountsList = [], isLoading: accountsLoading } = useQuery<any[]>({
+    queryKey: ['/api/savings-accounts'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', '/api/savings-accounts');
+      return res.json();
+    },
+    enabled: isAuthenticated,
+  });
+
+  const selectedAccount = useMemo(() => {
+    if (!selectedAccountId || !accountsList.length) return null;
+    return accountsList.find((a: any) =>
+      String(a.id) === String(selectedAccountId) || String(a.uuid) === String(selectedAccountId)
+    ) || null;
+  }, [selectedAccountId, accountsList]);
+
+  const handleAccountSelect = (account: any) => {
+    const id = account.uuid || account.id;
+    setSelectedAccountId(String(id));
+    setAccountSearchOpen(false);
+    setFilterApplied(false);
+    setPeriod('');
+    setCustomStartDate('');
+    setCustomEndDate('');
+    setAppliedStartDate('');
+    setAppliedEndDate('');
+    setCurrentPage(1);
+    setKeyword('');
+    setLocation(`/savings/${id}/statement`);
+  };
 
   const handlePeriodChange = (value: string) => {
     const p = value as PeriodOption;
@@ -117,13 +159,15 @@ export default function AccountStatement() {
   };
 
   const buildQueryString = () => {
-    const params = new URLSearchParams();
-    params.set('page', currentPage.toString());
-    params.set('limit', itemsPerPage.toString());
-    if (appliedStartDate) params.set('startDate', appliedStartDate);
-    if (appliedEndDate) params.set('endDate', appliedEndDate);
-    return params.toString();
+    const qp = new URLSearchParams();
+    qp.set('page', currentPage.toString());
+    qp.set('limit', itemsPerPage.toString());
+    if (appliedStartDate) qp.set('startDate', appliedStartDate);
+    if (appliedEndDate) qp.set('endDate', appliedEndDate);
+    return qp.toString();
   };
+
+  const effectiveAccountId = selectedAccountId || urlAccountId;
 
   const { data: statementData, isLoading: statementLoading } = useQuery<{
     account: any;
@@ -138,9 +182,9 @@ export default function AccountStatement() {
     limit: number;
     totalPages: number;
   }>({
-    queryKey: ['/api/savings-accounts', accountId, 'statement', currentPage, itemsPerPage, appliedStartDate, appliedEndDate],
-    queryFn: () => fetch(`/api/savings-accounts/${accountId}/statement?${buildQueryString()}`).then(res => res.json()),
-    enabled: !!accountId && isAuthenticated && filterApplied,
+    queryKey: ['/api/savings-accounts', effectiveAccountId, 'statement', currentPage, itemsPerPage, appliedStartDate, appliedEndDate],
+    queryFn: () => fetch(`/api/savings-accounts/${effectiveAccountId}/statement?${buildQueryString()}`).then(res => res.json()),
+    enabled: !!effectiveAccountId && isAuthenticated && filterApplied,
   });
 
   const filteredTransactions = useMemo(() => {
@@ -156,7 +200,6 @@ export default function AccountStatement() {
 
   const runningBalances = useMemo(() => {
     if (!filteredTransactions.length) return [];
-    const openingBalance = parseFloat(statementData?.account?.balance || '0');
     let totalCredits = 0;
     let totalDebits = 0;
     (statementData?.transactions || []).forEach((t: any) => {
@@ -167,9 +210,10 @@ export default function AccountStatement() {
         totalDebits += amt;
       }
     });
-    const periodStartBalance = openingBalance - totalCredits + totalDebits;
+    const currentBalance = parseFloat(statementData?.account?.balance || '0');
+    const periodStartBal = currentBalance - totalCredits + totalDebits;
 
-    let balance = periodStartBalance;
+    let balance = periodStartBal;
     return filteredTransactions.map((t: any) => {
       const amt = parseFloat(t.amount || '0');
       if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
@@ -225,32 +269,18 @@ export default function AccountStatement() {
     window.URL.revokeObjectURL(url);
   };
 
-  const { error } = useQuery({ queryKey: ['_noop'], enabled: false });
-  if (error && isUnauthorizedError(error)) {
-    return null;
-  }
-
-  if (!accountId) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="text-center">
-          <FileText className="w-16 h-16 text-slate-400 dark:text-slate-500 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">Invalid Account</h3>
-          <p className="text-slate-600 dark:text-slate-300 mb-4">The account ID provided is not valid.</p>
-          <Link href="/savings">
-            <Button variant="outline">
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Savings
-            </Button>
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  const accountDisplay = statementData?.account
-    ? `${statementData.account.accountNumber} | ${formatCurrency(statementData.account.balance || '0')}`
-    : 'Loading...';
+  const accountDisplayLabel = useMemo(() => {
+    if (selectedAccount) {
+      const memberName = selectedAccount.member?.fullName || selectedAccount.memberName || '';
+      return `${selectedAccount.accountNumber} | ${formatCurrency(selectedAccount.balance || '0')}${memberName ? ` - ${memberName}` : ''}`;
+    }
+    if (statementData?.account) {
+      const a = statementData.account;
+      const memberName = a.member?.fullName || '';
+      return `${a.accountNumber} | ${formatCurrency(a.balance || '0')}${memberName ? ` - ${memberName}` : ''}`;
+    }
+    return '';
+  }, [selectedAccount, statementData]);
 
   const periodEndBalance = statementData?.account ? parseFloat(statementData.account.balance || '0') : 0;
   const totalMoneyOut = statementData?.totalWithdrawals || 0;
@@ -283,14 +313,49 @@ export default function AccountStatement() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
             <div className="lg:col-span-3">
               <Label className="text-xs font-medium text-teal-700 dark:text-teal-400 mb-1 block">Account *</Label>
-              <div className="relative">
-                <Input
-                  value={accountDisplay}
-                  readOnly
-                  className="h-10 text-sm bg-slate-50 dark:bg-slate-800 pr-8 cursor-default"
-                />
-                <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              </div>
+              <Popover open={accountSearchOpen} onOpenChange={setAccountSearchOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={accountSearchOpen}
+                    className="w-full h-10 justify-between text-left font-normal text-sm truncate"
+                  >
+                    <span className="truncate">
+                      {accountDisplayLabel || (accountsLoading ? 'Loading accounts...' : 'Select account...')}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+                  <Command filter={(value, search) => {
+                    if (value.toLowerCase().includes(search.toLowerCase())) return 1;
+                    return 0;
+                  }}>
+                    <CommandInput placeholder="Search by account number or member name..." />
+                    <CommandList>
+                      <CommandEmpty>No accounts found.</CommandEmpty>
+                      <CommandGroup className="max-h-[250px] overflow-y-auto">
+                        {accountsList.map((account: any) => {
+                          const acctId = String(account.uuid || account.id);
+                          const memberName = account.member?.fullName || account.memberName || '';
+                          const label = `${account.accountNumber} | ${formatCurrency(account.balance || '0')}${memberName ? ` - ${memberName}` : ''}`;
+                          return (
+                            <CommandItem
+                              key={acctId}
+                              value={`${account.accountNumber} ${memberName} ${account.memberNumber || ''}`}
+                              onSelect={() => handleAccountSelect(account)}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", String(selectedAccountId) === acctId ? "opacity-100" : "opacity-0")} />
+                              <span className="truncate text-sm">{label}</span>
+                            </CommandItem>
+                          );
+                        })}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="lg:col-span-3">
@@ -311,28 +376,24 @@ export default function AccountStatement() {
 
             <div className="lg:col-span-2">
               <Label className="text-xs font-medium text-teal-700 dark:text-teal-400 mb-1 block">From</Label>
-              <div className="relative">
-                <Input
-                  type="date"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                  disabled={!isUserDefined}
-                  className="h-10 text-sm"
-                />
-              </div>
+              <Input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                disabled={!isUserDefined}
+                className="h-10 text-sm"
+              />
             </div>
 
             <div className="lg:col-span-2">
               <Label className="text-xs font-medium text-teal-700 dark:text-teal-400 mb-1 block">To</Label>
-              <div className="relative">
-                <Input
-                  type="date"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                  disabled={!isUserDefined}
-                  className="h-10 text-sm"
-                />
-              </div>
+              <Input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                disabled={!isUserDefined}
+                className="h-10 text-sm"
+              />
             </div>
 
             <div className="lg:col-span-2 flex gap-2">
@@ -351,7 +412,19 @@ export default function AccountStatement() {
         </CardContent>
       </Card>
 
-      {!filterApplied ? (
+      {!effectiveAccountId ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <FileText className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">Select an Account</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                Choose a savings account from the dropdown above to get started.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : !filterApplied ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12">

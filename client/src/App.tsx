@@ -254,6 +254,11 @@ function Router() {
                 <Savings />
               </ProtectedRoute>
             </Route>
+            <Route path="/savings/statement">
+              <ProtectedRoute>
+                <AccountStatement />
+              </ProtectedRoute>
+            </Route>
             <Route path="/savings/:id/statement">
               <ProtectedRoute>
                 <AccountStatement />
