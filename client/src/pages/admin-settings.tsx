@@ -55,7 +55,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Edit, Trash2, KeyRound, Building2, ChevronLeft, ChevronRight, UserCog } from "lucide-react";
+import { Plus, Edit, Trash2, KeyRound, Building2, ChevronLeft, ChevronRight, UserCog, RefreshCw } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -147,6 +147,56 @@ const userSettingsSchema = z.object({
 });
 
 type UserSettingsData = z.infer<typeof userSettingsSchema>;
+
+function SystemSeedCard() {
+  const { toast } = useToast();
+
+  const seedMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/admin/run-seed');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Seed Complete", description: data.message });
+    },
+    onError: (error: any) => {
+      toast({ title: "Seed Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <RefreshCw className="h-4 w-4" />
+          System Seed
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Re-sync system roles, permissions, and default SACCO accounts. This is safe to run at any time — it only adds missing entries and removes stale ones without affecting existing data.
+        </p>
+        <Button
+          variant="outline"
+          onClick={() => seedMutation.mutate()}
+          disabled={seedMutation.isPending}
+        >
+          {seedMutation.isPending ? (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+              Running Seed...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Run System Seed
+            </>
+          )}
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
 
 function BackupManagementCard() {
   const { toast } = useToast();
@@ -1364,6 +1414,7 @@ export default function AdminSettingsPage() {
                     </CardContent>
                   </Card>
 
+                  <SystemSeedCard />
                   <BackupManagementCard />
                 </div>
               )}

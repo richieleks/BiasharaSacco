@@ -39,10 +39,17 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  await seedAdminUser();
-  await seedRBAC();
-  await storage.seedDefaultSaccoAccounts();
-  await storage.seedDefaultAccountMappings();
+  const seedFlag = await storage.getSystemSetting('seedCompleted');
+  if (!seedFlag) {
+    await seedAdminUser();
+    await seedRBAC();
+    await storage.seedDefaultSaccoAccounts();
+    await storage.seedDefaultAccountMappings();
+    await storage.upsertSystemSetting('seedCompleted', 'true');
+    log("Initial seed completed and flagged.");
+  } else {
+    log("Seed already completed — skipping automatic seed.");
+  }
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

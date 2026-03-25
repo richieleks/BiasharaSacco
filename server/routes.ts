@@ -8,6 +8,7 @@ import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "./rbac-middleware";
 import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
+import { seedAdminUser, seedRBAC } from "./seed";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, and, inArray, sql, lt, isNull, isNotNull, or, not } from "drizzle-orm";
@@ -5158,6 +5159,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error('Error generating reconciliation report:', error);
       res.status(500).json({ message: error.message || 'Failed to generate reconciliation report' });
+    }
+  });
+
+  app.post('/api/admin/run-seed', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      await seedAdminUser();
+      await seedRBAC();
+      await storage.seedDefaultSaccoAccounts();
+      await storage.seedDefaultAccountMappings();
+      await storage.upsertSystemSetting('seedCompleted', 'true');
+
+      await storage.createAuditLog({
+        userId: getUserId(req)!,
+        action: 'execute',
+        resource: 'system-seed',
+        details: 'Manual system seed executed: roles, permissions, default accounts, and account mappings synced.',
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
+
+      res.json({ message: "System seed completed successfully. Roles, permissions, and default accounts have been synced." });
+    } catch (error: any) {
+      console.error('Error running seed:', error);
+      res.status(500).json({ message: error.message || 'Failed to run system seed' });
     }
   });
 
