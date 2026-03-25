@@ -98,7 +98,7 @@ export default function AccountStatement() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
-  const { data: accountsList = [], isLoading: accountsLoading } = useQuery<any[]>({
+  const { data: allAccounts = [], isLoading: accountsLoading } = useQuery<any[]>({
     queryKey: ['/api/savings-accounts'],
     queryFn: async () => {
       const res = await apiRequest('GET', '/api/savings-accounts');
@@ -108,11 +108,18 @@ export default function AccountStatement() {
   });
 
   const selectedAccount = useMemo(() => {
-    if (!selectedAccountId || !accountsList.length) return null;
-    return accountsList.find((a: any) =>
+    if (!selectedAccountId || !allAccounts.length) return null;
+    return allAccounts.find((a: any) =>
       String(a.id) === String(selectedAccountId) || String(a.uuid) === String(selectedAccountId)
     ) || null;
-  }, [selectedAccountId, accountsList]);
+  }, [selectedAccountId, allAccounts]);
+
+  const accountsList = useMemo(() => {
+    if (!selectedAccount) return allAccounts;
+    const ownerMemberId = selectedAccount.memberId;
+    if (!ownerMemberId) return allAccounts;
+    return allAccounts.filter((a: any) => a.memberId === ownerMemberId);
+  }, [allAccounts, selectedAccount]);
 
   const handleAccountSelect = (account: any) => {
     const id = account.uuid || account.id;
