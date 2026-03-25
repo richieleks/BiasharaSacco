@@ -1871,14 +1871,23 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(loans, eq(guarantors.loanId, loans.id))
       .where(and(eq(guarantors.guarantorMemberId, memberId), eq(guarantors.status, 'approved')));
 
-    return results.map(result => ({
-      ...result.guarantors,
-      guarantorMember: result.members ? {
-        ...result.members,
-        user: result.users || undefined,
-      } : undefined,
-      loan: result.loans || undefined,
-    }));
+    const detailedResults = await Promise.all(
+      results.map(async (result) => {
+        let loanWithDetails = null;
+        if (result.loans) {
+          loanWithDetails = await this.getLoan(result.loans.id);
+        }
+        return {
+          ...result.guarantors,
+          guarantorMember: result.members ? {
+            ...result.members,
+            user: result.users || undefined,
+          } : undefined,
+          loan: loanWithDetails || result.loans || undefined,
+        };
+      })
+    );
+    return detailedResults;
   }
 
   async updateGuarantorStatus(id: number, status: string, comments?: string): Promise<Guarantor> {

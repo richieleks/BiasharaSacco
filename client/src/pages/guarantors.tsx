@@ -232,9 +232,12 @@ export default function Guarantors() {
     }
   };
 
-  const openApprovalDialog = (guarantor: any) => {
+  const [dialogAction, setDialogAction] = useState<'approve' | 'reject'>('approve');
+
+  const openApprovalDialog = (guarantor: any, action: 'approve' | 'reject' = 'approve') => {
     setSelectedGuarantor(guarantor);
     setComments("");
+    setDialogAction(action);
     setIsApprovalDialogOpen(true);
   };
 
@@ -685,7 +688,7 @@ export default function Guarantors() {
                       {/* Action Buttons */}
                       <div className="flex gap-3 mt-6 pt-4 border-t">
                         <Button
-                          onClick={() => openApprovalDialog(request)}
+                          onClick={() => openApprovalDialog(request, 'approve')}
                           className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl"
                         >
                           <CheckCircle className="h-4 w-4 mr-2" />
@@ -693,7 +696,7 @@ export default function Guarantors() {
                         </Button>
                         <Button
                           variant="outline"
-                          onClick={() => openApprovalDialog(request)}
+                          onClick={() => openApprovalDialog(request, 'reject')}
                           className="border-red-300 text-red-700 hover:bg-red-50 dark:bg-red-950/50"
                         >
                           <XCircle className="h-4 w-4 mr-2" />
@@ -737,7 +740,7 @@ export default function Guarantors() {
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-3">
                       <div className="flex-1 min-w-0">
                         <div className="font-medium">
-                          Loan for {guarantee.loan?.member?.user?.firstName} {guarantee.loan?.member?.user?.lastName}
+                          Loan for {guarantee.loan?.member?.fullName || `${guarantee.loan?.member?.user?.firstName || ''} ${guarantee.loan?.member?.user?.lastName || ''}`.trim() || 'N/A'}
                         </div>
                         <div className="text-sm text-muted-foreground">
                           Loan: {formatCurrency(guarantee.loan?.principalAmount || 0)} |
@@ -790,14 +793,14 @@ export default function Guarantors() {
         <DialogContent className="max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              {selectedGuarantor ? 'Respond to Guarantee Request' : 'Guarantee Request'}
+              {dialogAction === 'approve' ? 'Approve Guarantee Request' : 'Reject Guarantee Request'}
             </DialogTitle>
           </DialogHeader>
           {selectedGuarantor && (
             <div className="space-y-4">
               <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg">
                 <p className="text-sm text-slate-600 dark:text-slate-300">
-                  <strong>Applicant:</strong> {selectedGuarantor.loan?.member?.user?.firstName} {selectedGuarantor.loan?.member?.user?.lastName}
+                  <strong>Applicant:</strong> {selectedGuarantor.loan?.member?.fullName || `${selectedGuarantor.loan?.member?.user?.firstName || ''} ${selectedGuarantor.loan?.member?.user?.lastName || ''}`.trim() || 'N/A'}
                 </p>
                 <p className="text-sm text-slate-600 dark:text-slate-300">
                   <strong>Guarantee Amount:</strong> {formatCurrency(selectedGuarantor.guaranteeAmount)}
@@ -806,34 +809,43 @@ export default function Guarantors() {
               
               <div>
                 <label htmlFor="comments" className="block text-sm font-medium mb-2">
-                  Comments (optional for approval, required for rejection)
+                  {dialogAction === 'approve' ? 'Comments (optional)' : 'Reason for rejection (required)'}
                 </label>
                 <Textarea
                   id="comments"
                   value={comments}
                   onChange={(e) => setComments(e.target.value)}
-                  placeholder="Add any comments or reasons for your decision..."
+                  placeholder={dialogAction === 'approve' ? "Add any comments..." : "Please provide a reason for rejecting this request..."}
                   rows={3}
                 />
               </div>
 
               <div className="flex gap-3">
-                <Button
-                  onClick={handleApprove}
-                  disabled={approveGuarantorMutation.isPending}
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 rounded-xl"
-                >
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Approve Guarantee
-                </Button>
+                {dialogAction === 'approve' ? (
+                  <Button
+                    onClick={handleApprove}
+                    disabled={approveGuarantorMutation.isPending}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white flex-1 rounded-xl"
+                  >
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {approveGuarantorMutation.isPending ? 'Approving...' : 'Approve Guarantee'}
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleReject}
+                    disabled={rejectGuarantorMutation.isPending || !comments.trim()}
+                    className="bg-red-600 hover:bg-red-700 text-white flex-1 rounded-xl"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    {rejectGuarantorMutation.isPending ? 'Rejecting...' : 'Reject Request'}
+                  </Button>
+                )}
                 <Button
                   variant="outline"
-                  onClick={handleReject}
-                  disabled={rejectGuarantorMutation.isPending || !comments.trim()}
-                  className="border-red-300 text-red-700 hover:bg-red-50 dark:bg-red-950/50 flex-1"
+                  onClick={() => setIsApprovalDialogOpen(false)}
+                  className="flex-1"
                 >
-                  <XCircle className="h-4 w-4 mr-2" />
-                  Reject Request
+                  Cancel
                 </Button>
               </div>
             </div>
