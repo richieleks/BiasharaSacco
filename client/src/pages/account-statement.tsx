@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/useAuth';
@@ -7,8 +7,6 @@ import { isUnauthorizedError } from '@/lib/authUtils';
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from '@/components/ui/card';
 import {
   Table,
@@ -22,10 +20,40 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Pagination } from '@/components/ui/pagination';
-import { ArrowLeft, Download, FileText, Calendar, Filter, X } from 'lucide-react';
+import { ArrowLeft, Download, FileText, Search, Calendar } from 'lucide-react';
 import { Link } from 'wouter';
 import { formatCurrency } from '@/lib/utils';
+
+type PeriodOption = 'current_month' | 'last_2_months' | 'last_3_months' | 'last_6_months' | 'user_defined';
+
+function getDateRange(period: PeriodOption): { start: string; end: string } {
+  const today = new Date();
+  const end = today.toISOString().split('T')[0];
+  const startDate = new Date(today);
+
+  switch (period) {
+    case 'current_month':
+      startDate.setDate(1);
+      break;
+    case 'last_2_months':
+      startDate.setMonth(startDate.getMonth() - 2);
+      startDate.setDate(1);
+      break;
+    case 'last_3_months':
+      startDate.setMonth(startDate.getMonth() - 3);
+      startDate.setDate(1);
+      break;
+    case 'last_6_months':
+      startDate.setMonth(startDate.getMonth() - 6);
+      startDate.setDate(1);
+      break;
+    default:
+      return { start: '', end: '' };
+  }
+  return { start: startDate.toISOString().split('T')[0], end };
+}
 
 export default function AccountStatement() {
   const [, params] = useRoute('/savings/:id/statement');
@@ -35,11 +63,15 @@ export default function AccountStatement() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [period, setPeriod] = useState<PeriodOption | ''>('');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
   const [appliedStartDate, setAppliedStartDate] = useState('');
   const [appliedEndDate, setAppliedEndDate] = useState('');
   const [filterApplied, setFilterApplied] = useState(false);
+  const [keyword, setKeyword] = useState('');
+
+  const isUserDefined = period === 'user_defined';
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -55,6 +87,35 @@ export default function AccountStatement() {
     }
   }, [isAuthenticated, isLoading, toast]);
 
+  const handlePeriodChange = (value: string) => {
+    const p = value as PeriodOption;
+    setPeriod(p);
+
+    if (p !== 'user_defined') {
+      const { start, end } = getDateRange(p);
+      setCustomStartDate(start);
+      setCustomEndDate(end);
+      setAppliedStartDate(start);
+      setAppliedEndDate(end);
+      setFilterApplied(true);
+      setCurrentPage(1);
+    } else {
+      setCustomStartDate('');
+      setCustomEndDate('');
+      setFilterApplied(false);
+    }
+  };
+
+  const handleSearch = () => {
+    if (isUserDefined) {
+      if (!customStartDate && !customEndDate) return;
+      setAppliedStartDate(customStartDate);
+      setAppliedEndDate(customEndDate);
+    }
+    setFilterApplied(true);
+    setCurrentPage(1);
+  };
+
   const buildQueryString = () => {
     const params = new URLSearchParams();
     params.set('page', currentPage.toString());
@@ -64,7 +125,7 @@ export default function AccountStatement() {
     return params.toString();
   };
 
-  const { data: statementData, isLoading: statementLoading, error } = useQuery<{
+  const { data: statementData, isLoading: statementLoading } = useQuery<{
     account: any;
     transactions: any[];
     total: number;
@@ -82,40 +143,79 @@ export default function AccountStatement() {
     enabled: !!accountId && isAuthenticated && filterApplied,
   });
 
-  const handleApplyDateFilter = () => {
-    setAppliedStartDate(startDate);
-    setAppliedEndDate(endDate);
-    setFilterApplied(true);
-    setCurrentPage(1);
-  };
+  const filteredTransactions = useMemo(() => {
+    if (!statementData?.transactions) return [];
+    if (!keyword.trim()) return statementData.transactions;
+    const lower = keyword.toLowerCase();
+    return statementData.transactions.filter((t: any) =>
+      (t.description || '').toLowerCase().includes(lower) ||
+      (t.referenceNumber || '').toLowerCase().includes(lower) ||
+      (t.transactionType || '').toLowerCase().includes(lower)
+    );
+  }, [statementData?.transactions, keyword]);
 
-  const handleClearDateFilter = () => {
-    setStartDate('');
-    setEndDate('');
-    setAppliedStartDate('');
-    setAppliedEndDate('');
-    setFilterApplied(false);
-    setCurrentPage(1);
-  };
+  const runningBalances = useMemo(() => {
+    if (!filteredTransactions.length) return [];
+    const openingBalance = parseFloat(statementData?.account?.balance || '0');
+    let totalCredits = 0;
+    let totalDebits = 0;
+    (statementData?.transactions || []).forEach((t: any) => {
+      const amt = parseFloat(t.amount || '0');
+      if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
+        totalCredits += amt;
+      } else {
+        totalDebits += amt;
+      }
+    });
+    const periodStartBalance = openingBalance - totalCredits + totalDebits;
 
-  const hasDateFilter = appliedStartDate || appliedEndDate;
+    let balance = periodStartBalance;
+    return filteredTransactions.map((t: any) => {
+      const amt = parseFloat(t.amount || '0');
+      if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
+        balance += amt;
+      } else {
+        balance -= amt;
+      }
+      return balance;
+    });
+  }, [filteredTransactions, statementData]);
+
+  const periodStartBalance = useMemo(() => {
+    if (!statementData?.transactions?.length) return 0;
+    const currentBalance = parseFloat(statementData?.account?.balance || '0');
+    let totalCredits = 0;
+    let totalDebits = 0;
+    (statementData.transactions || []).forEach((t: any) => {
+      const amt = parseFloat(t.amount || '0');
+      if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
+        totalCredits += amt;
+      } else {
+        totalDebits += amt;
+      }
+    });
+    return currentBalance - totalCredits + totalDebits;
+  }, [statementData]);
 
   const handleDownloadStatement = () => {
     if (!statementData) return;
-    
     const { account, transactions } = statementData;
     const csvContent = [
-      ['Date', 'Description', 'Reference', 'Debit', 'Credit', 'Status'],
-      ...(transactions || []).map((txn: any) => [
-        new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
-        txn.description || txn.transactionType,
-        txn.referenceNumber || '',
-        (txn.transactionType === 'withdrawal' || txn.transactionType === 'fee_charge') ? formatCurrency(txn.amount || '0') : '',
-        (txn.transactionType === 'deposit' || txn.transactionType === 'interest_credit') ? formatCurrency(txn.amount || '0') : '',
-        txn.status || 'completed'
-      ])
+      ['Transaction Date', 'Value Date', 'Transaction Details', 'Money Out', 'Money In', 'Ledger Balance'],
+      ...(transactions || []).map((txn: any, idx: number) => {
+        const isDebit = txn.transactionType === 'withdrawal' || txn.transactionType === 'fee_charge';
+        const isCredit = txn.transactionType === 'deposit' || txn.transactionType === 'interest_credit' || txn.transactionType === 'share_capital';
+        return [
+          new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
+          new Date(txn.createdAt).toLocaleDateString(),
+          txn.description || txn.transactionType,
+          isDebit ? parseFloat(txn.amount || '0').toFixed(0) : '',
+          isCredit ? parseFloat(txn.amount || '0').toFixed(0) : '',
+          runningBalances[idx]?.toFixed(0) || ''
+        ];
+      })
     ].map(row => row.join(',')).join('\n');
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -125,6 +225,7 @@ export default function AccountStatement() {
     window.URL.revokeObjectURL(url);
   };
 
+  const { error } = useQuery({ queryKey: ['_noop'], enabled: false });
   if (error && isUnauthorizedError(error)) {
     return null;
   }
@@ -147,9 +248,17 @@ export default function AccountStatement() {
     );
   }
 
+  const accountDisplay = statementData?.account
+    ? `${statementData.account.accountNumber} | ${formatCurrency(statementData.account.balance || '0')}`
+    : 'Loading...';
+
+  const periodEndBalance = statementData?.account ? parseFloat(statementData.account.balance || '0') : 0;
+  const totalMoneyOut = statementData?.totalWithdrawals || 0;
+  const totalMoneyIn = statementData?.totalDeposits || 0;
+
   return (
-    <div className="space-y-4 sm:space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="/savings">
             <Button variant="outline" size="sm">
@@ -158,29 +267,98 @@ export default function AccountStatement() {
               <span className="sm:hidden">Back</span>
             </Button>
           </Link>
-          <div>
-            <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Account Statement</h2>
-            <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">
-              {statementData?.account ? `Account ${statementData.account.accountNumber}` : 'Select date range and click Filter'}
-            </p>
-          </div>
+          <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Account Statement</h2>
         </div>
         {statementData && (
           <Button onClick={handleDownloadStatement} className="sacco-gradient text-white" size="sm">
             <Download className="w-4 h-4 mr-1.5" />
-            Download CSV
+            <span className="hidden sm:inline">Download CSV</span>
+            <span className="sm:hidden">CSV</span>
           </Button>
         )}
       </div>
+
+      <Card>
+        <CardContent className="pt-5 pb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
+            <div className="lg:col-span-3">
+              <Label className="text-xs font-medium text-teal-700 dark:text-teal-400 mb-1 block">Account *</Label>
+              <div className="relative">
+                <Input
+                  value={accountDisplay}
+                  readOnly
+                  className="h-10 text-sm bg-slate-50 dark:bg-slate-800 pr-8 cursor-default"
+                />
+                <Search className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+              </div>
+            </div>
+
+            <div className="lg:col-span-3">
+              <Label className="text-xs font-medium text-teal-700 dark:text-teal-400 mb-1 block">Period *</Label>
+              <Select value={period} onValueChange={handlePeriodChange}>
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="Please Select" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="current_month">Current Month</SelectItem>
+                  <SelectItem value="last_2_months">Last 2 Months</SelectItem>
+                  <SelectItem value="last_3_months">Last 3 Months</SelectItem>
+                  <SelectItem value="last_6_months">Last 6 Months</SelectItem>
+                  <SelectItem value="user_defined">User Defined</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="lg:col-span-2">
+              <Label className="text-xs font-medium text-teal-700 dark:text-teal-400 mb-1 block">From</Label>
+              <div className="relative">
+                <Input
+                  type="date"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                  disabled={!isUserDefined}
+                  className="h-10 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="lg:col-span-2">
+              <Label className="text-xs font-medium text-teal-700 dark:text-teal-400 mb-1 block">To</Label>
+              <div className="relative">
+                <Input
+                  type="date"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                  disabled={!isUserDefined}
+                  className="h-10 text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 flex gap-2">
+              {isUserDefined && (
+                <Button
+                  onClick={handleSearch}
+                  disabled={!customStartDate && !customEndDate}
+                  className="h-10 flex-1 bg-teal-500 hover:bg-teal-600 text-white"
+                >
+                  <Search className="w-4 h-4 mr-1.5" />
+                  Search
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {!filterApplied ? (
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12">
               <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">Select a Date Range</h3>
+              <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">Select a Period</h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
-                Enter a start and/or end date in the Transaction History section below and click the Filter button to load the account statement.
+                Choose a period from the dropdown above to generate the account statement. Select "User Defined" to specify custom dates.
               </p>
             </div>
           </CardContent>
@@ -195,225 +373,116 @@ export default function AccountStatement() {
             </div>
           </CardContent>
         </Card>
-      ) : statementData?.account ? (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center space-x-2 text-base">
-              <FileText className="w-5 h-5" />
-              <span>Account Information</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Account Number</p>
-                <p className="text-sm sm:text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">{statementData.account.accountNumber}</p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Account Holder</p>
-                <p className="text-sm sm:text-lg font-semibold text-slate-900 dark:text-slate-100 truncate">{statementData.account.member?.fullName}</p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Account Type</p>
-                <Badge className={
-                  statementData.account.accountType === 'regular' ? 'bg-blue-100 dark:bg-blue-950/50 text-blue-800 dark:text-blue-300' :
-                  statementData.account.accountType === 'fixed_deposit' ? 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300' :
-                  'bg-purple-100 text-purple-800 dark:text-purple-300'
-                }>
-                  {statementData.account.accountType?.replace('_', ' ')}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Interest Rate</p>
-                <p className="text-sm sm:text-lg font-semibold text-blue-600">
-                  {statementData.financialYearInterestRate
-                    ? `${(parseFloat(statementData.financialYearInterestRate) * 100).toFixed(2)}% p.a.`
-                    : `${(parseFloat(statementData.account.interestRate || '0') * 100).toFixed(2)}% p.a.`
-                  }
-                </p>
-              </div>
-              <div>
-                <p className="text-xs sm:text-sm font-medium text-slate-600 dark:text-slate-300">Current Balance</p>
-                <p className="text-sm sm:text-lg font-semibold text-green-600">
-                  {formatCurrency(statementData.account.balance || '0')}
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4 pt-4 border-t">
-              <div className="bg-green-50 dark:bg-green-950/50 rounded-lg p-3">
-                <p className="text-xs sm:text-sm font-medium text-green-700">Total Deposits{hasDateFilter ? ' (filtered)' : ''}</p>
-                <p className="text-base sm:text-lg font-semibold text-green-800 dark:text-green-300">{formatCurrency(statementData.totalDeposits || 0)}</p>
-              </div>
-              <div className="bg-red-50 dark:bg-red-950/50 rounded-lg p-3">
-                <p className="text-xs sm:text-sm font-medium text-red-700">Total Withdrawals{hasDateFilter ? ' (filtered)' : ''}</p>
-                <p className="text-base sm:text-lg font-semibold text-red-800 dark:text-red-300">{formatCurrency(statementData.totalWithdrawals || 0)}</p>
-              </div>
-              <div className="bg-blue-50 dark:bg-blue-950/50 rounded-lg p-3">
-                <p className="text-xs sm:text-sm font-medium text-blue-700">Total Interest{hasDateFilter ? ' (filtered)' : ''}</p>
-                <p className="text-base sm:text-lg font-semibold text-blue-800 dark:text-blue-300">{formatCurrency(statementData.totalInterest || 0)}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       ) : (
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-              Failed to load account information
-            </div>
-          </CardContent>
-        </Card>
+        <>
+          <Card>
+            <CardContent className="pt-5 pb-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                <div className="relative flex-shrink-0 w-full sm:w-64">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input
+                    placeholder="Enter keyword"
+                    value={keyword}
+                    onChange={(e) => setKeyword(e.target.value)}
+                    className="pl-9 h-9 text-sm"
+                  />
+                </div>
+
+                <div className="flex flex-wrap items-center gap-6 flex-1 justify-end">
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Balance At Period Start</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{formatCurrency(periodStartBalance)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Balance At Period End</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-slate-100">{formatCurrency(periodEndBalance)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Money Out</p>
+                    <p className="text-sm font-bold text-red-600">{formatCurrency(totalMoneyOut)}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Money In</p>
+                    <p className="text-sm font-bold text-green-600">{formatCurrency(totalMoneyIn)}</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-0">
+              {filteredTransactions.length > 0 ? (
+                <>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-teal-500 hover:bg-teal-500">
+                          <TableHead className="text-white text-xs font-semibold">Transaction Date</TableHead>
+                          <TableHead className="text-white text-xs font-semibold">Value Date</TableHead>
+                          <TableHead className="text-white text-xs font-semibold">Transaction Details</TableHead>
+                          <TableHead className="text-white text-xs font-semibold text-right">Money Out</TableHead>
+                          <TableHead className="text-white text-xs font-semibold text-right">Money In</TableHead>
+                          <TableHead className="text-white text-xs font-semibold text-right">Ledger Balance</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredTransactions.map((transaction: any, idx: number) => {
+                          const isDebit = transaction.transactionType === 'withdrawal' || transaction.transactionType === 'fee_charge';
+                          const isCredit = transaction.transactionType === 'deposit' || transaction.transactionType === 'interest_credit' || transaction.transactionType === 'share_capital';
+                          return (
+                            <TableRow key={transaction.id} className="border-b">
+                              <TableCell className="text-xs sm:text-sm whitespace-nowrap">
+                                {new Date(transaction.transactionDate || transaction.createdAt).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-xs sm:text-sm whitespace-nowrap">
+                                {new Date(transaction.createdAt).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="text-xs sm:text-sm">
+                                {transaction.description || transaction.transactionType?.replace(/_/g, ' ')}
+                              </TableCell>
+                              <TableCell className="text-right text-xs sm:text-sm">
+                                {isDebit && (
+                                  <span className="text-red-600 font-medium">
+                                    {formatCurrency(transaction.amount || '0')}
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right text-xs sm:text-sm">
+                                {isCredit && (
+                                  <span className="text-green-600 font-medium">
+                                    {formatCurrency(transaction.amount || '0')}
+                                  </span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-right text-xs sm:text-sm font-medium">
+                                {formatCurrency(runningBalances[idx] || 0)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="p-3">
+                    <Pagination
+                      totalItems={statementData?.total || 0}
+                      itemsPerPage={itemsPerPage}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                      onItemsPerPageChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
+                    />
+                  </div>
+                </>
+              ) : (
+                <div className="px-4 py-8 text-center">
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">NO RECORDS FOUND</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
       )}
-
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <span>Transaction History</span>
-              {statementData && (
-                <Badge variant="secondary" className="text-xs">
-                  {statementData.total || 0} total
-                </Badge>
-              )}
-            </CardTitle>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 pt-2">
-            <div className="flex flex-col sm:flex-row items-start sm:items-end gap-2 flex-1 w-full sm:w-auto">
-              <div className="flex-1 w-full sm:w-auto">
-                <Label htmlFor="startDate" className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">From</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                  <Input
-                    id="startDate"
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="pl-8 h-9 text-sm"
-                  />
-                </div>
-              </div>
-              <div className="flex-1 w-full sm:w-auto">
-                <Label htmlFor="endDate" className="text-xs text-slate-500 dark:text-slate-400 mb-1 block">To</Label>
-                <div className="relative">
-                  <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-                  <Input
-                    id="endDate"
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    className="pl-8 h-9 text-sm"
-                  />
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button size="sm" onClick={handleApplyDateFilter} disabled={!startDate && !endDate}>
-                <Filter className="w-3.5 h-3.5 mr-1.5" />
-                Apply
-              </Button>
-              {hasDateFilter && (
-                <Button size="sm" variant="outline" onClick={handleClearDateFilter}>
-                  <X className="w-3.5 h-3.5 mr-1.5" />
-                  Clear
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {!filterApplied ? (
-            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-              <Filter className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
-              <p className="text-sm">Enter dates above and click <strong>Apply</strong> to load transactions.</p>
-            </div>
-          ) : statementLoading && !statementData ? (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="animate-pulse flex space-x-4">
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/3"></div>
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/4"></div>
-                  <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-1/5"></div>
-                </div>
-              ))}
-            </div>
-          ) : (statementData?.transactions && statementData.transactions.length > 0) ? (
-            <>
-              <div className="border rounded-lg overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="text-xs">Date</TableHead>
-                      <TableHead className="text-xs">Description</TableHead>
-                      <TableHead className="text-xs hidden sm:table-cell">Reference</TableHead>
-                      <TableHead className="text-xs text-right">Debit</TableHead>
-                      <TableHead className="text-xs text-right">Credit</TableHead>
-                      <TableHead className="text-xs hidden sm:table-cell">Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {(statementData?.transactions || []).map((transaction: any) => (
-                      <TableRow key={transaction.id}>
-                        <TableCell className="text-xs sm:text-sm whitespace-nowrap">
-                          {new Date(transaction.transactionDate || transaction.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm max-w-[150px] sm:max-w-none truncate">
-                          {transaction.description || transaction.transactionType}
-                        </TableCell>
-                        <TableCell className="text-xs sm:text-sm hidden sm:table-cell">
-                          {transaction.referenceNumber || '-'}
-                        </TableCell>
-                        <TableCell className="text-right text-xs sm:text-sm">
-                          {(transaction.transactionType === 'withdrawal' || transaction.transactionType === 'fee_charge') && (
-                            <span className="text-red-600 font-medium">
-                              {formatCurrency(transaction.amount || '0')}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right text-xs sm:text-sm">
-                          {(transaction.transactionType === 'deposit' || transaction.transactionType === 'interest_credit') && (
-                            <span className={transaction.transactionType === 'interest_credit' ? "text-blue-600 font-medium" : "text-green-600 font-medium"}>
-                              {formatCurrency(transaction.amount || '0')}
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell className="hidden sm:table-cell">
-                          <Badge className={`text-[10px] ${
-                            transaction.status === 'completed' ? 'bg-green-100 dark:bg-green-950/50 text-green-800 dark:text-green-300' :
-                            transaction.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-950/50 text-yellow-800 dark:text-yellow-300' :
-                            'bg-red-100 dark:bg-red-950/50 text-red-800 dark:text-red-300'
-                          }`}>
-                            {transaction.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              <Pagination
-                totalItems={statementData.total || 0}
-                itemsPerPage={itemsPerPage}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-                onItemsPerPageChange={(val) => { setItemsPerPage(val); setCurrentPage(1); }}
-              />
-            </>
-          ) : (
-            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-              <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p>{hasDateFilter ? 'No transactions found for the selected date range' : 'No transactions found for this account'}</p>
-              {hasDateFilter && (
-                <Button variant="link" onClick={handleClearDateFilter} className="mt-2 text-sm">
-                  Clear date filter
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }
