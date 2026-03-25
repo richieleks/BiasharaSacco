@@ -780,15 +780,17 @@ export default function Reports() {
 
       {/* Tabs for different report sections */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setRptPage(1); setDelinqPage(1); }} className="space-y-6">
-        <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="members">Members</TabsTrigger>
-          <TabsTrigger value="financial">Financial</TabsTrigger>
-          <TabsTrigger value="activity">Member Activity</TabsTrigger>
-          <TabsTrigger value="schedules">Bank Schedules</TabsTrigger>
-          <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
-          <TabsTrigger value="custom">Custom Reports</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-1 px-1">
+          <TabsList className="w-full inline-flex sm:grid sm:grid-cols-4 lg:grid-cols-7 h-auto gap-1 p-1 rounded-xl min-w-max sm:min-w-0">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm px-3 sm:px-2">Overview</TabsTrigger>
+            <TabsTrigger value="members" className="text-xs sm:text-sm px-3 sm:px-2">Members</TabsTrigger>
+            <TabsTrigger value="financial" className="text-xs sm:text-sm px-3 sm:px-2">Financial</TabsTrigger>
+            <TabsTrigger value="activity" className="text-xs sm:text-sm px-3 sm:px-2">Activity</TabsTrigger>
+            <TabsTrigger value="schedules" className="text-xs sm:text-sm px-3 sm:px-2">Schedules</TabsTrigger>
+            <TabsTrigger value="reconciliation" className="text-xs sm:text-sm px-3 sm:px-2">Reconciliation</TabsTrigger>
+            <TabsTrigger value="custom" className="text-xs sm:text-sm px-3 sm:px-2">Custom</TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-6">

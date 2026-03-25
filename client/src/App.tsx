@@ -17,6 +17,7 @@ import Dashboard from "@/pages/dashboard";
 import Members from "@/pages/members";
 import Savings from "@/pages/savings";
 import Loans from "@/pages/loans";
+import MobileNav from "@/components/layout/mobile-nav";
 
 import Transactions from "@/pages/transactions";
 import ShareCapital from "@/pages/share-capital";
@@ -230,7 +231,7 @@ function Router() {
       <Header />
       <div className="flex">
         <CollapsibleSidebar />
-        <main className="flex-1 p-4 lg:p-6 xl:p-8 transition-all duration-300 ease-in-out min-h-[calc(100vh-4rem)]">
+        <main className="flex-1 p-4 lg:p-6 xl:p-8 pb-20 lg:pb-8 transition-all duration-300 ease-in-out min-h-[calc(100vh-4rem)]">
           <div className="lg:hidden h-14"></div>
           <PageTransition>
           <Switch>
@@ -393,6 +394,7 @@ function Router() {
           </PageTransition>
         </main>
       </div>
+      <MobileNav />
     </div>
   );
 }

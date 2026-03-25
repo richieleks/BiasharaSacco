@@ -626,7 +626,7 @@ export default function Loans() {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4 mb-4">
                       <div>
                         <p className="text-sm text-slate-500 dark:text-slate-400">Amount</p>
                         <p className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(loan.principalAmount)}</p>
