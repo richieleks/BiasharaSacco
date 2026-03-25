@@ -82,18 +82,26 @@ export default function LoanStatement() {
         };
       });
     
+    const escapeCsv = (val: any) => {
+      const str = String(val ?? '');
+      if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+        return `"${str.replace(/"/g, '""')}"`;
+      }
+      return str;
+    };
+
     const csvData = [
       ['Date', 'Description', 'Debit', 'Credit', 'Balance'],
       ...transactionsWithBalance.map((txn: any) => [
         format(txn.displayDate, 'yyyy-MM-dd'),
         txn.description || txn.transactionType || 'N/A',
-        (txn.transactionType === 'loan_payment' || txn.transactionType === 'debit') ? txn.amount || 0 : '',
-        (txn.transactionType === 'loan_disbursement' || txn.transactionType === 'credit') ? txn.amount || 0 : '',
-        txn.runningBalance
+        (txn.transactionType === 'loan_payment' || txn.transactionType === 'debit') ? parseFloat(txn.amount || '0').toFixed(0) : '',
+        (txn.transactionType === 'loan_disbursement' || txn.transactionType === 'credit') ? parseFloat(txn.amount || '0').toFixed(0) : '',
+        txn.runningBalance.toFixed(0)
       ])
     ];
 
-    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const csvContent = csvData.map(row => row.map(escapeCsv).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');

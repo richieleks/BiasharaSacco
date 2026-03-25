@@ -248,6 +248,14 @@ export default function AccountStatement() {
     return currentBalance - totalCredits + totalDebits;
   }, [statementData]);
 
+  const escapeCsv = (val: any) => {
+    const str = String(val ?? '');
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
   const handleDownloadStatement = () => {
     if (!statementData) return;
     const { account, transactions } = statementData;
@@ -265,7 +273,7 @@ export default function AccountStatement() {
           runningBalances[idx]?.toFixed(0) || ''
         ];
       })
-    ].map(row => row.join(',')).join('\n');
+    ].map(row => row.map(escapeCsv).join(',')).join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);

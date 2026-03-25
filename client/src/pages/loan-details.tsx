@@ -235,6 +235,14 @@ export default function LoanDetails() {
     return orderA - orderB;
   });
 
+  const escapeCsv = (val: any) => {
+    const str = String(val ?? '');
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
   const handleExportStatement = () => {
     if (!sortedTransactions || sortedTransactions.length === 0) return;
 
@@ -246,14 +254,14 @@ export default function LoanDetails() {
       return [
         (txn.transactionDate || txn.createdAt) ? format(new Date(txn.transactionDate || txn.createdAt), 'yyyy-MM-dd') : 'N/A',
         txn.description || txn.transactionType || 'N/A',
-        txn.transactionType === 'loan_payment' ? amount : '',
-        txn.transactionType === 'loan_disbursement' ? amount : '',
-        runningBalance,
+        txn.transactionType === 'loan_payment' ? amount.toFixed(0) : '',
+        txn.transactionType === 'loan_disbursement' ? amount.toFixed(0) : '',
+        runningBalance.toFixed(0),
       ];
     });
 
     const csvData = [['Date', 'Description', 'Debit', 'Credit', 'Balance'], ...rows];
-    const csvContent = csvData.map(row => row.join(',')).join('\n');
+    const csvContent = csvData.map(row => row.map(escapeCsv).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -609,13 +617,13 @@ export default function LoanDetails() {
                         const rows = repaymentSchedule.map(p => [
                           p.month,
                           format(p.dueDate, 'yyyy-MM-dd'),
-                          Math.round(p.payment),
-                          Math.round(p.principalPortion),
-                          Math.round(p.interestPortion),
-                          Math.round(p.balance),
+                          p.payment.toFixed(0),
+                          p.principalPortion.toFixed(0),
+                          p.interestPortion.toFixed(0),
+                          p.balance.toFixed(0),
                         ]);
                         const csvData = [['#', 'Due Date', 'Payment', 'Principal', 'Interest', 'Balance'], ...rows];
-                        const csvContent = csvData.map(row => row.join(',')).join('\n');
+                        const csvContent = csvData.map(row => row.map(v => escapeCsv(v)).join(',')).join('\n');
                         const blob = new Blob([csvContent], { type: 'text/csv' });
                         const url = window.URL.createObjectURL(blob);
                         const link = document.createElement('a');
