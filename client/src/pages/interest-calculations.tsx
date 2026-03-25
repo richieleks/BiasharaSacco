@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
+import { useRBAC } from '@/hooks/useRBAC';
 import { apiRequest } from '@/lib/queryClient';
 import { formatCurrency } from '@/lib/utils';
 import { Pagination } from '@/components/ui/pagination';
@@ -81,7 +82,13 @@ export default function InterestCalculations() {
   });
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { toast } = useToast();
+  const { hasPermission } = useRBAC();
   const queryClient = useQueryClient();
+
+  const canCreateFinancialYear = hasPermission('create', 'financial-years');
+  const canCreateSnapshots = hasPermission('create', 'balance-snapshots');
+  const canCalculateInterest = hasPermission('create', 'interest-calculations');
+  const canPostInterest = hasPermission('post', 'interest-calculations');
 
   // Fetch financial years
   const { data: financialYears = [], isLoading: financialYearsLoading } = useQuery<FinancialYear[]>({
@@ -353,7 +360,7 @@ export default function InterestCalculations() {
             Manage financial years and calculate interest on savings accounts
           </p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        {canCreateFinancialYear && <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
@@ -417,7 +424,7 @@ export default function InterestCalculations() {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
 
       {/* Financial Years Overview */}
@@ -508,7 +515,7 @@ export default function InterestCalculations() {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            {!year.isActive && (
+                            {!year.isActive && canCreateFinancialYear && (
                               <Button
                                 size="sm"
                                 onClick={() => activateFinancialYearMutation.mutate(year.id)}
@@ -574,7 +581,7 @@ export default function InterestCalculations() {
                       </div>
                     ) : null;
                   })()}
-                  {selectedFinancialYear && calculations.length > 0 && (
+                  {selectedFinancialYear && calculations.length > 0 && canPostInterest && (
                     <div className="flex gap-2">
                       {calculations.some((c: InterestCalculation) => c.status === 'calculated') && (
                         <Button
@@ -639,7 +646,7 @@ export default function InterestCalculations() {
                             <TableCell>{getStatusBadge(calc.status)}</TableCell>
                             <TableCell>
                               <div className="flex gap-2">
-                                {calc.status === 'calculated' && (
+                                {calc.status === 'calculated' && canPostInterest && (
                                   <Button
                                     size="sm"
                                     onClick={() => approveCalculationMutation.mutate(calc.id)}
@@ -648,7 +655,7 @@ export default function InterestCalculations() {
                                     Approve
                                   </Button>
                                 )}
-                                {calc.status === 'approved' && (
+                                {calc.status === 'approved' && canPostInterest && (
                                   <Button
                                     size="sm"
                                     onClick={() => postCalculationMutation.mutate(calc.id)}
@@ -765,6 +772,7 @@ export default function InterestCalculations() {
                 ) : null;
               })()}
               <div className="grid gap-4 md:grid-cols-2">
+                {canCreateSnapshots && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Create Balance Snapshots</CardTitle>
@@ -782,7 +790,9 @@ export default function InterestCalculations() {
                     </Button>
                   </CardContent>
                 </Card>
+                )}
 
+                {canCalculateInterest && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Calculate Interest for All Members</CardTitle>
@@ -800,6 +810,7 @@ export default function InterestCalculations() {
                     </Button>
                   </CardContent>
                 </Card>
+                )}
               </div>
             </CardContent>
           </Card>

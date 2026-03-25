@@ -6184,7 +6184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/financial-years', isAuthenticated, async (req, res) => {
+  app.post('/api/financial-years', isAuthenticated, requirePermission('create', 'financial-years'), async (req, res) => {
     try {
       const { yearLabel, startDate, endDate } = req.body;
 
@@ -6214,7 +6214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/financial-years/:id/activate', isAuthenticated, async (req, res) => {
+  app.put('/api/financial-years/:id/activate', isAuthenticated, requirePermission('create', 'financial-years'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const financialYear = await storage.setActiveFinancialYear(id);
@@ -6226,7 +6226,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Balance snapshots
-  app.post('/api/balance-snapshots/create-all', isAuthenticated, async (req, res) => {
+  app.post('/api/balance-snapshots/create-all', isAuthenticated, requirePermission('create', 'balance-snapshots'), async (req, res) => {
     try {
       const { financialYearId, snapshotDate } = req.body;
       const snapshots = await storage.createBalanceSnapshotsForAllAccounts(financialYearId, snapshotDate);
@@ -6249,7 +6249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interest-calculations/calculate-all', isAuthenticated, async (req, res) => {
+  app.post('/api/interest-calculations/calculate-all', isAuthenticated, requirePermission('create', 'interest-calculations'), async (req, res) => {
     try {
       const { financialYearId } = req.body;
       const calculations = await storage.calculateInterestForAllMembers(financialYearId);
@@ -6260,7 +6260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interest-calculations/calculate-member', isAuthenticated, async (req, res) => {
+  app.post('/api/interest-calculations/calculate-member', isAuthenticated, requirePermission('create', 'interest-calculations'), async (req, res) => {
     try {
       const { memberId, financialYearId } = req.body;
       const calculation = await storage.calculateInterestForMember(memberId, financialYearId);
@@ -6271,7 +6271,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/interest-calculations/:id/approve', isAuthenticated, async (req: any, res) => {
+  app.put('/api/interest-calculations/:id/approve', isAuthenticated, requirePermission('post', 'interest-calculations'), async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const approvedBy = getUserId(req)!;
@@ -6283,7 +6283,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/interest-calculations/approve-all', isAuthenticated, async (req: any, res) => {
+  app.put('/api/interest-calculations/approve-all', isAuthenticated, requirePermission('post', 'interest-calculations'), async (req: any, res) => {
     try {
       const { financialYearId } = req.body;
       if (!financialYearId) {
@@ -6304,7 +6304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/interest-calculations/post-all', isAuthenticated, async (req: any, res) => {
+  app.put('/api/interest-calculations/post-all', isAuthenticated, requirePermission('post', 'interest-calculations'), async (req: any, res) => {
     try {
       const { financialYearId } = req.body;
       if (!financialYearId) {
@@ -6324,7 +6324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/interest-calculations/:id/post', isAuthenticated, async (req, res) => {
+  app.put('/api/interest-calculations/:id/post', isAuthenticated, requirePermission('post', 'interest-calculations'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
       const calculation = await storage.postInterestCalculation(id);
@@ -6347,7 +6347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post('/api/interest-payments', isAuthenticated, async (req, res) => {
+  app.post('/api/interest-payments', isAuthenticated, requirePermission('post', 'interest-calculations'), async (req, res) => {
     try {
       const payment = await storage.createInterestPayment(req.body);
       res.status(201).json(payment);
