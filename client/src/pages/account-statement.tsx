@@ -39,6 +39,7 @@ export default function AccountStatement() {
   const [endDate, setEndDate] = useState('');
   const [appliedStartDate, setAppliedStartDate] = useState('');
   const [appliedEndDate, setAppliedEndDate] = useState('');
+  const [filterApplied, setFilterApplied] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -78,12 +79,13 @@ export default function AccountStatement() {
   }>({
     queryKey: ['/api/savings-accounts', accountId, 'statement', currentPage, itemsPerPage, appliedStartDate, appliedEndDate],
     queryFn: () => fetch(`/api/savings-accounts/${accountId}/statement?${buildQueryString()}`).then(res => res.json()),
-    enabled: !!accountId && isAuthenticated,
+    enabled: !!accountId && isAuthenticated && filterApplied,
   });
 
   const handleApplyDateFilter = () => {
     setAppliedStartDate(startDate);
     setAppliedEndDate(endDate);
+    setFilterApplied(true);
     setCurrentPage(1);
   };
 
@@ -92,6 +94,7 @@ export default function AccountStatement() {
     setEndDate('');
     setAppliedStartDate('');
     setAppliedEndDate('');
+    setFilterApplied(false);
     setCurrentPage(1);
   };
 
@@ -158,7 +161,7 @@ export default function AccountStatement() {
           <div>
             <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Account Statement</h2>
             <p className="text-sm text-slate-600 dark:text-slate-300 mt-0.5">
-              {statementData?.account ? `Account ${statementData.account.accountNumber}` : 'Loading...'}
+              {statementData?.account ? `Account ${statementData.account.accountNumber}` : 'Select date range and click Filter'}
             </p>
           </div>
         </div>
@@ -170,7 +173,19 @@ export default function AccountStatement() {
         )}
       </div>
 
-      {statementLoading && !statementData ? (
+      {!filterApplied ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12">
+              <Calendar className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">Select a Date Range</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md mx-auto">
+                Enter a start and/or end date in the Transaction History section below and click the Filter button to load the account statement.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : statementLoading && !statementData ? (
         <Card>
           <CardContent className="pt-6">
             <div className="animate-pulse space-y-4">
@@ -308,7 +323,12 @@ export default function AccountStatement() {
           </div>
         </CardHeader>
         <CardContent>
-          {statementLoading && !statementData ? (
+          {!filterApplied ? (
+            <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+              <Filter className="w-8 h-8 mx-auto mb-2 text-slate-300 dark:text-slate-600" />
+              <p className="text-sm">Enter dates above and click <strong>Apply</strong> to load transactions.</p>
+            </div>
+          ) : statementLoading && !statementData ? (
             <div className="space-y-3">
               {Array.from({ length: 5 }).map((_, i) => (
                 <div key={i} className="animate-pulse flex space-x-4">
