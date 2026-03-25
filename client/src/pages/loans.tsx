@@ -112,10 +112,11 @@ export default function Loans() {
     enabled: isAuthenticated,
   });
 
+  const statsUrl = isPersonalView ? '/api/loans/stats?scope=personal' : '/api/loans/stats';
   const { data: loanStats } = useQuery<{ activeCount: number; totalOutstanding: number; defaultedCount: number; totalCount: number }>({
-    queryKey: ['/api/loans/stats'],
+    queryKey: ['/api/loans/stats', isPersonalView ? 'personal' : 'all'],
     queryFn: async () => {
-      const res = await fetch('/api/loans/stats', { credentials: 'include' });
+      const res = await fetch(statsUrl, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch loan stats');
       return res.json();
     },

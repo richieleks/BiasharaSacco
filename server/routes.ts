@@ -2653,9 +2653,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userRoles = req.member?.roles || ['member'];
       const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer'].includes(role));
+      const scope = req.query.scope as string;
 
       let memberId: number | undefined;
-      if (!isStaff) {
+      if (!isStaff || scope === 'personal') {
         memberId = req.member?.id;
         if (!memberId) {
           return res.json({ activeCount: 0, totalOutstanding: 0, defaultedCount: 0, totalCount: 0 });
