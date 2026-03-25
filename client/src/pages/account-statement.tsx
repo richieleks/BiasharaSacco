@@ -251,7 +251,7 @@ export default function AccountStatement() {
         const isCredit = txn.transactionType === 'deposit' || txn.transactionType === 'interest_credit' || txn.transactionType === 'share_capital';
         return [
           new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
-          new Date(txn.createdAt).toLocaleDateString(),
+          new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
           txn.description || txn.transactionType,
           isDebit ? parseFloat(txn.amount || '0').toFixed(0) : '',
           isCredit ? parseFloat(txn.amount || '0').toFixed(0) : '',
@@ -509,7 +509,7 @@ export default function AccountStatement() {
                                 {new Date(transaction.transactionDate || transaction.createdAt).toLocaleDateString()}
                               </TableCell>
                               <TableCell className="text-xs sm:text-sm whitespace-nowrap">
-                                {new Date(transaction.createdAt).toLocaleDateString()}
+                                {new Date(transaction.transactionDate || transaction.createdAt).toLocaleDateString()}
                               </TableCell>
                               <TableCell className="text-xs sm:text-sm">
                                 {transaction.description || transaction.transactionType?.replace(/_/g, ' ')}
