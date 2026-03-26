@@ -66,8 +66,19 @@ export function LoginPage() {
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Login failed");
+        let errorMessage = "Login failed";
+        try {
+          const error = await response.json();
+          errorMessage = error.message || errorMessage;
+        } catch {
+          const text = await response.text().catch(() => "");
+          if (response.status === 401) {
+            errorMessage = "Invalid username or password";
+          } else if (text) {
+            errorMessage = text.length > 100 ? "Server error. Please try again." : text;
+          }
+        }
+        throw new Error(errorMessage);
       }
       
       return response.json();
@@ -98,8 +109,14 @@ export function LoginPage() {
         headers: { "Content-Type": "application/json" },
       });
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.message || "Verification failed");
+        let errorMessage = "Verification failed";
+        try {
+          const err = await response.json();
+          errorMessage = err.message || errorMessage;
+        } catch {
+          errorMessage = response.status === 401 ? "Invalid credentials" : "Server error. Please try again.";
+        }
+        throw new Error(errorMessage);
       }
       return response.json();
     },
