@@ -31,7 +31,19 @@ function AdminDashboard() {
       <MetricsGrid />
       <AnalyticsCharts />
       <MemberApprovals />
+      <RecentTransactions />
+      <PendingApprovals />
+    </div>
+  );
+}
+
+function TreasurerDashboard() {
+  return (
+    <div className="space-y-6">
+      <MetricsGrid />
+      <AnalyticsCharts />
       <LoanApprovalWorkflow />
+      <MemberApprovals />
       <RecentTransactions />
       <PendingApprovals />
     </div>
@@ -43,7 +55,6 @@ function ManagerDashboard() {
     <div className="space-y-6">
       <MetricsGrid />
       <AnalyticsCharts />
-      <LoanApprovalWorkflow />
       <MemberApprovals />
       <RecentTransactions />
       <Card>
@@ -745,8 +756,9 @@ export default function RoleBasedDashboard() {
   
   switch (userRole) {
     case 'admin':
-    case 'treasurer':
       return <AdminDashboard />;
+    case 'treasurer':
+      return <TreasurerDashboard />;
     case 'manager':
       return <ManagerDashboard />;
     case 'committee':

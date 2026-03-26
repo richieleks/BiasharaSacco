@@ -34,15 +34,15 @@ export default function LoanApprovalWorkflow() {
   const mappedRoles = userRoles;
   const isAdmin = hasAnyRole(mappedRoles as any, ['admin']);
   const canAccessTreasurer = hasAnyRole(mappedRoles as any, ['treasurer']);
-  const canViewTreasurer = hasAnyRole(mappedRoles as any, ['treasurer', 'admin']);
+  const canViewTreasurer = hasAnyRole(mappedRoles as any, ['treasurer']);
   const canAccessCommittee = hasAnyRole(mappedRoles as any, ['committee']);
   const canApproveCommittee = hasAnyRole(mappedRoles as any, ['committee']) && !isAdmin;
-  const canViewCommittee = hasAnyRole(mappedRoles as any, ['committee', 'treasurer', 'admin']);
+  const canViewCommittee = hasAnyRole(mappedRoles as any, ['committee']);
 
   useState(() => {
-    const primaryRole = (user?.member?.role || user?.role) as string | undefined;
-    if (primaryRole === 'committee') setActiveTab('committee');
-    else if (primaryRole && primaryRole === 'treasurer') setActiveTab('treasurer');
+    if (canViewCommittee && !canViewTreasurer) setActiveTab('committee');
+    else if (canViewTreasurer && !canViewCommittee) setActiveTab('treasurer');
+    else if (canViewCommittee) setActiveTab('committee');
   });
 
   // Fetch loans for each approval stage
@@ -313,20 +313,22 @@ export default function LoanApprovalWorkflow() {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="committee" disabled={!canViewCommittee}>
-              Committee Review
-              {committeeLoans && committeeLoans.length > 0 && (
-                <Badge variant="secondary" className="ml-2">{committeeLoans.length}</Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="treasurer" disabled={!canViewTreasurer}>
-              Treasurer Disbursement
-              {treasurerLoans && treasurerLoans.length > 0 && (
-                <Badge variant="secondary" className="ml-2">{treasurerLoans.length}</Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
+          {canViewCommittee && canViewTreasurer ? (
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="committee">
+                Committee Review
+                {committeeLoans && committeeLoans.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">{committeeLoans.length}</Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="treasurer">
+                Treasurer Disbursement
+                {treasurerLoans && treasurerLoans.length > 0 && (
+                  <Badge variant="secondary" className="ml-2">{treasurerLoans.length}</Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
+          ) : null}
 
           <TabsContent value="committee" className="mt-4">
             <div className="space-y-4">
