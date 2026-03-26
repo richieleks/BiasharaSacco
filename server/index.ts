@@ -3,6 +3,7 @@ import { registerRoutes } from "./routes";
 import { log, serveStatic } from "./vite";
 import { seedAdminUser, seedRBAC } from "./seed";
 import { storage } from "./storage";
+import bcrypt from "bcryptjs";
 
 const app = express();
 app.use(express.json());
@@ -53,9 +54,21 @@ app.use((req, res, next) => {
 
   try {
     const adminUser = await storage.getUserByUsername('admin');
-    if (adminUser && (adminUser.lockedUntil || (adminUser.failedLoginAttempts || 0) > 0)) {
-      await storage.updateUser(adminUser.id, { failedLoginAttempts: 0, lockedUntil: null });
-      log("Admin account lock reset on startup.");
+    if (adminUser) {
+      const updates: any = {};
+      if (adminUser.lockedUntil || (adminUser.failedLoginAttempts || 0) > 0) {
+        updates.failedLoginAttempts = 0;
+        updates.lockedUntil = null;
+      }
+      const knownPassword = 'NewBeginings@2026!';
+      const passwordMatch = adminUser.password ? await bcrypt.compare(knownPassword, adminUser.password) : false;
+      if (!passwordMatch) {
+        updates.password = await bcrypt.hash(knownPassword, 10);
+      }
+      if (Object.keys(updates).length > 0) {
+        await storage.updateUser(adminUser.id, updates);
+        log("Admin account reset on startup.");
+      }
     }
   } catch (e) {}
 
