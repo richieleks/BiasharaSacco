@@ -50,6 +50,15 @@ app.use((req, res, next) => {
   } else {
     log("Seed already completed — skipping automatic seed.");
   }
+
+  try {
+    const adminUser = await storage.getUserByUsername('admin');
+    if (adminUser && (adminUser.lockedUntil || (adminUser.failedLoginAttempts || 0) > 0)) {
+      await storage.updateUser(adminUser.id, { failedLoginAttempts: 0, lockedUntil: null });
+      log("Admin account lock reset on startup.");
+    }
+  } catch (e) {}
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
