@@ -647,6 +647,21 @@ export default function Reports() {
   const [delinqPageSize, setDelinqPageSize] = useState(25);
   const { toast } = useToast();
   const { isAuthenticated, isLoading } = useAuth();
+  const qcReports = useQueryClient();
+
+  const autoCompleteLoansMutation = useMutation({
+    mutationFn: async () => await apiRequest("POST", "/api/admin/auto-complete-loans"),
+    onSuccess: async (res) => {
+      const data = await res.json();
+      toast({ title: "Loan Auto-Complete Done", description: `${data.completed} loan(s) marked as completed.`, variant: "success" });
+      qcReports.invalidateQueries({ queryKey: ['/api/reports'] });
+      qcReports.invalidateQueries({ queryKey: ['/api/loans'] });
+      qcReports.invalidateQueries({ queryKey: ['/api/dashboard'] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Auto-Complete Failed", description: error.message, variant: "destructive" });
+    },
+  });
 
   // Redirect to home if not authenticated
   useEffect(() => {
@@ -1155,6 +1170,15 @@ export default function Reports() {
                         </div>
                       </div>
                       <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => autoCompleteLoansMutation.mutate()}
+                          disabled={autoCompleteLoansMutation.isPending}
+                        >
+                          <CheckCircle className={`w-4 h-4 mr-2 ${autoCompleteLoansMutation.isPending ? 'animate-spin' : ''}`} />
+                          {autoCompleteLoansMutation.isPending ? "Running..." : "Auto-Complete Paid Loans"}
+                        </Button>
                         <Button variant="outline" size="sm" onClick={() => window.print()}>
                           <Printer className="w-4 h-4 mr-2" />
                           Print

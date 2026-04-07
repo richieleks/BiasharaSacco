@@ -6849,24 +6849,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }, 8000);
 
+  async function autoCompletePaidLoans(source: string = 'manual') {
+    const result = await db.update(loans)
+      .set({ status: 'completed' as any })
+      .where(
+        and(
+          inArray(loans.status, ['active', 'disbursed', 'approved']),
+          sql`CAST(${loans.outstandingBalance} AS numeric) <= 0`
+        )
+      )
+      .returning({ id: loans.id, loanNumber: loans.loanNumber });
+    if (result.length > 0) {
+      console.log(`[loan-autocomplete] ${source}: auto-completed ${result.length} loan(s) with zero/negative balance: ${result.map(l => l.loanNumber).join(', ')}`);
+    }
+    return result;
+  }
+
   setTimeout(async () => {
     try {
-      const result = await db.update(loans)
-        .set({ status: 'completed' as any })
-        .where(
-          and(
-            inArray(loans.status, ['active', 'disbursed', 'approved']),
-            sql`CAST(${loans.outstandingBalance} AS numeric) <= 0`
-          )
-        )
-        .returning({ id: loans.id, loanNumber: loans.loanNumber });
-      if (result.length > 0) {
-        console.log(`[loan-autocomplete] Startup: auto-completed ${result.length} loan(s) with zero/negative balance: ${result.map(l => l.loanNumber).join(', ')}`);
-      }
+      await autoCompletePaidLoans('Startup');
     } catch (error) {
       console.error('[loan-autocomplete] Startup check failed:', error);
     }
   }, 10000);
+
+  setInterval(async () => {
+    try {
+      await autoCompletePaidLoans('Daily');
+    } catch (error) {
+      console.error('[loan-autocomplete] Daily check failed:', error);
+    }
+  }, 24 * 60 * 60 * 1000);
+
+  app.post('/api/admin/auto-complete-loans', isAuthenticated, requirePermission('update', 'system-settings'), async (req: any, res) => {
+    try {
+      const result = await autoCompletePaidLoans('Manual');
+      await storage.createAuditLog({
+        userId: getUserId(req)!,
+        action: 'update',
+        resource: 'loans',
+        details: `Manual loan auto-complete: ${result.length} loan(s) completed${result.length > 0 ? ': ' + result.map(l => l.loanNumber).join(', ') : ''}`,
+      });
+      broadcastDataUpdate(['/api/loans', '/api/dashboard', '/api/reports']);
+      res.json({ completed: result.length, loans: result.map(l => l.loanNumber) });
+    } catch (error) {
+      console.error('Error running loan auto-complete:', error);
+      res.status(500).json({ message: 'Failed to run loan auto-complete' });
+    }
+  });
 
   const { startScheduledBackups } = await import('./backup');
   startScheduledBackups();
