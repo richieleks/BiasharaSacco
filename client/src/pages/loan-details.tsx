@@ -192,6 +192,82 @@ export default function LoanDetails() {
     return schedule;
   }, [loan, principal, monthlyPayment, termMonths, interestRate, interestMethod, loanTypeConfig]);
 
+  const sortedTransactions = useMemo(() => {
+    return (transactions || []).slice().sort((a: any, b: any) => {
+      const dateA = new Date(a.transactionDate || a.createdAt || a.date || 0).getTime();
+      const dateB = new Date(b.transactionDate || b.createdAt || b.date || 0).getTime();
+      if (dateA !== dateB) return dateA - dateB;
+      const orderA = a.transactionType === 'loan_disbursement' ? 0 : 1;
+      const orderB = b.transactionType === 'loan_disbursement' ? 0 : 1;
+      return orderA - orderB;
+    });
+  }, [transactions]);
+
+  const statementEntries = useMemo(() => {
+    if (!sortedTransactions || sortedTransactions.length === 0) return [];
+
+    const entries: Array<{
+      date: string;
+      details: string;
+      amtDebited: number;
+      principalRepyt: number;
+      interest: number;
+      balance: number;
+    }> = [];
+
+    let runningBalance = 0;
+    let repaymentIdx = 0;
+
+    sortedTransactions.forEach((txn: any) => {
+      const amount = parseFloat(txn.amount || '0');
+      const dateStr = (txn.transactionDate || txn.createdAt)
+        ? format(new Date(txn.transactionDate || txn.createdAt), 'd-MMM-yy')
+        : 'N/A';
+
+      if (txn.transactionType === 'loan_disbursement') {
+        runningBalance += amount;
+        entries.push({
+          date: dateStr,
+          details: 'LOAN AMOUNT DISBURSED',
+          amtDebited: amount,
+          principalRepyt: 0,
+          interest: 0,
+          balance: runningBalance,
+        });
+      } else if (txn.transactionType === 'loan_payment') {
+        let principalPortion = amount;
+        let interestPortion = 0;
+
+        if (repaymentSchedule.length > 0 && repaymentIdx < repaymentSchedule.length) {
+          const scheduleEntry = repaymentSchedule[repaymentIdx];
+          principalPortion = scheduleEntry.principalPortion;
+          interestPortion = scheduleEntry.interestPortion;
+          repaymentIdx++;
+        } else if (interestRate > 0 && termMonths > 0) {
+          const monthlyRate = interestRate / 12;
+          interestPortion = runningBalance * monthlyRate;
+          principalPortion = amount - interestPortion;
+          if (principalPortion < 0) {
+            interestPortion = amount;
+            principalPortion = 0;
+          }
+        }
+
+        runningBalance = Math.max(0, runningBalance - principalPortion);
+        entries.push({
+          date: dateStr,
+          details: txn.description || 'LOAN REPAYMENT',
+          amtDebited: 0,
+          principalRepyt: principalPortion,
+          interest: interestPortion,
+          balance: runningBalance,
+        });
+      }
+    });
+
+    return entries;
+  }, [sortedTransactions, repaymentSchedule, interestRate, termMonths]);
+
   if (isLoading) {
     return (
       <div className="space-y-6 page-container animate-fade-in">
@@ -227,15 +303,6 @@ export default function LoanDetails() {
     );
   }
 
-  const sortedTransactions = (transactions || []).slice().sort((a: any, b: any) => {
-    const dateA = new Date(a.transactionDate || a.createdAt || a.date || 0).getTime();
-    const dateB = new Date(b.transactionDate || b.createdAt || b.date || 0).getTime();
-    if (dateA !== dateB) return dateA - dateB;
-    const orderA = a.transactionType === 'loan_disbursement' ? 0 : 1;
-    const orderB = b.transactionType === 'loan_disbursement' ? 0 : 1;
-    return orderA - orderB;
-  });
-
   const escapeCsv = (val: any) => {
     const str = String(val ?? '');
     if (str.includes(',') || str.includes('"') || str.includes('\n')) {
@@ -245,23 +312,19 @@ export default function LoanDetails() {
   };
 
   const handleExportStatement = () => {
-    if (!sortedTransactions || sortedTransactions.length === 0) return;
+    if (statementEntries.length === 0) return;
 
-    let runningBalance = 0;
-    const rows = sortedTransactions.map((txn: any) => {
-      const amount = parseFloat(txn.amount || '0');
-      if (txn.transactionType === 'loan_disbursement') runningBalance += amount;
-      else if (txn.transactionType === 'loan_payment') runningBalance -= amount;
-      return [
-        (txn.transactionDate || txn.createdAt) ? format(new Date(txn.transactionDate || txn.createdAt), 'yyyy-MM-dd') : 'N/A',
-        txn.description || txn.transactionType || 'N/A',
-        txn.transactionType === 'loan_payment' ? amount.toFixed(0) : '',
-        txn.transactionType === 'loan_disbursement' ? amount.toFixed(0) : '',
-        runningBalance.toFixed(0),
-      ];
-    });
+    const header = ['POSTING DATE', 'DETAILS', 'AMT DEBITED', 'PRINCIPLE REPYT', 'INTEREST', 'BALANCE'];
+    const rows = statementEntries.map(e => [
+      e.date,
+      e.details,
+      e.amtDebited > 0 ? e.amtDebited.toFixed(2) : '',
+      e.principalRepyt > 0 ? e.principalRepyt.toFixed(2) : '',
+      e.interest > 0 ? e.interest.toFixed(2) : '',
+      e.balance.toFixed(2),
+    ]);
 
-    const csvData = [['Date', 'Description', 'Debit', 'Credit', 'Balance'], ...rows];
+    const csvData = [header, ...rows];
     const csvContent = csvData.map(row => row.map(escapeCsv).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -488,71 +551,68 @@ export default function LoanDetails() {
         <TabsContent value="statement" className="mt-4">
           <Card className="border-slate-200 dark:border-slate-700/60">
             <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                   <CreditCard className="h-4 w-4 text-blue-600" />
-                  Transaction History
+                  Loan Statement
                 </CardTitle>
-                {transactions && transactions.length > 0 && (
+                {statementEntries.length > 0 && (
                   <Button variant="outline" size="sm" onClick={handleExportStatement}>
                     <Download className="h-3.5 w-3.5 mr-1.5" />
-                    Export CSV
+                    Download Statement
                   </Button>
                 )}
               </div>
+              {loan && (
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  {loan.member?.fullName && <span className="font-medium">{loan.member.fullName}</span>}
+                  {loan.loanNumber && <span> &mdash; {loan.loanNumber}</span>}
+                </div>
+              )}
             </CardHeader>
             <CardContent>
               {txnLoading ? (
-                <div className="text-center py-8 text-slate-500 dark:text-slate-400">Loading transactions...</div>
-              ) : transactions && transactions.length > 0 ? (
+                <div className="text-center py-8 text-slate-500 dark:text-slate-400">Loading statement...</div>
+              ) : statementEntries.length > 0 ? (
                 <>
                 <div className="overflow-x-auto">
                   <Table>
                     <TableHeader>
-                      <TableRow>
-                        <TableHead className="text-xs">Date</TableHead>
-                        <TableHead className="text-xs">Description</TableHead>
-                        <TableHead className="text-xs text-right">Debit</TableHead>
-                        <TableHead className="text-xs text-right">Credit</TableHead>
-                        <TableHead className="text-xs text-right">Balance</TableHead>
+                      <TableRow className="bg-slate-800 dark:bg-slate-900 hover:bg-slate-800 dark:hover:bg-slate-900">
+                        <TableHead className="text-xs font-bold text-white whitespace-nowrap">POSTING DATE</TableHead>
+                        <TableHead className="text-xs font-bold text-white">DETAILS</TableHead>
+                        <TableHead className="text-xs font-bold text-white text-right whitespace-nowrap">AMT DEBITED</TableHead>
+                        <TableHead className="text-xs font-bold text-white text-right whitespace-nowrap">PRINCIPLE REPYT</TableHead>
+                        <TableHead className="text-xs font-bold text-white text-right whitespace-nowrap">INTEREST</TableHead>
+                        <TableHead className="text-xs font-bold text-white text-right whitespace-nowrap">BALANCE</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {(() => {
-                        const balances: number[] = [];
-                        let runningBalance = 0;
-                        sortedTransactions.forEach((txn: any) => {
-                          const amount = parseFloat(txn.amount || '0');
-                          if (txn.transactionType === 'loan_disbursement') runningBalance += amount;
-                          else if (txn.transactionType === 'loan_payment') runningBalance -= amount;
-                          balances.push(runningBalance);
-                        });
                         const startIdx = (stmtPage - 1) * stmtPageSize;
-                        const pageItems = sortedTransactions.slice(startIdx, startIdx + stmtPageSize);
-                        return pageItems.map((txn: any, idx: number) => {
-                          const amount = parseFloat(txn.amount || '0');
-                          return (
-                            <TableRow key={txn.id}>
-                              <TableCell className="text-xs whitespace-nowrap">
-                                {(txn.transactionDate || txn.createdAt) ? format(new Date(txn.transactionDate || txn.createdAt), 'MMM dd, yyyy') : 'N/A'}
-                              </TableCell>
-                              <TableCell className="text-xs">{txn.description || txn.transactionType || 'N/A'}</TableCell>
-                              <TableCell className="text-xs text-right tabular-nums whitespace-nowrap">
-                                {txn.transactionType === 'loan_payment' ? formatCurrency(amount) : ''}
-                              </TableCell>
-                              <TableCell className="text-xs text-right tabular-nums whitespace-nowrap">
-                                {txn.transactionType === 'loan_disbursement' ? formatCurrency(amount) : ''}
-                              </TableCell>
-                              <TableCell className="text-xs text-right font-semibold tabular-nums whitespace-nowrap">{formatCurrency(balances[startIdx + idx])}</TableCell>
-                            </TableRow>
-                          );
-                        });
+                        const pageItems = statementEntries.slice(startIdx, startIdx + stmtPageSize);
+                        return pageItems.map((entry, idx) => (
+                          <TableRow key={idx} className={entry.amtDebited > 0 ? 'bg-amber-50/50 dark:bg-amber-950/20' : ''}>
+                            <TableCell className="text-xs whitespace-nowrap">{entry.date}</TableCell>
+                            <TableCell className="text-xs font-medium">{entry.details}</TableCell>
+                            <TableCell className="text-xs text-right tabular-nums whitespace-nowrap">
+                              {entry.amtDebited > 0 ? formatCurrency(entry.amtDebited) : ''}
+                            </TableCell>
+                            <TableCell className="text-xs text-right tabular-nums whitespace-nowrap">
+                              {entry.principalRepyt > 0 ? formatCurrency(entry.principalRepyt) : ''}
+                            </TableCell>
+                            <TableCell className="text-xs text-right tabular-nums whitespace-nowrap">
+                              {entry.interest > 0 ? formatCurrency(entry.interest) : ''}
+                            </TableCell>
+                            <TableCell className="text-xs text-right font-semibold tabular-nums whitespace-nowrap">{formatCurrency(entry.balance)}</TableCell>
+                          </TableRow>
+                        ));
                       })()}
                     </TableBody>
                   </Table>
                 </div>
                 <Pagination
-                  totalItems={sortedTransactions.length}
+                  totalItems={statementEntries.length}
                   itemsPerPage={stmtPageSize}
                   currentPage={stmtPage}
                   onPageChange={(p) => setStmtPage(p)}
