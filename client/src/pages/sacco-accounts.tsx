@@ -79,6 +79,21 @@ export default function SaccoAccounts() {
     },
   });
 
+  const recalcMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/admin/recalculate-sacco-balances');
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/sacco-accounts'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sacco-accounts/summary'] });
+      toast({ title: "Balances Recalculated", description: "All SACCO account balances have been recalculated from journal entries.", variant: "success" as any });
+    },
+    onError: (err: any) => {
+      toast({ title: "Recalculation Failed", description: err.message, variant: "destructive" });
+    },
+  });
+
   const createAccountMutation = useMutation({
     mutationFn: async (data: any) => {
       const res = await apiRequest('POST', '/api/sacco-accounts', data);
@@ -393,6 +408,17 @@ export default function SaccoAccounts() {
         </TabsContent>
 
         <TabsContent value="summary" className="space-y-6 mt-4">
+          <div className="flex justify-end">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => recalcMutation.mutate()}
+              disabled={recalcMutation.isPending}
+            >
+              <RotateCcw className={`w-4 h-4 mr-2 ${recalcMutation.isPending ? 'animate-spin' : ''}`} />
+              {recalcMutation.isPending ? 'Recalculating...' : 'Recalculate Balances'}
+            </Button>
+          </div>
           {summaryLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[1, 2, 3, 4, 5, 6].map(i => (

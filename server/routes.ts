@@ -5284,6 +5284,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/admin/recalculate-sacco-balances', isAuthenticated, requirePermission('update', 'sacco-accounts'), async (req: any, res) => {
+    try {
+      const result = await recalculateSaccoBalances();
+      res.json(result);
+    } catch (error: any) {
+      console.error('Error recalculating SACCO balances:', error);
+      res.status(500).json({ message: error.message || 'Failed to recalculate balances' });
+    }
+  });
+
   // Reports API endpoints (generic - must be after specific report routes)
   app.get('/api/reports/:reportType', isAuthenticated, async (req: any, res) => {
     try {
@@ -6847,6 +6857,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  async function recalculateSaccoBalances() {
+    const result = await db.execute(sql`
+      WITH expected AS (
+        SELECT 
+          sa.id,
+          COALESCE(SUM(
+            CASE 
+              WHEN je.debit_account_id = sa.id THEN
+                CASE WHEN sa.account_type IN ('asset','expense') THEN je.amount::numeric ELSE -je.amount::numeric END
+              WHEN je.credit_account_id = sa.id THEN
+                CASE WHEN sa.account_type IN ('liability','equity','revenue') THEN je.amount::numeric ELSE -je.amount::numeric END
+            END
+          ), 0) as expected_balance
+        FROM sacco_accounts sa
+        LEFT JOIN sacco_journal_entries je ON (je.debit_account_id = sa.id OR je.credit_account_id = sa.id) AND je.status = 'posted'
+        GROUP BY sa.id
+      )
+      UPDATE sacco_accounts SET balance = expected.expected_balance
+      FROM expected 
+      WHERE sacco_accounts.id = expected.id
+    `);
+    return { message: 'SACCO account balances recalculated from journal entries', updated: 'all' };
+  }
+
   setTimeout(async () => {
     try {
       const result = await storage.syncAllMemberTotalSavings();
@@ -6855,6 +6889,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('[savings-sync] Startup sync failed:', error);
     }
   }, 8000);
+
+  setTimeout(async () => {
+    try {
+      await recalculateSaccoBalances();
+      console.log('[sacco-accounts] Startup: recalculated all SACCO account balances from journal entries');
+    } catch (error) {
+      console.error('[sacco-accounts] Startup recalculation failed:', error);
+    }
+  }, 12000);
 
   async function autoCompletePaidLoans(source: string = 'manual') {
     const result = await db.update(loans)
