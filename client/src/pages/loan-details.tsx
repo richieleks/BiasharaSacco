@@ -224,44 +224,75 @@ export default function LoanDetails() {
         ? format(new Date(txn.transactionDate || txn.createdAt), 'd-MMM-yy')
         : 'N/A';
 
+      let meta: any = null;
+      if (txn.metadata) {
+        try { meta = typeof txn.metadata === 'string' ? JSON.parse(txn.metadata) : txn.metadata; } catch {}
+      }
+      const isImported = meta?.source === 'excel_import';
+
       if (txn.transactionType === 'loan_disbursement') {
-        runningBalance += amount;
-        entries.push({
-          date: dateStr,
-          details: 'LOAN AMOUNT DISBURSED',
-          amtDebited: amount,
-          principalRepyt: 0,
-          interest: 0,
-          balance: runningBalance,
-        });
-      } else if (txn.transactionType === 'loan_payment') {
-        let principalPortion = amount;
-        let interestPortion = 0;
-
-        if (repaymentSchedule.length > 0 && repaymentIdx < repaymentSchedule.length) {
-          const scheduleEntry = repaymentSchedule[repaymentIdx];
-          principalPortion = scheduleEntry.principalPortion;
-          interestPortion = scheduleEntry.interestPortion;
-          repaymentIdx++;
-        } else if (interestRate > 0 && termMonths > 0) {
-          const monthlyRate = interestRate / 12;
-          interestPortion = runningBalance * monthlyRate;
-          principalPortion = amount - interestPortion;
-          if (principalPortion < 0) {
-            interestPortion = amount;
-            principalPortion = 0;
-          }
+        if (isImported) {
+          const metaBalance = meta.balance != null ? meta.balance : null;
+          runningBalance = metaBalance != null ? metaBalance : (runningBalance + (meta.amtDebited ?? amount));
+          entries.push({
+            date: dateStr,
+            details: txn.description || 'LOAN AMOUNT DISBURSED',
+            amtDebited: meta.amtDebited ?? amount,
+            principalRepyt: meta.principalRepyt ?? 0,
+            interest: meta.interest ?? 0,
+            balance: runningBalance,
+          });
+        } else {
+          runningBalance += amount;
+          entries.push({
+            date: dateStr,
+            details: 'LOAN AMOUNT DISBURSED',
+            amtDebited: amount,
+            principalRepyt: 0,
+            interest: 0,
+            balance: runningBalance,
+          });
         }
+      } else if (txn.transactionType === 'loan_payment') {
+        if (isImported) {
+          runningBalance = meta.balance ?? 0;
+          entries.push({
+            date: dateStr,
+            details: txn.description || 'LOAN REPAYMENT',
+            amtDebited: meta.amtDebited ?? 0,
+            principalRepyt: meta.principalRepyt ?? 0,
+            interest: meta.interest ?? 0,
+            balance: runningBalance,
+          });
+        } else {
+          let principalPortion = amount;
+          let interestPortion = 0;
 
-        runningBalance = Math.max(0, runningBalance - principalPortion);
-        entries.push({
-          date: dateStr,
-          details: txn.description || 'LOAN REPAYMENT',
-          amtDebited: 0,
-          principalRepyt: principalPortion,
-          interest: interestPortion,
-          balance: runningBalance,
-        });
+          if (repaymentSchedule.length > 0 && repaymentIdx < repaymentSchedule.length) {
+            const scheduleEntry = repaymentSchedule[repaymentIdx];
+            principalPortion = scheduleEntry.principalPortion;
+            interestPortion = scheduleEntry.interestPortion;
+            repaymentIdx++;
+          } else if (interestRate > 0 && termMonths > 0) {
+            const monthlyRate = interestRate / 12;
+            interestPortion = runningBalance * monthlyRate;
+            principalPortion = amount - interestPortion;
+            if (principalPortion < 0) {
+              interestPortion = amount;
+              principalPortion = 0;
+            }
+          }
+
+          runningBalance = Math.max(0, runningBalance - principalPortion);
+          entries.push({
+            date: dateStr,
+            details: txn.description || 'LOAN REPAYMENT',
+            amtDebited: 0,
+            principalRepyt: principalPortion,
+            interest: interestPortion,
+            balance: runningBalance,
+          });
+        }
       }
     });
 

@@ -185,6 +185,7 @@ export const transactions = pgTable("transactions", {
   status: varchar("status", { enum: ["pending", "completed", "failed", "cancelled"] }).default("pending"),
   processedBy: varchar("processed_by").references(() => users.id),
   transactionDate: timestamp("transaction_date").defaultNow(),
+  metadata: text("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

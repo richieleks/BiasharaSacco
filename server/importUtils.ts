@@ -1332,7 +1332,15 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
 
           const transactionEntries = [];
 
+          const safeParseNum = (val: any): number | null => {
+            if (val == null || val === '') return null;
+            const cleaned = String(val).replace(/,/g, '').trim();
+            const num = parseFloat(cleaned);
+            return isFinite(num) ? num : null;
+          };
+
           for (const d of group.disbursements) {
+            const rawRow = rawData[d.rowIndex] as any[];
             transactionEntries.push({
               memberId: member.id,
               loanId: createdLoan.id,
@@ -1342,11 +1350,19 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               referenceNumber: `LTX${Date.now()}_${d.rowIndex}`,
               status: 'completed' as const,
               processedBy: options?.userId,
-              transactionDate: d.date
+              transactionDate: d.date,
+              metadata: JSON.stringify({
+                amtDebited: safeParseNum(rawRow?.[2]) ?? d.amount,
+                principalRepyt: safeParseNum(rawRow?.[3]) ?? 0,
+                interest: safeParseNum(rawRow?.[4]) ?? 0,
+                balance: safeParseNum(rawRow?.[5]) ?? 0,
+                source: 'excel_import'
+              })
             });
           }
 
           for (const r of group.repayments) {
+            const rawRow = rawData[r.rowIndex] as any[];
             transactionEntries.push({
               memberId: member.id,
               loanId: createdLoan.id,
@@ -1356,7 +1372,14 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               referenceNumber: `LTX${Date.now()}_${r.rowIndex}`,
               status: 'completed' as const,
               processedBy: options?.userId,
-              transactionDate: r.date
+              transactionDate: r.date,
+              metadata: JSON.stringify({
+                amtDebited: safeParseNum(rawRow?.[2]) ?? 0,
+                principalRepyt: safeParseNum(rawRow?.[3]) ?? 0,
+                interest: safeParseNum(rawRow?.[4]) ?? 0,
+                balance: safeParseNum(rawRow?.[5]) ?? 0,
+                source: 'excel_import'
+              })
             });
           }
 
