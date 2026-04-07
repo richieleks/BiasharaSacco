@@ -6849,6 +6849,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }, 8000);
 
+  setTimeout(async () => {
+    try {
+      const result = await db.update(loans)
+        .set({ status: 'completed' as any })
+        .where(
+          and(
+            inArray(loans.status, ['active', 'disbursed', 'approved']),
+            sql`CAST(${loans.outstandingBalance} AS numeric) <= 0`
+          )
+        )
+        .returning({ id: loans.id, loanNumber: loans.loanNumber });
+      if (result.length > 0) {
+        console.log(`[loan-autocomplete] Startup: auto-completed ${result.length} loan(s) with zero/negative balance: ${result.map(l => l.loanNumber).join(', ')}`);
+      }
+    } catch (error) {
+      console.error('[loan-autocomplete] Startup check failed:', error);
+    }
+  }, 10000);
+
   const { startScheduledBackups } = await import('./backup');
   startScheduledBackups();
 

@@ -1317,6 +1317,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
             monthlyPayment: monthlyPayment.toString(),
             outstandingBalance: outstandingBalance.toString(),
             status: (outstandingBalance > 0 ? 'active' : 'completed') as 'active' | 'completed',
+
             purpose: `Imported from loan statement - ${group.category} loan`,
             applicationDate: disbursementDate,
             approvalDate: disbursementDate,
