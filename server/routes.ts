@@ -2928,6 +2928,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
             minApprovers
           });
         }
+      } else if (stage === 'treasurer') {
+        const loanDetails = await storage.getLoan(loanByUuid.id);
+        if (!loanDetails || loanDetails.status !== 'approved') {
+          return res.status(400).json({ message: "Loan must be approved before treasurer can disburse" });
+        }
+
+        const loan = await storage.updateLoanStatus(loanByUuid.id, 'disbursed');
+
+        const referenceNumber = `DIS${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+
+        if (loanDetails.isTopUp && loanDetails.topUpOfLoanId) {
+          const originalLoan = await storage.getLoan(loanDetails.topUpOfLoanId);
+          const previousBalance = loanDetails.previousLoanBalance || originalLoan?.outstandingBalance || '0';
+          if (parseFloat(previousBalance) > 0) {
+            await storage.updateLoanBalance(loanDetails.topUpOfLoanId, previousBalance);
+          }
+          await storage.updateLoanStatus(loanDetails.topUpOfLoanId, 'completed');
+          const settleRef = `STL${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+          await storage.createTransaction({
+            memberId: loan.memberId,
+            loanId: loanDetails.topUpOfLoanId,
+            transactionType: 'loan_payment',
+            amount: previousBalance,
+            referenceNumber: settleRef,
+            description: `Loan settled via top-up - ${originalLoan?.loanNumber || 'N/A'} replaced by ${loan.loanNumber}`,
+            status: 'completed',
+          });
+          await recordJournalEntry('loan_repayment_principal', previousBalance, `Loan settlement via top-up - ${originalLoan?.loanNumber || 'N/A'}`, settleRef, userId);
+        }
+
+        await storage.createTransaction({
+          memberId: loan.memberId,
+          loanId: loan.id,
+          transactionType: 'loan_disbursement',
+          amount: loan.principalAmount,
+          referenceNumber,
+          description: `${loanDetails.isTopUp ? 'Top-up loan' : 'Loan'} disbursement - ${loan.loanNumber}`,
+          status: 'completed',
+        });
+        await recordJournalEntry('loan_disbursement', loan.principalAmount, `Loan disbursement - ${loan.loanNumber}`, referenceNumber, userId);
+
+        try {
+          const processingFeeSetting = await storage.getSystemSetting('loanProcessingFee');
+          const feePercent = processingFeeSetting ? parseFloat(processingFeeSetting.settingValue) : 1;
+          if (feePercent > 0) {
+            const feeAmount = (parseFloat(loan.principalAmount) * feePercent / 100).toFixed(2);
+            const feeRef = `FEE${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+            await storage.createTransaction({
+              memberId: loan.memberId,
+              loanId: loan.id,
+              transactionType: 'loan_payment',
+              amount: feeAmount,
+              referenceNumber: feeRef,
+              description: `Loan processing fee (${feePercent}%) - ${loan.loanNumber}`,
+              status: 'completed',
+            });
+            await recordJournalEntry('loan_processing_fee', feeAmount, `Loan processing fee - ${loan.loanNumber}`, feeRef, userId);
+          }
+        } catch (feeError) {
+          console.error('Error collecting loan fees at disbursement:', feeError);
+        }
+
+        const disburseMember = await storage.getMember(loan.memberId);
+        if (disburseMember?.userId) {
+          await createAndBroadcastNotification({
+            type: 'loan_disbursement',
+            title: 'Loan Disbursed',
+            message: `Your loan ${loan.loanNumber} of UGX ${parseFloat(loan.principalAmount).toLocaleString()} has been disbursed. Please check your account.`,
+            priority: 'high',
+            actionUrl: `/loans/${loan.uuid}/details`,
+            memberId: loan.memberId,
+            userId: disburseMember.userId,
+            isRead: false,
+          });
+        }
+
+        broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/savings', '/api/transactions']);
+        res.json({ message: `Loan ${loan.loanNumber} disbursed successfully`, loan });
       } else {
         const loan = await storage.approveLoanAtStage(loanByUuid.id, stage, userId, comments);
 

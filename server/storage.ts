@@ -1097,6 +1097,11 @@ export class DatabaseStorage implements IStorage {
         managerApprovedAt: currentTime,
         managerComments: comments,
       };
+    } else if (stage === 'treasurer') {
+      updateData = {
+        status: 'approved',
+        approvalStage: 'completed',
+      };
     }
 
     const [loan] = await db
