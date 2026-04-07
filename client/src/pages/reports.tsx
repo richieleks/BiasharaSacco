@@ -328,7 +328,7 @@ function ReconciliationTab() {
         <div>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Savings Reconciliation Report</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Compare savings account balances against transaction history to identify discrepancies
+            Compare cached member totals against actual savings account balances to identify discrepancies
           </p>
         </div>
         <Button
@@ -413,11 +413,11 @@ function ReconciliationTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Member</TableHead>
-                  <TableHead>Account #</TableHead>
-                  <TableHead className="text-right">Total Credits</TableHead>
-                  <TableHead className="text-right">Total Debits</TableHead>
-                  <TableHead className="text-right">Expected Balance</TableHead>
-                  <TableHead className="text-right">Current Balance</TableHead>
+                  <TableHead>Accounts</TableHead>
+                  <TableHead className="text-right">Actual Balance</TableHead>
+                  <TableHead className="text-right">Loans Disbursed</TableHead>
+                  <TableHead className="text-right">Loans Repaid</TableHead>
+                  <TableHead className="text-right">Cached Total</TableHead>
                   <TableHead className="text-right">Difference</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                 </TableRow>
@@ -438,10 +438,10 @@ function ReconciliationTab() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">{r.accountNumber}</TableCell>
-                    <TableCell className="text-right text-sm">{formatCurrency(parseFloat(r.totalCredits))}</TableCell>
+                    <TableCell className="text-right text-sm font-medium">{formatCurrency(parseFloat(r.totalCredits))}</TableCell>
                     <TableCell className="text-right text-sm">{formatCurrency(parseFloat(r.totalDebits))}</TableCell>
-                    <TableCell className="text-right text-sm">{formatCurrency(parseFloat(r.expectedBalance))}</TableCell>
-                    <TableCell className="text-right text-sm font-medium">{formatCurrency(parseFloat(r.currentBalance))}</TableCell>
+                    <TableCell className="text-right text-sm">{formatCurrency(parseFloat(r.totalRepaid || '0'))}</TableCell>
+                    <TableCell className="text-right text-sm">{formatCurrency(parseFloat(r.currentBalance))}</TableCell>
                     <TableCell className={`text-right text-sm font-semibold ${parseFloat(r.difference) !== 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
                       {parseFloat(r.difference) > 0 ? '+' : ''}{formatCurrency(parseFloat(r.difference))}
                     </TableCell>

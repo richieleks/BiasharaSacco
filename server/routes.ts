@@ -5160,60 +5160,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/reports/reconciliation', isAuthenticated, requirePermission('read', 'reports'), async (req: any, res) => {
     try {
-      const allAccounts = await db
+      const accountSums = await db
         .select({
-          accountId: savingsAccountsTable.id,
           memberId: savingsAccountsTable.memberId,
-          accountNumber: savingsAccountsTable.accountNumber,
-          currentBalance: savingsAccountsTable.balance,
+          accountCount: sql<number>`COUNT(*)::int`,
+          actualTotal: sql<string>`COALESCE(SUM(${savingsAccountsTable.balance}::numeric), 0)`,
         })
-        .from(savingsAccountsTable);
+        .from(savingsAccountsTable)
+        .groupBy(savingsAccountsTable.memberId);
 
-      const memberIds = [...new Set(allAccounts.map(a => a.memberId))];
-      const memberMap = new Map<number, { fullName: string; memberNumber: string }>();
-      for (const mid of memberIds) {
-        const m = await storage.getMember(mid);
-        if (m) memberMap.set(mid, { fullName: m.fullName, memberNumber: m.memberNumber || '' });
-      }
-
-      const txSums = await db
+      const allMembers = await db
         .select({
-          savingsAccountId: transactions.savingsAccountId,
-          totalCredits: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} IN ('deposit', 'interest_credit', 'share_capital') AND ${transactions.status} = 'completed' THEN ${transactions.amount}::numeric ELSE 0 END), 0)`,
-          totalDebits: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} IN ('withdrawal', 'fee_charge') AND ${transactions.status} = 'completed' THEN ${transactions.amount}::numeric ELSE 0 END), 0)`,
-          transactionCount: sql<number>`COUNT(*)::int`,
+          id: members.id,
+          uuid: members.uuid,
+          fullName: members.fullName,
+          memberNumber: members.memberNumber,
+          totalSavings: members.totalSavings,
+        })
+        .from(members)
+        .where(not(inArray(members.status, ['rejected', 'exited'])));
+
+      const accountMap = new Map(accountSums.map(a => [a.memberId, a]));
+
+      const loanPaymentSums = await db
+        .select({
+          memberId: transactions.memberId,
+          totalRepaid: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} = 'loan_payment' AND ${transactions.status} = 'completed' THEN ${transactions.amount}::numeric ELSE 0 END), 0)`,
+          totalDisbursed: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} = 'loan_disbursement' AND ${transactions.status} = 'completed' THEN ${transactions.amount}::numeric ELSE 0 END), 0)`,
+          txnCount: sql<number>`COUNT(*)::int`,
         })
         .from(transactions)
-        .where(isNotNull(transactions.savingsAccountId))
-        .groupBy(transactions.savingsAccountId);
-
-      const txMap = new Map(txSums.map(t => [t.savingsAccountId, t]));
+        .where(isNotNull(transactions.memberId))
+        .groupBy(transactions.memberId);
+      const loanTxMap = new Map(loanPaymentSums.map(t => [t.memberId, t]));
 
       const discrepancies: any[] = [];
       const matched: any[] = [];
       let totalDiscrepancyAmount = 0;
 
-      for (const acct of allAccounts) {
-        const tx = txMap.get(acct.accountId);
-        const currentBalance = parseFloat(acct.currentBalance || '0');
-        const totalCredits = parseFloat(tx?.totalCredits || '0');
-        const totalDebits = parseFloat(tx?.totalDebits || '0');
-        const expectedBalance = totalCredits - totalDebits;
-        const difference = Math.round((currentBalance - expectedBalance) * 100) / 100;
-        const member = memberMap.get(acct.memberId);
+      for (const m of allMembers) {
+        const acctData = accountMap.get(m.id);
+        const actualTotal = parseFloat(acctData?.actualTotal || '0');
+        const cachedTotal = parseFloat(m.totalSavings || '0');
+        const difference = Math.round((cachedTotal - actualTotal) * 100) / 100;
+        const loanTx = loanTxMap.get(m.id);
+        const totalRepaid = parseFloat(loanTx?.totalRepaid || '0');
+        const totalDisbursed = parseFloat(loanTx?.totalDisbursed || '0');
 
         const record = {
-          accountId: acct.accountId,
-          accountNumber: acct.accountNumber,
-          memberId: acct.memberId,
-          memberName: member?.fullName || 'Unknown',
-          memberNumber: member?.memberNumber || '',
-          currentBalance: currentBalance.toFixed(2),
-          totalCredits: totalCredits.toFixed(2),
-          totalDebits: totalDebits.toFixed(2),
-          expectedBalance: expectedBalance.toFixed(2),
+          accountId: m.id,
+          accountNumber: acctData ? `${acctData.accountCount} account(s)` : 'No account',
+          memberId: m.id,
+          memberName: m.fullName || 'Unknown',
+          memberNumber: m.memberNumber || '',
+          currentBalance: cachedTotal.toFixed(2),
+          totalCredits: actualTotal.toFixed(2),
+          totalDebits: totalDisbursed.toFixed(2),
+          expectedBalance: actualTotal.toFixed(2),
           difference: difference.toFixed(2),
-          transactionCount: tx?.transactionCount || 0,
+          transactionCount: loanTx?.txnCount || 0,
+          totalRepaid: totalRepaid.toFixed(2),
           status: Math.abs(difference) < 0.01 ? 'matched' : 'discrepancy',
         };
 
@@ -5229,7 +5235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         summary: {
-          totalAccounts: allAccounts.length,
+          totalAccounts: allMembers.length,
           matchedAccounts: matched.length,
           discrepancyAccounts: discrepancies.length,
           totalDiscrepancyAmount: totalDiscrepancyAmount.toFixed(2),
