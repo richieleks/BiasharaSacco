@@ -1,19 +1,24 @@
 import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute, useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { useRBAC } from "@/hooks/useRBAC";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 import { format, addMonths } from "date-fns";
 import {
   ArrowLeft, DollarSign, FileText, Calendar, Download, CreditCard,
   Percent, Hash, HandCoins, Clock, AlertCircle, ArrowUpCircle, Calculator,
-  Users, CheckCircle, XCircle,
+  Users, CheckCircle, XCircle, Ban,
 } from "lucide-react";
 
 const getStatusColor = (status: string) => {
@@ -36,10 +41,28 @@ export default function LoanDetails() {
   const loanId = params?.id;
   const backPath = activeRole === 'member' ? '/my-loans' : '/loans';
 
+  const { toast } = useToast();
+  const qc = useQueryClient();
   const [stmtPage, setStmtPage] = useState(1);
   const [stmtPageSize, setStmtPageSize] = useState(25);
   const [schedPage, setSchedPage] = useState(1);
   const [schedPageSize, setSchedPageSize] = useState(25);
+  const [showWriteoffDialog, setShowWriteoffDialog] = useState(false);
+  const [writeoffReason, setWriteoffReason] = useState('');
+
+  const writeoffMutation = useMutation({
+    mutationFn: async ({ loanId, reason }: { loanId: number; reason: string }) => {
+      const res = await apiRequest("POST", `/api/loans/${loanId}/write-off`, { reason });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+      setShowWriteoffDialog(false);
+      setWriteoffReason('');
+      toast({ title: "Write-Off Requested", description: "The write-off request has been submitted for approval", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
 
   const { data: loan, isLoading } = useQuery<any>({
     queryKey: ['/api/loans', loanId],
@@ -398,7 +421,33 @@ export default function LoanDetails() {
             {loan.loanType?.replace('_', ' ') || 'Loan'}
           </Badge>
         </div>
+        {['active', 'disbursed', 'defaulted'].includes(loan.status) && activeRole !== 'member' && parseFloat(loan.outstandingBalance) > 1 && (
+          <Button variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950/30" onClick={() => setShowWriteoffDialog(true)}>
+            <Ban className="w-4 h-4 mr-1" />Write Off
+          </Button>
+        )}
       </div>
+
+      <Dialog open={showWriteoffDialog} onOpenChange={setShowWriteoffDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Write Off Loan</DialogTitle>
+            <DialogDescription>
+              Submit a write-off request for loan {loan.loanNumber}. Outstanding balance: {formatCurrency(loan.outstandingBalance)}. This requires admin approval.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <Label>Reason for Write-Off</Label>
+              <Textarea placeholder="Provide justification for writing off this loan..." value={writeoffReason} onChange={(e) => setWriteoffReason(e.target.value)} rows={3} />
+            </div>
+            <Button className="w-full" variant="destructive" disabled={!writeoffReason.trim() || writeoffMutation.isPending}
+              onClick={() => writeoffMutation.mutate({ loanId: loan.id, reason: writeoffReason })}>
+              {writeoffMutation.isPending ? 'Submitting...' : 'Submit Write-Off Request'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="section-card p-4">

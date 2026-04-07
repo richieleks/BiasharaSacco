@@ -43,6 +43,8 @@ import LoanStatement from "@/pages/loan-statement";
 import LoanDetails from "@/pages/loan-details";
 import InterestCalculations from "@/pages/interest-calculations";
 import SaccoAccounts from "@/pages/sacco-accounts";
+import FinancialStatements from "@/pages/financial-statements";
+import Dividends from "@/pages/dividends";
 import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 
@@ -314,6 +316,18 @@ function Router() {
             <Route path="/sacco-accounts">
               <ProtectedRoute requiredPermission={{ action: 'read', resource: 'sacco-accounts' }}>
                 <SaccoAccounts />
+              </ProtectedRoute>
+            </Route>
+
+            <Route path="/financial-statements">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'reports' }}>
+                <FinancialStatements />
+              </ProtectedRoute>
+            </Route>
+
+            <Route path="/dividends">
+              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'reports' }}>
+                <Dividends />
               </ProtectedRoute>
             </Route>
 

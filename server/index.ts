@@ -1,5 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
+import { registerFinancialReportRoutes } from "./financial-reports";
 import { log, serveStatic } from "./vite";
 import { seedAdminUser, seedRBAC } from "./seed";
 import { storage } from "./storage";
@@ -73,6 +74,7 @@ app.use((req, res, next) => {
   } catch (e) {}
 
   const server = await registerRoutes(app);
+  registerFinancialReportRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

@@ -978,3 +978,80 @@ export type SaccoJournalEntry = typeof saccoJournalEntries.$inferSelect;
 export type InsertSaccoJournalEntry = z.infer<typeof insertSaccoJournalEntrySchema>;
 export type SaccoAccountMapping = typeof saccoAccountMappings.$inferSelect;
 export type InsertSaccoAccountMapping = z.infer<typeof insertSaccoAccountMappingSchema>;
+
+export const loanProvisions = pgTable("loan_provisions", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").references(() => loans.id).notNull(),
+  memberId: integer("member_id").references(() => members.id).notNull(),
+  outstandingBalance: decimal("outstanding_balance", { precision: 15, scale: 2 }).notNull(),
+  daysOverdue: integer("days_overdue").notNull(),
+  category: varchar("category", {
+    enum: ["current", "watch", "substandard", "doubtful", "loss"]
+  }).notNull(),
+  provisionRate: decimal("provision_rate", { precision: 5, scale: 2 }).notNull(),
+  provisionAmount: decimal("provision_amount", { precision: 15, scale: 2 }).notNull(),
+  provisionDate: date("provision_date").notNull(),
+  financialYearId: integer("financial_year_id").references(() => financialYears.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const loanWriteoffs = pgTable("loan_writeoffs", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").references(() => loans.id).notNull(),
+  memberId: integer("member_id").references(() => members.id).notNull(),
+  loanNumber: varchar("loan_number").notNull(),
+  principalAmount: decimal("principal_amount", { precision: 15, scale: 2 }).notNull(),
+  outstandingBalance: decimal("outstanding_balance", { precision: 15, scale: 2 }).notNull(),
+  writeoffAmount: decimal("writeoff_amount", { precision: 15, scale: 2 }).notNull(),
+  reason: text("reason").notNull(),
+  status: varchar("status", {
+    enum: ["pending", "approved", "rejected"]
+  }).default("pending").notNull(),
+  requestedBy: varchar("requested_by").references(() => users.id).notNull(),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const dividendDistributions = pgTable("dividend_distributions", {
+  id: serial("id").primaryKey(),
+  financialYearId: integer("financial_year_id").references(() => financialYears.id).notNull(),
+  totalSurplus: decimal("total_surplus", { precision: 15, scale: 2 }).notNull(),
+  dividendRate: decimal("dividend_rate", { precision: 5, scale: 4 }).notNull(),
+  totalDividendAmount: decimal("total_dividend_amount", { precision: 15, scale: 2 }).notNull(),
+  totalShares: decimal("total_shares", { precision: 15, scale: 2 }).notNull(),
+  status: varchar("status", {
+    enum: ["draft", "approved", "distributed"]
+  }).default("draft").notNull(),
+  calculatedBy: varchar("calculated_by").references(() => users.id).notNull(),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  distributedAt: timestamp("distributed_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const memberDividends = pgTable("member_dividends", {
+  id: serial("id").primaryKey(),
+  distributionId: integer("distribution_id").references(() => dividendDistributions.id).notNull(),
+  memberId: integer("member_id").references(() => members.id).notNull(),
+  shareCapital: decimal("share_capital", { precision: 15, scale: 2 }).notNull(),
+  numberOfShares: integer("number_of_shares").notNull(),
+  dividendAmount: decimal("dividend_amount", { precision: 15, scale: 2 }).notNull(),
+  paymentMethod: varchar("payment_method", {
+    enum: ["credit_to_savings", "bank_transfer", "cash"]
+  }).default("credit_to_savings").notNull(),
+  status: varchar("status", {
+    enum: ["pending", "paid"]
+  }).default("pending").notNull(),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export type LoanProvision = typeof loanProvisions.$inferSelect;
+export type LoanWriteoff = typeof loanWriteoffs.$inferSelect;
+export type DividendDistribution = typeof dividendDistributions.$inferSelect;
+export type MemberDividend = typeof memberDividends.$inferSelect;

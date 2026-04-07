@@ -34,7 +34,11 @@ The system employs a `client/` (React frontend) and `server/` (Express.js backen
 - **Savings Accounts**: Creation, management, deposits, withdrawals, and detailed statement generation. Members can self-service withdrawal requests, subject to treasurer approval.
 - **Loans**: Application, multi-stage approval, guarantor management, dynamic repayment schedules, business rule validation, and a loan top-up module.
 - **Transactions**: Comprehensive tracking, auditing, and reporting.
-- **Reporting & Analytics**: Dashboards with KPIs, transaction history, member activity, and financial summaries, including visual analytics charts.
+- **Reporting & Analytics**: Dashboards with KPIs, transaction history, member activity, and financial summaries, including visual analytics charts. Includes standard financial statements (Trial Balance, Balance Sheet, Income Statement).
+- **Portfolio at Risk (PAR) Analysis**: PAR 30/60/90 reporting with aging buckets for loan portfolio quality assessment.
+- **Loan Loss Provisioning**: Automated provisioning with standard categories (Current 1%, Watch 5%, Substandard 25%, Doubtful 50%, Loss 100%).
+- **Loan Write-Off Workflow**: Request and approval process for writing off irrecoverable loans, accessible from loan details.
+- **Dividend Management**: Calculate, approve, and distribute dividends on member share capital by financial year. Supports credit-to-savings distribution.
 - **System Settings**: Differentiated user and admin settings for personal preferences and system-wide configurations (e.g., loan limits, security policies, email setup, business rules).
 - **Security Features**: Includes session timeout based on inactivity, configurable password complexity, login lockout after failed attempts, and Two-Factor Authentication (TOTP) with setup, verification, and disable options.
 - **Database Backup System**: Exports major tables to JSON files. Supports manual and scheduled backups with automatic cleanup of old backups.

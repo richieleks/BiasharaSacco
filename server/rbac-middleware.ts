@@ -202,6 +202,34 @@ export function filterDataByRole() {
   };
 }
 
+export function requireRole(...allowedRoles: string[]) {
+  return async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const userId = getAuthUserId(req);
+      if (!userId) return res.status(401).json({ message: "Unauthorized" });
+
+      const user = await storage.getUser(userId);
+      const member = await storage.getMemberByUserId(userId);
+      let memberRoles: string[] = [];
+
+      if (member) {
+        memberRoles = await storage.getMemberRoles(member.id);
+        if (memberRoles.length === 0) memberRoles = ['member'];
+      } else {
+        memberRoles = [user?.role || 'member'];
+      }
+
+      if (memberRoles.includes('admin') || user?.role === 'admin') return next();
+      if (memberRoles.some(r => allowedRoles.includes(r))) return next();
+
+      return res.status(403).json({ message: `Access denied. Required roles: ${allowedRoles.join(', ')}` });
+    } catch (error) {
+      console.error("RBAC role middleware error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  };
+}
+
 export function filterMembersByRole(members: any[], userRoles: UserRole[], userId: string) {
   if (userRoles.some(role => ['admin', 'committee', 'treasurer'].includes(role))) {
     return members;

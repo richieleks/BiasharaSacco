@@ -636,6 +636,287 @@ function BankSchedulesTab() {
   );
 }
 
+function PARRiskTab() {
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [parPage, setParPage] = useState(1);
+  const [writeoffPage, setWriteoffPage] = useState(1);
+  const [showWriteoffDialog, setShowWriteoffDialog] = useState<any>(null);
+  const [writeoffReason, setWriteoffReason] = useState('');
+  const parPageSize = 20;
+
+  const { data: parData, isLoading: parLoading } = useQuery<any>({
+    queryKey: ['/api/reports/par-analysis'],
+  });
+
+  const { data: provisionData, isLoading: provisionLoading } = useQuery<any>({
+    queryKey: ['/api/reports/provisioning-summary'],
+  });
+
+  const { data: writeoffs, isLoading: writeoffsLoading } = useQuery<any[]>({
+    queryKey: ['/api/loan-writeoffs'],
+  });
+
+  const runProvisioningMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/admin/run-provisioning");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      qc.invalidateQueries({ queryKey: ['/api/reports/provisioning-summary'] });
+      toast({ title: "Provisioning Complete", description: `Processed ${data.totalLoans} loans. Total provision: ${formatCurrency(data.totalProvision)}`, variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const writeoffMutation = useMutation({
+    mutationFn: async ({ loanId, reason }: { loanId: number; reason: string }) => {
+      const res = await apiRequest("POST", `/api/loans/${loanId}/write-off`, { reason });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loan-writeoffs'] });
+      setShowWriteoffDialog(null);
+      setWriteoffReason('');
+      toast({ title: "Write-Off Requested", description: "The write-off request has been submitted for approval", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const approveWriteoffMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/loan-writeoffs/${id}/approve`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loan-writeoffs'] });
+      qc.invalidateQueries({ queryKey: ['/api/reports/par-analysis'] });
+      qc.invalidateQueries({ queryKey: ['/api/reports/provisioning-summary'] });
+      toast({ title: "Approved", description: "Loan write-off approved", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const rejectWriteoffMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/loan-writeoffs/${id}/reject`, { reason: 'Rejected' });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loan-writeoffs'] });
+      toast({ title: "Rejected", description: "Write-off request rejected", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const parBucketLabels: Record<string, { label: string; color: string }> = {
+    current: { label: 'Current (0 days)', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+    par1_30: { label: '1-30 days', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
+    par31_60: { label: '31-60 days', color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
+    par61_90: { label: '61-90 days', color: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' },
+    par91_180: { label: '91-180 days', color: 'bg-red-200 text-red-800 dark:bg-red-900/50 dark:text-red-200' },
+    par181_365: { label: '181-365 days', color: 'bg-red-300 text-red-900 dark:bg-red-900/70 dark:text-red-100' },
+    par365_plus: { label: '365+ days', color: 'bg-red-500 text-white dark:bg-red-800 dark:text-red-100' },
+  };
+
+  const provisionLabels: Record<string, { label: string; color: string }> = {
+    current: { label: 'Current', color: 'bg-green-600' },
+    watch: { label: 'Watch', color: 'bg-yellow-600' },
+    substandard: { label: 'Substandard', color: 'bg-orange-600' },
+    doubtful: { label: 'Doubtful', color: 'bg-red-500' },
+    loss: { label: 'Loss', color: 'bg-red-800' },
+  };
+
+  return (
+    <TabsContent value="par" className="space-y-6">
+      {/* PAR Summary */}
+      <div className="section-card">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Portfolio at Risk (PAR) Analysis</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Loan portfolio quality assessment by days overdue</p>
+        </div>
+        {parLoading ? (
+          <div className="p-6 space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+        ) : parData ? (
+          <div className="p-4 sm:p-6 space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-xl p-3">
+                <p className="text-xs font-medium text-blue-600">Total Portfolio</p>
+                <p className="text-lg font-bold text-blue-700 mt-1">{formatCurrency(parData.totalPortfolio)}</p>
+                <p className="text-xs text-blue-500">{parData.totalLoans} loans</p>
+              </div>
+              <div className="bg-red-50 dark:bg-red-950/30 rounded-xl p-3">
+                <p className="text-xs font-medium text-red-600">At Risk</p>
+                <p className="text-lg font-bold text-red-700 mt-1">{formatCurrency(parData.atRiskAmount)}</p>
+                <p className="text-xs text-red-500">{parData.parRate}% of portfolio</p>
+              </div>
+              <div className="bg-orange-50 dark:bg-orange-950/30 rounded-xl p-3">
+                <p className="text-xs font-medium text-orange-600">PAR &gt; 30</p>
+                <p className="text-lg font-bold text-orange-700 mt-1">{parData.par30}%</p>
+              </div>
+              <div className="bg-red-50 dark:bg-red-950/30 rounded-xl p-3">
+                <p className="text-xs font-medium text-red-600">PAR &gt; 90</p>
+                <p className="text-lg font-bold text-red-700 mt-1">{parData.par90}%</p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Aging Bucket</TableHead>
+                    <TableHead className="text-right">Loans</TableHead>
+                    <TableHead className="text-right">Outstanding</TableHead>
+                    <TableHead className="text-right hidden sm:table-cell">% of Portfolio</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {Object.entries(parData.buckets || {}).map(([key, bucket]: [string, any]) => (
+                    <TableRow key={key}>
+                      <TableCell>
+                        <Badge className={`text-xs ${parBucketLabels[key]?.color || ''}`}>{parBucketLabels[key]?.label || key}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{bucket.count}</TableCell>
+                      <TableCell className="text-right font-medium">{formatCurrency(bucket.amount)}</TableCell>
+                      <TableCell className="text-right hidden sm:table-cell">
+                        {parData.totalPortfolio > 0 ? ((bucket.amount / parData.totalPortfolio) * 100).toFixed(1) : '0'}%
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Provisioning */}
+      <div className="section-card">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Loss Provisioning</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              {provisionData?.lastProvisionDate ? `Last run: ${new Date(provisionData.lastProvisionDate).toLocaleDateString()}` : 'Not yet calculated'}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" onClick={() => runProvisioningMutation.mutate()} disabled={runProvisioningMutation.isPending}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${runProvisioningMutation.isPending ? 'animate-spin' : ''}`} />
+            {runProvisioningMutation.isPending ? 'Running...' : 'Run Provisioning'}
+          </Button>
+        </div>
+        {provisionLoading ? (
+          <div className="p-6 space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : provisionData?.categories && provisionData.categories.length > 0 ? (
+          <div className="p-4 sm:p-6">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Category</TableHead>
+                    <TableHead className="text-right">Rate</TableHead>
+                    <TableHead className="text-right">Loans</TableHead>
+                    <TableHead className="text-right">Outstanding</TableHead>
+                    <TableHead className="text-right">Provision</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {provisionData.categories.map((cat: any, idx: number) => (
+                    <TableRow key={idx}>
+                      <TableCell>
+                        <Badge className={`text-xs text-white ${provisionLabels[cat.category]?.color || 'bg-slate-500'}`}>
+                          {provisionLabels[cat.category]?.label || cat.category}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">{cat.provisionRate}%</TableCell>
+                      <TableCell className="text-right">{cat.loanCount}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(cat.totalOutstanding)}</TableCell>
+                      <TableCell className="text-right font-semibold text-red-600">{formatCurrency(cat.totalProvision)}</TableCell>
+                    </TableRow>
+                  ))}
+                  <TableRow className="font-bold bg-slate-50 dark:bg-slate-800">
+                    <TableCell colSpan={3}>Total</TableCell>
+                    <TableCell className="text-right">{formatCurrency(provisionData.totalOutstanding)}</TableCell>
+                    <TableCell className="text-right text-red-600">{formatCurrency(provisionData.totalProvision)}</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        ) : (
+          <div className="p-6 text-center text-slate-400 text-sm">
+            Click "Run Provisioning" to calculate loan loss provisions
+          </div>
+        )}
+      </div>
+
+      {/* Write-offs */}
+      <div className="section-card">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Write-Offs</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Track and approve irrecoverable loan write-offs</p>
+        </div>
+        {writeoffsLoading ? (
+          <div className="p-6 space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : writeoffs && writeoffs.length > 0 ? (
+          <div className="p-4 sm:p-6 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Loan #</TableHead>
+                  <TableHead>Member</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead className="hidden sm:table-cell">Reason</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {writeoffs.map((wo: any) => (
+                  <TableRow key={wo.id}>
+                    <TableCell className="font-mono text-xs">{wo.loan_number}</TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-sm">{wo.member_name}</p>
+                        <p className="text-xs text-slate-400">{wo.member_number}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-semibold text-red-600">{formatCurrency(wo.writeoff_amount)}</TableCell>
+                    <TableCell className="hidden sm:table-cell text-xs max-w-[200px] truncate">{wo.reason}</TableCell>
+                    <TableCell>
+                      <Badge variant={wo.status === 'approved' ? 'default' : wo.status === 'rejected' ? 'destructive' : 'outline'}
+                        className={wo.status === 'approved' ? 'bg-green-600' : ''}>
+                        {wo.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {wo.status === 'pending' && (
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => approveWriteoffMutation.mutate(wo.id)}
+                            disabled={approveWriteoffMutation.isPending}>
+                            Approve
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => rejectWriteoffMutation.mutate(wo.id)}
+                            disabled={rejectWriteoffMutation.isPending}>
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="p-6 text-center text-slate-400 text-sm">
+            No write-off requests. Write-offs can be initiated from individual loan details.
+          </div>
+        )}
+      </div>
+    </TabsContent>
+  );
+}
+
 export default function Reports() {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
@@ -796,10 +1077,11 @@ export default function Reports() {
       {/* Tabs for different report sections */}
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setRptPage(1); setDelinqPage(1); }} className="space-y-6">
         <div className="overflow-x-auto -mx-1 px-1">
-          <TabsList className="w-full inline-flex sm:grid sm:grid-cols-4 lg:grid-cols-7 h-auto gap-1 p-1 rounded-xl min-w-max sm:min-w-0">
+          <TabsList className="w-full inline-flex sm:grid sm:grid-cols-4 lg:grid-cols-8 h-auto gap-1 p-1 rounded-xl min-w-max sm:min-w-0">
             <TabsTrigger value="overview" className="text-xs sm:text-sm px-3 sm:px-2">Overview</TabsTrigger>
             <TabsTrigger value="members" className="text-xs sm:text-sm px-3 sm:px-2">Members</TabsTrigger>
             <TabsTrigger value="financial" className="text-xs sm:text-sm px-3 sm:px-2">Financial</TabsTrigger>
+            <TabsTrigger value="par" className="text-xs sm:text-sm px-3 sm:px-2">PAR & Risk</TabsTrigger>
             <TabsTrigger value="activity" className="text-xs sm:text-sm px-3 sm:px-2">Activity</TabsTrigger>
             <TabsTrigger value="schedules" className="text-xs sm:text-sm px-3 sm:px-2">Schedules</TabsTrigger>
             <TabsTrigger value="reconciliation" className="text-xs sm:text-sm px-3 sm:px-2">Reconciliation</TabsTrigger>
@@ -1293,6 +1575,9 @@ export default function Reports() {
             </div>
           )}
         </TabsContent>
+
+        {/* PAR & Risk Tab */}
+        <PARRiskTab />
 
         {/* Member Activity Tab */}
         <MemberActivityTab />
