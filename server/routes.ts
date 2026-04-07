@@ -5406,7 +5406,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const activeLoans = allLoansData.filter((l: any) => ['active', 'disbursed'].includes(l.status));
           const delinquentLoans = activeLoans.filter((l: any) => {
             const balance = parseFloat(l.outstandingBalance || '0');
-            if (balance <= 0) return false;
+            if (balance <= 1.00) return false;
             if (l.dueDate && new Date(l.dueDate) < now) return true;
             if (l.disbursementDate && l.termMonths) {
               const maturity = new Date(l.disbursementDate);
@@ -5605,7 +5605,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const now = new Date();
           const delinquentLoans = activeLoansData.filter((l: any) => {
             const bal = parseFloat(l.outstandingBalance || '0');
-            if (bal <= 0) return false;
+            if (bal <= 1.00) return false;
             if (l.dueDate && new Date(l.dueDate) < now) return true;
             if (l.disbursementDate && l.termMonths) { const m = new Date(l.disbursementDate); m.setMonth(m.getMonth() + l.termMonths); if (m < now) return true; }
             return false;
@@ -6852,11 +6852,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   async function autoCompletePaidLoans(source: string = 'manual') {
     const result = await db.update(loans)
-      .set({ status: 'completed' as any })
+      .set({ status: 'completed' as any, outstandingBalance: '0' })
       .where(
         and(
           inArray(loans.status, ['active', 'disbursed', 'approved']),
-          sql`CAST(${loans.outstandingBalance} AS numeric) <= 0`
+          sql`CAST(${loans.outstandingBalance} AS numeric) <= 1.00`
         )
       )
       .returning({ id: loans.id, loanNumber: loans.loanNumber });
