@@ -6,7 +6,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword, validatePasswordComplexity, getSecuritySettings, getPasswordRequirementsText } from "./localAuth";
 import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "./rbac-middleware";
-import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations } from "@shared/schema";
+import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations, saccoAccounts } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
 import { seedAdminUser, seedRBAC } from "./seed";
 import { z } from "zod";
@@ -6858,27 +6858,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   async function recalculateSaccoBalances() {
-    const result = await db.execute(sql`
-      WITH expected AS (
-        SELECT 
-          sa.id,
-          COALESCE(SUM(
-            CASE 
-              WHEN je.debit_account_id = sa.id THEN
-                CASE WHEN sa.account_type IN ('asset','expense') THEN je.amount::numeric ELSE -je.amount::numeric END
-              WHEN je.credit_account_id = sa.id THEN
-                CASE WHEN sa.account_type IN ('liability','equity','revenue') THEN je.amount::numeric ELSE -je.amount::numeric END
-            END
-          ), 0) as expected_balance
-        FROM sacco_accounts sa
-        LEFT JOIN sacco_journal_entries je ON (je.debit_account_id = sa.id OR je.credit_account_id = sa.id) AND je.status = 'posted'
-        GROUP BY sa.id
-      )
-      UPDATE sacco_accounts SET balance = expected.expected_balance
-      FROM expected 
-      WHERE sacco_accounts.id = expected.id
-    `);
-    return { message: 'SACCO account balances recalculated from journal entries', updated: 'all' };
+    const [savingsTotal] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${savingsAccountsTable.balance}::numeric), 0)` })
+      .from(savingsAccountsTable);
+    const actualSavings = parseFloat(savingsTotal?.total || '0');
+
+    const [loansTotal] = await db
+      .select({ total: sql<string>`COALESCE(SUM(${loans.outstandingBalance}::numeric), 0)` })
+      .from(loans)
+      .where(inArray(loans.status, ['active', 'disbursed']));
+    const actualLoans = parseFloat(loansTotal?.total || '0');
+
+    await db.update(saccoAccounts)
+      .set({ balance: actualSavings.toFixed(2) })
+      .where(eq(saccoAccounts.accountCode, '2001'));
+
+    await db.update(saccoAccounts)
+      .set({ balance: actualLoans.toFixed(2) })
+      .where(eq(saccoAccounts.accountCode, '1003'));
+
+    const cashAtBank = actualSavings + actualLoans;
+    await db.update(saccoAccounts)
+      .set({ balance: cashAtBank.toFixed(2) })
+      .where(eq(saccoAccounts.accountCode, '1001'));
+
+    return { message: 'SACCO account balances synced with actual data', actualSavings, actualLoans, cashAtBank };
   }
 
   setTimeout(async () => {
