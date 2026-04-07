@@ -82,9 +82,16 @@ export default function Loans() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setSearch(searchInput);
-    }, 400);
+    }, 1200);
     return () => clearTimeout(timer);
   }, [searchInput, setSearch]);
+
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      setSearch(searchInput);
+      setPage(1);
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -291,9 +298,10 @@ export default function Loans() {
                 <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 h-4 w-4" />
                 <Input
                   data-testid="input-search-loans"
-                  placeholder="Search loans..."
+                  placeholder="Search loans... (press Enter)"
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
                   className="pl-10 w-full sm:w-64 border-0 bg-transparent focus-visible:ring-0"
                 />
               </div>
@@ -596,7 +604,7 @@ export default function Loans() {
                           <span className="text-slate-600 dark:text-slate-300 text-sm font-medium">
                             {isPersonalView 
                               ? loan.loanNumber?.slice(-2) || 'LN'
-                              : `${loan.member?.user?.firstName?.charAt(0) || ''}${loan.member?.user?.lastName?.charAt(0) || ''}`
+                              : (loan.member?.fullName || `${loan.member?.user?.firstName || ''} ${loan.member?.user?.lastName || ''}`).trim().split(' ').map((n: string) => n.charAt(0)).slice(0, 2).join('').toUpperCase() || 'LN'
                             }
                           </span>
                         </div>
@@ -604,7 +612,7 @@ export default function Loans() {
                           <h3 className="font-medium text-slate-900 dark:text-slate-100">
                             {isPersonalView 
                               ? `${loan.loanType || 'Loan'} Application`
-                              : `${loan.member?.user?.firstName || ''} ${loan.member?.user?.lastName || ''}`
+                              : loan.member?.fullName || `${loan.member?.user?.firstName || ''} ${loan.member?.user?.lastName || ''}`.trim() || 'Unknown Member'
                             }
                           </h3>
                           <p className="text-sm text-slate-500 dark:text-slate-400">Loan: {loan.loanNumber}</p>
