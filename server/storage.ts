@@ -3194,48 +3194,63 @@ export class DatabaseStorage implements IStorage {
     };
   }
   async resolveMemberId(idOrUuid: string): Promise<number> {
-    if (idOrUuid.includes('-')) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(idOrUuid)) {
       const [member] = await db.select({ id: members.id }).from(members).where(eq(members.uuid, idOrUuid));
       if (!member) throw new Error('Member not found');
       return member.id;
     }
-    return parseInt(idOrUuid);
+    const numericId = parseInt(idOrUuid, 10);
+    if (isNaN(numericId)) throw new Error('Invalid member identifier');
+    return numericId;
   }
 
   async resolveLoanId(idOrUuid: string): Promise<number> {
-    if (idOrUuid.includes('-')) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(idOrUuid)) {
       const [loan] = await db.select({ id: loans.id }).from(loans).where(eq(loans.uuid, idOrUuid));
       if (!loan) throw new Error('Loan not found');
       return loan.id;
     }
-    return parseInt(idOrUuid);
+    const numericId = parseInt(idOrUuid, 10);
+    if (isNaN(numericId)) throw new Error('Invalid loan identifier');
+    return numericId;
   }
 
   async resolveSavingsAccountId(idOrUuid: string): Promise<number> {
-    if (idOrUuid.includes('-')) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(idOrUuid)) {
       const [account] = await db.select({ id: savingsAccounts.id }).from(savingsAccounts).where(eq(savingsAccounts.uuid, idOrUuid));
       if (!account) throw new Error('Savings account not found');
       return account.id;
     }
-    return parseInt(idOrUuid);
+    const numericId = parseInt(idOrUuid, 10);
+    if (isNaN(numericId)) throw new Error('Invalid savings account identifier');
+    return numericId;
   }
 
   async resolveTransactionId(idOrUuid: string): Promise<number> {
-    if (idOrUuid.includes('-')) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(idOrUuid)) {
       const [txn] = await db.select({ id: transactions.id }).from(transactions).where(eq(transactions.uuid, idOrUuid));
       if (!txn) throw new Error('Transaction not found');
       return txn.id;
     }
-    return parseInt(idOrUuid);
+    const numericId = parseInt(idOrUuid, 10);
+    if (isNaN(numericId)) throw new Error('Invalid transaction identifier');
+    return numericId;
   }
 
   async resolveGuarantorId(idOrUuid: string): Promise<number> {
-    if (idOrUuid.includes('-')) {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (uuidRegex.test(idOrUuid)) {
       const [g] = await db.select({ id: guarantors.id }).from(guarantors).where(eq(guarantors.uuid, idOrUuid));
       if (!g) throw new Error('Guarantor not found');
       return g.id;
     }
-    return parseInt(idOrUuid);
+    const numericId = parseInt(idOrUuid, 10);
+    if (isNaN(numericId)) throw new Error('Invalid guarantor identifier');
+    return numericId;
   }
 
   async getSystemSetting(key: string): Promise<SystemSetting | undefined> {

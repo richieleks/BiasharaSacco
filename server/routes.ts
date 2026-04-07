@@ -1889,7 +1889,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const requestedByUser = await storage.getUser(r.requestedBy);
         return {
           ...r,
-          member: member ? { id: member.id, fullName: member.fullName, memberNumber: member.memberNumber, totalSavings: actualSavings.toFixed(2), shareCapital: member.shareCapital } : null,
+          member: member ? { id: member.id, uuid: member.uuid, fullName: member.fullName, memberNumber: member.memberNumber, totalSavings: actualSavings.toFixed(2), shareCapital: member.shareCapital } : null,
           requestedByUser: requestedByUser ? { id: requestedByUser.id, firstName: requestedByUser.firstName, lastName: requestedByUser.lastName, username: requestedByUser.username } : null,
         };
       }));
@@ -5098,6 +5098,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const mapMember = (m: typeof allMembers[0]) => ({
         id: m.id,
+        uuid: m.uuid,
         memberNumber: m.memberNumber,
         fullName: m.fullName,
         status: m.status,

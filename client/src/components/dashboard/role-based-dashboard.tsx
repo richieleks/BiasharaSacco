@@ -285,7 +285,8 @@ function formatMemberDate(dateStr: string | null | undefined, formatStr: string 
 function MemberDashboard() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  const memberId = user?.member?.id;
+  const memberUuid = (user?.member as any)?.uuid;
+  const memberId = memberUuid || user?.member?.id;
   const authMember = user?.member as any;
 
   const { data: freshMemberData } = useQuery<any>({

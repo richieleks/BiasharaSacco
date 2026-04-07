@@ -206,7 +206,7 @@ function MemberActivityTab() {
                       <TableRow key={m.id} data-testid={`row-activity-member-${m.id}`}>
                         <TableCell className="font-mono text-xs">{m.memberNumber}</TableCell>
                         <TableCell>
-                          <a href={`/members/${m.id}`} className="text-blue-600 dark:text-blue-400 hover:underline font-medium" data-testid={`link-activity-member-${m.id}`}>
+                          <a href={`/members/${m.uuid || m.id}`} className="text-blue-600 dark:text-blue-400 hover:underline font-medium" data-testid={`link-activity-member-${m.id}`}>
                             {m.fullName}
                           </a>
                         </TableCell>

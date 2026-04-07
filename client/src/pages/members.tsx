@@ -112,7 +112,7 @@ export default function Members() {
   });
 
   const editMemberMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: number; data: any }) => {
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
       await apiRequest('PATCH', `/api/members/${id}`, data);
     },
     onSuccess: () => {
@@ -335,7 +335,7 @@ export default function Members() {
           {editingMember && (
             <MemberForm
               member={editingMember}
-              onSubmit={(data) => editMemberMutation.mutate({ id: editingMember.id, data })}
+              onSubmit={(data) => editMemberMutation.mutate({ id: editingMember.uuid || editingMember.id, data })}
               isLoading={editMemberMutation.isPending}
             />
           )}

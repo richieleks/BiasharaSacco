@@ -97,7 +97,7 @@ function ExitRequestCard({
               <div className="flex items-center gap-2 flex-wrap">
                 <button
                   className="font-semibold text-slate-800 dark:text-slate-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors truncate"
-                  onClick={() => setLocation(`/members/${request.memberId}`)}
+                  onClick={() => setLocation(`/members/${request.member?.uuid || request.memberId}`)}
                   data-testid={`link-member-${request.id}`}
                 >
                   {request.member?.fullName || "Unknown Member"}
