@@ -33,6 +33,8 @@ export function LoginPage() {
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [twoFactorUsername, setTwoFactorUsername] = useState("");
 
+  const isSessionExpired = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('expired') === '1';
+
   const changePasswordMutation = useMutation({
     mutationFn: async (data: { newPassword: string }) => {
       const response = await fetch("/api/auth/change-password", {
@@ -309,6 +311,19 @@ export function LoginPage() {
                   </button>
                 </div>
               </div>
+
+              {isSessionExpired && !error && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <div className="flex items-center gap-2 rounded-xl bg-amber-500/10 border border-amber-500/20 px-4 py-3 text-sm text-amber-400">
+                    <Shield className="h-4 w-4 flex-shrink-0" />
+                    Your session has expired due to inactivity. Please log in again.
+                  </div>
+                </motion.div>
+              )}
 
               {error && (
                 <motion.div

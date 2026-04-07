@@ -7,6 +7,20 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+let isSessionRedirecting = false;
+
+function handleSessionExpired() {
+  if (isSessionRedirecting) return;
+  isSessionRedirecting = true;
+  queryClient.setQueryData(["/api/auth/user"], null);
+  queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+  if (window.location.pathname !== "/login") {
+    window.location.href = "/login?expired=1";
+  } else {
+    isSessionRedirecting = false;
+  }
+}
+
 export async function apiRequest(
   method: string,
   url: string,
@@ -18,6 +32,10 @@ export async function apiRequest(
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
+
+  if (res.status === 401 && url !== "/api/auth/login" && url !== "/api/auth/login/2fa") {
+    handleSessionExpired();
+  }
 
   await throwIfResNotOk(res);
   return res;
@@ -33,8 +51,14 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
     });
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
+    if (res.status === 401) {
+      if (queryKey[0] === "/api/auth/user") {
+        return null;
+      }
+      handleSessionExpired();
+      if (unauthorizedBehavior === "returnNull") {
+        return null;
+      }
     }
 
     await throwIfResNotOk(res);

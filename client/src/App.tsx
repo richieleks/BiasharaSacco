@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Switch, Route, useLocation, Redirect } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
@@ -184,12 +184,47 @@ function FullPageLoader() {
   );
 }
 
+function useAutoLogout(isAuthenticated: boolean) {
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const { data: userSettings } = useQuery<{ autoLogout?: number }>({
+    queryKey: ['/api/auth/settings'],
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const autoLogoutMinutes = userSettings?.autoLogout || 120;
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const resetTimer = () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        queryClient.setQueryData(["/api/auth/user"], null);
+        fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
+        window.location.href = "/login?expired=1";
+      }, autoLogoutMinutes * 60 * 1000);
+    };
+
+    const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
+    events.forEach(event => window.addEventListener(event, resetTimer, { passive: true }));
+    resetTimer();
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [isAuthenticated, autoLogoutMinutes]);
+}
+
 function Router() {
   const { isAuthenticated, isLoading, user } = useAuth();
   const { canAccessRoute } = useRBAC();
   
   useWebSocket();
   useTheme();
+  useAutoLogout(isAuthenticated);
 
   const isAdmin = user?.role === 'admin' || (user as any)?.member?.roles?.includes('admin');
 
