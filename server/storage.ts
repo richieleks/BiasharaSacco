@@ -2918,15 +2918,25 @@ export class DatabaseStorage implements IStorage {
     }
 
     const account = accounts[0];
-    
-    const snapshots = await this.getBalanceSnapshots(account.id, financialYearId);
-    
-    const totalBalance = snapshots.reduce((sum, snapshot) => 
-      sum + parseFloat(snapshot.balance), 0);
-    const averageBalance = snapshots.length > 0 ? totalBalance / snapshots.length : parseFloat(account.balance ?? '0');
+
+    const fyStartDate = financialYear.startDate;
+    const fyEndDate = financialYear.endDate;
+
+    const depositResult = await db.execute(sql`
+      SELECT COALESCE(SUM(amount::numeric), 0) as total_deposits
+      FROM transactions
+      WHERE member_id = ${memberId}
+        AND savings_account_id = ${account.id}
+        AND transaction_type = 'deposit'
+        AND status = 'completed'
+        AND transaction_date >= ${fyStartDate}::date
+        AND transaction_date < ${fyEndDate}::date + interval '1 day'
+    `);
+    const depositRows = (depositResult as any).rows || depositResult;
+    const totalDeposits = parseFloat(depositRows[0]?.total_deposits || '0');
 
     const interestRate = parseFloat(financialYear.interestRate ?? '0.0500');
-    const grossInterest = averageBalance * interestRate;
+    const grossInterest = totalDeposits * interestRate;
     const netInterest = grossInterest;
 
     const calculation = {
@@ -2936,14 +2946,14 @@ export class DatabaseStorage implements IStorage {
       calculationDate: new Date().toISOString().split('T')[0],
       periodStartDate: financialYear.startDate,
       periodEndDate: financialYear.endDate,
-      averageBalance: averageBalance.toString(),
+      averageBalance: totalDeposits.toString(),
       interestRate: financialYear.interestRate ?? '0.0500',
       grossInterest: grossInterest.toString(),
       taxAmount: '0',
       netInterest: netInterest.toString(),
       status: 'calculated' as const,
       calculationMethod: 'simple' as const,
-      notes: `Interest calculated for financial year ${financialYear.yearLabel}`,
+      notes: `Interest on savings deposits for FY ${financialYear.yearLabel}. Total deposits: UGX ${totalDeposits.toLocaleString()}`,
     };
 
     const [result] = await db

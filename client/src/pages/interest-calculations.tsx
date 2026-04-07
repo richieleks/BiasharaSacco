@@ -626,7 +626,7 @@ export default function InterestCalculations() {
                         <TableRow>
                           <TableHead>Member</TableHead>
                           <TableHead>Member No.</TableHead>
-                          <TableHead>Average Balance</TableHead>
+                          <TableHead>Total Deposits (FY)</TableHead>
                           <TableHead>Interest Rate</TableHead>
                           <TableHead>Interest Amount</TableHead>
                           <TableHead>Status</TableHead>
