@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { useRBAC } from "@/hooks/useRBAC";
@@ -561,8 +561,8 @@ function AccountDialog({ open, onOpenChange, account, onSubmit, isPending }: {
     isActive: true,
   });
 
-  const handleOpen = (isOpen: boolean) => {
-    if (isOpen && account) {
+  useEffect(() => {
+    if (open && account) {
       setFormData({
         accountCode: account.accountCode,
         accountName: account.accountName,
@@ -570,14 +570,13 @@ function AccountDialog({ open, onOpenChange, account, onSubmit, isPending }: {
         description: account.description || '',
         isActive: account.isActive,
       });
-    } else if (isOpen) {
+    } else if (open) {
       setFormData({ accountCode: '', accountName: '', accountType: 'asset', description: '', isActive: true });
     }
-    onOpenChange(isOpen);
-  };
+  }, [open, account]);
 
   return (
-    <Dialog open={open} onOpenChange={handleOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{account ? 'Edit Account' : 'Add New Account'}</DialogTitle>
