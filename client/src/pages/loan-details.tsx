@@ -486,6 +486,33 @@ export default function LoanDetails() {
         )}
       </div>
 
+      {loan.status === 'rejected' && (
+        <div
+          className="mt-3 p-4 rounded-lg border border-red-200 dark:border-red-800/60 bg-red-50 dark:bg-red-950/40"
+          data-testid="banner-loan-rejected"
+        >
+          <div className="flex items-start gap-3">
+            <XCircle className="h-5 w-5 text-red-600 dark:text-red-400 mt-0.5 shrink-0" />
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <p className="font-semibold text-sm text-red-800 dark:text-red-300">
+                  Loan Application Rejected
+                </p>
+                {loan.rejectedAt && (
+                  <p className="text-xs text-red-700 dark:text-red-400">
+                    {format(new Date(loan.rejectedAt), 'PPP')}
+                  </p>
+                )}
+              </div>
+              <p className="text-sm text-red-700 dark:text-red-300 mt-1.5 whitespace-pre-wrap break-words">
+                <span className="font-medium">Reason: </span>
+                {loan.rejectionReason || 'No reason was provided.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
         <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0">
           <DialogHeader className="p-4 pb-2 border-b">
