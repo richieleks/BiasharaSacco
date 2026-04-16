@@ -531,8 +531,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 
                 const currentShareCapital = parseFloat(member.shareCapital || '0');
                 const newShareCapital = currentShareCapital + shareCapitalAmount;
-                const currentShares = member.numberOfShares || 0;
-                const newNumberOfShares = currentShares + numberOfNewShares;
+                const newNumberOfShares = numberOfNewShares;
                 const expectedTotal = sharePrice * newNumberOfShares;
                 const isPaidUp = newShareCapital >= expectedTotal;
 
