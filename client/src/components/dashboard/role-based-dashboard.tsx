@@ -753,24 +753,43 @@ function MemberDashboard() {
 }
 
 export default function RoleBasedDashboard() {
-  const { userRole, isLoading } = useRBAC();
-  
+  const { userRole, isLoading, hasAnyRole } = useRBAC();
+
   if (isLoading) {
     return <div>Loading dashboard...</div>;
   }
-  
+
+  const showApprovalActivity = userRole !== 'committee' && userRole !== 'treasurer' && userRole !== 'admin' && hasAnyRole(['committee', 'treasurer']);
+
+  let dashboard: JSX.Element;
   switch (userRole) {
     case 'admin':
-      return <AdminDashboard />;
+      dashboard = <AdminDashboard />;
+      break;
     case 'treasurer':
-      return <TreasurerDashboard />;
+      dashboard = <TreasurerDashboard />;
+      break;
     case 'manager':
-      return <ManagerDashboard />;
+      dashboard = <ManagerDashboard />;
+      break;
     case 'committee':
-      return <CommitteeDashboard />;
+      dashboard = <CommitteeDashboard />;
+      break;
     case 'member':
-      return <MemberDashboard />;
+      dashboard = <MemberDashboard />;
+      break;
     default:
-      return <MemberDashboard />;
+      dashboard = <MemberDashboard />;
   }
+
+  if (showApprovalActivity) {
+    return (
+      <div className="space-y-6">
+        {dashboard}
+        <CommitteeApprovalActivity />
+      </div>
+    );
+  }
+
+  return dashboard;
 }
