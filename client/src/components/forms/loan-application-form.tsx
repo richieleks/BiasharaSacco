@@ -303,8 +303,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
       const loan = await response.json();
       const principal = parseFloat(form.getValues('principalAmount') || '0');
       const requiresGuarantor = selectedLoanType?.requiresGuarantor ?? selectedLoanType?.requires_guarantor ?? true;
-      const savingsCover = totalSavingsBalance >= principal && principal > 0;
-      const needsG = requiresGuarantor && !savingsCover;
+      const needsG = requiresGuarantor;
 
       setSavedLoanPrincipal(principal);
       setSavedNeedsGuarantors(needsG);
