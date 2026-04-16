@@ -18,7 +18,7 @@ import { format, addMonths } from "date-fns";
 import {
   ArrowLeft, DollarSign, FileText, Calendar, Download, CreditCard,
   Percent, Hash, HandCoins, Clock, AlertCircle, ArrowUpCircle, Calculator,
-  Users, CheckCircle, XCircle, Ban,
+  Users, CheckCircle, XCircle, Ban, Paperclip, Trash2,
 } from "lucide-react";
 
 const getStatusColor = (status: string) => {
@@ -88,6 +88,16 @@ export default function LoanDetails() {
     queryKey: ['/api/guarantors/loan', loan?.id],
     queryFn: async () => {
       const res = await fetch(`/api/guarantors/loan/${loan.id}`, { credentials: 'include' });
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!loan?.id,
+  });
+
+  const { data: loanDocuments = [] } = useQuery<any[]>({
+    queryKey: ['/api/loans', loan?.id, 'documents'],
+    queryFn: async () => {
+      const res = await fetch(`/api/loans/${loan.id}/documents`, { credentials: 'include' });
       if (!res.ok) return [];
       return res.json();
     },
@@ -488,7 +498,10 @@ export default function LoanDetails() {
       )}
 
       <Tabs defaultValue="details" className="w-full">
-        <TabsList className={`grid w-full ${guarantors.length > 0 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+        <TabsList className={`grid w-full ${
+          guarantors.length > 0 && loanDocuments.length > 0 ? 'grid-cols-5' :
+          guarantors.length > 0 || loanDocuments.length > 0 ? 'grid-cols-4' : 'grid-cols-3'
+        }`}>
           <TabsTrigger value="details" className="text-xs sm:text-sm">
             <FileText className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
             Details
@@ -501,6 +514,12 @@ export default function LoanDetails() {
             <Calendar className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
             Schedule
           </TabsTrigger>
+          {loanDocuments.length > 0 && (
+            <TabsTrigger value="documents" className="text-xs sm:text-sm">
+              <Paperclip className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
+              Docs ({loanDocuments.length})
+            </TabsTrigger>
+          )}
           {guarantors.length > 0 && (
             <TabsTrigger value="guarantors" className="text-xs sm:text-sm">
               <Users className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
@@ -827,6 +846,57 @@ export default function LoanDetails() {
             </Card>
           )}
         </TabsContent>
+
+        {loanDocuments.length > 0 && (
+          <TabsContent value="documents" className="mt-4">
+            <Card className="border-slate-200 dark:border-slate-700/60">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Paperclip className="h-4 w-4" />
+                  Loan Documents ({loanDocuments.length})
+                </CardTitle>
+                <CardDescription>
+                  Documents submitted with this loan application
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {loanDocuments.map((doc: any) => {
+                    const typeLabels: Record<string, string> = {
+                      loan_application: 'Signed Loan Application',
+                      provident_commitment: 'Provident Commitment',
+                      guarantor_guarantee: 'Guarantor Guarantee',
+                    };
+                    return (
+                      <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 bg-blue-100 dark:bg-blue-950/50 rounded-full flex items-center justify-center shrink-0">
+                            <FileText className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-sm truncate">{doc.originalName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {typeLabels[doc.documentType] || doc.documentType}
+                              {doc.fileSize && ` | ${(doc.fileSize / 1024).toFixed(0)} KB`}
+                              {doc.createdAt && ` | ${format(new Date(doc.createdAt), 'MMM d, yyyy')}`}
+                            </p>
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(`/api/loans/documents/${doc.id}/download`, '_blank')}
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         {guarantors.length > 0 && (
           <TabsContent value="guarantors" className="mt-4">

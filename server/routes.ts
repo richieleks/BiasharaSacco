@@ -6,7 +6,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { setupLocalAuth, hashPassword, validatePasswordComplexity, getSecuritySettings, getPasswordRequirementsText } from "./localAuth";
 import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "./rbac-middleware";
-import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations, saccoAccounts } from "@shared/schema";
+import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations, saccoAccounts, loanDocuments, guarantors } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
 import { seedAdminUser, seedRBAC } from "./seed";
 import { z } from "zod";
@@ -5839,7 +5839,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Data Import API endpoints
   const multer = await import('multer');
   const upload = multer.default({ dest: 'uploads/' });
-  
+
+  const loanDocUpload = multer.default({
+    dest: 'uploads/loan-documents/',
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_req: any, file: any, cb: any) => {
+      const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg',
+        'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (allowed.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only PDF, Word documents, and images (JPEG/PNG) are allowed'));
+      }
+    },
+  });
+
+  const canAccessLoanDocs = async (userId: string, loanId: number): Promise<boolean> => {
+    const user = await storage.getUser(userId);
+    if (!user) return false;
+    if (['admin'].includes(user.role || '')) return true;
+    const member = await storage.getMemberByUserId(userId);
+    if (!member) return false;
+    const roles = await storage.getMemberRoles(member.id);
+    if (roles.some(r => ['admin', 'treasurer', 'committee', 'manager'].includes(r))) return true;
+    const [loan] = await db.select().from(loans).where(eq(loans.id, loanId));
+    if (loan && loan.memberId === member.id) return true;
+    const guarantorRows = await db.select().from(guarantors)
+      .where(and(eq(guarantors.loanId, loanId), eq(guarantors.guarantorMemberId, member.id)));
+    return guarantorRows.length > 0;
+  };
+
+  app.post('/api/loans/:id/documents', isAuthenticated, loanDocUpload.single('file'), async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: 'Authentication required' });
+      const loanId = parseInt(req.params.id);
+      if (isNaN(loanId)) return res.status(400).json({ message: 'Invalid loan ID' });
+
+      if (!(await canAccessLoanDocs(userId, loanId))) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const { documentType, guarantorId } = req.body;
+
+      if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
+      if (!documentType || !['loan_application', 'provident_commitment', 'guarantor_guarantee'].includes(documentType)) {
+        return res.status(400).json({ message: 'Invalid document type' });
+      }
+
+      const [loan] = await db.select().from(loans).where(eq(loans.id, loanId));
+      if (!loan) return res.status(404).json({ message: 'Loan not found' });
+
+      if (documentType === 'guarantor_guarantee' && guarantorId) {
+        const gId = parseInt(guarantorId);
+        if (isNaN(gId)) return res.status(400).json({ message: 'Invalid guarantor ID' });
+        const [guarantor] = await db.select().from(guarantors).where(eq(guarantors.id, gId));
+        if (!guarantor || guarantor.loanId !== loanId) {
+          return res.status(400).json({ message: 'Invalid guarantor for this loan' });
+        }
+      }
+
+      const [doc] = await db.insert(loanDocuments).values({
+        loanId,
+        guarantorId: guarantorId ? parseInt(guarantorId) : null,
+        documentType,
+        fileName: req.file.filename,
+        originalName: req.file.originalname,
+        filePath: req.file.path,
+        fileSize: req.file.size,
+        mimeType: req.file.mimetype,
+        uploadedBy: userId,
+      }).returning();
+
+      res.json(doc);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/loans/:id/documents', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: 'Authentication required' });
+      const loanId = parseInt(req.params.id);
+      if (isNaN(loanId)) return res.status(400).json({ message: 'Invalid loan ID' });
+
+      if (!(await canAccessLoanDocs(userId, loanId))) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const docs = await db.select().from(loanDocuments).where(eq(loanDocuments.loanId, loanId));
+      res.json(docs);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.delete('/api/loans/documents/:docId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: 'Authentication required' });
+      const docId = parseInt(req.params.docId);
+      if (isNaN(docId)) return res.status(400).json({ message: 'Invalid document ID' });
+
+      const [doc] = await db.select().from(loanDocuments).where(eq(loanDocuments.id, docId));
+      if (!doc) return res.status(404).json({ message: 'Document not found' });
+
+      if (!(await canAccessLoanDocs(userId, doc.loanId))) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const fs = await import('fs');
+      try { fs.unlinkSync(doc.filePath); } catch {}
+
+      await db.delete(loanDocuments).where(eq(loanDocuments.id, docId));
+      res.json({ message: 'Document deleted' });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get('/api/loans/documents/:docId/download', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: 'Authentication required' });
+      const docId = parseInt(req.params.docId);
+      if (isNaN(docId)) return res.status(400).json({ message: 'Invalid document ID' });
+
+      const [doc] = await db.select().from(loanDocuments).where(eq(loanDocuments.id, docId));
+      if (!doc) return res.status(404).json({ message: 'Document not found' });
+
+      if (!(await canAccessLoanDocs(userId, doc.loanId))) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const path = await import('path');
+      res.download(path.resolve(doc.filePath), doc.originalName);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get('/api/import/status/:jobId', isAuthenticated, (req: any, res) => {
     const job = importJobs.get(req.params.jobId);
     if (!job) {

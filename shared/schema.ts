@@ -1051,7 +1051,24 @@ export const memberDividends = pgTable("member_dividends", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const loanDocuments = pgTable("loan_documents", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").references(() => loans.id).notNull(),
+  guarantorId: integer("guarantor_id").references(() => guarantors.id),
+  documentType: varchar("document_type", {
+    enum: ["loan_application", "provident_commitment", "guarantor_guarantee"]
+  }).notNull(),
+  fileName: varchar("file_name").notNull(),
+  originalName: varchar("original_name").notNull(),
+  filePath: varchar("file_path").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type"),
+  uploadedBy: varchar("uploaded_by").references(() => users.id).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export type LoanProvision = typeof loanProvisions.$inferSelect;
 export type LoanWriteoff = typeof loanWriteoffs.$inferSelect;
 export type DividendDistribution = typeof dividendDistributions.$inferSelect;
 export type MemberDividend = typeof memberDividends.$inferSelect;
+export type LoanDocument = typeof loanDocuments.$inferSelect;

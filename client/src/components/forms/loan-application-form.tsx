@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import GuarantorForm from "./guarantor-form";
 import GuarantorList from "../guarantor/guarantor-list";
+import LoanDocumentUpload from "./loan-document-upload";
 import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
 import type { LoanTypeWithTerms } from "@shared/schema";
@@ -50,6 +51,9 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
   const { user } = useAuth();
   const [showGuarantorForm, setShowGuarantorForm] = useState(false);
   const [currentLoanId, setCurrentLoanId] = useState<number | null>(null);
+  const [applicationStep, setApplicationStep] = useState<'documents' | 'guarantors' | 'complete'>('documents');
+  const [savedLoanPrincipal, setSavedLoanPrincipal] = useState(0);
+  const [savedNeedsGuarantors, setSavedNeedsGuarantors] = useState(false);
   const [eligibilityResult, setEligibilityResult] = useState<any>(null);
   const [checkingEligibility, setCheckingEligibility] = useState(false);
 
@@ -297,8 +301,17 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     },
     onSuccess: async (response) => {
       const loan = await response.json();
+      const principal = parseFloat(form.getValues('principalAmount') || '0');
+      const requiresGuarantor = selectedLoanType?.requiresGuarantor ?? selectedLoanType?.requires_guarantor ?? true;
+      const savingsCover = totalSavingsBalance >= principal && principal > 0;
+      const needsG = requiresGuarantor && !savingsCover;
+
+      setSavedLoanPrincipal(principal);
+      setSavedNeedsGuarantors(needsG);
+      setApplicationStep('documents');
+
       toast({ title: "Success",
-        description: "Loan application created. Now add guarantors before submission.", variant: "success" });
+        description: "Loan application created. Please upload the required documents.", variant: "success" });
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       setCurrentLoanId(loan.id);
       form.reset();
@@ -355,11 +368,25 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
     mutation.mutate(data);
   };
 
+  const { data: loanGuarantors = [] } = useQuery<any[]>({
+    queryKey: ['/api/guarantors/loan', currentLoanId],
+    queryFn: async () => {
+      const res = await fetch(`/api/guarantors/loan/${currentLoanId}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!currentLoanId,
+  });
+
   if (currentLoanId) {
-    const requiresGuarantor = selectedLoanType?.requiresGuarantor ?? selectedLoanType?.requires_guarantor ?? true;
-    const loanPrincipal = parseFloat(form.getValues('principalAmount') || '0');
-    const savingsCoverLoan = totalSavingsBalance >= loanPrincipal && loanPrincipal > 0;
-    const needsGuarantors = requiresGuarantor && !savingsCoverLoan;
+    const needsGuarantors = savedNeedsGuarantors;
+
+    const steps = [
+      { key: 'documents', label: 'Upload Documents' },
+      ...(needsGuarantors ? [{ key: 'guarantors', label: 'Add Guarantors' }] : []),
+      { key: 'complete', label: 'Complete' },
+    ];
+    const currentStepIndex = steps.findIndex(s => s.key === applicationStep);
     
     return (
       <div className="space-y-6">
@@ -371,13 +398,51 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {needsGuarantors ? (
+            <div className="flex items-center justify-center gap-1 mb-6">
+              {steps.map((step, idx) => (
+                <div key={step.key} className="flex items-center gap-1">
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                    idx < currentStepIndex ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' :
+                    idx === currentStepIndex ? 'bg-primary text-primary-foreground' :
+                    'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                  }`}>
+                    {idx < currentStepIndex ? <CheckCircle className="h-3.5 w-3.5" /> : null}
+                    <span>{step.label}</span>
+                  </div>
+                  {idx < steps.length - 1 && (
+                    <div className={`w-6 h-0.5 ${idx < currentStepIndex ? 'bg-green-400' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {applicationStep === 'documents' && (
               <>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Your loan application has been created successfully. Now add guarantors to complete the application.
+                  Your loan application has been created. Please upload the required documents to proceed.
+                </p>
+                <LoanDocumentUpload
+                  loanId={currentLoanId}
+                  guarantors={needsGuarantors ? loanGuarantors : []}
+                  requiresGuarantors={false}
+                  onComplete={() => {
+                    if (needsGuarantors) {
+                      setApplicationStep('guarantors');
+                    } else {
+                      setApplicationStep('complete');
+                    }
+                  }}
+                />
+              </>
+            )}
+
+            {applicationStep === 'guarantors' && needsGuarantors && (
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Documents uploaded. Now add guarantors to complete the application.
                 </p>
                 <GuarantorList loanId={currentLoanId} />
-                <div className="mt-6">
+                <div className="mt-4">
                   {!showGuarantorForm ? (
                     <Button onClick={() => setShowGuarantorForm(true)} className="w-full">
                       <Plus className="h-4 w-4 mr-2" />
@@ -394,26 +459,48 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                     />
                   )}
                 </div>
+                {loanGuarantors.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium text-sm mb-2">Guarantor Documents (optional)</h4>
+                      <LoanDocumentUpload
+                        loanId={currentLoanId}
+                        guarantors={loanGuarantors}
+                        requiresGuarantors={true}
+                      />
+                    </div>
+                  </div>
+                )}
+                <Button
+                  className="w-full mt-4"
+                  onClick={() => setApplicationStep('complete')}
+                >
+                  Complete Application
+                </Button>
               </>
-            ) : (
+            )}
+
+            {applicationStep === 'complete' && (
               <div className="text-center p-6">
                 <div className="w-16 h-16 bg-green-100 dark:bg-green-950/50 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <FileText className="w-8 h-8 text-green-600" />
+                  <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Application Complete
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  {savingsCoverLoan 
-                    ? "Your loan application has been created successfully. Your savings fully cover this loan amount, so no guarantors are required. Your application is ready for review by the loan committee."
-                    : "Your loan application has been created successfully. This loan type does not require guarantors, so your application is ready for review by the loan committee."}
+                  {needsGuarantors 
+                    ? "Your loan application with documents and guarantors has been submitted. It is now ready for review by the loan committee."
+                    : "Your loan application with documents has been submitted. It is now ready for review by the loan committee."}
                 </p>
               </div>
             )}
+
             <Button
               variant="outline"
               onClick={() => {
                 setCurrentLoanId(null);
+                setApplicationStep('documents');
                 onSuccess();
               }}
               className="w-full mt-4"

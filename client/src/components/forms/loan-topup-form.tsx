@@ -17,6 +17,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { formatCurrency } from "@/lib/utils";
 import GuarantorForm from "./guarantor-form";
 import GuarantorList from "../guarantor/guarantor-list";
+import LoanDocumentUpload from "./loan-document-upload";
 import type { LoanTypeWithTerms } from "@shared/schema";
 
 const topUpSchema = z.object({
@@ -43,6 +44,7 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
   const [currentLoanId, setCurrentLoanId] = useState<number | null>(null);
   const [showGuarantorForm, setShowGuarantorForm] = useState(false);
   const [savedTopUpPrincipal, setSavedTopUpPrincipal] = useState(0);
+  const [applicationStep, setApplicationStep] = useState<'documents' | 'guarantors' | 'complete'>('documents');
 
   const { data: activeLoans = [], isLoading: loadingLoans } = useQuery<any[]>({
     queryKey: ['/api/loans/active-for-topup'],
@@ -206,14 +208,15 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
       const savingsCoverLoan = totalSavingsBalance >= totalNewPrincipal && totalNewPrincipal > 0;
       const needsGuarantors = requiresGuarantor && !savingsCoverLoan;
 
-      if (needsGuarantors && loanData?.id) {
+      if (loanData?.id) {
         setCurrentLoanId(loanData.id);
         setSavedTopUpPrincipal(totalNewPrincipal);
+        setApplicationStep('documents');
         toast({ title: "Top-Up Application Created",
-          description: "Now add guarantors to complete your application.", variant: "success" });
+          description: "Please upload the required documents to proceed.", variant: "success" });
       } else {
         toast({ title: "Success",
-          description: "Loan top-up application submitted successfully. It will go through the standard approval process.", variant: "success" });
+          description: "Loan top-up application submitted successfully.", variant: "success" });
         form.reset();
         onSuccess();
       }
@@ -257,10 +260,27 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
     );
   }
 
+  const { data: loanGuarantors = [] } = useQuery<any[]>({
+    queryKey: ['/api/guarantors/loan', currentLoanId],
+    queryFn: async () => {
+      const res = await fetch(`/api/guarantors/loan/${currentLoanId}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!currentLoanId,
+  });
+
   if (currentLoanId) {
     const requiresGuarantor = matchedLoanType?.requiresGuarantor ?? matchedLoanType?.requires_guarantor ?? true;
     const savingsCoverLoan = totalSavingsBalance >= savedTopUpPrincipal && savedTopUpPrincipal > 0;
     const needsGuarantors = requiresGuarantor && !savingsCoverLoan;
+
+    const steps = [
+      { key: 'documents', label: 'Upload Documents' },
+      ...(needsGuarantors ? [{ key: 'guarantors', label: 'Add Guarantors' }] : []),
+      { key: 'complete', label: 'Complete' },
+    ];
+    const currentStepIndex = steps.findIndex(s => s.key === applicationStep);
 
     return (
       <div className="space-y-6">
@@ -272,13 +292,51 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {needsGuarantors ? (
+            <div className="flex items-center justify-center gap-1 mb-6">
+              {steps.map((step, idx) => (
+                <div key={step.key} className="flex items-center gap-1">
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                    idx < currentStepIndex ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400' :
+                    idx === currentStepIndex ? 'bg-primary text-primary-foreground' :
+                    'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                  }`}>
+                    {idx < currentStepIndex ? <CheckCircle className="h-3.5 w-3.5" /> : null}
+                    <span>{step.label}</span>
+                  </div>
+                  {idx < steps.length - 1 && (
+                    <div className={`w-6 h-0.5 ${idx < currentStepIndex ? 'bg-green-400' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {applicationStep === 'documents' && (
               <>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Your loan top-up application has been created successfully. This loan type requires guarantors since your savings ({formatCurrency(totalSavingsBalance)}) do not fully cover the loan amount ({formatCurrency(savedTopUpPrincipal)}). Please add guarantors to complete the application.
+                  Your top-up application has been created. Please upload the required documents to proceed.
+                </p>
+                <LoanDocumentUpload
+                  loanId={currentLoanId}
+                  guarantors={needsGuarantors ? loanGuarantors : []}
+                  requiresGuarantors={false}
+                  onComplete={() => {
+                    if (needsGuarantors) {
+                      setApplicationStep('guarantors');
+                    } else {
+                      setApplicationStep('complete');
+                    }
+                  }}
+                />
+              </>
+            )}
+
+            {applicationStep === 'guarantors' && needsGuarantors && (
+              <>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Documents uploaded. Now add guarantors since your savings ({formatCurrency(totalSavingsBalance)}) do not fully cover the loan amount ({formatCurrency(savedTopUpPrincipal)}).
                 </p>
                 <GuarantorList loanId={currentLoanId} />
-                <div className="mt-6">
+                <div className="mt-4">
                   {!showGuarantorForm ? (
                     <Button onClick={() => setShowGuarantorForm(true)} className="w-full">
                       <Plus className="h-4 w-4 mr-2" />
@@ -295,8 +353,28 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                     />
                   )}
                 </div>
+                {loanGuarantors.length > 0 && (
+                  <div className="mt-4 space-y-3">
+                    <div className="border-t pt-4">
+                      <h4 className="font-medium text-sm mb-2">Guarantor Documents (optional)</h4>
+                      <LoanDocumentUpload
+                        loanId={currentLoanId}
+                        guarantors={loanGuarantors}
+                        requiresGuarantors={true}
+                      />
+                    </div>
+                  </div>
+                )}
+                <Button
+                  className="w-full mt-4"
+                  onClick={() => setApplicationStep('complete')}
+                >
+                  Complete Application
+                </Button>
               </>
-            ) : (
+            )}
+
+            {applicationStep === 'complete' && (
               <div className="text-center p-6">
                 <div className="w-16 h-16 bg-green-100 dark:bg-green-950/50 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-green-600" />
@@ -305,14 +383,18 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
                   Application Complete
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 mb-4">
-                  Your savings fully cover this loan amount, so no guarantors are required. Your top-up application is ready for review by the loan committee.
+                  {needsGuarantors
+                    ? "Your top-up application with documents and guarantors has been submitted. It will go through the standard approval process."
+                    : "Your top-up application with documents has been submitted. It is now ready for review by the loan committee."}
                 </p>
               </div>
             )}
+
             <Button
               variant="outline"
               onClick={() => {
                 setCurrentLoanId(null);
+                setApplicationStep('documents');
                 form.reset();
                 onSuccess();
               }}
