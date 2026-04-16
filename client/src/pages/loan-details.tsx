@@ -96,16 +96,6 @@ export default function LoanDetails() {
     enabled: !!loanId,
   });
 
-  const computedRestructurePayment = useMemo(() => {
-    const bal = parseFloat(loan?.outstandingBalance || '0');
-    const rate = parseFloat(restructureRate || '0');
-    const term = parseInt(restructureTerm || '0');
-    if (bal <= 0 || term <= 0) return 0;
-    const mr = rate / 100 / 12;
-    if (mr > 0) return Math.ceil(bal * (mr * Math.pow(1 + mr, term)) / (Math.pow(1 + mr, term) - 1));
-    return Math.ceil(bal / term);
-  }, [loan?.outstandingBalance, restructureRate, restructureTerm]);
-
   const { data: loan, isLoading } = useQuery<any>({
     queryKey: ['/api/loans', loanId],
     queryFn: async () => {
@@ -115,6 +105,16 @@ export default function LoanDetails() {
     },
     enabled: !!loanId,
   });
+
+  const computedRestructurePayment = useMemo(() => {
+    const bal = parseFloat(loan?.outstandingBalance || '0');
+    const rate = parseFloat(restructureRate || '0');
+    const term = parseInt(restructureTerm || '0');
+    if (bal <= 0 || term <= 0) return 0;
+    const mr = rate / 100 / 12;
+    if (mr > 0) return Math.ceil(bal * (mr * Math.pow(1 + mr, term)) / (Math.pow(1 + mr, term) - 1));
+    return Math.ceil(bal / term);
+  }, [loan?.outstandingBalance, restructureRate, restructureTerm]);
 
   const { data: transactions = [], isLoading: txnLoading } = useQuery<any[]>({
     queryKey: ['/api/loans', loanId, 'transactions'],
