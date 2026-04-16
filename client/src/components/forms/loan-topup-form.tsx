@@ -50,6 +50,16 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
     queryKey: ['/api/loans/active-for-topup'],
   });
 
+  const { data: loanGuarantors = [] } = useQuery<any[]>({
+    queryKey: ['/api/guarantors/loan', currentLoanId],
+    queryFn: async () => {
+      const res = await fetch(`/api/guarantors/loan/${currentLoanId}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!currentLoanId,
+  });
+
   const { data: loanTypes = [] } = useQuery<LoanTypeWithTerms[]>({
     queryKey: ['/api/loan-types/active'],
     queryFn: async () => {
@@ -259,16 +269,6 @@ export default function LoanTopUpForm({ onSuccess }: LoanTopUpFormProps) {
       </div>
     );
   }
-
-  const { data: loanGuarantors = [] } = useQuery<any[]>({
-    queryKey: ['/api/guarantors/loan', currentLoanId],
-    queryFn: async () => {
-      const res = await fetch(`/api/guarantors/loan/${currentLoanId}`);
-      if (!res.ok) return [];
-      return res.json();
-    },
-    enabled: !!currentLoanId,
-  });
 
   if (currentLoanId) {
     const requiresGuarantor = matchedLoanType?.requiresGuarantor ?? matchedLoanType?.requires_guarantor ?? true;
