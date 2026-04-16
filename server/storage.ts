@@ -101,7 +101,7 @@ export interface IStorage {
   getMembersCount(): Promise<number>;
   searchMembers(query: string): Promise<MemberWithDetails[]>;
   getPendingMembers(): Promise<MemberWithDetails[]>;
-  getMembersPaginated(page: number, limit: number, search?: string): Promise<{ data: MemberWithDetails[]; total: number }>;
+  getMembersPaginated(page: number, limit: number, search?: string, status?: string): Promise<{ data: MemberWithDetails[]; total: number }>;
   approveMember(id: number, approvedBy: string, comments?: string): Promise<Member>;
   rejectMember(id: number, approvedBy: string, comments?: string): Promise<Member>;
 
@@ -533,8 +533,13 @@ export class DatabaseStorage implements IStorage {
     return membersWithDetails;
   }
 
-  async getMembersPaginated(page: number, limit: number, search?: string): Promise<{ data: MemberWithDetails[]; total: number }> {
-    const conditions: any[] = [ne(members.status, 'exited')];
+  async getMembersPaginated(page: number, limit: number, search?: string, status?: string): Promise<{ data: MemberWithDetails[]; total: number }> {
+    const conditions: any[] = [];
+    if (status && status !== 'all') {
+      conditions.push(eq(members.status, status));
+    } else {
+      conditions.push(ne(members.status, 'exited'));
+    }
     if (search) {
       conditions.push(
         or(

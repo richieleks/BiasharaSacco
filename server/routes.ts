@@ -1416,7 +1416,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/members', isAuthenticated, filterDataByRole(), async (req: any, res) => {
     try {
-      const { search, page, limit } = req.query;
+      const { search, page, limit, status } = req.query;
       const pageNum = Math.max(1, parseInt(page as string) || 1);
       const limitNum = Math.min(100, Math.max(1, parseInt(limit as string) || 10));
 
@@ -1425,7 +1425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const isStaff = userRoles.some((role: string) => ['admin', 'committee', 'treasurer'].includes(role));
 
         if (isStaff) {
-          const result = await storage.getMembersPaginated(pageNum, limitNum, search as string);
+          const result = await storage.getMembersPaginated(pageNum, limitNum, search as string, status as string);
           return res.json(result);
         } else {
           const userId = getUserId(req);

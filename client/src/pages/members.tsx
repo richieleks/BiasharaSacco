@@ -15,7 +15,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Pagination } from "@/components/ui/pagination";
 import MemberForm from "@/components/forms/member-form";
-import { Search, Plus, Eye, Edit, Users, UserCheck, UserX, AlertCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Search, Plus, Eye, Edit, Users, UserCheck, UserX, AlertCircle, Filter } from "lucide-react";
 import type { MemberWithDetails } from "@shared/schema";
 
 export default function Members() {
@@ -37,6 +38,7 @@ export default function Members() {
   } = useServerPagination({ initialLimit: 10 });
 
   const [searchInput, setSearchInput] = useState("");
+  const [statusFilter, setStatusFilter] = useState("active");
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -60,10 +62,11 @@ export default function Members() {
   }, [isAuthenticated, isLoading, toast]);
 
   const queryParams = buildQueryParams();
+  const fullQueryParams = statusFilter ? `${queryParams}&status=${statusFilter}` : queryParams;
   const { data: response, isLoading: membersLoading, error } = useQuery<{ data: MemberWithDetails[]; total: number }>({
-    queryKey: ['/api/members', queryParams],
+    queryKey: ['/api/members', queryParams, statusFilter],
     queryFn: async () => {
-      const res = await fetch(`/api/members?${queryParams}`, { credentials: 'include' });
+      const res = await fetch(`/api/members?${fullQueryParams}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch members');
       return res.json();
     },
@@ -187,15 +190,31 @@ export default function Members() {
       </div>
 
       <div className="section-card p-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 h-4 w-4" />
-          <Input
-            data-testid="input-search-members"
-            placeholder="Search members by name, ID, or phone number..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-slate-500 h-4 w-4" />
+            <Input
+              data-testid="input-search-members"
+              placeholder="Search members by name, ID, or phone number..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val); setPage(1); }}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <Filter className="h-4 w-4 mr-2 text-slate-400" />
+              <SelectValue placeholder="Filter by status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Members</SelectItem>
+              <SelectItem value="active">Active</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="inactive">Inactive</SelectItem>
+              <SelectItem value="suspended">Suspended</SelectItem>
+              <SelectItem value="exited">Exited</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
