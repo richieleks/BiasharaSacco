@@ -169,6 +169,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       status: string;
     };
   }
+  async function splitLoanRepayment(loan: any, paymentAmount: number, currentOutstanding: number) {
+    const annualRateDecimal = parseFloat(loan?.interestRate || '0');
+    const monthlyRate = annualRateDecimal / 12;
+    let interestType = 'reducing_balance';
+    try {
+      const loanTypes = await storage.getActiveLoanTypes();
+      const cfg = loanTypes.find((lt: any) => lt.name === loan?.loanType);
+      if (cfg?.interestType) interestType = cfg.interestType as string;
+    } catch {}
+    const principalAmt = parseFloat(loan?.principalAmount || '0');
+    const monthlyPaymentAmt = parseFloat(loan?.monthlyPayment || '0');
+    const termMonths = loan?.termMonths || 1;
+
+    let interestPortion = 0;
+    let principalPortion = paymentAmount;
+    let balanceReduction = paymentAmount;
+
+    if (interestType === 'reducing_balance') {
+      const expectedInterest = Math.max(0, currentOutstanding * monthlyRate);
+      interestPortion = Math.min(paymentAmount, expectedInterest);
+      principalPortion = Math.max(0, paymentAmount - interestPortion);
+      balanceReduction = principalPortion;
+    } else {
+      const totalRepayable = monthlyPaymentAmt * termMonths;
+      const totalInterest = Math.max(0, totalRepayable - principalAmt);
+      const interestRatio = totalRepayable > 0 ? totalInterest / totalRepayable : 0;
+      interestPortion = Math.max(0, paymentAmount * interestRatio);
+      principalPortion = Math.max(0, paymentAmount - interestPortion);
+      balanceReduction = paymentAmount;
+    }
+    return { interestPortion, principalPortion, balanceReduction };
+  }
+
+  async function postLoanRepaymentJournals(loan: any, interestPortion: number, principalPortion: number, descriptionPrefix: string, reference: string, userId: string) {
+    if (interestPortion > 0) {
+      await recordJournalEntry('loan_interest_income', interestPortion, `${descriptionPrefix} (interest) - ${loan?.loanNumber || ''}`.trim(), reference, userId);
+    }
+    if (principalPortion > 0) {
+      await recordJournalEntry('loan_repayment_principal', principalPortion, `${descriptionPrefix} (principal) - ${loan?.loanNumber || ''}`.trim(), reference, userId);
+    }
+  }
+
   async function recordJournalEntry(mappingKey: string, amount: string | number, description: string, reference: string, userId: string) {
     try {
       const numericAmount = typeof amount === 'number' ? amount : parseFloat(amount);
@@ -3273,7 +3315,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (loanDetails.isTopUp && loanDetails.topUpOfLoanId) {
           const originalLoan = await storage.getLoan(loanDetails.topUpOfLoanId);
           const previousBalance = loanDetails.previousLoanBalance || originalLoan?.outstandingBalance || '0';
-          if (parseFloat(previousBalance) > 0) {
+          const prevBalanceNum = parseFloat(previousBalance);
+          const prevOutstandingNum = parseFloat(originalLoan?.outstandingBalance || '0');
+          if (prevBalanceNum > 0) {
             await storage.updateLoanBalance(loanDetails.topUpOfLoanId, previousBalance);
           }
           await storage.updateLoanStatus(loanDetails.topUpOfLoanId, 'completed');
@@ -3287,7 +3331,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             description: `Loan settled via top-up - ${originalLoan?.loanNumber || 'N/A'} replaced by ${loan.loanNumber}`,
             status: 'completed',
           });
-          await recordJournalEntry('loan_repayment_principal', previousBalance, `Loan settlement via top-up - ${originalLoan?.loanNumber || 'N/A'}`, settleRef, userId);
+          if (prevBalanceNum > 0 && originalLoan) {
+            const split = await splitLoanRepayment(originalLoan, prevBalanceNum, prevOutstandingNum);
+            await postLoanRepaymentJournals(originalLoan, split.interestPortion, split.principalPortion, 'Loan settlement via top-up', settleRef, userId);
+          }
         }
 
         await storage.createTransaction({
@@ -3517,13 +3564,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (loanDetails?.isTopUp && loanDetails?.topUpOfLoanId) {
         const originalLoan = await storage.getLoan(loanDetails.topUpOfLoanId);
         const previousBalance = loanDetails.previousLoanBalance || originalLoan?.outstandingBalance || '0';
-        
-        if (parseFloat(previousBalance) > 0) {
+        const prevBalanceNum = parseFloat(previousBalance);
+        const prevOutstandingNum = parseFloat(originalLoan?.outstandingBalance || '0');
+
+        if (prevBalanceNum > 0) {
           await storage.updateLoanBalance(loanDetails.topUpOfLoanId, previousBalance);
         }
-        
+
         await storage.updateLoanStatus(loanDetails.topUpOfLoanId, 'completed');
-        
+
         const settleRef = `STL${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
         await storage.createTransaction({
           memberId: loan.memberId,
@@ -3535,7 +3584,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'completed',
           processedBy: getUserId(req),
         });
-        await recordJournalEntry('loan_repayment_principal', previousBalance, `Loan settlement via top-up - ${originalLoan?.loanNumber || 'N/A'}`, settleRef, userId);
+        if (prevBalanceNum > 0 && originalLoan) {
+          const split = await splitLoanRepayment(originalLoan, prevBalanceNum, prevOutstandingNum);
+          await postLoanRepaymentJournals(originalLoan, split.interestPortion, split.principalPortion, 'Loan settlement via top-up', settleRef, userId);
+        }
       }
 
       await storage.createTransaction({
@@ -3663,35 +3715,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Determine interest vs principal split for journal entries and balance reduction
-      const annualRateDecimal = parseFloat(loanBefore.interestRate || '0');
-      const monthlyRate = annualRateDecimal / 12;
-      const loanTypes = await storage.getActiveLoanTypes();
-      const loanTypeCfg = loanTypes.find((lt: any) => lt.name === loanBefore.loanType);
-      const interestType = (loanTypeCfg?.interestType as string) || 'reducing_balance';
-      const principalAmt = parseFloat(loanBefore.principalAmount || '0');
-      const monthlyPaymentAmt = parseFloat(loanBefore.monthlyPayment || '0');
-      const termMonths = (loanBefore as any).termMonths || 1;
-
-      let interestPortion = 0;
-      let principalPortion = effectivePayment;
-      let balanceReduction = effectivePayment;
-
-      if (interestType === 'reducing_balance') {
-        // Outstanding tracks principal only; interest accrued = currentOutstanding * monthlyRate
-        const expectedInterest = Math.max(0, currentOutstanding * monthlyRate);
-        interestPortion = Math.min(effectivePayment, expectedInterest);
-        principalPortion = Math.max(0, effectivePayment - interestPortion);
-        balanceReduction = principalPortion; // only principal reduces the loan portfolio asset
-      } else {
-        // simple/compound: outstanding includes total interest baked-in.
-        // Allocate proportionally based on the schedule's principal:interest ratio per installment.
-        const totalRepayable = monthlyPaymentAmt * termMonths;
-        const totalInterest = Math.max(0, totalRepayable - principalAmt);
-        const interestRatio = totalRepayable > 0 ? totalInterest / totalRepayable : 0;
-        interestPortion = Math.max(0, effectivePayment * interestRatio);
-        principalPortion = Math.max(0, effectivePayment - interestPortion);
-        balanceReduction = effectivePayment; // outstanding includes future interest
-      }
+      const { interestPortion, principalPortion, balanceReduction } =
+        await splitLoanRepayment(loanBefore, effectivePayment, currentOutstanding);
 
       await storage.updateLoanBalance(loanId, balanceReduction.toFixed(2));
 
@@ -6669,13 +6694,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
               status: 'completed',
             });
 
-            await recordJournalEntry(
-              'loan_repayment_principal',
-              repaymentAmount,
-              `Imported loan repayment - ${member.memberNumber}`,
-              reference || `IMP-LR-${Date.now()}-${i}`,
-              userId
-            );
+            const importRef = reference || `IMP-LR-${Date.now()}-${i}`;
+            const split = await splitLoanRepayment(loan, repaymentAmount, outstandingBalance);
+            if (split.balanceReduction !== repaymentAmount) {
+              const correctedNewBalance = Math.max(0, outstandingBalance - split.balanceReduction);
+              await storage.updateLoanBalance(loan.id, split.balanceReduction.toFixed(2));
+              if (correctedNewBalance <= 0) {
+                await storage.updateLoanStatus(loan.id, 'completed');
+              }
+            }
+            await postLoanRepaymentJournals(loan, split.interestPortion, split.principalPortion, `Imported loan repayment - ${member.memberNumber}`, importRef, userId);
 
             if (['inactive', 'dormant'].includes(member.status)) {
               await db.update(members).set({
