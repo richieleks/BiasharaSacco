@@ -3046,6 +3046,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const approvedList = approvals.map((a: any) => ({
         id: a.id,
+        loanId: a.loanId || a.loan?.id,
         loanNumber: a.loan?.loanNumber || '-',
         memberName: a.loan?.member?.fullName || '-',
         memberNumber: a.loan?.member?.memberNumber || '-',

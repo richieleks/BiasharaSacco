@@ -74,6 +74,7 @@ function ManagerDashboard() {
 
 function CommitteeApprovalActivity() {
   const { isAuthenticated } = useAuth();
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState('all');
 
   const { data: activityData, isLoading } = useQuery<any>({
@@ -170,8 +171,16 @@ function CommitteeApprovalActivity() {
               </TableHeader>
               <TableBody>
                 {filteredActivity.map((item: any, idx: number) => (
-                  <TableRow key={`${item.action}-${item.id}-${idx}`}>
-                    <TableCell className="font-medium text-xs">{item.loanNumber}</TableCell>
+                  <TableRow
+                    key={`${item.action}-${item.id}-${idx}`}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => {
+                      const loanId = item.action === 'approved' ? item.loanId : item.id;
+                      if (loanId) setLocation(`/loans/${loanId}/details`);
+                    }}
+                    data-testid={`row-approval-activity-${item.loanNumber}`}
+                  >
+                    <TableCell className="font-medium text-xs text-blue-600 hover:underline">{item.loanNumber}</TableCell>
                     <TableCell>
                       <div>
                         <p className="text-sm font-medium">{item.memberName}</p>
