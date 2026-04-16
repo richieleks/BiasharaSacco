@@ -239,7 +239,7 @@ export default function LoanDocumentUpload({ loanId, guarantors = [], onComplete
                           {existingDoc ? (
                             <Badge variant="default" className="bg-green-600 text-xs">Uploaded</Badge>
                           ) : (
-                            <Badge variant="outline" className="text-xs text-slate-500">Optional</Badge>
+                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Required</Badge>
                           )}
                         </div>
                         {existingDoc ? (
@@ -303,13 +303,15 @@ export default function LoanDocumentUpload({ loanId, guarantors = [], onComplete
         </div>
       )}
 
-      {!requiredDocsComplete && (
+      {!allDocsComplete && (
         <div className="p-4 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-3">
           <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0" />
           <div>
             <p className="font-medium text-sm text-amber-800 dark:text-amber-300">Required documents pending</p>
             <p className="text-xs text-amber-600 dark:text-amber-400">
-              Please upload the signed loan application and provident commitment documents.
+              {!requiredDocsComplete
+                ? "Please upload the signed loan application and provident commitment documents."
+                : "Please upload signed guarantee documents for every guarantor."}
             </p>
           </div>
         </div>
@@ -319,9 +321,10 @@ export default function LoanDocumentUpload({ loanId, guarantors = [], onComplete
         <Button
           onClick={onComplete}
           className="w-full"
-          disabled={!requiredDocsComplete}
+          disabled={!allDocsComplete}
+          data-testid="button-docs-continue"
         >
-          {requiredDocsComplete ? "Continue" : "Upload Required Documents to Continue"}
+          {allDocsComplete ? "Continue" : "Upload Required Documents to Continue"}
         </Button>
       )}
     </div>
