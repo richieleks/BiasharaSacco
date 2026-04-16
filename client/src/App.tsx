@@ -47,6 +47,7 @@ import FinancialStatements from "@/pages/financial-statements";
 import Dividends from "@/pages/dividends";
 import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
+import { QRCodeSVG } from "qrcode.react";
 
 function ProtectedRoute({ children, requiredPermission }: { children: React.ReactNode, requiredPermission?: { action: string, resource: string } }) {
   const { hasPermission, isLoading } = useRBAC();
@@ -164,6 +165,172 @@ function MaintenanceScreen({ announcement }: { announcement?: string }) {
   );
 }
 
+function TwoFactorEnrollmentScreen() {
+  const [setupData, setSetupData] = useState<{ secret: string; uri: string } | null>(null);
+  const [verifyCode, setVerifyCode] = useState("");
+  const [error, setError] = useState("");
+  const [secretCopied, setSecretCopied] = useState(false);
+  const [isSettingUp, setIsSettingUp] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+
+  const startSetup = useCallback(async () => {
+    setIsSettingUp(true);
+    setError("");
+    try {
+      const res = await fetch('/api/auth/2fa/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      if (!res.ok) throw new Error('Failed to set up 2FA');
+      const data = await res.json();
+      setSetupData(data);
+    } catch {
+      setError('Failed to generate 2FA setup. Please try again.');
+    } finally {
+      setIsSettingUp(false);
+    }
+  }, []);
+
+  useEffect(() => { startSetup(); }, [startSetup]);
+
+  const handleVerify = async () => {
+    setIsVerifying(true);
+    setError("");
+    try {
+      const res = await fetch('/api/auth/2fa/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: verifyCode }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Invalid verification code');
+      }
+      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-white to-emerald-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 px-4">
+      <div className="max-w-md w-full space-y-6">
+        <div className="text-center">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 mx-auto mb-4">
+            <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-white">
+            Two-Factor Authentication Required
+          </h1>
+          <p className="mt-2 text-slate-600 dark:text-slate-400">
+            Your organization requires two-factor authentication. Set up an authenticator app to continue using the system.
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
+          {isSettingUp ? (
+            <div className="flex flex-col items-center gap-3 py-8">
+              <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+              <p className="text-sm text-slate-500 dark:text-slate-400">Generating your setup code...</p>
+            </div>
+          ) : setupData ? (
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-300 text-center">
+                Scan this QR code with your authenticator app (Google Authenticator, Authy, Microsoft Authenticator)
+              </p>
+              <div className="flex flex-col items-center gap-3">
+                <div className="bg-white p-4 rounded-xl border border-slate-100">
+                  <QRCodeSVG value={setupData.uri} size={180} level="M" />
+                </div>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Or enter this key manually:</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-xs bg-slate-100 dark:bg-slate-700 px-3 py-2 rounded-lg font-mono text-slate-700 dark:text-slate-300 select-all">{setupData.secret}</code>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(setupData.secret);
+                      setSecretCopied(true);
+                      setTimeout(() => setSecretCopied(false), 2000);
+                    }}
+                    className="p-1.5 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+                    title="Copy secret key"
+                  >
+                    {secretCopied ? (
+                      <svg className="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    ) : (
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" /></svg>
+                    )}
+                  </button>
+                </div>
+              </div>
+              <div className="space-y-2 pt-2">
+                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Enter the 6-digit code from your app</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  placeholder="000000"
+                  value={verifyCode}
+                  onChange={(e) => { setVerifyCode(e.target.value.replace(/\D/g, '')); setError(""); }}
+                  className="w-full h-12 text-center text-2xl tracking-[0.5em] bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 text-slate-900 dark:text-white rounded-xl px-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  autoFocus
+                />
+              </div>
+              {error && (
+                <div className="flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+                  <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" /></svg>
+                  {error}
+                </div>
+              )}
+              <button
+                onClick={handleVerify}
+                disabled={isVerifying || verifyCode.length !== 6}
+                className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                {isVerifying ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                    Verify & Enable 2FA
+                  </>
+                )}
+              </button>
+            </div>
+          ) : error ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+                {error}
+              </div>
+              <button
+                onClick={startSetup}
+                className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="text-center">
+          <button
+            onClick={async () => {
+              await fetch('/api/auth/logout', { method: 'POST' });
+              window.location.href = '/login';
+            }}
+            className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 underline transition-colors"
+          >
+            Sign out and return to login
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function FullPageLoader() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
@@ -250,6 +417,10 @@ function Router() {
 
   if (!isAdmin && maintenanceStatus?.maintenanceMode) {
     return <MaintenanceScreen announcement={maintenanceStatus.systemAnnouncement} />;
+  }
+
+  if ((user as any)?.mustSetup2FA) {
+    return <TwoFactorEnrollmentScreen />;
   }
 
   return (

@@ -3,12 +3,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, LogIn, Building2, Shield, Users, PiggyBank, KeyRound, TrendingUp, Lock, Eye, EyeOff } from "lucide-react";
+import { Loader2, LogIn, Building2, Shield, Users, PiggyBank, KeyRound, TrendingUp, Lock, Eye, EyeOff, Smartphone, Copy, CheckCircle } from "lucide-react";
 import { SaccoLogo } from "@/components/sacco-logo";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
+import { QRCodeSVG } from "qrcode.react";
 import {
   Dialog,
   DialogContent,
@@ -32,8 +33,60 @@ export function LoginPage() {
   const [show2FA, setShow2FA] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [twoFactorUsername, setTwoFactorUsername] = useState("");
+  const [show2FAEnrollment, setShow2FAEnrollment] = useState(false);
+  const [enrollmentData, setEnrollmentData] = useState<{ secret: string; uri: string } | null>(null);
+  const [enrollmentCode, setEnrollmentCode] = useState("");
+  const [enrollmentError, setEnrollmentError] = useState("");
+  const [secretCopied, setSecretCopied] = useState(false);
+
+  const [pendingMustSetup2FA, setPendingMustSetup2FA] = useState(false);
 
   const isSessionExpired = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('expired') === '1';
+
+  const setupEnrollmentMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch('/api/auth/2fa/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+      if (!res.ok) throw new Error('Failed to set up 2FA');
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setEnrollmentData(data);
+    },
+    onError: () => {
+      setEnrollmentError('Failed to generate 2FA setup. Please try again.');
+    },
+  });
+
+  const verifyEnrollmentMutation = useMutation({
+    mutationFn: async (code: string) => {
+      const res = await fetch('/api/auth/2fa/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || 'Invalid verification code');
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      setShow2FAEnrollment(false);
+      window.location.href = "/";
+    },
+    onError: (error: Error) => {
+      setEnrollmentError(error.message);
+    },
+  });
+
+  const startEnrollment = () => {
+    setShow2FAEnrollment(true);
+    setEnrollmentError("");
+    setEnrollmentCode("");
+    setEnrollmentData(null);
+    setSecretCopied(false);
+    setupEnrollmentMutation.mutate();
+  };
 
   const changePasswordMutation = useMutation({
     mutationFn: async (data: { newPassword: string }) => {
@@ -50,7 +103,11 @@ export function LoginPage() {
     },
     onSuccess: () => {
       setShowChangePassword(false);
-      window.location.href = "/";
+      if (pendingMustSetup2FA) {
+        startEnrollment();
+      } else {
+        window.location.href = "/";
+      }
     },
     onError: (error: Error) => {
       setChangePasswordError(error.message);
@@ -93,7 +150,12 @@ export function LoginPage() {
         return;
       }
       if (data.mustChangePassword) {
+        if (data.mustSetup2FA) {
+          setPendingMustSetup2FA(true);
+        }
         setShowChangePassword(true);
+      } else if (data.mustSetup2FA) {
+        startEnrollment();
       } else {
         window.location.href = "/";
       }
@@ -451,6 +513,115 @@ export function LoginPage() {
               )}
             </Button>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={show2FAEnrollment} onOpenChange={() => {}}>
+        <DialogContent className="sm:max-w-lg bg-slate-900 border-white/10 text-white" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <div className="flex justify-center mb-4">
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-2xl p-4">
+                <Smartphone className="h-8 w-8 text-emerald-400" />
+              </div>
+            </div>
+            <DialogTitle className="text-center text-white text-xl">Set Up Two-Factor Authentication</DialogTitle>
+            <DialogDescription className="text-center text-slate-400">
+              Your organization requires two-factor authentication. Set up an authenticator app to secure your account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {setupEnrollmentMutation.isPending ? (
+              <div className="flex flex-col items-center gap-3 py-8">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-400" />
+                <p className="text-sm text-slate-400">Generating your setup code...</p>
+              </div>
+            ) : enrollmentData ? (
+              <>
+                <div className="space-y-3">
+                  <p className="text-sm text-slate-300 text-center">
+                    Scan this QR code with your authenticator app (Google Authenticator, Authy, Microsoft Authenticator, etc.)
+                  </p>
+                  <div className="flex flex-col items-center gap-3">
+                    <div className="bg-white p-4 rounded-xl">
+                      <QRCodeSVG value={enrollmentData.uri} size={180} level="M" />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-xs text-slate-500">Or enter this key manually:</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <code className="text-xs bg-white/[0.06] border border-white/[0.1] px-3 py-2 rounded-lg font-mono text-slate-300 select-all">{enrollmentData.secret}</code>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-slate-400 hover:text-white h-8 w-8 p-0"
+                        onClick={() => {
+                          navigator.clipboard.writeText(enrollmentData.secret);
+                          setSecretCopied(true);
+                          setTimeout(() => setSecretCopied(false), 2000);
+                        }}
+                      >
+                        {secretCopied ? <CheckCircle className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-2 pt-2">
+                  <Label htmlFor="enrollmentCode" className="text-slate-300 text-sm">Enter the 6-digit code from your app to verify</Label>
+                  <Input
+                    id="enrollmentCode"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    placeholder="000000"
+                    value={enrollmentCode}
+                    onChange={(e) => { setEnrollmentCode(e.target.value.replace(/\D/g, '')); setEnrollmentError(""); }}
+                    className="h-12 text-center text-2xl tracking-[0.5em] bg-white/[0.06] border-white/[0.1] text-white placeholder:text-slate-500 focus:border-emerald-500/50 rounded-xl"
+                    autoFocus
+                  />
+                </div>
+                {enrollmentError && (
+                  <div className="flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                    <Shield className="h-4 w-4 flex-shrink-0" />
+                    {enrollmentError}
+                  </div>
+                )}
+                <Button
+                  type="button"
+                  className="w-full h-11 bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-500 hover:to-emerald-400 text-white shadow-lg shadow-emerald-500/25 rounded-xl font-semibold"
+                  disabled={verifyEnrollmentMutation.isPending || enrollmentCode.length !== 6}
+                  onClick={() => verifyEnrollmentMutation.mutate(enrollmentCode)}
+                >
+                  {verifyEnrollmentMutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4" />
+                      Verify & Enable 2FA
+                    </>
+                  )}
+                </Button>
+              </>
+            ) : enrollmentError ? (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+                  <Shield className="h-4 w-4 flex-shrink-0" />
+                  {enrollmentError}
+                </div>
+                <Button
+                  type="button"
+                  className="w-full h-11 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl font-semibold"
+                  onClick={() => setupEnrollmentMutation.mutate()}
+                >
+                  Try Again
+                </Button>
+              </div>
+            ) : null}
+          </div>
         </DialogContent>
       </Dialog>
 

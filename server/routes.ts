@@ -240,6 +240,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const { password, twoFactorSecret: _tfs, ...userWithoutPassword } = user as typeof user & { password?: string; twoFactorSecret?: string };
+
+      let mustSetup2FA = false;
+      if (!user.twoFactorEnabled) {
+        try {
+          const setting = await storage.getSystemSetting('twoFactorRequired');
+          if (setting?.settingValue === 'true') {
+            mustSetup2FA = true;
+          }
+        } catch (e) {}
+      }
       
       if (member) {
         const freshMember = await storage.getMemberByUserId(userId);
@@ -251,16 +261,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           res.json({
             ...userWithoutPassword,
+            mustSetup2FA,
             member: {
               ...freshMember,
               roles: roles.length > 0 ? roles : [freshMember.role || 'member']
             }
           });
         } else {
-          res.json({ ...userWithoutPassword, member: null, isAdmin: user.role === 'admin' });
+          res.json({ ...userWithoutPassword, mustSetup2FA, member: null, isAdmin: user.role === 'admin' });
         }
       } else {
-        res.json({ ...userWithoutPassword, member: null, isAdmin: user.role === 'admin' });
+        res.json({ ...userWithoutPassword, mustSetup2FA, member: null, isAdmin: user.role === 'admin' });
       }
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -413,7 +424,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           } catch (e) {}
           const { password: _, twoFactorSecret: __, ...safeUser } = user;
-          return res.json({ message: "Login successful", user: safeUser, mustChangePassword: user.mustChangePassword || false });
+          let mustSetup2FA = false;
+          if (!user.twoFactorEnabled) {
+            try {
+              const setting = await storage.getSystemSetting('twoFactorRequired');
+              if (setting?.settingValue === 'true') {
+                mustSetup2FA = true;
+              }
+            } catch (e) {}
+          }
+          return res.json({ message: "Login successful", user: safeUser, mustChangePassword: user.mustChangePassword || false, mustSetup2FA });
         });
       })(req, res, next);
     }
