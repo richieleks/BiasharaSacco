@@ -5372,8 +5372,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Reports API endpoints (generic - must be after specific report routes)
-  app.get('/api/reports/:reportType', isAuthenticated, async (req: any, res) => {
+  app.get('/api/reports/:reportType', isAuthenticated, async (req: any, res, next) => {
+    const financialStatementTypes = ['trial-balance', 'balance-sheet', 'income-statement'];
+    if (financialStatementTypes.includes(req.params.reportType)) {
+      return next();
+    }
     try {
       const { reportType } = req.params;
       const { startDate, endDate, memberNumber, status } = req.query;
