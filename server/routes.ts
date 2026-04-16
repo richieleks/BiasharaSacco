@@ -3662,8 +3662,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Loan is already fully paid" });
       }
 
-      await storage.updateLoanBalance(loanId, effectivePayment.toFixed(2));
-      
+      // Determine interest vs principal split for journal entries and balance reduction
+      const annualRateDecimal = parseFloat(loanBefore.interestRate || '0');
+      const monthlyRate = annualRateDecimal / 12;
+      const loanTypes = await storage.getActiveLoanTypes();
+      const loanTypeCfg = loanTypes.find((lt: any) => lt.name === loanBefore.loanType);
+      const interestType = (loanTypeCfg?.interestType as string) || 'reducing_balance';
+      const principalAmt = parseFloat(loanBefore.principalAmount || '0');
+      const monthlyPaymentAmt = parseFloat(loanBefore.monthlyPayment || '0');
+      const termMonths = (loanBefore as any).termMonths || 1;
+
+      let interestPortion = 0;
+      let principalPortion = effectivePayment;
+      let balanceReduction = effectivePayment;
+
+      if (interestType === 'reducing_balance') {
+        // Outstanding tracks principal only; interest accrued = currentOutstanding * monthlyRate
+        const expectedInterest = Math.max(0, currentOutstanding * monthlyRate);
+        interestPortion = Math.min(effectivePayment, expectedInterest);
+        principalPortion = Math.max(0, effectivePayment - interestPortion);
+        balanceReduction = principalPortion; // only principal reduces the loan portfolio asset
+      } else {
+        // simple/compound: outstanding includes total interest baked-in.
+        // Allocate proportionally based on the schedule's principal:interest ratio per installment.
+        const totalRepayable = monthlyPaymentAmt * termMonths;
+        const totalInterest = Math.max(0, totalRepayable - principalAmt);
+        const interestRatio = totalRepayable > 0 ? totalInterest / totalRepayable : 0;
+        interestPortion = Math.max(0, effectivePayment * interestRatio);
+        principalPortion = Math.max(0, effectivePayment - interestPortion);
+        balanceReduction = effectivePayment; // outstanding includes future interest
+      }
+
+      await storage.updateLoanBalance(loanId, balanceReduction.toFixed(2));
+
       const loan = await storage.getLoan(loanId);
       if (!loan) {
         return res.status(404).json({ message: "Loan not found" });
@@ -3675,7 +3706,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const referenceNumber = `PAY${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-      
+
       const transaction = await storage.createTransaction({
         memberId: loan.memberId!,
         loanId,
@@ -3687,7 +3718,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         processedBy: getUserId(req),
       });
 
-      await recordJournalEntry('loan_repayment_principal', effectivePayment, `Loan repayment - ${loan.loanNumber}`, referenceNumber, getUserId(req)!);
+      if (interestPortion > 0) {
+        await recordJournalEntry('loan_interest_income', interestPortion, `Loan interest - ${loan.loanNumber}`, referenceNumber, getUserId(req)!);
+      }
+      if (principalPortion > 0) {
+        await recordJournalEntry('loan_repayment_principal', principalPortion, `Loan principal repayment - ${loan.loanNumber}`, referenceNumber, getUserId(req)!);
+      }
 
       const paymentMember = await storage.getMember(loan.memberId!);
       if (paymentMember && ['inactive', 'dormant'].includes(paymentMember.status)) {

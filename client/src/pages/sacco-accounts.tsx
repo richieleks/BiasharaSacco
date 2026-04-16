@@ -16,7 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Landmark, Plus, ArrowRightLeft, RotateCcw, Search,
   TrendingUp, TrendingDown, Wallet, Building2, PiggyBank,
-  ChevronLeft, ChevronRight, DollarSign, Scale, Link2, Save, Check
+  ChevronLeft, ChevronRight, DollarSign, Scale, Link2, Save, Check, FileText
 } from "lucide-react";
 import type { SaccoAccount, SaccoAccountMapping } from "@shared/schema";
 
@@ -61,6 +61,9 @@ export default function SaccoAccounts() {
   const [showEntryDialog, setShowEntryDialog] = useState(false);
   const [editingAccount, setEditingAccount] = useState<SaccoAccount | null>(null);
   const [journalPage, setJournalPage] = useState(1);
+  const [statementAccount, setStatementAccount] = useState<SaccoAccount | null>(null);
+  const [stmtStartDate, setStmtStartDate] = useState<string>("");
+  const [stmtEndDate, setStmtEndDate] = useState<string>("");
 
   const { data: accounts = [], isLoading: accountsLoading } = useQuery<SaccoAccount[]>({
     queryKey: ['/api/sacco-accounts'],
@@ -75,6 +78,20 @@ export default function SaccoAccounts() {
     queryFn: async () => {
       const res = await fetch(`/api/sacco-journal-entries?page=${journalPage}&limit=15`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch');
+      return res.json();
+    },
+  });
+
+  const { data: statementEntries = [], isLoading: statementLoading } = useQuery<any[]>({
+    queryKey: ['/api/sacco-accounts', statementAccount?.id, 'statement', stmtStartDate, stmtEndDate],
+    enabled: !!statementAccount,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (stmtStartDate) params.set('startDate', stmtStartDate);
+      if (stmtEndDate) params.set('endDate', stmtEndDate);
+      const qs = params.toString() ? `?${params.toString()}` : '';
+      const res = await fetch(`/api/sacco-accounts/${statementAccount!.id}/statement${qs}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch statement');
       return res.json();
     },
   });
@@ -286,18 +303,29 @@ export default function SaccoAccounts() {
                                 {acc.isActive ? "Active" : "Inactive"}
                               </Badge>
                             </TableCell>
-                            {canManage && (
-                              <TableCell>
+                            <TableCell>
+                              <div className="flex justify-end gap-1">
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => { setEditingAccount(acc); setShowAccountDialog(true); }}
-                                  data-testid={`button-edit-account-${acc.id}`}
+                                  onClick={() => { setStatementAccount(acc); setStmtStartDate(""); setStmtEndDate(""); }}
+                                  data-testid={`button-statement-account-${acc.id}`}
+                                  title="View statement"
                                 >
-                                  Edit
+                                  <FileText className="h-4 w-4" />
                                 </Button>
-                              </TableCell>
-                            )}
+                                {canManage && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => { setEditingAccount(acc); setShowAccountDialog(true); }}
+                                    data-testid={`button-edit-account-${acc.id}`}
+                                  >
+                                    Edit
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -515,6 +543,139 @@ export default function SaccoAccounts() {
         onSubmit={(data) => createEntryMutation.mutate(data)}
         isPending={createEntryMutation.isPending}
       />
+
+      <Dialog open={!!statementAccount} onOpenChange={(open) => { if (!open) setStatementAccount(null); }}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Account Statement{statementAccount ? ` — ${statementAccount.accountCode} ${statementAccount.accountName}` : ''}
+            </DialogTitle>
+          </DialogHeader>
+          {statementAccount && (
+            <AccountStatementView
+              account={statementAccount}
+              entries={statementEntries}
+              isLoading={statementLoading}
+              startDate={stmtStartDate}
+              endDate={stmtEndDate}
+              onStartDateChange={setStmtStartDate}
+              onEndDateChange={setStmtEndDate}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function AccountStatementView({
+  account, entries, isLoading, startDate, endDate, onStartDateChange, onEndDateChange,
+}: {
+  account: SaccoAccount;
+  entries: any[];
+  isLoading: boolean;
+  startDate: string;
+  endDate: string;
+  onStartDateChange: (v: string) => void;
+  onEndDateChange: (v: string) => void;
+}) {
+  const isDebitNormal = account.accountType === 'asset' || account.accountType === 'expense';
+  let runningBalance = 0;
+  const rows = entries.map((e) => {
+    const isDebitSide = e.debitAccountId === account.id;
+    const amt = parseFloat(e.amount || '0');
+    const debit = isDebitSide ? amt : 0;
+    const credit = isDebitSide ? 0 : amt;
+    runningBalance += isDebitNormal ? (debit - credit) : (credit - debit);
+    const counterparty = isDebitSide ? e.creditAccountName : e.debitAccountName;
+    return { ...e, debit, credit, counterparty, balance: runningBalance };
+  });
+  const totalDebits = rows.reduce((s, r) => s + r.debit, 0);
+  const totalCredits = rows.reduce((s, r) => s + r.credit, 0);
+
+  const exportCsv = () => {
+    const header = ['Date', 'Entry #', 'Description', 'Reference', 'Counterparty', 'Debit', 'Credit', 'Balance'];
+    const lines = [header.join(',')];
+    for (const r of rows) {
+      const cells = [
+        r.entryDate,
+        r.entryNumber || '',
+        `"${(r.description || '').replace(/"/g, '""')}"`,
+        r.reference || '',
+        `"${(r.counterparty || '').replace(/"/g, '""')}"`,
+        r.debit.toFixed(2),
+        r.credit.toFixed(2),
+        r.balance.toFixed(2),
+      ];
+      lines.push(cells.join(','));
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `statement-${account.accountCode}-${Date.now()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <Label className="text-xs">Start date</Label>
+          <Input type="date" value={startDate} onChange={(e) => onStartDateChange(e.target.value)} className="h-9 w-44" data-testid="input-stmt-start" />
+        </div>
+        <div>
+          <Label className="text-xs">End date</Label>
+          <Input type="date" value={endDate} onChange={(e) => onEndDateChange(e.target.value)} className="h-9 w-44" data-testid="input-stmt-end" />
+        </div>
+        <Button variant="outline" size="sm" onClick={() => { onStartDateChange(""); onEndDateChange(""); }}>Clear</Button>
+        <div className="flex-1" />
+        <Button variant="outline" size="sm" onClick={exportCsv} disabled={rows.length === 0} data-testid="button-stmt-export">
+          Export CSV
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+        <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Total Debits</div><div className="font-semibold tabular-nums">{formatCurrency(totalDebits)}</div></CardContent></Card>
+        <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Total Credits</div><div className="font-semibold tabular-nums">{formatCurrency(totalCredits)}</div></CardContent></Card>
+        <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Closing Balance</div><div className="font-semibold tabular-nums">{formatCurrency(runningBalance)}</div></CardContent></Card>
+      </div>
+
+      {isLoading ? (
+        <div className="h-40 bg-muted animate-pulse rounded" />
+      ) : rows.length === 0 ? (
+        <div className="p-8 text-center text-muted-foreground text-sm">No journal entries for this account in the selected period.</div>
+      ) : (
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Entry #</TableHead>
+                <TableHead>Description</TableHead>
+                <TableHead>Counterparty</TableHead>
+                <TableHead className="text-right">Debit</TableHead>
+                <TableHead className="text-right">Credit</TableHead>
+                <TableHead className="text-right">Balance</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {rows.map((r) => (
+                <TableRow key={r.id}>
+                  <TableCell className="text-xs whitespace-nowrap">{r.entryDate}</TableCell>
+                  <TableCell className="text-xs font-mono">{r.entryNumber}</TableCell>
+                  <TableCell className="text-sm">{r.description}{r.reference && <div className="text-xs text-muted-foreground">{r.reference}</div>}</TableCell>
+                  <TableCell className="text-xs">{r.counterparty}</TableCell>
+                  <TableCell className="text-right tabular-nums">{r.debit > 0 ? formatCurrency(r.debit) : '-'}</TableCell>
+                  <TableCell className="text-right tabular-nums">{r.credit > 0 ? formatCurrency(r.credit) : '-'}</TableCell>
+                  <TableCell className="text-right tabular-nums font-medium">{formatCurrency(r.balance)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 }
