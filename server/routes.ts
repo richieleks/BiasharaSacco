@@ -397,10 +397,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        req.logIn(user, (err) => {
+        req.logIn(user, async (err) => {
           if (err) {
             return res.status(500).json({ message: "Login error" });
           }
+          try {
+            await storage.createAuditLog({
+              userId: user.id,
+              action: 'login',
+              resource: 'user',
+              resourceId: user.id,
+              details: `User logged in: ${user.username}`,
+              ipAddress: req.ip,
+              userAgent: req.headers['user-agent'],
+            });
+          } catch (e) {}
           const { password: _, twoFactorSecret: __, ...safeUser } = user;
           return res.json({ message: "Login successful", user: safeUser, mustChangePassword: user.mustChangePassword || false });
         });
@@ -439,10 +450,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (delta === null) {
             return res.status(401).json({ message: "Invalid verification code" });
           }
-          req.logIn(user, (err) => {
+          req.logIn(user, async (err) => {
             if (err) {
               return res.status(500).json({ message: "Login error" });
             }
+            try {
+              await storage.createAuditLog({
+                userId: user.id,
+                action: 'login',
+                resource: 'user',
+                resourceId: user.id,
+                details: `User logged in via 2FA: ${user.username}`,
+                ipAddress: req.ip,
+                userAgent: req.headers['user-agent'],
+              });
+            } catch (e) {}
             const { password: _, twoFactorSecret: __, ...safeUser } = user;
             return res.json({ message: "Login successful", user: safeUser, mustChangePassword: user.mustChangePassword || false });
           });
@@ -1723,17 +1745,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
-      if (requestingMember) {
-        await storage.createAuditLog({
-          userId: getUserId(req)!,
-          action: 'update',
-          resource: 'member',
-          resourceId: memberId.toString(),
-          details: `Updated member profile: ${updatedMember.memberNumber}`,
-          ipAddress: req.ip,
-          userAgent: req.headers['user-agent']
-        });
-      }
+      await storage.createAuditLog({
+        userId: getUserId(req)!,
+        action: 'update',
+        resource: 'member',
+        resourceId: memberId.toString(),
+        details: `Updated member profile: ${updatedMember.memberNumber}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent']
+      });
 
       broadcastDataUpdate(['/api/members', '/api/dashboard', '/api/loans']);
       res.json(updatedMember);

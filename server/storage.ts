@@ -1993,11 +1993,14 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(auditLogs.timestamp))
       .limit(limit);
 
-    return results.map(r => ({
-      ...r.log,
-      user: r.user || undefined,
-      member: r.member || undefined,
-    }));
+    return results.map(r => {
+      const { password, twoFactorSecret, ...safeUser } = r.user || {} as any;
+      return {
+        ...r.log,
+        user: r.user ? safeUser : undefined,
+        member: r.member || undefined,
+      };
+    });
   }
 
   async getAuditLogsPaginated(page: number, limit: number, search?: string, resource?: string, action?: string): Promise<{ data: any[]; total: number }> {
@@ -2040,11 +2043,14 @@ export class DatabaseStorage implements IStorage {
       .limit(limit)
       .offset(offset);
 
-    const data = results.map(r => ({
-      ...r.log,
-      user: r.user || undefined,
-      member: r.member || undefined,
-    }));
+    const data = results.map(r => {
+      const { password, twoFactorSecret, ...safeUser } = r.user || {} as any;
+      return {
+        ...r.log,
+        user: r.user ? safeUser : undefined,
+        member: r.member || undefined,
+      };
+    });
 
     return { data, total: Number(countResult.value) };
   }
