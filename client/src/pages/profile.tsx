@@ -45,7 +45,7 @@ const changePasswordSchema = z.object({
 
 type ChangePasswordData = z.infer<typeof changePasswordSchema>;
 
-function TwoFactorSetup() {
+export function TwoFactorSetup() {
   const { user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();

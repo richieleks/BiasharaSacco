@@ -41,8 +41,12 @@ import {
   Search,
   UserCheck,
   AlertCircle,
-  Lock
+  Lock,
+  KeyRound,
+  Eye,
+  EyeOff
 } from "lucide-react";
+import { TwoFactorSetup } from "@/pages/profile";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useLocation } from "wouter";
@@ -66,7 +70,7 @@ const userSettingsSchema = z.object({
   theme: z.enum(["light", "dark", "system"]).default("system"),
   language: z.enum(["en", "sw"]).default("en"),
   soundEnabled: z.boolean().default(true),
-  autoLogout: z.number().min(15).max(480).default(120), // minutes
+  autoLogout: z.number().min(15).max(480).default(15), // minutes
 });
 
 type UserSettingsData = z.infer<typeof userSettingsSchema>;
@@ -75,6 +79,126 @@ interface RoleFormData {
   name: string;
   displayName: string;
   description: string;
+}
+
+function ChangePasswordCard() {
+  const { toast } = useToast();
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/auth/change-password', {
+        currentPassword,
+        newPassword,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Password Changed", description: "Your password has been updated successfully.", variant: "success" });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Change Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 8) {
+      toast({ title: "Password Too Short", description: "New password must be at least 8 characters.", variant: "destructive" });
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast({ title: "Passwords Do Not Match", description: "New password and confirmation must match.", variant: "destructive" });
+      return;
+    }
+    changePasswordMutation.mutate();
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <KeyRound className="h-4 w-4" />
+          Change Password
+        </CardTitle>
+        <CardDescription>Update your account password</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
+          <div className="space-y-2">
+            <Label htmlFor="current-password">Current Password</Label>
+            <div className="relative">
+              <Input
+                id="current-password"
+                type={showCurrent ? "text" : "password"}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder="Enter current password"
+                data-testid="input-current-password"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrent(!showCurrent)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="new-password">New Password</Label>
+            <div className="relative">
+              <Input
+                id="new-password"
+                type={showNew ? "text" : "password"}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="Enter new password (min 8 characters)"
+                data-testid="input-new-password"
+                required
+                minLength={8}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="confirm-password">Confirm New Password</Label>
+            <Input
+              id="confirm-password"
+              type={showNew ? "text" : "password"}
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Re-enter new password"
+              data-testid="input-confirm-password"
+              required
+              minLength={8}
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={changePasswordMutation.isPending || !currentPassword || !newPassword || !confirmPassword}
+            data-testid="button-change-password"
+          >
+            {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
 }
 
 export default function SettingsPage() {
@@ -111,7 +235,7 @@ export default function SettingsPage() {
     theme: "system",
     language: "en",
     soundEnabled: true,
-    autoLogout: 120,
+    autoLogout: 15,
   };
 
   const form = useForm<UserSettingsData>({
@@ -555,35 +679,12 @@ export default function SettingsPage() {
                   )}
                 />
 
-                <Separator />
-
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Change Password</p>
-                      <p className="text-sm text-muted-foreground">
-                        Password is managed through your authentication provider
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" disabled>
-                      Managed Externally
-                    </Button>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
-                    <div>
-                      <p className="font-medium">Two-Factor Authentication</p>
-                      <p className="text-sm text-muted-foreground">
-                        Enhanced security through your authentication provider
-                      </p>
-                    </div>
-                    <Button variant="outline" size="sm" disabled>
-                      Provider Managed
-                    </Button>
-                  </div>
-                </div>
               </CardContent>
             </Card>
+
+            <ChangePasswordCard />
+
+            <TwoFactorSetup />
           </div>
 
               <div className="flex justify-end gap-4 pt-4 border-t">
