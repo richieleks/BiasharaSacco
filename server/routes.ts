@@ -3311,6 +3311,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const approvals = await storage.getLoanApprovalsByUser(userId);
       const rejections = await storage.getLoansRejectedByUser(userId);
 
+      let pendingReviewCount = 0;
+      try {
+        const isCommittee = await hasApprovalRole(userId, 'committee');
+        const isTreasurer = await hasApprovalRole(userId, 'treasurer');
+        if (isCommittee) {
+          const committeePending = await storage.getLoansForApproval('committee', 'committee');
+          const notYetApproved = committeePending.filter((l: any) =>
+            !approvals.some((a: any) => a.loanId === l.id)
+          );
+          pendingReviewCount += notYetApproved.length;
+        }
+        if (isTreasurer) {
+          const treasurerPending = await storage.getLoansForApproval('treasurer', 'treasurer');
+          pendingReviewCount += treasurerPending.length;
+        }
+      } catch (e) {
+        console.error('Error counting pending reviews:', e);
+      }
+
       const approvedList = approvals.map((a: any) => ({
         id: a.id,
         loanNumber: a.loan?.loanNumber || '-',
@@ -3342,6 +3361,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalApproved: approvedList.length,
           totalRejected: rejectedList.length,
           totalReviewed: approvedList.length + rejectedList.length,
+          pendingReview: pendingReviewCount,
         }
       });
     } catch (error) {

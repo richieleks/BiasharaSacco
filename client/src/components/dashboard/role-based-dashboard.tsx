@@ -103,7 +103,7 @@ function CommitteeApprovalActivity() {
 
   const approved = activityData?.approved || [];
   const rejected = activityData?.rejected || [];
-  const summary = activityData?.summary || { totalApproved: 0, totalRejected: 0, totalReviewed: 0 };
+  const summary = activityData?.summary || { totalApproved: 0, totalRejected: 0, totalReviewed: 0, pendingReview: 0 };
 
   const allActivity = [...approved, ...rejected].sort((a: any, b: any) => {
     const dateA = a.date ? new Date(a.date).getTime() : 0;
@@ -128,7 +128,11 @@ function CommitteeApprovalActivity() {
         </div>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-3 gap-3 mb-4">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 rounded-xl p-3 text-center">
+            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">Pending Your Review</p>
+            <p className="text-xl font-bold text-amber-700 dark:text-amber-300 mt-0.5">{summary.pendingReview ?? 0}</p>
+          </div>
           <div className="bg-slate-50 dark:bg-slate-800/50 border rounded-xl p-3 text-center">
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Total Reviewed</p>
             <p className="text-xl font-bold mt-0.5">{summary.totalReviewed}</p>
