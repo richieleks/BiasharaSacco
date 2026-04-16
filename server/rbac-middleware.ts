@@ -52,6 +52,7 @@ const MAINTENANCE_EXEMPT_PATHS = [
   '/api/auth/user',
   '/api/auth/permissions',
   '/api/auth/settings',
+  '/api/auth/heartbeat',
   '/api/admin/settings',
   '/api/system/maintenance-status',
 ];

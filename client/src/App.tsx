@@ -8,6 +8,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useWebSocket } from "@/hooks/useWebSocket";
 import { useTheme } from "@/hooks/useTheme";
+import { useToast } from "@/hooks/use-toast";
 import NotFound from "@/pages/not-found";
 import Forbidden from "@/pages/forbidden";
 
@@ -353,6 +354,10 @@ function FullPageLoader() {
 
 function useAutoLogout(isAuthenticated: boolean) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const warningRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastHeartbeatRef = useRef<number>(0);
+  const activeRef = useRef<boolean>(false);
+  const { toast } = useToast();
 
   const { data: userSettings } = useQuery<{ autoLogout?: number }>({
     queryKey: ['/api/auth/settings'],
@@ -365,14 +370,42 @@ function useAutoLogout(isAuthenticated: boolean) {
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    const HEARTBEAT_INTERVAL_MS = 60 * 1000;
+    const timeoutMs = autoLogoutMinutes * 60 * 1000;
+    const warningMs = Math.max(timeoutMs - 60 * 1000, Math.floor(timeoutMs * 0.9));
+
+    const sendHeartbeat = () => {
+      const now = Date.now();
+      if (now - lastHeartbeatRef.current < HEARTBEAT_INTERVAL_MS) return;
+      lastHeartbeatRef.current = now;
+      fetch("/api/auth/heartbeat", { method: "POST", credentials: "include" }).catch(() => {});
+    };
+
     const resetTimer = () => {
+      activeRef.current = true;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (warningRef.current) clearTimeout(warningRef.current);
+      sendHeartbeat();
+      warningRef.current = setTimeout(() => {
+        toast({
+          title: "Session expiring soon",
+          description: "You will be signed out in 1 minute due to inactivity. Move your mouse or press a key to stay signed in.",
+          variant: "destructive",
+        });
+      }, warningMs);
       timeoutRef.current = setTimeout(() => {
         queryClient.setQueryData(["/api/auth/user"], null);
         fetch("/api/auth/logout", { method: "POST", credentials: "include" }).catch(() => {});
         window.location.href = "/login?expired=1";
-      }, autoLogoutMinutes * 60 * 1000);
+      }, timeoutMs);
     };
+
+    const periodicHeartbeat = setInterval(() => {
+      if (activeRef.current) {
+        sendHeartbeat();
+        activeRef.current = false;
+      }
+    }, HEARTBEAT_INTERVAL_MS);
 
     const events = ['mousedown', 'keydown', 'scroll', 'touchstart', 'mousemove'];
     events.forEach(event => window.addEventListener(event, resetTimer, { passive: true }));
@@ -380,9 +413,11 @@ function useAutoLogout(isAuthenticated: boolean) {
 
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      if (warningRef.current) clearTimeout(warningRef.current);
+      clearInterval(periodicHeartbeat);
       events.forEach(event => window.removeEventListener(event, resetTimer));
     };
-  }, [isAuthenticated, autoLogoutMinutes]);
+  }, [isAuthenticated, autoLogoutMinutes, toast]);
 }
 
 function Router() {

@@ -226,6 +226,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Auth routes
+  app.post('/api/auth/heartbeat', isAuthenticated, async (_req, res) => {
+    res.json({ ok: true });
+  });
+
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
       // Handle both Replit and local auth users
