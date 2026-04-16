@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import { useRBAC } from "@/hooks/useRBAC";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import MetricsGrid from "./metrics-grid";
 import RecentTransactions from "./recent-transactions";
 import PendingApprovals from "./pending-approvals";
@@ -279,12 +281,222 @@ function CommitteeApprovalActivity() {
   );
 }
 
+function RestructureWriteoffApprovals() {
+  const { isAuthenticated } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [, setLocation] = useLocation();
+
+  const { data: writeoffs = [], isLoading: writeoffsLoading } = useQuery<any[]>({
+    queryKey: ['/api/loan-writeoffs'],
+    enabled: isAuthenticated,
+  });
+
+  const { data: restructures = [], isLoading: restructuresLoading } = useQuery<any[]>({
+    queryKey: ['/api/loan-restructures'],
+    enabled: isAuthenticated,
+  });
+
+  const approveWriteoff = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/loan-writeoffs/${id}/approve`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loan-writeoffs'] });
+      toast({ title: "Approved", description: "Loan write-off approved", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const rejectWriteoff = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/loan-writeoffs/${id}/reject`, { reason: 'Rejected' });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loan-writeoffs'] });
+      toast({ title: "Rejected", description: "Write-off request rejected", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const approveRestructure = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/loan-restructures/${id}/approve`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loan-restructures'] });
+      toast({ title: "Approved", description: "Loan restructure approved and new terms applied", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const rejectRestructure = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/loan-restructures/${id}/reject`, { reason: 'Rejected' });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loan-restructures'] });
+      toast({ title: "Rejected", description: "Restructure request rejected", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const pendingWriteoffs = writeoffs.filter((w: any) => w.status === 'pending');
+  const pendingRestructures = restructures.filter((r: any) => r.status === 'pending');
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <ClipboardList className="h-4 w-4" />
+          Restructure & Write-Off Approvals
+        </CardTitle>
+        <CardDescription>
+          Review treasurer-initiated loan restructure and write-off requests
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <h4 className="text-sm font-semibold mb-2">
+            Loan Write-Offs ({pendingWriteoffs.length} pending)
+          </h4>
+          {writeoffsLoading ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : pendingWriteoffs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pending write-off requests.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Loan #</TableHead>
+                    <TableHead>Member</TableHead>
+                    <TableHead className="text-right">Amount</TableHead>
+                    <TableHead className="hidden sm:table-cell">Reason</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingWriteoffs.map((wo: any) => (
+                    <TableRow
+                      key={wo.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => wo.loan_id && setLocation(`/loans/${wo.loan_id}/details`)}
+                    >
+                      <TableCell className="font-mono text-xs text-blue-600 hover:underline">{wo.loan_number}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-sm font-medium">{wo.member_name}</p>
+                          <p className="text-xs text-muted-foreground">{wo.member_number}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-semibold text-red-600">{formatCurrency(wo.writeoff_amount)}</TableCell>
+                      <TableCell className="hidden sm:table-cell text-xs max-w-[200px] truncate">{wo.reason}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="outline" size="sm" className="h-7 text-xs"
+                            onClick={() => approveWriteoff.mutate(wo.id)}
+                            disabled={approveWriteoff.isPending}
+                            data-testid={`button-approve-writeoff-${wo.id}`}>
+                            Approve
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500"
+                            onClick={() => rejectWriteoff.mutate(wo.id)}
+                            disabled={rejectWriteoff.isPending}
+                            data-testid={`button-reject-writeoff-${wo.id}`}>
+                            Reject
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <h4 className="text-sm font-semibold mb-2">
+            Loan Restructures ({pendingRestructures.length} pending)
+          </h4>
+          {restructuresLoading ? (
+            <p className="text-sm text-muted-foreground">Loading...</p>
+          ) : pendingRestructures.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No pending restructure requests.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Loan #</TableHead>
+                    <TableHead>Member</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right">Balance</TableHead>
+                    <TableHead className="hidden md:table-cell">New Terms</TableHead>
+                    <TableHead className="hidden sm:table-cell text-right">New Payment</TableHead>
+                    <TableHead className="hidden lg:table-cell">Reason</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingRestructures.map((rs: any) => (
+                    <TableRow
+                      key={rs.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => rs.loan_id && setLocation(`/loans/${rs.loan_id}/details`)}
+                    >
+                      <TableCell className="font-mono text-xs text-blue-600 hover:underline">{rs.loan_number}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-sm font-medium">{rs.member_name}</p>
+                          <p className="text-xs text-muted-foreground">{rs.member_number}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-right font-semibold">{formatCurrency(rs.original_balance)}</TableCell>
+                      <TableCell className="hidden md:table-cell text-xs">
+                        {(parseFloat(rs.new_rate || '0') * 100).toFixed(1)}% / {rs.new_term} months
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell text-right font-semibold text-blue-600">{formatCurrency(rs.new_monthly_payment)}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-xs max-w-[200px] truncate">{rs.reason}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex gap-1 justify-end" onClick={(e) => e.stopPropagation()}>
+                          <Button variant="outline" size="sm" className="h-7 text-xs"
+                            onClick={() => approveRestructure.mutate(rs.id)}
+                            disabled={approveRestructure.isPending}
+                            data-testid={`button-approve-restructure-${rs.id}`}>
+                            Approve
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500"
+                            onClick={() => rejectRestructure.mutate(rs.id)}
+                            disabled={rejectRestructure.isPending}
+                            data-testid={`button-reject-restructure-${rs.id}`}>
+                            Reject
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function CommitteeDashboard() {
   return (
     <div className="space-y-6">
       <MetricsGrid />
       <LoanApprovalWorkflow />
       <CommitteeApprovalActivity />
+      <RestructureWriteoffApprovals />
       <MemberApprovals />
     </div>
   );

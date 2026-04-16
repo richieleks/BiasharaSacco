@@ -641,7 +641,6 @@ function PARRiskTab() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const [parPage, setParPage] = useState(1);
-  const [writeoffPage, setWriteoffPage] = useState(1);
   const [showWriteoffDialog, setShowWriteoffDialog] = useState<any>(null);
   const [writeoffReason, setWriteoffReason] = useState('');
   const parPageSize = 20;
@@ -652,10 +651,6 @@ function PARRiskTab() {
 
   const { data: provisionData, isLoading: provisionLoading } = useQuery<any>({
     queryKey: ['/api/reports/provisioning-summary'],
-  });
-
-  const { data: writeoffs, isLoading: writeoffsLoading } = useQuery<any[]>({
-    queryKey: ['/api/loan-writeoffs'],
   });
 
   const runProvisioningMutation = useMutation({
@@ -680,61 +675,6 @@ function PARRiskTab() {
       setShowWriteoffDialog(null);
       setWriteoffReason('');
       toast({ title: "Write-Off Requested", description: "The write-off request has been submitted for approval", variant: "success" });
-    },
-    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
-  });
-
-  const approveWriteoffMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("POST", `/api/loan-writeoffs/${id}/approve`);
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['/api/loan-writeoffs'] });
-      qc.invalidateQueries({ queryKey: ['/api/reports/par-analysis'] });
-      qc.invalidateQueries({ queryKey: ['/api/reports/provisioning-summary'] });
-      toast({ title: "Approved", description: "Loan write-off approved", variant: "success" });
-    },
-    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
-  });
-
-  const rejectWriteoffMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("POST", `/api/loan-writeoffs/${id}/reject`, { reason: 'Rejected' });
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['/api/loan-writeoffs'] });
-      toast({ title: "Rejected", description: "Write-off request rejected", variant: "success" });
-    },
-    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
-  });
-
-  const { data: restructures, isLoading: restructuresLoading } = useQuery<any[]>({
-    queryKey: ['/api/loan-restructures'],
-  });
-
-  const approveRestructureMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("POST", `/api/loan-restructures/${id}/approve`);
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['/api/loan-restructures'] });
-      qc.invalidateQueries({ queryKey: ['/api/loans'] });
-      toast({ title: "Approved", description: "Loan restructure approved and new terms applied", variant: "success" });
-    },
-    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
-  });
-
-  const rejectRestructureMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const res = await apiRequest("POST", `/api/loan-restructures/${id}/reject`, { reason: 'Rejected' });
-      return res.json();
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['/api/loan-restructures'] });
-      toast({ title: "Rejected", description: "Restructure request rejected", variant: "success" });
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -879,141 +819,6 @@ function PARRiskTab() {
         )}
       </div>
 
-      {/* Write-offs */}
-      <div className="section-card">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Write-Offs</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Track and approve irrecoverable loan write-offs</p>
-        </div>
-        {writeoffsLoading ? (
-          <div className="p-6 space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : writeoffs && writeoffs.length > 0 ? (
-          <div className="p-4 sm:p-6 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Loan #</TableHead>
-                  <TableHead>Member</TableHead>
-                  <TableHead className="text-right">Amount</TableHead>
-                  <TableHead className="hidden sm:table-cell">Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {writeoffs.map((wo: any) => (
-                  <TableRow key={wo.id}>
-                    <TableCell className="font-mono text-xs">{wo.loan_number}</TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-sm">{wo.member_name}</p>
-                        <p className="text-xs text-slate-400">{wo.member_number}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right font-semibold text-red-600">{formatCurrency(wo.writeoff_amount)}</TableCell>
-                    <TableCell className="hidden sm:table-cell text-xs max-w-[200px] truncate">{wo.reason}</TableCell>
-                    <TableCell>
-                      <Badge variant={wo.status === 'approved' ? 'default' : wo.status === 'rejected' ? 'destructive' : 'outline'}
-                        className={wo.status === 'approved' ? 'bg-green-600' : ''}>
-                        {wo.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {wo.status === 'pending' && (
-                        <div className="flex gap-1 justify-end">
-                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => approveWriteoffMutation.mutate(wo.id)}
-                            disabled={approveWriteoffMutation.isPending}>
-                            Approve
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => rejectWriteoffMutation.mutate(wo.id)}
-                            disabled={rejectWriteoffMutation.isPending}>
-                            Reject
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="p-6 text-center text-slate-400 text-sm">
-            No write-off requests. Write-offs can be initiated from individual loan details.
-          </div>
-        )}
-      </div>
-
-      {/* Loan Restructures */}
-      <div className="section-card">
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Restructures</h3>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Reschedule distressed loans with revised terms</p>
-        </div>
-        {restructuresLoading ? (
-          <div className="p-6 space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
-        ) : restructures && restructures.length > 0 ? (
-          <div className="p-4 sm:p-6 overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Loan #</TableHead>
-                  <TableHead>Member</TableHead>
-                  <TableHead className="hidden sm:table-cell text-right">Balance</TableHead>
-                  <TableHead className="hidden md:table-cell">New Terms</TableHead>
-                  <TableHead className="hidden sm:table-cell text-right">New Payment</TableHead>
-                  <TableHead className="hidden lg:table-cell">Reason</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {restructures.map((rs: any) => (
-                  <TableRow key={rs.id}>
-                    <TableCell className="font-mono text-xs">{rs.loan_number}</TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-sm">{rs.member_name}</p>
-                        <p className="text-xs text-slate-400">{rs.member_number}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-right font-semibold">{formatCurrency(rs.original_balance)}</TableCell>
-                    <TableCell className="hidden md:table-cell text-xs">
-                      <span>{(parseFloat(rs.new_rate) * 100).toFixed(1)}% / {rs.new_term} months</span>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell text-right font-semibold text-blue-600">{formatCurrency(rs.new_monthly_payment)}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-xs max-w-[200px] truncate">{rs.reason}</TableCell>
-                    <TableCell>
-                      <Badge variant={rs.status === 'approved' ? 'default' : rs.status === 'rejected' ? 'destructive' : 'outline'}
-                        className={rs.status === 'approved' ? 'bg-green-600' : ''}>
-                        {rs.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {rs.status === 'pending' && (
-                        <div className="flex gap-1 justify-end">
-                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => approveRestructureMutation.mutate(rs.id)}
-                            disabled={approveRestructureMutation.isPending}>
-                            Approve
-                          </Button>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => rejectRestructureMutation.mutate(rs.id)}
-                            disabled={rejectRestructureMutation.isPending}>
-                            Reject
-                          </Button>
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          <div className="p-6 text-center text-slate-400 text-sm">
-            No restructure requests. Restructures can be initiated from individual loan details.
-          </div>
-        )}
-      </div>
     </TabsContent>
   );
 }
