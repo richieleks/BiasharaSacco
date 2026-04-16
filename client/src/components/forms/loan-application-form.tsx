@@ -488,12 +488,44 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
                         </div>
                       </div>
                     )}
-                    <Button
-                      className="w-full mt-4"
-                      onClick={() => setApplicationStep('complete')}
-                    >
-                      Complete Application
-                    </Button>
+                    {(() => {
+                      const amountToGuarantee = Math.max(0, savedLoanPrincipal - totalSavingsBalance);
+                      const totalGuaranteed = loanGuarantors.reduce(
+                        (sum: number, g: any) => sum + Number(g.guaranteeAmount || 0),
+                        0
+                      );
+                      const guaranteeShortfall = Math.max(0, amountToGuarantee - totalGuaranteed);
+                      const guaranteeMet = totalGuaranteed >= amountToGuarantee;
+                      return (
+                        <>
+                          <div className={`mt-4 p-3 rounded-lg border text-sm ${guaranteeMet ? 'bg-green-50 border-green-200 dark:bg-green-950/40 dark:border-green-800' : 'bg-amber-50 border-amber-200 dark:bg-amber-950/40 dark:border-amber-800'}`}>
+                            <div className="flex justify-between gap-2">
+                              <span className="text-muted-foreground">Amount to guarantee</span>
+                              <span className="font-semibold">{formatCurrency(amountToGuarantee)}</span>
+                            </div>
+                            <div className="flex justify-between gap-2 mt-1">
+                              <span className="text-muted-foreground">Total guaranteed</span>
+                              <span className={`font-semibold ${guaranteeMet ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+                                {formatCurrency(totalGuaranteed)}
+                              </span>
+                            </div>
+                            {!guaranteeMet && (
+                              <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+                                Add {formatCurrency(guaranteeShortfall)} more in guarantees to complete this application.
+                              </p>
+                            )}
+                          </div>
+                          <Button
+                            className="w-full mt-4"
+                            onClick={() => setApplicationStep('complete')}
+                            disabled={!guaranteeMet}
+                            data-testid="button-complete-application"
+                          >
+                            {guaranteeMet ? 'Complete Application' : 'Guarantee Amount Not Met'}
+                          </Button>
+                        </>
+                      );
+                    })()}
                   </>
                 )}
               </>
