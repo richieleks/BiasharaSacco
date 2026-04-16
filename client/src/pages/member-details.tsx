@@ -117,6 +117,7 @@ export default function MemberDetails() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const isStaff = ['admin', 'manager', 'committee', 'treasurer'].includes(user?.role || '');
+  const canWaiveShares = ['admin', 'treasurer'].includes(user?.role || '');
 
   const memberId = params?.id;
 
@@ -276,6 +277,21 @@ export default function MemberDetails() {
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message || "Failed to post share capital", variant: "destructive" });
+    },
+  });
+
+  const waiveShareCapitalMutation = useMutation({
+    mutationFn: async (waive: boolean) => {
+      const response = await apiRequest("POST", `/api/members/${memberId}/waive-share-capital`, { waive });
+      return response.json();
+    },
+    onSuccess: (data: any) => {
+      toast({ title: "Share Capital Updated", description: data.message, variant: "success" });
+      queryClient.invalidateQueries({ queryKey: ['/api/members', memberId] });
+      queryClient.invalidateQueries({ queryKey: ["/api/members"] });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message || "Failed to update waiver", variant: "destructive" });
     },
   });
 
@@ -559,9 +575,16 @@ export default function MemberDetails() {
                   <div className="rounded-md bg-violet-50 dark:bg-violet-950/50 p-1.5"><TrendingUp className="h-3.5 w-3.5 text-violet-600" /></div>
                   Share Capital
                 </CardTitle>
-                <Badge className={`text-xs ${member.isPaidUp ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'} border`}>
-                  {member.isPaidUp ? 'Fully Paid' : 'In Progress'}
-                </Badge>
+                <div className="flex items-center gap-2">
+                  {(member as any).shareCapitalWaived && (
+                    <Badge className="text-xs bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800 border">
+                      Waived
+                    </Badge>
+                  )}
+                  <Badge className={`text-xs ${member.isPaidUp || (member as any).shareCapitalWaived ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'} border`}>
+                    {member.isPaidUp || (member as any).shareCapitalWaived ? 'Fully Paid' : 'In Progress'}
+                  </Badge>
+                </div>
               </CardHeader>
               <CardContent className="pt-0">
                 <div className="space-y-3">
@@ -578,15 +601,34 @@ export default function MemberDetails() {
                       <p className="text-xs text-emerald-600 mb-1">Paid</p>
                       <p className="text-sm font-bold text-emerald-700">{formatCurrency(sharePaid)}</p>
                     </div>
-                    <div className="rounded-lg bg-amber-50 dark:bg-amber-950/50 p-3 text-center">
-                      <p className="text-xs text-amber-600 mb-1">Remaining</p>
-                      <p className="text-sm font-bold text-amber-700">{formatCurrency(shareRemaining)}</p>
-                    </div>
+                    {!(member as any).shareCapitalWaived && (
+                      <div className="rounded-lg bg-amber-50 dark:bg-amber-950/50 p-3 text-center">
+                        <p className="text-xs text-amber-600 mb-1">Remaining</p>
+                        <p className="text-sm font-bold text-amber-700">{formatCurrency(shareRemaining)}</p>
+                      </div>
+                    )}
+                    {(member as any).shareCapitalWaived && (
+                      <div className="rounded-lg bg-blue-50 dark:bg-blue-950/50 p-3 text-center">
+                        <p className="text-xs text-blue-600 mb-1">Remaining</p>
+                        <p className="text-sm font-bold text-blue-700">Waived</p>
+                      </div>
+                    )}
                   </div>
-                  {!member.isPaidUp && (
+                  {!member.isPaidUp && !(member as any).shareCapitalWaived && (
                     <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2">
                       <div className="bg-gradient-to-r from-emerald-500 to-emerald-400 h-2 rounded-full transition-all" style={{ width: `${Math.min(100, (sharePaid / shareExpected) * 100)}%` }} />
                     </div>
+                  )}
+                  {canWaiveShares && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full text-xs"
+                      disabled={waiveShareCapitalMutation.isPending}
+                      onClick={() => waiveShareCapitalMutation.mutate(!(member as any).shareCapitalWaived)}
+                    >
+                      {waiveShareCapitalMutation.isPending ? 'Updating...' : (member as any).shareCapitalWaived ? 'Remove Share Capital Waiver' : 'Waive Share Capital'}
+                    </Button>
                   )}
                 </div>
               </CardContent>

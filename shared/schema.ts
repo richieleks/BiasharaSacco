@@ -95,6 +95,7 @@ export const members = pgTable("members", {
   shareCapital: decimal("share_capital", { precision: 15, scale: 2 }).default("0"),
   totalSavings: decimal("total_savings", { precision: 15, scale: 2 }).default("0"),
   isFullyPaidShareholder: boolean("is_fully_paid_shareholder").default(false),
+  shareCapitalWaived: boolean("share_capital_waived").default(false),
   isActiveSaver: boolean("is_active_saver").default(false),
   isPaidUp: boolean("is_paid_up").default(false),
   hasActiveLoans: boolean("has_active_loans").default(false),

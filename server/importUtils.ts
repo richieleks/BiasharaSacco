@@ -505,15 +505,15 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
                 console.log(`Sheet "${sheetName}": Extracted entrance fee UGX ${membershipPortion.toLocaleString()} from shares row for ${member.memberNumber}`);
               }
 
-              const numberOfNewShares = sharePrice > 0 ? Math.floor(shareAmount / sharePrice) : 0;
-              const shareCapitalAmount = numberOfNewShares * sharePrice;
+              const shareCapitalAmount = shareAmount;
+              const minimumShares = member.numberOfShares || 4;
 
               if (shareCapitalAmount > 0) {
                 await storage.createTransaction({
                   memberId: member.id,
                   transactionType: 'share_capital' as any,
                   amount: shareCapitalAmount.toString(),
-                  description: `Share capital (${numberOfNewShares} shares × UGX ${sharePrice.toLocaleString()}) from ${entry.details}`,
+                  description: `Share capital payment from ${entry.details}`,
                   transactionDate: entry.date,
                   referenceNumber: entry.refNumber,
                   processedBy: options?.userId,
@@ -531,26 +531,18 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 
                 const currentShareCapital = parseFloat(member.shareCapital || '0');
                 const newShareCapital = currentShareCapital + shareCapitalAmount;
-                const newNumberOfShares = numberOfNewShares;
-                const expectedTotal = sharePrice * newNumberOfShares;
+                const expectedTotal = sharePrice * minimumShares;
                 const isPaidUp = newShareCapital >= expectedTotal;
 
                 await storage.updateMember(member.id, {
                   shareCapital: newShareCapital.toString(),
-                  numberOfShares: newNumberOfShares,
                   isPaidUp,
                   isFullyPaidShareholder: isPaidUp,
                 });
 
                 member.shareCapital = newShareCapital.toString();
-                member.numberOfShares = newNumberOfShares;
 
-                console.log(`Sheet "${sheetName}": Posted share capital UGX ${shareCapitalAmount.toLocaleString()} (${numberOfNewShares} shares) for ${member.memberNumber}, total shares: ${newNumberOfShares}, paid up: ${isPaidUp}`);
-              }
-
-              const remainder = shareAmount - shareCapitalAmount;
-              if (remainder > 0) {
-                console.log(`Sheet "${sheetName}": Note: UGX ${remainder.toLocaleString()} remainder from shares row (less than 1 share price) not allocated`);
+                console.log(`Sheet "${sheetName}": Posted share capital UGX ${shareCapitalAmount.toLocaleString()} for ${member.memberNumber}, required: ${minimumShares} shares (UGX ${expectedTotal.toLocaleString()}), paid: UGX ${newShareCapital.toLocaleString()}, fully paid: ${isPaidUp}`);
               }
             }
           } catch (error) {

@@ -1644,6 +1644,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/members/:id/waive-share-capital', isAuthenticated, async (req: any, res) => {
+    try {
+      const memberId = await storage.resolveMemberId(req.params.id);
+      const requestingUser = await storage.getUser(getUserId(req)!);
+      if (!requestingUser || !['admin', 'treasurer'].includes(requestingUser.role)) {
+        return res.status(403).json({ message: "Only admin or treasurer can waive share capital" });
+      }
+
+      const member = await storage.getMember(memberId);
+      if (!member) return res.status(404).json({ message: "Member not found" });
+
+      const { waive } = req.body;
+      const waived = waive !== false;
+
+      await storage.updateMember(memberId, {
+        shareCapitalWaived: waived,
+        isPaidUp: waived ? true : undefined,
+        isFullyPaidShareholder: waived ? true : undefined,
+      });
+
+      res.json({ message: waived ? "Share capital requirement waived" : "Share capital waiver removed" });
+    } catch (error) {
+      console.error("Error waiving share capital:", error);
+      res.status(500).json({ message: "Failed to update share capital waiver" });
+    }
+  });
+
   // Update member details
   app.patch('/api/members/:id', isAuthenticated, async (req: any, res) => {
     try {
