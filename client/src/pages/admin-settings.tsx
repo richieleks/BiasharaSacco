@@ -291,6 +291,18 @@ function EmailConfigTab({ form }: { form: any }) {
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
   const [connectionError, setConnectionError] = useState("");
 
+  const parseErrorMessage = (error: Error, fallback: string) => {
+    const msg = error.message || fallback;
+    const match = msg.match(/^\d+:\s*(.*)$/s);
+    const body = match ? match[1] : msg;
+    try {
+      const parsed = JSON.parse(body);
+      return parsed.message || fallback;
+    } catch {
+      return body || fallback;
+    }
+  };
+
   const testConnectionMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest('POST', '/api/admin/email/test-connection');
@@ -301,9 +313,10 @@ function EmailConfigTab({ form }: { form: any }) {
       toast({ title: "Connection Successful", description: "SMTP connection to Amazon SES verified." });
     },
     onError: (error: Error) => {
+      const description = parseErrorMessage(error, "SMTP connection failed");
       setConnectionStatus('error');
-      setConnectionError(error.message);
-      toast({ title: "Connection Failed", description: error.message, variant: "destructive" });
+      setConnectionError(description);
+      toast({ title: "Connection Failed", description, variant: "destructive" });
     },
   });
 
@@ -317,7 +330,8 @@ function EmailConfigTab({ form }: { form: any }) {
       setTestEmail("");
     },
     onError: (error: Error) => {
-      toast({ title: "Send Failed", description: error.message, variant: "destructive" });
+      const description = parseErrorMessage(error, "Failed to send test email");
+      toast({ title: "Send Failed", description, variant: "destructive" });
     },
   });
 
