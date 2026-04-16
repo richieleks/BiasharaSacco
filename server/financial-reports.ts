@@ -362,7 +362,7 @@ export function registerFinancialReportRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loans/:id/write-off", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
+  app.post("/api/loans/:id/write-off", isAuthenticated, requireRole('admin', 'treasurer'), async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
@@ -417,7 +417,7 @@ export function registerFinancialReportRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loan-writeoffs/:id/approve", isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
+  app.post("/api/loan-writeoffs/:id/approve", isAuthenticated, requireRole('admin', 'committee'), async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
@@ -468,7 +468,7 @@ export function registerFinancialReportRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loan-writeoffs/:id/reject", isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
+  app.post("/api/loan-writeoffs/:id/reject", isAuthenticated, requireRole('admin', 'committee'), async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
@@ -715,7 +715,7 @@ export function registerFinancialReportRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loans/:id/restructure", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
+  app.post("/api/loans/:id/restructure", isAuthenticated, requireRole('admin', 'treasurer'), async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
@@ -812,7 +812,7 @@ export function registerFinancialReportRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loan-restructures/:id/approve", isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
+  app.post("/api/loan-restructures/:id/approve", isAuthenticated, requireRole('admin', 'committee'), async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
@@ -845,7 +845,7 @@ export function registerFinancialReportRoutes(app: Express) {
     }
   });
 
-  app.post("/api/loan-restructures/:id/reject", isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
+  app.post("/api/loan-restructures/:id/reject", isAuthenticated, requireRole('admin', 'committee'), async (req: Request, res: Response) => {
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;

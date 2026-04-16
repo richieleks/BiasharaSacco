@@ -38,7 +38,8 @@ const getStatusColor = (status: string) => {
 export default function LoanDetails() {
   const [, params] = useRoute("/loans/:id/details");
   const [, setLocation] = useLocation();
-  const { activeRole } = useRBAC();
+  const { activeRole, hasAnyRole } = useRBAC();
+  const canInitiateRestructureWriteoff = hasAnyRole(['treasurer', 'admin']);
   const loanId = params?.id;
   const backPath = activeRole === 'member' ? '/my-loans' : '/loans';
 
@@ -474,7 +475,7 @@ export default function LoanDetails() {
             {loan.loanType?.replace('_', ' ') || 'Loan'}
           </Badge>
         </div>
-        {['active', 'disbursed', 'defaulted'].includes(loan.status) && activeRole !== 'member' && parseFloat(loan.outstandingBalance) > 1 && (
+        {['active', 'disbursed', 'defaulted'].includes(loan.status) && canInitiateRestructureWriteoff && parseFloat(loan.outstandingBalance) > 1 && (
           <div className="flex gap-2">
             <Button variant="outline" size="sm" className="text-blue-600 border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30" onClick={() => setShowRestructureDialog(true)}>
               <RefreshCw className="w-4 h-4 mr-1" />Restructure
