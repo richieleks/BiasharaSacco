@@ -439,7 +439,7 @@ function Router() {
       <Header />
       <div className="flex">
         <CollapsibleSidebar />
-        <main className="flex-1 p-4 lg:p-6 xl:p-8 pb-20 lg:pb-8 transition-all duration-300 ease-in-out min-h-[calc(100vh-4rem)]">
+        <main className="flex-1 min-w-0 p-4 lg:p-6 xl:p-8 pb-20 lg:pb-8 transition-all duration-300 ease-in-out min-h-[calc(100vh-4rem)] overflow-x-hidden">
           <div className="lg:hidden h-14"></div>
           <PageTransition>
           <Switch>

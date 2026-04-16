@@ -824,7 +824,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Settings Content */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               
