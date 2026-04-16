@@ -101,7 +101,7 @@ const adminSettingsSchema = z.object({
   // Email Configuration (Amazon SES)
   emailEnabled: z.boolean().default(true),
   smtpServer: z.string().default("email-smtp.us-east-1.amazonaws.com"),
-  smtpPort: z.number().min(1).max(65535).default(587),
+  smtpPort: z.coerce.number().min(1).max(65535).default(587),
   emailFromAddress: z.string().default(""),
   emailFromName: z.string().default("Biashara SACCO"),
   
