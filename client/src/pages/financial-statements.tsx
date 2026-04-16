@@ -39,9 +39,9 @@ function TrialBalanceTab() {
       ) : data ? (
         <div className="section-card">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
-            <h3 className="text-sm font-semibold">Trial Balance as at {new Date(data.asOfDate).toLocaleDateString()}</h3>
+            <h3 className="text-sm font-semibold">Trial Balance as at {data.asOfDate ? new Date(data.asOfDate + 'T00:00:00').toLocaleDateString() : '-'}</h3>
             <Badge variant={data.isBalanced ? "default" : "destructive"} className={data.isBalanced ? "bg-green-600" : ""}>
-              {data.isBalanced ? "Balanced" : `Difference: ${formatCurrency(data.difference)}`}
+              {data.isBalanced ? "Balanced" : `Difference: ${formatCurrency(data.difference || 0)}`}
             </Badge>
           </div>
           <div className="overflow-x-auto">
@@ -69,8 +69,8 @@ function TrialBalanceTab() {
                 ))}
                 <TableRow className="font-bold bg-slate-50 dark:bg-slate-800">
                   <TableCell colSpan={3}>Total</TableCell>
-                  <TableCell className="text-right">{formatCurrency(data.rows?.reduce((s: number, r: any) => s + r.debitBalance, 0))}</TableCell>
-                  <TableCell className="text-right">{formatCurrency(data.rows?.reduce((s: number, r: any) => s + r.creditBalance, 0))}</TableCell>
+                  <TableCell className="text-right">{formatCurrency((data.rows || []).reduce((s: number, r: any) => s + (parseFloat(r.debitBalance) || 0), 0))}</TableCell>
+                  <TableCell className="text-right">{formatCurrency((data.rows || []).reduce((s: number, r: any) => s + (parseFloat(r.creditBalance) || 0), 0))}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -133,7 +133,7 @@ function BalanceSheetTab() {
         <div className="space-y-4">
           <div className="text-center mb-4">
             <h2 className="text-lg font-bold">Biashara SACCO</h2>
-            <h3 className="text-sm text-slate-600 dark:text-slate-300">Balance Sheet as at {new Date(data.asOfDate).toLocaleDateString()}</h3>
+            <h3 className="text-sm text-slate-600 dark:text-slate-300">Balance Sheet as at {data.asOfDate ? new Date(data.asOfDate + 'T00:00:00').toLocaleDateString() : '-'}</h3>
             {data.isBalanced ? (
               <Badge className="mt-2 bg-green-600"><CheckCircle className="w-3 h-3 mr-1" />Balanced</Badge>
             ) : (
@@ -193,7 +193,7 @@ function IncomeStatementTab() {
           <div className="text-center mb-4">
             <h2 className="text-lg font-bold">Biashara SACCO</h2>
             <h3 className="text-sm text-slate-600 dark:text-slate-300">
-              Income Statement for the period {new Date(data.startDate).toLocaleDateString()} to {new Date(data.endDate).toLocaleDateString()}
+              Income Statement for the period {data.startDate ? new Date(data.startDate + 'T00:00:00').toLocaleDateString() : '-'} to {data.endDate ? new Date(data.endDate + 'T00:00:00').toLocaleDateString() : '-'}
             </h3>
           </div>
 
@@ -215,7 +215,7 @@ function IncomeStatementTab() {
                 )}
                 <TableRow className="font-bold bg-green-50 dark:bg-green-950/30">
                   <TableCell colSpan={2}>Total Revenue</TableCell>
-                  <TableCell className="text-right text-green-600">{formatCurrency(data.revenue?.total)}</TableCell>
+                  <TableCell className="text-right text-green-600">{formatCurrency(data.revenue?.total || 0)}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
@@ -239,7 +239,7 @@ function IncomeStatementTab() {
                 )}
                 <TableRow className="font-bold bg-red-50 dark:bg-red-950/30">
                   <TableCell colSpan={2}>Total Expenses</TableCell>
-                  <TableCell className="text-right text-red-600">{formatCurrency(data.expenses?.total)}</TableCell>
+                  <TableCell className="text-right text-red-600">{formatCurrency(data.expenses?.total || 0)}</TableCell>
                 </TableRow>
               </TableBody>
             </Table>
