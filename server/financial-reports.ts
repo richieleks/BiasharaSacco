@@ -659,7 +659,7 @@ export function registerFinancialReportRoutes(app: Express) {
               }).where(eq(savingsAccountsTable.id, savingsAcc.id));
 
               await tx.update(members).set({
-                totalSavings: sql`(SELECT COALESCE(SUM(balance::numeric), 0) FROM savings_accounts WHERE member_id = ${div.memberId})::text`,
+                totalSavings: sql`(SELECT COALESCE(SUM(balance::numeric), 0) FROM savings_accounts WHERE member_id = ${div.memberId})`,
               }).where(eq(members.id, div.memberId));
             }
           }
