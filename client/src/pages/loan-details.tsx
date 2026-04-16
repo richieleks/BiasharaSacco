@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
@@ -18,7 +19,7 @@ import { format, addMonths } from "date-fns";
 import {
   ArrowLeft, DollarSign, FileText, Calendar, Download, CreditCard,
   Percent, Hash, HandCoins, Clock, AlertCircle, ArrowUpCircle, Calculator,
-  Users, CheckCircle, XCircle, Ban, Paperclip, Trash2,
+  Users, CheckCircle, XCircle, Ban, Paperclip, Trash2, RefreshCw,
 } from "lucide-react";
 
 const getStatusColor = (status: string) => {
@@ -49,6 +50,10 @@ export default function LoanDetails() {
   const [schedPageSize, setSchedPageSize] = useState(25);
   const [showWriteoffDialog, setShowWriteoffDialog] = useState(false);
   const [writeoffReason, setWriteoffReason] = useState('');
+  const [showRestructureDialog, setShowRestructureDialog] = useState(false);
+  const [restructureRate, setRestructureRate] = useState('');
+  const [restructureTerm, setRestructureTerm] = useState('');
+  const [restructureReason, setRestructureReason] = useState('');
 
   const writeoffMutation = useMutation({
     mutationFn: async ({ loanId, reason }: { loanId: number; reason: string }) => {
@@ -63,6 +68,43 @@ export default function LoanDetails() {
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
+
+  const restructureMutation = useMutation({
+    mutationFn: async ({ loanId, newRate, newTerm, reason }: { loanId: number; newRate: string; newTerm: string; reason: string }) => {
+      const res = await apiRequest("POST", `/api/loans/${loanId}/restructure`, { newRate, newTerm, reason });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loans', loanId] });
+      qc.invalidateQueries({ queryKey: ['/api/loans', loanId, 'restructure-history'] });
+      setShowRestructureDialog(false);
+      setRestructureRate('');
+      setRestructureTerm('');
+      setRestructureReason('');
+      toast({ title: "Restructure Requested", description: "The restructure request has been submitted for approval", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const { data: restructureHistory = [] } = useQuery<any[]>({
+    queryKey: ['/api/loans', loanId, 'restructure-history'],
+    queryFn: async () => {
+      const res = await fetch(`/api/loans/${loanId}/restructure-history`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+    enabled: !!loanId,
+  });
+
+  const computedRestructurePayment = useMemo(() => {
+    const bal = parseFloat(loan?.outstandingBalance || '0');
+    const rate = parseFloat(restructureRate || '0');
+    const term = parseInt(restructureTerm || '0');
+    if (bal <= 0 || term <= 0) return 0;
+    const mr = rate / 100 / 12;
+    if (mr > 0) return Math.ceil(bal * (mr * Math.pow(1 + mr, term)) / (Math.pow(1 + mr, term) - 1));
+    return Math.ceil(bal / term);
+  }, [loan?.outstandingBalance, restructureRate, restructureTerm]);
 
   const { data: loan, isLoading } = useQuery<any>({
     queryKey: ['/api/loans', loanId],
@@ -432,9 +474,14 @@ export default function LoanDetails() {
           </Badge>
         </div>
         {['active', 'disbursed', 'defaulted'].includes(loan.status) && activeRole !== 'member' && parseFloat(loan.outstandingBalance) > 1 && (
-          <Button variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950/30" onClick={() => setShowWriteoffDialog(true)}>
-            <Ban className="w-4 h-4 mr-1" />Write Off
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="text-blue-600 border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-950/30" onClick={() => setShowRestructureDialog(true)}>
+              <RefreshCw className="w-4 h-4 mr-1" />Restructure
+            </Button>
+            <Button variant="outline" size="sm" className="text-red-600 border-red-300 hover:bg-red-50 dark:hover:bg-red-950/30" onClick={() => setShowWriteoffDialog(true)}>
+              <Ban className="w-4 h-4 mr-1" />Write Off
+            </Button>
+          </div>
         )}
       </div>
 
@@ -454,6 +501,46 @@ export default function LoanDetails() {
             <Button className="w-full" variant="destructive" disabled={!writeoffReason.trim() || writeoffMutation.isPending}
               onClick={() => writeoffMutation.mutate({ loanId: loan.id, reason: writeoffReason })}>
               {writeoffMutation.isPending ? 'Submitting...' : 'Submit Write-Off Request'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRestructureDialog} onOpenChange={setShowRestructureDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Restructure Loan</DialogTitle>
+            <DialogDescription>
+              Propose new terms for loan {loan.loanNumber}. Outstanding balance: {formatCurrency(loan.outstandingBalance)}. This requires admin approval.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>New Interest Rate (%)</Label>
+                <Input type="number" step="0.01" min="0" placeholder="e.g. 12" value={restructureRate} onChange={(e) => setRestructureRate(e.target.value)} />
+                <p className="text-xs text-slate-400 mt-1">Current: {(parseFloat(loan.interestRate || '0') * 100).toFixed(1)}%</p>
+              </div>
+              <div>
+                <Label>New Term (months)</Label>
+                <Input type="number" min="1" placeholder="e.g. 24" value={restructureTerm} onChange={(e) => setRestructureTerm(e.target.value)} />
+                <p className="text-xs text-slate-400 mt-1">Current: {loan.termMonths} months</p>
+              </div>
+            </div>
+            {computedRestructurePayment > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800/50">
+                <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">Estimated New Monthly Payment</p>
+                <p className="text-lg font-bold text-blue-800 dark:text-blue-200">{formatCurrency(computedRestructurePayment)}</p>
+                <p className="text-xs text-blue-500 dark:text-blue-400">Current: {formatCurrency(loan.monthlyPayment)}</p>
+              </div>
+            )}
+            <div>
+              <Label>Reason for Restructuring</Label>
+              <Textarea placeholder="Explain why this loan needs restructuring..." value={restructureReason} onChange={(e) => setRestructureReason(e.target.value)} rows={3} />
+            </div>
+            <Button className="w-full" disabled={!restructureRate || !restructureTerm || !restructureReason.trim() || restructureMutation.isPending}
+              onClick={() => restructureMutation.mutate({ loanId: loan.id, newRate: restructureRate, newTerm: restructureTerm, reason: restructureReason })}>
+              {restructureMutation.isPending ? 'Submitting...' : 'Submit Restructure Request'}
             </Button>
           </div>
         </DialogContent>
@@ -498,32 +585,35 @@ export default function LoanDetails() {
       )}
 
       <Tabs defaultValue="details" className="w-full">
-        <TabsList className={`grid w-full ${
-          guarantors.length > 0 && loanDocuments.length > 0 ? 'grid-cols-5' :
-          guarantors.length > 0 || loanDocuments.length > 0 ? 'grid-cols-4' : 'grid-cols-3'
-        }`}>
-          <TabsTrigger value="details" className="text-xs sm:text-sm">
+        <TabsList className="flex w-full overflow-x-auto">
+          <TabsTrigger value="details" className="text-xs sm:text-sm flex-shrink-0">
             <FileText className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
             Details
           </TabsTrigger>
-          <TabsTrigger value="statement" className="text-xs sm:text-sm">
+          <TabsTrigger value="statement" className="text-xs sm:text-sm flex-shrink-0">
             <CreditCard className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
             Statement
           </TabsTrigger>
-          <TabsTrigger value="schedule" className="text-xs sm:text-sm">
+          <TabsTrigger value="schedule" className="text-xs sm:text-sm flex-shrink-0">
             <Calendar className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
             Schedule
           </TabsTrigger>
           {loanDocuments.length > 0 && (
-            <TabsTrigger value="documents" className="text-xs sm:text-sm">
+            <TabsTrigger value="documents" className="text-xs sm:text-sm flex-shrink-0">
               <Paperclip className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
               Docs ({loanDocuments.length})
             </TabsTrigger>
           )}
           {guarantors.length > 0 && (
-            <TabsTrigger value="guarantors" className="text-xs sm:text-sm">
+            <TabsTrigger value="guarantors" className="text-xs sm:text-sm flex-shrink-0">
               <Users className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
               Guarantors
+            </TabsTrigger>
+          )}
+          {restructureHistory.length > 0 && (
+            <TabsTrigger value="restructures" className="text-xs sm:text-sm flex-shrink-0">
+              <RefreshCw className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
+              Restructures ({restructureHistory.length})
             </TabsTrigger>
           )}
         </TabsList>
@@ -979,6 +1069,65 @@ export default function LoanDetails() {
                             </Badge>
                           </div>
                         </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
+        {restructureHistory.length > 0 && (
+          <TabsContent value="restructures" className="mt-4">
+            <Card className="border-slate-200 dark:border-slate-700/60">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  Restructure History ({restructureHistory.length})
+                </CardTitle>
+                <CardDescription>
+                  Previous and pending restructure requests for this loan
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {restructureHistory.map((rs: any) => {
+                    const statusColor = rs.status === 'approved'
+                      ? 'bg-emerald-50 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300 border-emerald-200/50 dark:border-emerald-800/50'
+                      : rs.status === 'rejected'
+                      ? 'bg-red-50 dark:bg-red-950/50 text-red-700 dark:text-red-300 border-red-200/50 dark:border-red-800/50'
+                      : 'bg-amber-50 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800/50';
+
+                    return (
+                      <div key={rs.id} className="p-4 border rounded-lg space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Badge variant="outline" className={statusColor}>{rs.status}</Badge>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            {rs.createdAt ? format(new Date(rs.createdAt), 'MMM dd, yyyy') : ''}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                          <div>
+                            <span className="text-slate-500 dark:text-slate-400 text-xs">Balance at Request</span>
+                            <div className="font-semibold">{formatCurrency(rs.originalBalance)}</div>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 dark:text-slate-400 text-xs">New Rate</span>
+                            <div className="font-semibold">{(parseFloat(rs.newRate) * 100).toFixed(1)}%</div>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 dark:text-slate-400 text-xs">New Term</span>
+                            <div className="font-semibold">{rs.newTerm} months</div>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 dark:text-slate-400 text-xs">New Payment</span>
+                            <div className="font-semibold text-blue-600">{formatCurrency(rs.newMonthlyPayment)}</div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300">{rs.reason}</p>
+                        {rs.rejectionReason && (
+                          <p className="text-xs text-red-600 dark:text-red-400">Rejection: {rs.rejectionReason}</p>
+                        )}
                       </div>
                     );
                   })}

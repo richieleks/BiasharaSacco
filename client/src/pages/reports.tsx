@@ -709,6 +709,35 @@ function PARRiskTab() {
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
 
+  const { data: restructures, isLoading: restructuresLoading } = useQuery<any[]>({
+    queryKey: ['/api/loan-restructures'],
+  });
+
+  const approveRestructureMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/loan-restructures/${id}/approve`);
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loan-restructures'] });
+      qc.invalidateQueries({ queryKey: ['/api/loans'] });
+      toast({ title: "Approved", description: "Loan restructure approved and new terms applied", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  const rejectRestructureMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await apiRequest("POST", `/api/loan-restructures/${id}/reject`, { reason: 'Rejected' });
+      return res.json();
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['/api/loan-restructures'] });
+      toast({ title: "Rejected", description: "Restructure request rejected", variant: "success" });
+    },
+    onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
   const parBucketLabels: Record<string, { label: string; color: string }> = {
     current: { label: 'Current (0 days)', color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
     par1_30: { label: '1-30 days', color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' },
@@ -910,6 +939,77 @@ function PARRiskTab() {
         ) : (
           <div className="p-6 text-center text-slate-400 text-sm">
             No write-off requests. Write-offs can be initiated from individual loan details.
+          </div>
+        )}
+      </div>
+
+      {/* Loan Restructures */}
+      <div className="section-card">
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Loan Restructures</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Reschedule distressed loans with revised terms</p>
+        </div>
+        {restructuresLoading ? (
+          <div className="p-6 space-y-2">{[1,2].map(i => <Skeleton key={i} className="h-10 w-full" />)}</div>
+        ) : restructures && restructures.length > 0 ? (
+          <div className="p-4 sm:p-6 overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Loan #</TableHead>
+                  <TableHead>Member</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">Balance</TableHead>
+                  <TableHead className="hidden md:table-cell">New Terms</TableHead>
+                  <TableHead className="hidden sm:table-cell text-right">New Payment</TableHead>
+                  <TableHead className="hidden lg:table-cell">Reason</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {restructures.map((rs: any) => (
+                  <TableRow key={rs.id}>
+                    <TableCell className="font-mono text-xs">{rs.loan_number}</TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium text-sm">{rs.member_name}</p>
+                        <p className="text-xs text-slate-400">{rs.member_number}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-right font-semibold">{formatCurrency(rs.original_balance)}</TableCell>
+                    <TableCell className="hidden md:table-cell text-xs">
+                      <span>{(parseFloat(rs.new_rate) * 100).toFixed(1)}% / {rs.new_term} months</span>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell text-right font-semibold text-blue-600">{formatCurrency(rs.new_monthly_payment)}</TableCell>
+                    <TableCell className="hidden lg:table-cell text-xs max-w-[200px] truncate">{rs.reason}</TableCell>
+                    <TableCell>
+                      <Badge variant={rs.status === 'approved' ? 'default' : rs.status === 'rejected' ? 'destructive' : 'outline'}
+                        className={rs.status === 'approved' ? 'bg-green-600' : ''}>
+                        {rs.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {rs.status === 'pending' && (
+                        <div className="flex gap-1 justify-end">
+                          <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => approveRestructureMutation.mutate(rs.id)}
+                            disabled={approveRestructureMutation.isPending}>
+                            Approve
+                          </Button>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => rejectRestructureMutation.mutate(rs.id)}
+                            disabled={rejectRestructureMutation.isPending}>
+                            Reject
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        ) : (
+          <div className="p-6 text-center text-slate-400 text-sm">
+            No restructure requests. Restructures can be initiated from individual loan details.
           </div>
         )}
       </div>

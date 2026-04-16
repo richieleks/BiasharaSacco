@@ -38,6 +38,7 @@ The system employs a `client/` (React frontend) and `server/` (Express.js backen
 - **Portfolio at Risk (PAR) Analysis**: PAR 30/60/90 reporting with aging buckets for loan portfolio quality assessment.
 - **Loan Loss Provisioning**: Automated provisioning with standard categories (Current 1%, Watch 5%, Substandard 25%, Doubtful 50%, Loss 100%).
 - **Loan Write-Off Workflow**: Request and approval process for writing off irrecoverable loans, accessible from loan details.
+- **Loan Restructuring**: Request revised terms (rate, term) for distressed loans. Restructure requests require admin approval. On approval, new terms are applied to the loan. History tracked per loan. Rates stored as decimals (consistent with loan creation). Routes in `server/financial-reports.ts`, UI in `client/src/pages/loan-details.tsx` and `client/src/pages/reports.tsx`.
 - **Dividend Management**: Calculate, approve, and distribute dividends on member share capital by financial year. Supports credit-to-savings distribution.
 - **System Settings**: Differentiated user and admin settings for personal preferences and system-wide configurations (e.g., loan limits, security policies, email setup, business rules).
 - **Security Features**: Includes session timeout based on inactivity, configurable password complexity, login lockout after failed attempts, and Two-Factor Authentication (TOTP) with setup, verification, and disable options.

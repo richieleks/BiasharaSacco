@@ -1067,8 +1067,33 @@ export const loanDocuments = pgTable("loan_documents", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const loanRestructures = pgTable("loan_restructures", {
+  id: serial("id").primaryKey(),
+  loanId: integer("loan_id").references(() => loans.id).notNull(),
+  memberId: integer("member_id").references(() => members.id).notNull(),
+  loanNumber: varchar("loan_number").notNull(),
+  originalPrincipal: decimal("original_principal", { precision: 15, scale: 2 }).notNull(),
+  originalRate: decimal("original_rate", { precision: 5, scale: 4 }).notNull(),
+  originalTerm: integer("original_term").notNull(),
+  originalMonthlyPayment: decimal("original_monthly_payment", { precision: 15, scale: 2 }).notNull(),
+  originalBalance: decimal("original_balance", { precision: 15, scale: 2 }).notNull(),
+  newRate: decimal("new_rate", { precision: 5, scale: 4 }).notNull(),
+  newTerm: integer("new_term").notNull(),
+  newMonthlyPayment: decimal("new_monthly_payment", { precision: 15, scale: 2 }).notNull(),
+  reason: text("reason").notNull(),
+  status: varchar("status", {
+    enum: ["pending", "approved", "rejected"]
+  }).default("pending").notNull(),
+  requestedBy: varchar("requested_by").references(() => users.id).notNull(),
+  approvedBy: varchar("approved_by").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export type LoanProvision = typeof loanProvisions.$inferSelect;
 export type LoanWriteoff = typeof loanWriteoffs.$inferSelect;
+export type LoanRestructure = typeof loanRestructures.$inferSelect;
 export type DividendDistribution = typeof dividendDistributions.$inferSelect;
 export type MemberDividend = typeof memberDividends.$inferSelect;
 export type LoanDocument = typeof loanDocuments.$inferSelect;

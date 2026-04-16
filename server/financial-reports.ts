@@ -1,7 +1,7 @@
 import type { Express, Request, Response } from "express";
 import { db } from "./db";
 import { sql, eq, and, inArray, desc, gte, lte } from "drizzle-orm";
-import { saccoAccounts, saccoJournalEntries, loans, members, savingsAccounts as savingsAccountsTable, loanProvisions, loanWriteoffs, dividendDistributions, memberDividends, financialYears, amortizationSchedules } from "@shared/schema";
+import { saccoAccounts, saccoJournalEntries, loans, members, savingsAccounts as savingsAccountsTable, loanProvisions, loanWriteoffs, loanRestructures, dividendDistributions, memberDividends, financialYears, amortizationSchedules } from "@shared/schema";
 import { isAuthenticated } from "./replitAuth";
 import { requirePermission, requireRole, type AuthRequest } from "./rbac-middleware";
 import { storage } from "./storage";
@@ -710,6 +710,162 @@ export function registerFinancialReportRoutes(app: Express) {
       });
 
       res.json({ message: 'Distribution deleted' });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/loans/:id/restructure", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+      const loanId = parseInt(req.params.id);
+      const { newRate, newTerm, reason } = req.body;
+
+      if (!newRate || !newTerm || !reason || !String(reason).trim()) {
+        return res.status(400).json({ message: 'New interest rate, term, and reason are required' });
+      }
+
+      const rate = parseFloat(newRate);
+      const term = parseInt(newTerm);
+      if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+        return res.status(400).json({ message: 'Interest rate must be between 0 and 100' });
+      }
+      if (!Number.isFinite(term) || term < 1 || term > 360) {
+        return res.status(400).json({ message: 'Term must be between 1 and 360 months' });
+      }
+      if (isNaN(loanId)) {
+        return res.status(400).json({ message: 'Invalid loan ID' });
+      }
+
+      const [loan] = await db.select().from(loans).where(eq(loans.id, loanId));
+      if (!loan) return res.status(404).json({ message: 'Loan not found' });
+
+      if (!['active', 'disbursed', 'defaulted'].includes(loan.status)) {
+        return res.status(400).json({ message: 'Only active, disbursed, or defaulted loans can be restructured' });
+      }
+
+      const existing = await db.select().from(loanRestructures)
+        .where(and(eq(loanRestructures.loanId, loanId), eq(loanRestructures.status, 'pending')));
+      if (existing.length > 0) {
+        return res.status(400).json({ message: 'A pending restructure request already exists for this loan' });
+      }
+
+      const balance = parseFloat(loan.outstandingBalance);
+      const decimalRate = rate / 100;
+      const monthlyRate = decimalRate / 12;
+      let newMonthlyPayment: number;
+      if (monthlyRate > 0) {
+        newMonthlyPayment = Math.ceil(balance * (monthlyRate * Math.pow(1 + monthlyRate, term)) / (Math.pow(1 + monthlyRate, term) - 1));
+      } else {
+        newMonthlyPayment = Math.ceil(balance / term);
+      }
+
+      const [restructure] = await db.insert(loanRestructures).values({
+        loanId,
+        memberId: loan.memberId,
+        loanNumber: loan.loanNumber,
+        originalPrincipal: loan.principalAmount,
+        originalRate: loan.interestRate,
+        originalTerm: loan.termMonths,
+        originalMonthlyPayment: loan.monthlyPayment,
+        originalBalance: loan.outstandingBalance,
+        newRate: decimalRate.toFixed(4),
+        newTerm: term,
+        newMonthlyPayment: newMonthlyPayment.toString(),
+        reason,
+        requestedBy: userId,
+      }).returning();
+
+      res.json(restructure);
+    } catch (error: any) {
+      console.error("Error creating restructure request:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/loan-restructures", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
+    try {
+      const restructures = await db.execute(sql`
+        SELECT lr.*, m.full_name as member_name, m.member_number
+        FROM loan_restructures lr
+        JOIN members m ON m.id = lr.member_id
+        ORDER BY lr.created_at DESC
+      `);
+      res.json((restructures as any).rows || restructures);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/loans/:id/restructure-history", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
+    try {
+      const loanId = parseInt(req.params.id);
+      const history = await db.select().from(loanRestructures)
+        .where(eq(loanRestructures.loanId, loanId))
+        .orderBy(desc(loanRestructures.createdAt));
+      res.json(history);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/loan-restructures/:id/approve", isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+      const restructureId = parseInt(req.params.id);
+
+      const [restructure] = await db.select().from(loanRestructures).where(eq(loanRestructures.id, restructureId));
+      if (!restructure) return res.status(404).json({ message: 'Restructure request not found' });
+      if (restructure.status !== 'pending') return res.status(400).json({ message: 'Request is not pending' });
+
+      await db.transaction(async (tx) => {
+        await tx.update(loanRestructures).set({
+          status: 'approved',
+          approvedBy: userId,
+          approvedAt: new Date(),
+        }).where(eq(loanRestructures.id, restructureId));
+
+        await tx.update(loans).set({
+          interestRate: restructure.newRate,
+          termMonths: restructure.newTerm,
+          monthlyPayment: restructure.newMonthlyPayment,
+        }).where(eq(loans.id, restructure.loanId));
+      });
+
+      res.json({ message: 'Restructure approved and new terms applied to the loan' });
+    } catch (error: any) {
+      console.error("Error approving restructure:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/loan-restructures/:id/reject", isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
+    try {
+      const authReq = req as AuthRequest;
+      const userId = authReq.user?.id;
+      if (!userId) return res.status(401).json({ message: 'Unauthorized' });
+
+      const restructureId = parseInt(req.params.id);
+      const { reason } = req.body;
+
+      const [restructure] = await db.select().from(loanRestructures).where(eq(loanRestructures.id, restructureId));
+      if (!restructure) return res.status(404).json({ message: 'Restructure request not found' });
+      if (restructure.status !== 'pending') return res.status(400).json({ message: 'Request is not pending' });
+
+      await db.update(loanRestructures).set({
+        status: 'rejected',
+        approvedBy: userId,
+        approvedAt: new Date(),
+        rejectionReason: reason || 'Rejected by admin',
+      }).where(eq(loanRestructures.id, restructureId));
+
+      res.json({ message: 'Restructure request rejected' });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
