@@ -101,24 +101,26 @@ export default function Landing() {
 
       <header className="relative z-10 border-b border-white/[0.06] backdrop-blur-xl bg-slate-950/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center gap-3">
-              <SaccoLogo size="sm" className="drop-shadow-lg" />
-              <div>
-                <h1 className="text-lg font-bold text-white tracking-tight">Biashara SACCO</h1>
-                <p className="text-blue-300/60 text-[10px] font-medium tracking-wider uppercase">Management System</p>
+          <div className="flex justify-between items-center h-16 gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <SaccoLogo size="sm" className="drop-shadow-lg shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-lg font-bold text-white tracking-tight truncate">Biashara SACCO</h1>
+                <p className="text-blue-300/60 text-[10px] font-medium tracking-wider uppercase hidden sm:block">Management System</p>
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex gap-2 sm:gap-3 shrink-0">
               <Button
                 variant="ghost"
+                size="sm"
                 onClick={() => window.location.href = '/login'}
                 className="text-slate-300 hover:text-white hover:bg-white/[0.06]"
               >
                 Sign In
               </Button>
               <Button
+                size="sm"
                 onClick={() => window.location.href = '/login'}
                 className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/25 rounded-xl text-sm font-semibold"
               >
@@ -129,7 +131,7 @@ export default function Landing() {
         </div>
       </header>
 
-      <section className="relative z-10 pt-20 pb-24 px-4 sm:px-6 lg:px-8">
+      <section className="relative z-10 pt-12 pb-16 sm:pt-20 sm:pb-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto text-center">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
@@ -199,7 +201,7 @@ export default function Landing() {
         </div>
       </section>
 
-      <section id="features" className="relative z-10 py-24 px-4 sm:px-6 lg:px-8">
+      <section id="features" className="relative z-10 py-12 sm:py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -246,11 +248,11 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="relative z-10 py-24 px-4 sm:px-6 lg:px-8">
+      <section className="relative z-10 py-12 sm:py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           <div className="rounded-3xl bg-white/[0.04] border border-white/[0.06] backdrop-blur-sm overflow-hidden">
             <div className="grid lg:grid-cols-2 gap-0">
-              <div className="p-10 lg:p-14">
+              <div className="p-6 sm:p-10 lg:p-14">
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   whileInView={{ opacity: 1, x: 0 }}
@@ -285,7 +287,7 @@ export default function Landing() {
                 </motion.div>
               </div>
 
-              <div className="relative bg-gradient-to-br from-blue-600/20 to-emerald-600/20 p-10 lg:p-14 flex items-center justify-center">
+              <div className="relative bg-gradient-to-br from-blue-600/20 to-emerald-600/20 p-6 sm:p-10 lg:p-14 flex items-center justify-center">
                 <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -312,14 +314,14 @@ export default function Landing() {
         </div>
       </section>
 
-      <section className="relative z-10 py-24 px-4 sm:px-6 lg:px-8">
+      <section className="relative z-10 py-12 sm:py-24 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="rounded-3xl bg-gradient-to-r from-blue-600/20 to-emerald-600/20 border border-white/[0.08] backdrop-blur-sm p-12 text-center relative overflow-hidden"
+            className="rounded-3xl bg-gradient-to-r from-blue-600/20 to-emerald-600/20 border border-white/[0.08] backdrop-blur-sm p-6 sm:p-12 text-center relative overflow-hidden"
           >
             <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-500/10 via-transparent to-transparent" />
             <div className="relative">
