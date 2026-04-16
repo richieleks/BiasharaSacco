@@ -19,7 +19,7 @@ import { format, addMonths } from "date-fns";
 import {
   ArrowLeft, DollarSign, FileText, Calendar, Download, CreditCard,
   Percent, Hash, HandCoins, Clock, AlertCircle, ArrowUpCircle, Calculator,
-  Users, CheckCircle, XCircle, Ban, Paperclip, Trash2, RefreshCw,
+  Users, CheckCircle, XCircle, Ban, Paperclip, Trash2, RefreshCw, Eye,
 } from "lucide-react";
 
 const getStatusColor = (status: string) => {
@@ -48,6 +48,7 @@ export default function LoanDetails() {
   const [stmtPageSize, setStmtPageSize] = useState(25);
   const [schedPage, setSchedPage] = useState(1);
   const [schedPageSize, setSchedPageSize] = useState(25);
+  const [previewDoc, setPreviewDoc] = useState<any | null>(null);
   const [showWriteoffDialog, setShowWriteoffDialog] = useState(false);
   const [writeoffReason, setWriteoffReason] = useState('');
   const [showRestructureDialog, setShowRestructureDialog] = useState(false);
@@ -484,6 +485,57 @@ export default function LoanDetails() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!previewDoc} onOpenChange={(open) => !open && setPreviewDoc(null)}>
+        <DialogContent className="max-w-5xl w-[95vw] h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-4 pb-2 border-b">
+            <DialogTitle className="text-base truncate pr-8">{previewDoc?.originalName}</DialogTitle>
+            <DialogDescription className="flex items-center justify-between gap-2">
+              <span className="text-xs">
+                {previewDoc?.mimeType}
+                {previewDoc?.fileSize ? ` | ${(previewDoc.fileSize / 1024).toFixed(0)} KB` : ''}
+              </span>
+              {previewDoc && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => window.open(`/api/loans/documents/${previewDoc.id}/download`, '_blank')}
+                  data-testid="button-download-from-preview"
+                >
+                  <Download className="h-4 w-4 mr-1" /> Download
+                </Button>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-hidden bg-slate-100 dark:bg-slate-900">
+            {previewDoc && (() => {
+              const url = `/api/loans/documents/${previewDoc.id}/view`;
+              const mime = previewDoc.mimeType || '';
+              if (mime.startsWith('image/')) {
+                return (
+                  <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
+                    <img src={url} alt={previewDoc.originalName} className="max-w-full max-h-full object-contain" />
+                  </div>
+                );
+              }
+              if (mime === 'application/pdf' || mime.startsWith('text/')) {
+                return <iframe src={url} title={previewDoc.originalName} className="w-full h-full border-0" />;
+              }
+              return (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
+                  <FileText className="h-12 w-12 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Preview is not available for this file type ({mime || 'unknown'}).
+                  </p>
+                  <Button onClick={() => window.open(url, '_blank')} variant="outline" size="sm">
+                    <Eye className="h-4 w-4 mr-1" /> Open in new tab
+                  </Button>
+                </div>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showWriteoffDialog} onOpenChange={setShowWriteoffDialog}>
         <DialogContent>
@@ -972,13 +1024,26 @@ export default function LoanDetails() {
                             </p>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(`/api/loans/documents/${doc.id}/download`, '_blank')}
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setPreviewDoc(doc)}
+                            title="View"
+                            data-testid={`button-view-doc-${doc.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(`/api/loans/documents/${doc.id}/download`, '_blank')}
+                            title="Download"
+                            data-testid={`button-download-doc-${doc.id}`}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     );
                   })}

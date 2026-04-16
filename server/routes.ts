@@ -6255,6 +6255,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/loans/documents/:docId/view', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req);
+      if (!userId) return res.status(401).json({ message: 'Authentication required' });
+      const docId = parseInt(req.params.docId);
+      if (isNaN(docId)) return res.status(400).json({ message: 'Invalid document ID' });
+
+      const [doc] = await db.select().from(loanDocuments).where(eq(loanDocuments.id, docId));
+      if (!doc) return res.status(404).json({ message: 'Document not found' });
+
+      if (!(await canAccessLoanDocs(userId, doc.loanId))) {
+        return res.status(403).json({ message: 'Access denied' });
+      }
+
+      const path = await import('path');
+      const resolved = path.resolve(doc.filePath);
+      const mime = doc.mimeType || 'application/octet-stream';
+      res.setHeader('Content-Type', mime);
+      res.setHeader('Content-Disposition', `inline; filename="${doc.originalName}"`);
+      res.sendFile(resolved);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   app.get('/api/import/status/:jobId', isAuthenticated, (req: any, res) => {
     const job = importJobs.get(req.params.jobId);
     if (!job) {
