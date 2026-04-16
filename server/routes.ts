@@ -3186,6 +3186,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       if (stage === 'committee') {
+        const guarantorsList = await storage.getGuarantorsByLoan(loanByUuid.id);
+        if (guarantorsList.length > 0) {
+          const anyRejected = guarantorsList.some(g => g.status === 'rejected');
+          if (anyRejected) {
+            return res.status(400).json({
+              message: "Cannot approve loan - one or more guarantors have rejected the request"
+            });
+          }
+          const allApproved = guarantorsList.every(g => g.status === 'approved');
+          if (!allApproved) {
+            const pendingCount = guarantorsList.filter(g => g.status === 'pending').length;
+            return res.status(400).json({
+              message: `Cannot approve loan - ${pendingCount} guarantor(s) must approve before committee approval can begin`,
+              pendingGuarantors: pendingCount
+            });
+          }
+        }
+
         const existingApprovals = await storage.getLoanApprovals(loanByUuid.id, 'committee');
         const alreadyApproved = existingApprovals.find(a => a.approvedBy === userId);
         if (alreadyApproved) {
