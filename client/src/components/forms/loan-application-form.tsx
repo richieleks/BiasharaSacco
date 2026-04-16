@@ -379,6 +379,7 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
 
   if (currentLoanId) {
     const needsGuarantors = savedNeedsGuarantors;
+    const savingsCoversLoan = totalSavingsBalance >= savedLoanPrincipal && savedLoanPrincipal > 0;
 
     const steps = [
       { key: 'documents', label: 'Upload Documents' },
@@ -437,45 +438,64 @@ export default function LoanApplicationForm({ onSuccess }: LoanApplicationFormPr
 
             {applicationStep === 'guarantors' && needsGuarantors && (
               <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Documents uploaded. Now add guarantors to complete the application.
-                </p>
-                <GuarantorList loanId={currentLoanId} />
-                <div className="mt-4">
-                  {!showGuarantorForm ? (
-                    <Button onClick={() => setShowGuarantorForm(true)} className="w-full">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Guarantor
+                {savingsCoversLoan ? (
+                  <>
+                    <Alert className="mb-4 border-green-300 bg-green-50 dark:bg-green-950/40 dark:border-green-800">
+                      <CheckCircle className="h-4 w-4 text-green-600" />
+                      <AlertDescription className="text-green-800 dark:text-green-300">
+                        <strong>Guarantors not required.</strong> Your savings balance of {formatCurrency(totalSavingsBalance)} is greater than or equal to the loan amount of {formatCurrency(savedLoanPrincipal)}, so your savings will serve as collateral. You may proceed without adding guarantors.
+                      </AlertDescription>
+                    </Alert>
+                    <Button
+                      className="w-full"
+                      onClick={() => setApplicationStep('complete')}
+                    >
+                      Complete Application
                     </Button>
-                  ) : (
-                    <GuarantorForm
-                      loanId={currentLoanId}
-                      onSuccess={() => {
-                        setShowGuarantorForm(false);
-                        queryClient.invalidateQueries({ queryKey: ['/api/guarantors/loan', currentLoanId] });
-                      }}
-                      onCancel={() => setShowGuarantorForm(false)}
-                    />
-                  )}
-                </div>
-                {loanGuarantors.length > 0 && (
-                  <div className="mt-4 space-y-3">
-                    <div className="border-t pt-4">
-                      <h4 className="font-medium text-sm mb-2">Guarantor Documents (optional)</h4>
-                      <LoanDocumentUpload
-                        loanId={currentLoanId}
-                        guarantors={loanGuarantors}
-                        requiresGuarantors={true}
-                      />
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Documents uploaded. Now add guarantors to complete the application.
+                    </p>
+                    <GuarantorList loanId={currentLoanId} />
+                    <div className="mt-4">
+                      {!showGuarantorForm ? (
+                        <Button onClick={() => setShowGuarantorForm(true)} className="w-full">
+                          <Plus className="h-4 w-4 mr-2" />
+                          Add Guarantor
+                        </Button>
+                      ) : (
+                        <GuarantorForm
+                          loanId={currentLoanId}
+                          onSuccess={() => {
+                            setShowGuarantorForm(false);
+                            queryClient.invalidateQueries({ queryKey: ['/api/guarantors/loan', currentLoanId] });
+                          }}
+                          onCancel={() => setShowGuarantorForm(false)}
+                        />
+                      )}
                     </div>
-                  </div>
+                    {loanGuarantors.length > 0 && (
+                      <div className="mt-4 space-y-3">
+                        <div className="border-t pt-4">
+                          <h4 className="font-medium text-sm mb-2">Guarantor Documents (optional)</h4>
+                          <LoanDocumentUpload
+                            loanId={currentLoanId}
+                            guarantors={loanGuarantors}
+                            requiresGuarantors={true}
+                          />
+                        </div>
+                      </div>
+                    )}
+                    <Button
+                      className="w-full mt-4"
+                      onClick={() => setApplicationStep('complete')}
+                    >
+                      Complete Application
+                    </Button>
+                  </>
                 )}
-                <Button
-                  className="w-full mt-4"
-                  onClick={() => setApplicationStep('complete')}
-                >
-                  Complete Application
-                </Button>
               </>
             )}
 
