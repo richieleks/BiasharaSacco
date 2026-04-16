@@ -249,12 +249,12 @@ export default function ExitRequestsPage() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-            <LogOut className="h-6 w-6 text-red-600 dark:text-red-400" />
-            Member Exit Requests
+    <div className="p-4 sm:p-6 max-w-5xl mx-auto space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
+            <LogOut className="h-5 w-5 sm:h-6 sm:w-6 text-red-600 dark:text-red-400 shrink-0" />
+            <span className="truncate">Member Exit Requests</span>
           </h1>
           <p className="text-slate-500 dark:text-slate-400 text-sm mt-1">
             Review and approve member exit requests submitted by staff.
@@ -265,6 +265,7 @@ export default function ExitRequestsPage() {
           size="sm"
           onClick={() => refetch()}
           data-testid="button-refresh-exit-requests"
+          className="shrink-0 self-start sm:self-auto"
         >
           <RefreshCw className="h-4 w-4 mr-1.5" />
           Refresh

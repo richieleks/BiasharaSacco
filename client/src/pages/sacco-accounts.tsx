@@ -310,10 +310,10 @@ export default function SaccoAccounts() {
         </TabsContent>
 
         <TabsContent value="journal" className="space-y-4 mt-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <h2 className="text-lg font-semibold">Journal Entries</h2>
             {canManage && (
-              <Button onClick={() => setShowEntryDialog(true)} data-testid="button-add-entry">
+              <Button onClick={() => setShowEntryDialog(true)} data-testid="button-add-entry" className="shrink-0 self-start sm:self-auto">
                 <ArrowRightLeft className="h-4 w-4 mr-2" /> New Entry
               </Button>
             )}

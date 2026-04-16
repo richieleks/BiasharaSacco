@@ -114,22 +114,24 @@ export default function LoanStatement() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex items-center space-x-3 sm:space-x-4 min-w-0">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setLocation("/loans")}
+            className="shrink-0"
           >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Loans
+            <ArrowLeft className="mr-1 sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">Back to Loans</span>
+            <span className="sm:hidden">Back</span>
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Loan Statement</h1>
-            <p className="text-muted-foreground">Loan #{loan.loanNumber}</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold truncate">Loan Statement</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate">Loan #{loan.loanNumber}</p>
           </div>
         </div>
-        <Button onClick={handleExportStatement} size="sm">
+        <Button onClick={handleExportStatement} size="sm" className="shrink-0 self-start sm:self-auto">
           <Download className="mr-2 h-4 w-4" />
           Export CSV
         </Button>

@@ -235,7 +235,7 @@ function BackupManagementCard() {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <CardTitle className="text-base flex items-center gap-2">
             <HardDrive className="h-4 w-4" />
             Backup History
@@ -245,6 +245,7 @@ function BackupManagementCard() {
             onClick={() => createBackupMutation.mutate()}
             disabled={createBackupMutation.isPending}
             data-testid="button-create-backup"
+            className="shrink-0 self-start sm:self-auto"
           >
             {createBackupMutation.isPending ? "Creating..." : "Create Backup Now"}
           </Button>

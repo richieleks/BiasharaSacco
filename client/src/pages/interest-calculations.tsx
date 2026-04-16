@@ -352,17 +352,17 @@ export default function InterestCalculations() {
   };
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Interest Calculations</h1>
-          <p className="text-muted-foreground">
+    <div className="container mx-auto p-4 sm:p-6 space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight">Interest Calculations</h1>
+          <p className="text-sm text-muted-foreground">
             Manage financial years and calculate interest on savings accounts
           </p>
         </div>
         {canCreateFinancialYear && <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="shrink-0 self-start sm:self-auto">
               <Plus className="w-4 h-4 mr-2" />
               New Financial Year
             </Button>

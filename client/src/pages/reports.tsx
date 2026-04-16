@@ -82,9 +82,9 @@ function MemberActivityTab() {
 
   return (
     <TabsContent value="activity" className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Member Activity Report</h3>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-slate-100">Member Activity Report</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Members inactive for 3+ months (no savings, no running loan) become inactive. 6+ months become dormant.
           </p>
@@ -95,6 +95,7 @@ function MemberActivityTab() {
           onClick={() => checkActivityMutation.mutate()}
           disabled={checkActivityMutation.isPending}
           data-testid="button-run-activity-check"
+          className="shrink-0 self-start sm:self-auto"
         >
           <RefreshCw className={`h-4 w-4 mr-1.5 ${checkActivityMutation.isPending ? 'animate-spin' : ''}`} />
           {checkActivityMutation.isPending ? "Checking..." : "Run Activity Check"}
