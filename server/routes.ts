@@ -3019,6 +3019,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get('/api/loans/my-approval-activity', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = getUserId(req)!;
+      const approvals = await storage.getLoanApprovalsByUser(userId);
+      const rejections = await storage.getLoansRejectedByUser(userId);
+
+      let pendingReviewCount = 0;
+      try {
+        const isCommittee = await hasApprovalRole(userId, 'committee');
+        const isTreasurer = await hasApprovalRole(userId, 'treasurer');
+        if (isCommittee) {
+          const committeePending = await storage.getLoansForApproval('committee', 'committee');
+          const notYetApproved = committeePending.filter((l: any) =>
+            !approvals.some((a: any) => a.loanId === l.id)
+          );
+          pendingReviewCount += notYetApproved.length;
+        }
+        if (isTreasurer) {
+          const treasurerPending = await storage.getLoansForApproval('treasurer', 'treasurer');
+          pendingReviewCount += treasurerPending.length;
+        }
+      } catch (e) {
+        console.error('Error counting pending reviews:', e);
+      }
+
+      const approvedList = approvals.map((a: any) => ({
+        id: a.id,
+        loanNumber: a.loan?.loanNumber || '-',
+        memberName: a.loan?.member?.fullName || '-',
+        memberNumber: a.loan?.member?.memberNumber || '-',
+        principalAmount: a.loan?.principalAmount || '0',
+        stage: a.stage,
+        comments: a.comments || '',
+        date: a.createdAt,
+        action: 'approved',
+      }));
+
+      const rejectedList = rejections.map((l: any) => ({
+        id: l.id,
+        loanNumber: l.loanNumber || '-',
+        memberName: l.member?.fullName || '-',
+        memberNumber: l.member?.memberNumber || '-',
+        principalAmount: l.principalAmount || '0',
+        stage: 'committee',
+        comments: l.rejectionReason || '',
+        date: l.rejectedAt,
+        action: 'rejected',
+      }));
+
+      res.json({
+        approved: approvedList,
+        rejected: rejectedList,
+        summary: {
+          totalApproved: approvedList.length,
+          totalRejected: rejectedList.length,
+          totalReviewed: approvedList.length + rejectedList.length,
+          pendingReview: pendingReviewCount,
+        }
+      });
+    } catch (error) {
+      console.error("Error fetching approval activity:", error);
+      res.status(500).json({ message: "Failed to fetch approval activity" });
+    }
+  });
+
   // Get specific loan by ID
   app.get('/api/loans/:id', isAuthenticated, async (req: any, res) => {
     try {
@@ -3302,71 +3367,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error rejecting loan:", error);
       res.status(500).json({ message: "Failed to reject loan" });
-    }
-  });
-
-  app.get('/api/loans/my-approval-activity', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = getUserId(req)!;
-      const approvals = await storage.getLoanApprovalsByUser(userId);
-      const rejections = await storage.getLoansRejectedByUser(userId);
-
-      let pendingReviewCount = 0;
-      try {
-        const isCommittee = await hasApprovalRole(userId, 'committee');
-        const isTreasurer = await hasApprovalRole(userId, 'treasurer');
-        if (isCommittee) {
-          const committeePending = await storage.getLoansForApproval('committee', 'committee');
-          const notYetApproved = committeePending.filter((l: any) =>
-            !approvals.some((a: any) => a.loanId === l.id)
-          );
-          pendingReviewCount += notYetApproved.length;
-        }
-        if (isTreasurer) {
-          const treasurerPending = await storage.getLoansForApproval('treasurer', 'treasurer');
-          pendingReviewCount += treasurerPending.length;
-        }
-      } catch (e) {
-        console.error('Error counting pending reviews:', e);
-      }
-
-      const approvedList = approvals.map((a: any) => ({
-        id: a.id,
-        loanNumber: a.loan?.loanNumber || '-',
-        memberName: a.loan?.member?.fullName || '-',
-        memberNumber: a.loan?.member?.memberNumber || '-',
-        principalAmount: a.loan?.principalAmount || '0',
-        stage: a.stage,
-        comments: a.comments || '',
-        date: a.createdAt,
-        action: 'approved',
-      }));
-
-      const rejectedList = rejections.map((l: any) => ({
-        id: l.id,
-        loanNumber: l.loanNumber || '-',
-        memberName: l.member?.fullName || '-',
-        memberNumber: l.member?.memberNumber || '-',
-        principalAmount: l.principalAmount || '0',
-        stage: 'committee',
-        comments: l.rejectionReason || '',
-        date: l.rejectedAt,
-        action: 'rejected',
-      }));
-
-      res.json({
-        approved: approvedList,
-        rejected: rejectedList,
-        summary: {
-          totalApproved: approvedList.length,
-          totalRejected: rejectedList.length,
-          totalReviewed: approvedList.length + rejectedList.length,
-          pendingReview: pendingReviewCount,
-        }
-      });
-    } catch (error) {
-      console.error("Error fetching approval activity:", error);
-      res.status(500).json({ message: "Failed to fetch approval activity" });
     }
   });
 
