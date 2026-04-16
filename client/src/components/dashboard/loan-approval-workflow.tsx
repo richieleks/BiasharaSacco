@@ -63,10 +63,21 @@ export default function LoanApprovalWorkflow() {
       const response = await apiRequest('POST', `/api/loans/${loan.uuid}/approve/${stage}`, { comments });
       return response.json();
     },
-    onSuccess: (data: any) => {
+    onSuccess: (data: any, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans/approval'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/my-approval-activity'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/my-loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      const approvedLoan = variables?.loan;
+      if (approvedLoan?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/loans', approvedLoan.id] });
+        queryClient.invalidateQueries({ queryKey: ['/api/loans', approvedLoan.id, 'approvals'] });
+      }
+      if (approvedLoan?.uuid) {
+        queryClient.invalidateQueries({ queryKey: ['/api/loans', approvedLoan.uuid] });
+      }
       setIsDialogOpen(false);
       setComments("");
       toast({ title: "Approval Recorded",

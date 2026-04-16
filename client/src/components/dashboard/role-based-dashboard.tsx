@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
@@ -76,6 +76,10 @@ function CommitteeApprovalActivity() {
   const { isAuthenticated } = useAuth();
   const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState('all');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  React.useEffect(() => { setPage(1); }, [activeTab, pageSize]);
 
   const { data: activityData, isLoading } = useQuery<any>({
     queryKey: ['/api/loans/my-approval-activity'],
@@ -104,16 +108,23 @@ function CommitteeApprovalActivity() {
 
   const approved = activityData?.approved || [];
   const rejected = activityData?.rejected || [];
+  const pending = activityData?.pending || [];
   const summary = activityData?.summary || { totalApproved: 0, totalRejected: 0, totalReviewed: 0, pendingReview: 0 };
 
-  const allActivity = [...approved, ...rejected].sort((a: any, b: any) => {
+  const allActivity = [...pending, ...approved, ...rejected].sort((a: any, b: any) => {
     const dateA = a.date ? new Date(a.date).getTime() : 0;
     const dateB = b.date ? new Date(b.date).getTime() : 0;
     return dateB - dateA;
   });
 
   const filteredActivity = activeTab === 'approved' ? approved :
-    activeTab === 'rejected' ? rejected : allActivity;
+    activeTab === 'rejected' ? rejected :
+    activeTab === 'pending' ? pending : allActivity;
+
+  const totalPages = Math.max(1, Math.ceil(filteredActivity.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const pageStart = (safePage - 1) * pageSize;
+  const pagedActivity = filteredActivity.slice(pageStart, pageStart + pageSize);
 
   return (
     <Card>
@@ -149,69 +160,113 @@ function CommitteeApprovalActivity() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid grid-cols-3 w-full mb-4">
+          <TabsList className="grid grid-cols-4 w-full mb-4">
             <TabsTrigger value="all">All ({allActivity.length})</TabsTrigger>
+            <TabsTrigger value="pending">Pending ({pending.length})</TabsTrigger>
             <TabsTrigger value="approved">Approved ({approved.length})</TabsTrigger>
             <TabsTrigger value="rejected">Declined ({rejected.length})</TabsTrigger>
           </TabsList>
         </Tabs>
 
         {filteredActivity.length > 0 ? (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Loan #</TableHead>
-                  <TableHead>Member</TableHead>
-                  <TableHead className="hidden sm:table-cell">Amount</TableHead>
-                  <TableHead>Decision</TableHead>
-                  <TableHead className="hidden md:table-cell">Comments</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredActivity.map((item: any, idx: number) => (
-                  <TableRow
-                    key={`${item.action}-${item.id}-${idx}`}
-                    className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => {
-                      const loanId = item.action === 'approved' ? item.loanId : item.id;
-                      if (loanId) setLocation(`/loans/${loanId}/details`);
-                    }}
-                    data-testid={`row-approval-activity-${item.loanNumber}`}
-                  >
-                    <TableCell className="font-medium text-xs text-blue-600 hover:underline">{item.loanNumber}</TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="text-sm font-medium">{item.memberName}</p>
-                        <p className="text-xs text-muted-foreground">{item.memberNumber}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">{formatCurrency(item.principalAmount)}</TableCell>
-                    <TableCell>
-                      {item.action === 'approved' ? (
-                        <Badge className="bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 gap-1">
-                          <CheckCircle className="h-3 w-3" />
-                          Approved
-                        </Badge>
-                      ) : (
-                        <Badge variant="destructive" className="gap-1">
-                          <XCircle className="h-3 w-3" />
-                          Declined
-                        </Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="hidden md:table-cell text-xs max-w-[200px] truncate">
-                      {item.comments || '-'}
-                    </TableCell>
-                    <TableCell className="text-xs">
-                      {item.date ? format(new Date(item.date), 'dd MMM yyyy') : '-'}
-                    </TableCell>
+          <>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Loan #</TableHead>
+                    <TableHead>Member</TableHead>
+                    <TableHead className="hidden sm:table-cell">Amount</TableHead>
+                    <TableHead>Decision</TableHead>
+                    <TableHead className="hidden md:table-cell">Comments</TableHead>
+                    <TableHead>Date</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {pagedActivity.map((item: any, idx: number) => (
+                    <TableRow
+                      key={`${item.action}-${item.id}-${idx}`}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => {
+                        const loanId = item.loanId || (item.action === 'rejected' || item.action === 'pending' ? item.id : null);
+                        if (loanId) setLocation(`/loans/${loanId}/details`);
+                      }}
+                      data-testid={`row-approval-activity-${item.loanNumber}`}
+                    >
+                      <TableCell className="font-medium text-xs text-blue-600 hover:underline">{item.loanNumber}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="text-sm font-medium">{item.memberName}</p>
+                          <p className="text-xs text-muted-foreground">{item.memberNumber}</p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">{formatCurrency(item.principalAmount)}</TableCell>
+                      <TableCell>
+                        {item.action === 'approved' ? (
+                          <Badge className="bg-green-100 dark:bg-green-950/50 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800 gap-1">
+                            <CheckCircle className="h-3 w-3" />
+                            Approved
+                          </Badge>
+                        ) : item.action === 'rejected' ? (
+                          <Badge variant="destructive" className="gap-1">
+                            <XCircle className="h-3 w-3" />
+                            Declined
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800 gap-1">
+                            <ClipboardList className="h-3 w-3" />
+                            Pending
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell text-xs max-w-[200px] truncate">
+                        {item.comments || '-'}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {item.date ? format(new Date(item.date), 'dd MMM yyyy') : '-'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-4">
+              <div className="text-xs text-muted-foreground">
+                Showing {pageStart + 1}-{Math.min(pageStart + pageSize, filteredActivity.length)} of {filteredActivity.length}
+              </div>
+              <div className="flex items-center gap-2">
+                <select
+                  value={pageSize}
+                  onChange={(e) => setPageSize(parseInt(e.target.value))}
+                  className="h-8 rounded border border-input bg-background px-2 text-xs"
+                  data-testid="select-approval-activity-page-size"
+                >
+                  {[5, 10, 25, 50].map((n) => (
+                    <option key={n} value={n}>{n} / page</option>
+                  ))}
+                </select>
+                <button
+                  className="h-8 px-3 rounded border border-input bg-background text-xs disabled:opacity-50"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  data-testid="button-approval-activity-prev"
+                >
+                  Previous
+                </button>
+                <span className="text-xs">
+                  Page {safePage} of {totalPages}
+                </span>
+                <button
+                  className="h-8 px-3 rounded border border-input bg-background text-xs disabled:opacity-50"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  data-testid="button-approval-activity-next"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </>
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <ClipboardList className="h-10 w-10 mx-auto mb-3 opacity-50" />

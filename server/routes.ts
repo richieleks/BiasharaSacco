@@ -3025,7 +3025,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const approvals = await storage.getLoanApprovalsByUser(userId);
       const rejections = await storage.getLoansRejectedByUser(userId);
 
-      let pendingReviewCount = 0;
+      let pendingReviewLoans: any[] = [];
       try {
         const isCommittee = await hasApprovalRole(userId, 'committee');
         const isTreasurer = await hasApprovalRole(userId, 'treasurer');
@@ -3034,15 +3034,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const notYetApproved = committeePending.filter((l: any) =>
             !approvals.some((a: any) => a.loanId === l.id)
           );
-          pendingReviewCount += notYetApproved.length;
+          pendingReviewLoans.push(...notYetApproved.map((l: any) => ({ ...l, _stage: 'committee' })));
         }
         if (isTreasurer) {
           const treasurerPending = await storage.getLoansForApproval('treasurer', 'treasurer');
-          pendingReviewCount += treasurerPending.length;
+          pendingReviewLoans.push(...treasurerPending.map((l: any) => ({ ...l, _stage: 'treasurer' })));
         }
       } catch (e) {
         console.error('Error counting pending reviews:', e);
       }
+      const pendingReviewCount = pendingReviewLoans.length;
 
       const approvedList = approvals.map((a: any) => ({
         id: a.id,
@@ -3069,9 +3070,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'rejected',
       }));
 
+      const pendingList = pendingReviewLoans.map((l: any) => ({
+        id: l.id,
+        loanId: l.id,
+        loanNumber: l.loanNumber || '-',
+        memberName: l.member?.fullName || '-',
+        memberNumber: l.member?.memberNumber || '-',
+        principalAmount: l.principalAmount || '0',
+        stage: l._stage || l.approvalStage || 'committee',
+        comments: '',
+        date: l.applicationDate || l.createdAt,
+        action: 'pending',
+      }));
+
       res.json({
         approved: approvedList,
         rejected: rejectedList,
+        pending: pendingList,
         summary: {
           totalApproved: approvedList.length,
           totalRejected: rejectedList.length,
