@@ -1073,13 +1073,36 @@ export class DatabaseStorage implements IStorage {
       .where(whereCondition)
       .orderBy(desc(loans.createdAt));
 
-    return results.map(result => ({
+    let mapped = results.map(result => ({
       ...result.loans,
       member: result.members ? {
         ...result.members,
         user: result.users || undefined,
       } : undefined,
     }));
+
+    if (stage === 'committee' && mapped.length > 0) {
+      const loanIds = mapped.map(l => l.id);
+      const allGuarantors = await db
+        .select()
+        .from(guarantors)
+        .where(inArray(guarantors.loanId, loanIds));
+
+      const byLoan = new Map<number, typeof allGuarantors>();
+      for (const g of allGuarantors) {
+        const arr = byLoan.get(g.loanId) || [];
+        arr.push(g);
+        byLoan.set(g.loanId, arr);
+      }
+
+      mapped = mapped.filter(loan => {
+        const gs = byLoan.get(loan.id) || [];
+        if (gs.length === 0) return true;
+        return gs.every(g => g.status === 'approved');
+      });
+    }
+
+    return mapped;
   }
 
   async approveLoanAtStage(loanId: number, stage: string, approvedBy: string, comments?: string): Promise<Loan> {
