@@ -8,6 +8,7 @@ import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "./rbac-middleware";
 import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations, saccoAccounts, loanDocuments, guarantors } from "@shared/schema";
 import { businessRulesValidator } from "./business-rules-validator";
+import { sendEmail, verifyConnection, buildEmailTemplate, getEmailConfig } from "./email-service";
 import { seedAdminUser, seedRBAC } from "./seed";
 import { z } from "zod";
 import { db } from "./db";
@@ -951,9 +952,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passwordComplexity: "medium",
         twoFactorRequired: false,
         emailEnabled: true,
-        smtpServer: "smtp.gmail.com",
+        smtpServer: "email-smtp.us-east-1.amazonaws.com",
         smtpPort: 587,
         emailFromAddress: "noreply@biasharasacco.com",
+        emailFromName: "Biashara SACCO",
         systemNotifications: true,
         memberNotifications: true,
         loanNotifications: true,
@@ -1057,6 +1059,165 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error updating admin settings:", error);
       res.status(500).json({ message: "Failed to update admin settings" });
+    }
+  });
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  app.post('/api/admin/email/test-connection', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const config = await getEmailConfig(storage);
+      const result = await verifyConnection(config);
+      const userId = getUserId(req);
+      if (userId) {
+        try {
+          await storage.createAuditLog({
+            userId,
+            action: 'email_test_connection',
+            resource: 'system-settings',
+            resourceId: 'email',
+            details: `SMTP connection test: ${result.success ? 'success' : 'failed'}`,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+          });
+        } catch (e) {}
+      }
+      if (result.success) {
+        res.json({ message: 'SMTP connection successful', success: true });
+      } else {
+        res.status(400).json({ message: 'SMTP connection failed. Check your SES endpoint, port, and credentials.', success: false });
+      }
+    } catch (error: any) {
+      console.error('Email connection test error:', error);
+      res.status(500).json({ message: 'Connection test failed. Verify your SMTP settings.', success: false });
+    }
+  });
+
+  app.post('/api/admin/email/send-test', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const { to } = req.body;
+      if (!to || typeof to !== 'string' || !emailRegex.test(to)) {
+        return res.status(400).json({ message: 'A valid recipient email address is required' });
+      }
+
+      const config = await getEmailConfig(storage);
+      const html = buildEmailTemplate(
+        'Test Email',
+        `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">
+          This is a test email from the Biashara SACCO Management System.
+        </p>
+        <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">
+          If you received this message, your email configuration is working correctly with Amazon SES.
+        </p>
+        <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0;">
+          <p style="color:#166534;font-size:14px;margin:0;font-weight:600;">✓ Email delivery confirmed</p>
+        </div>`
+      );
+
+      const result = await sendEmail(config, { to, subject: 'Biashara SACCO - Test Email', html });
+      const userId = getUserId(req);
+      if (userId) {
+        try {
+          await storage.createAuditLog({
+            userId,
+            action: 'email_test',
+            resource: 'system-settings',
+            resourceId: 'email',
+            details: `Test email sent to ${to}: ${result.success ? 'delivered' : 'failed'}`,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+          });
+        } catch (e) {}
+      }
+      if (result.success) {
+        res.json({ message: `Test email sent to ${to}`, success: true });
+      } else {
+        res.status(400).json({ message: 'Failed to send test email. Check your SES configuration and verified sender address.', success: false });
+      }
+    } catch (error: any) {
+      console.error('Email send-test error:', error);
+      res.status(500).json({ message: 'Failed to send test email. Please try again.', success: false });
+    }
+  });
+
+  app.post('/api/admin/email/send', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
+    try {
+      const { to, subject, message, memberIds } = req.body;
+
+      if (!subject || typeof subject !== 'string' || subject.length > 200) {
+        return res.status(400).json({ message: 'A valid subject is required (max 200 characters)' });
+      }
+      if (!message || typeof message !== 'string' || message.length > 10000) {
+        return res.status(400).json({ message: 'A valid message is required (max 10,000 characters)' });
+      }
+
+      const config = await getEmailConfig(storage);
+      if (!config.emailEnabled) {
+        return res.status(400).json({ message: 'Email system is disabled. Enable it in Admin Settings.' });
+      }
+
+      let recipients: string[] = [];
+
+      if (memberIds && Array.isArray(memberIds) && memberIds.length > 0) {
+        if (memberIds.length > 500) {
+          return res.status(400).json({ message: 'Too many recipients. Maximum 500 members per batch.' });
+        }
+        for (const memberId of memberIds) {
+          const member = await storage.getMember(memberId);
+          if (member?.email && emailRegex.test(member.email)) {
+            recipients.push(member.email);
+          }
+        }
+      } else if (to) {
+        const toList = Array.isArray(to) ? to : [to];
+        recipients = toList.filter((r: string) => typeof r === 'string' && emailRegex.test(r));
+      }
+
+      if (recipients.length === 0) {
+        return res.status(400).json({ message: 'No valid email recipients found' });
+      }
+
+      const html = buildEmailTemplate(
+        subject,
+        `<div style="color:#475569;font-size:15px;line-height:1.6;">${message.replace(/\n/g, '<br>')}</div>`
+      );
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const recipient of recipients) {
+        const result = await sendEmail(config, { to: recipient, subject: `Biashara SACCO - ${subject}`, html });
+        if (result.success) {
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+
+      const userId = getUserId(req);
+      if (userId) {
+        try {
+          await storage.createAuditLog({
+            userId,
+            action: 'email_send',
+            resource: 'system-settings',
+            resourceId: 'email',
+            details: `Sent email "${subject}" to ${successCount} of ${recipients.length} recipients. ${failCount} failed.`,
+            ipAddress: req.ip,
+            userAgent: req.headers['user-agent'],
+          });
+        } catch (e) {}
+      }
+
+      res.json({
+        message: `Email sent to ${successCount} recipient(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
+        success: successCount > 0,
+        successCount,
+        failCount,
+      });
+    } catch (error: any) {
+      console.error('Email send error:', error);
+      res.status(500).json({ message: 'Failed to send email. Please try again.', success: false });
     }
   });
 

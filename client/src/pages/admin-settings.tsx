@@ -50,6 +50,11 @@ import {
   HardDrive,
   Clock,
   Unlock,
+  CheckCircle,
+  XCircle,
+  Send,
+  Loader2,
+  Wifi,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -93,11 +98,12 @@ const adminSettingsSchema = z.object({
   passwordComplexity: z.enum(["low", "medium", "high"]).default("medium"),
   twoFactorRequired: z.boolean().default(false),
   
-  // Email Configuration
+  // Email Configuration (Amazon SES)
   emailEnabled: z.boolean().default(true),
-  smtpServer: z.string().default(""),
+  smtpServer: z.string().default("email-smtp.us-east-1.amazonaws.com"),
   smtpPort: z.number().min(1).max(65535).default(587),
   emailFromAddress: z.string().default(""),
+  emailFromName: z.string().default("Biashara SACCO"),
   
   // Notification Settings
   systemNotifications: z.boolean().default(true),
@@ -279,6 +285,243 @@ function BackupManagementCard() {
   );
 }
 
+function EmailConfigTab({ form }: { form: any }) {
+  const { toast } = useToast();
+  const [testEmail, setTestEmail] = useState("");
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [connectionError, setConnectionError] = useState("");
+
+  const testConnectionMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', '/api/admin/email/test-connection');
+      return res.json();
+    },
+    onSuccess: () => {
+      setConnectionStatus('success');
+      toast({ title: "Connection Successful", description: "SMTP connection to Amazon SES verified." });
+    },
+    onError: (error: Error) => {
+      setConnectionStatus('error');
+      setConnectionError(error.message);
+      toast({ title: "Connection Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const sendTestMutation = useMutation({
+    mutationFn: async (to: string) => {
+      const res = await apiRequest('POST', '/api/admin/email/send-test', { to });
+      return res.json();
+    },
+    onSuccess: (data) => {
+      toast({ title: "Test Email Sent", description: data.message });
+      setTestEmail("");
+    },
+    onError: (error: Error) => {
+      toast({ title: "Send Failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium mb-2">Email Configuration</h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Configure Amazon SES email delivery for member notifications and system alerts
+        </p>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Amazon SES SMTP Settings
+          </CardTitle>
+          <CardDescription>
+            SMTP credentials are stored securely as environment variables (SES_SMTP_USERNAME, SES_SMTP_PASSWORD)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <FormField
+            control={form.control}
+            name="emailEnabled"
+            render={({ field }) => (
+              <FormItem className="flex items-center justify-between space-y-0">
+                <div className="space-y-1">
+                  <FormLabel>Email System Enabled</FormLabel>
+                  <FormDescription>
+                    Enable or disable all outgoing email notifications
+                  </FormDescription>
+                </div>
+                <FormControl>
+                  <Switch checked={field.value} onCheckedChange={field.onChange} />
+                </FormControl>
+              </FormItem>
+            )}
+          />
+
+          <Separator />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="smtpServer"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>SES SMTP Endpoint</FormLabel>
+                  <FormControl>
+                    <Input placeholder="email-smtp.us-east-1.amazonaws.com" {...field} />
+                  </FormControl>
+                  <FormDescription>
+                    Amazon SES SMTP endpoint for your region
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="smtpPort"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>SMTP Port</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="1" 
+                      max="65535"
+                      {...field}
+                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Use 587 (STARTTLS) or 465 (TLS)
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="emailFromAddress"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>From Email Address</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="email" 
+                      placeholder="noreply@biasharasacco.com" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Must be a verified identity in Amazon SES
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="emailFromName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>From Display Name</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Biashara SACCO" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <FormDescription>
+                    Name shown in the "From" field
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Wifi className="h-4 w-4" />
+            Connection Test
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setConnectionStatus('testing');
+                setConnectionError("");
+                testConnectionMutation.mutate();
+              }}
+              disabled={testConnectionMutation.isPending}
+            >
+              {testConnectionMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testing...</>
+              ) : (
+                <><Wifi className="h-4 w-4 mr-2" />Test SMTP Connection</>
+              )}
+            </Button>
+            {connectionStatus === 'success' && (
+              <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
+                <CheckCircle className="h-4 w-4" />
+                Connected to Amazon SES
+              </span>
+            )}
+            {connectionStatus === 'error' && (
+              <span className="flex items-center gap-1.5 text-sm text-red-600 dark:text-red-400">
+                <XCircle className="h-4 w-4" />
+                {connectionError || "Connection failed"}
+              </span>
+            )}
+          </div>
+
+          <Separator />
+
+          <div>
+            <label className="text-sm font-medium mb-2 block">Send Test Email</label>
+            <div className="flex gap-2">
+              <Input
+                type="email"
+                placeholder="recipient@example.com"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                className="max-w-xs"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => sendTestMutation.mutate(testEmail)}
+                disabled={sendTestMutation.isPending || !testEmail}
+              >
+                {sendTestMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Sending...</>
+                ) : (
+                  <><Send className="h-4 w-4 mr-2" />Send Test</>
+                )}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1.5">
+              Send a test email to verify delivery is working end-to-end
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function AdminSettingsPage() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -298,9 +541,10 @@ export default function AdminSettingsPage() {
     passwordComplexity: "medium",
     twoFactorRequired: false,
     emailEnabled: true,
-    smtpServer: "",
+    smtpServer: "email-smtp.us-east-1.amazonaws.com",
     smtpPort: 587,
     emailFromAddress: "",
+    emailFromName: "Biashara SACCO",
     systemNotifications: true,
     memberNotifications: true,
     loanNotifications: true,
@@ -749,105 +993,7 @@ export default function AdminSettingsPage() {
 
               {/* Email Configuration Tab */}
               {activeTab === 'email' && (
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-lg font-medium mb-4">Email Configuration</h3>
-                    <p className="text-sm text-muted-foreground mb-6">
-                      Configure email server settings and notification preferences
-                    </p>
-                  </div>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Mail className="h-4 w-4" />
-                        SMTP Configuration
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="emailEnabled"
-                        render={({ field }) => (
-                          <FormItem className="flex items-center justify-between space-y-0">
-                            <div className="space-y-1">
-                              <FormLabel>Email System Enabled</FormLabel>
-                              <FormDescription>
-                                Enable or disable email notifications
-                              </FormDescription>
-                            </div>
-                            <FormControl>
-                              <Switch checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                          </FormItem>
-                        )}
-                      />
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="smtpServer"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>SMTP Server</FormLabel>
-                              <FormControl>
-                                <Input placeholder="smtp.gmail.com" {...field} />
-                              </FormControl>
-                              <FormDescription>
-                                SMTP server hostname
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="smtpPort"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>SMTP Port</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="number" 
-                                  min="1" 
-                                  max="65535"
-                                  {...field}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value))}
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                SMTP server port (usually 587)
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        <FormField
-                          control={form.control}
-                          name="emailFromAddress"
-                          render={({ field }) => (
-                            <FormItem className="md:col-span-2">
-                              <FormLabel>From Email Address</FormLabel>
-                              <FormControl>
-                                <Input 
-                                  type="email" 
-                                  placeholder="noreply@biasharasacco.com" 
-                                  {...field} 
-                                />
-                              </FormControl>
-                              <FormDescription>
-                                Email address used for outgoing notifications
-                              </FormDescription>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+                <EmailConfigTab form={form} />
               )}
 
               {/* Notifications Tab */}
