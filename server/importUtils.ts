@@ -192,7 +192,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
             accountNumbers.push(row[j + 1].toString().trim());
           }
           if (cellText.includes('CLOSING BALANCE') && row[j + 1] !== undefined) {
-            closingBalance = parseFloat(row[j + 1]) || 0;
+            closingBalance = Math.ceil(parseFloat(row[j + 1]) || 0);
           }
         }
       }
@@ -407,8 +407,8 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
           if (i < 3) {
             console.log(`Sheet "${sheetName}" row ${i + 1} raw date: ${JSON.stringify(row[0])} -> parsed: ${postingDate.toISOString()}${!row[0] ? ' (carried forward)' : ''}`);
           }
-          const debitAmount = parseFloat(row[2]) || 0;
-          const creditAmount = parseFloat(row[3]) || 0;
+          const debitAmount = Math.ceil(parseFloat(row[2]) || 0);
+          const creditAmount = Math.ceil(parseFloat(row[3]) || 0);
           const rowAmount = creditAmount > 0 ? creditAmount : debitAmount;
 
           if (rowAmount > 0) {
@@ -1221,7 +1221,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
             } else if ((cellText.includes('ACCOUNT NUMBER') || cellText === 'ACCOUNT NUMBER:') && row[j + 1]) {
               accountNumber = row[j + 1]?.toString().trim() || '';
             } else if (cellText.includes('CLOSING BALANCE') && row[j + 1] !== undefined) {
-              closingBalance = parseFloat(row[j + 1]) || 0;
+              closingBalance = Math.ceil(parseFloat(row[j + 1]) || 0);
             } else if ((cellText === 'INTEREST RATE' || cellText === 'INT.' || cellText === 'INT') && row[j + 1] !== undefined) {
               interestRateValue = parseFloat(row[j + 1]) || 0;
             } else if (cellText.includes('TENURE') && row[j + 1] !== undefined) {
@@ -1354,10 +1354,10 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
             console.log(`Sheet "${sheetName}" loan row ${i - headerRowIndex}: raw date=${JSON.stringify(row[0])} (type=${typeof row[0]}), parsed=${postingDate.toISOString()}${!row[0] ? ' (carried forward)' : ''}, details="${row[1]}", debit=${row[2]}, credit=${row[3]}`);
           }
 
-          const amtDebited = parseFloat(row[2]) || 0;
-          const principalRepyt = parseFloat(row[3]) || 0;
-          const interestAmt = parseFloat(row[4]) || 0;
-          const balanceAmt = parseFloat(row[5]) || 0;
+          const amtDebited = Math.ceil(parseFloat(row[2]) || 0);
+          const principalRepyt = Math.ceil(parseFloat(row[3]) || 0);
+          const interestAmt = Math.ceil(parseFloat(row[4]) || 0);
+          const balanceAmt = Math.ceil(parseFloat(row[5]) || 0);
 
           const isSpecialDisbursement = detailsLower === 'special loan' || detailsLower.startsWith('special loan ');
           const isSpecialRepayment = detailsLower.includes('installment - special') || detailsLower.includes('instalment - special');
