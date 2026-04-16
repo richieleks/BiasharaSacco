@@ -177,7 +177,7 @@ export const transactions = pgTable("transactions", {
   savingsAccountId: integer("savings_account_id").references(() => savingsAccounts.id),
   loanId: integer("loan_id").references(() => loans.id),
   transactionType: varchar("transaction_type", { 
-    enum: ["deposit", "withdrawal", "loan_payment", "loan_disbursement", "interest_credit", "fee_charge", "share_capital"] 
+    enum: ["deposit", "withdrawal", "loan_payment", "loan_disbursement", "interest_credit", "fee_charge", "share_capital", "membership_fee"] 
   }).notNull(),
   amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
   description: text("description"),

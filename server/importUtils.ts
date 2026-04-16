@@ -148,6 +148,12 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
     console.log(`Processing ${sheetsToProcess.length} sheet(s) with data: ${sheetsToProcess.join(', ')}`);
     const allMembers = await storage.getAllMembers();
 
+    const entranceFeeSetting = await storage.getSystemSetting('entranceFee');
+    const sharePriceSetting = await storage.getSystemSetting('sharePrice');
+    const entranceFee = entranceFeeSetting ? parseFloat(entranceFeeSetting.settingValue) : 15000;
+    const sharePrice = sharePriceSetting ? parseFloat(sharePriceSetting.settingValue) : 5000;
+    console.log(`System settings: entranceFee=${entranceFee}, sharePrice=${sharePrice}`);
+
     for (const sheetName of sheetsToProcess) {
       const worksheet = workbook.Sheets[sheetName];
       const rawData = utils.sheet_to_json(worksheet, { header: 1 });
@@ -377,8 +383,12 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
         const existingRefNumbers = new Set(existingTransactions.map((t: any) => t.referenceNumber));
 
         const transactionEntries = [];
+        const specialEntries: Array<{ type: 'membership' | 'shares'; amount: number; date: Date; refNumber: string; details: string }> = [];
         let skippedDuplicates = 0;
         let lastKnownDate: Date | null = null;
+
+        const isMembershipRow = (text: string) => /membership/i.test(text);
+        const isSharesRow = (text: string) => /shares/i.test(text);
 
         for (let i = 0; i < transactionRows.length; i++) {
           const row = transactionRows[i] as any[];
@@ -399,8 +409,9 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
           }
           const debitAmount = parseFloat(row[2]) || 0;
           const creditAmount = parseFloat(row[3]) || 0;
+          const rowAmount = creditAmount > 0 ? creditAmount : debitAmount;
 
-          if (creditAmount > 0 || debitAmount > 0) {
+          if (rowAmount > 0) {
             const refNumber = `STMT-${accountNumber}-${i + 1}`;
 
             if (existingRefNumbers.has(refNumber)) {
@@ -408,11 +419,18 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
               continue;
             }
 
+            if (isMembershipRow(details) || isSharesRow(details)) {
+              const entryType = isMembershipRow(details) ? 'membership' as const : 'shares' as const;
+              specialEntries.push({ type: entryType, amount: rowAmount, date: postingDate, refNumber, details });
+              console.log(`Sheet "${sheetName}" row ${i + 1}: Detected ${entryType} entry — ${details} (UGX ${rowAmount.toLocaleString()})`);
+              continue;
+            }
+
             const transactionData = {
               memberId: member.id,
               savingsAccountId: regularAccount.id,
               transactionType: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
-              amount: (creditAmount > 0 ? creditAmount : debitAmount).toString(),
+              amount: rowAmount.toString(),
               description: details,
               transactionDate: postingDate,
               referenceNumber: refNumber,
@@ -431,6 +449,119 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 
         if (skippedDuplicates > 0) {
           console.log(`Sheet "${sheetName}": Skipped ${skippedDuplicates} duplicate transactions`);
+        }
+
+        for (const entry of specialEntries) {
+          try {
+            if (entry.type === 'membership') {
+              await storage.createTransaction({
+                memberId: member.id,
+                transactionType: 'membership_fee' as any,
+                amount: entry.amount.toString(),
+                description: entry.details,
+                transactionDate: entry.date,
+                referenceNumber: entry.refNumber,
+                processedBy: options?.userId,
+                status: 'completed',
+              });
+              if (options?.onJournalEntry && options?.userId) {
+                await options.onJournalEntry(
+                  'membership_entry_fee',
+                  entry.amount,
+                  `Imported membership fee - ${member.memberNumber}`,
+                  entry.refNumber,
+                  options.userId
+                );
+              }
+              console.log(`Sheet "${sheetName}": Posted membership fee UGX ${entry.amount.toLocaleString()} for ${member.memberNumber}`);
+            } else if (entry.type === 'shares') {
+              let shareAmount = entry.amount;
+              let membershipPortion = 0;
+
+              if (entranceFee > 0 && shareAmount > entranceFee) {
+                membershipPortion = entranceFee;
+                shareAmount = entry.amount - entranceFee;
+
+                const membershipRef = `${entry.refNumber}-MF`;
+                await storage.createTransaction({
+                  memberId: member.id,
+                  transactionType: 'membership_fee' as any,
+                  amount: membershipPortion.toString(),
+                  description: `Membership/entrance fee (from ${entry.details})`,
+                  transactionDate: entry.date,
+                  referenceNumber: membershipRef,
+                  processedBy: options?.userId,
+                  status: 'completed',
+                });
+                if (options?.onJournalEntry && options?.userId) {
+                  await options.onJournalEntry(
+                    'membership_entry_fee',
+                    membershipPortion,
+                    `Imported membership fee - ${member.memberNumber}`,
+                    membershipRef,
+                    options.userId
+                  );
+                }
+                console.log(`Sheet "${sheetName}": Extracted entrance fee UGX ${membershipPortion.toLocaleString()} from shares row for ${member.memberNumber}`);
+              }
+
+              const numberOfNewShares = sharePrice > 0 ? Math.floor(shareAmount / sharePrice) : 0;
+              const shareCapitalAmount = numberOfNewShares * sharePrice;
+
+              if (shareCapitalAmount > 0) {
+                await storage.createTransaction({
+                  memberId: member.id,
+                  transactionType: 'share_capital' as any,
+                  amount: shareCapitalAmount.toString(),
+                  description: `Share capital (${numberOfNewShares} shares × UGX ${sharePrice.toLocaleString()}) from ${entry.details}`,
+                  transactionDate: entry.date,
+                  referenceNumber: entry.refNumber,
+                  processedBy: options?.userId,
+                  status: 'completed',
+                });
+                if (options?.onJournalEntry && options?.userId) {
+                  await options.onJournalEntry(
+                    'share_capital_contribution',
+                    shareCapitalAmount,
+                    `Imported share capital - ${member.memberNumber}`,
+                    entry.refNumber,
+                    options.userId
+                  );
+                }
+
+                const currentShareCapital = parseFloat(member.shareCapital || '0');
+                const newShareCapital = currentShareCapital + shareCapitalAmount;
+                const currentShares = member.numberOfShares || 0;
+                const newNumberOfShares = currentShares + numberOfNewShares;
+                const expectedTotal = sharePrice * newNumberOfShares;
+                const isPaidUp = newShareCapital >= expectedTotal;
+
+                await storage.updateMember(member.id, {
+                  shareCapital: newShareCapital.toString(),
+                  numberOfShares: newNumberOfShares,
+                  isPaidUp,
+                  isFullyPaidShareholder: isPaidUp,
+                });
+
+                member.shareCapital = newShareCapital.toString();
+                member.numberOfShares = newNumberOfShares;
+
+                console.log(`Sheet "${sheetName}": Posted share capital UGX ${shareCapitalAmount.toLocaleString()} (${numberOfNewShares} shares) for ${member.memberNumber}, total shares: ${newNumberOfShares}, paid up: ${isPaidUp}`);
+              }
+
+              const remainder = shareAmount - shareCapitalAmount;
+              if (remainder > 0) {
+                console.log(`Sheet "${sheetName}": Note: UGX ${remainder.toLocaleString()} remainder from shares row (less than 1 share price) not allocated`);
+              }
+            }
+          } catch (error) {
+            console.error(`Sheet "${sheetName}": Error processing ${entry.type} entry:`, error);
+            result.errors.push({
+              row: result.totalRows,
+              error: `Failed to process ${entry.type} entry: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              data: { memberNumber: member.memberNumber, type: entry.type, amount: entry.amount }
+            });
+          }
         }
 
         if (transactionEntries.length > 0) {
