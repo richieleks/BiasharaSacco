@@ -2444,7 +2444,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Loan routes
   app.post('/api/loans', isAuthenticated, async (req: any, res) => {
     try {
-      const { memberId, loanType, principalAmount, interestRate, termMonths } = req.body;
+      const { memberId, loanType, principalAmount, interestRate, termMonths, purpose } = req.body;
       
       // Validate that the member is approved for loan applications
       const applicantMember = await storage.getMember(memberId);
@@ -2544,6 +2544,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         outstandingBalance: initialOutstandingBalance,
         status: 'pending',
         approvalStage: 'committee',
+        purpose: purpose || null,
       });
 
       // Create notification for loan application
