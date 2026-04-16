@@ -1,16 +1,13 @@
-import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Trash2, Plus, UserPlus, DollarSign, AlertCircle, ChevronsUpDown, Check } from "lucide-react";
-import { formatCurrency, cn } from "@/lib/utils";
-import type { Member } from "@shared/schema";
+import { Trash2, Plus, UserPlus, DollarSign, AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { apiRequest } from "@/lib/queryClient";
 
 interface GuarantorData {
   guarantorMemberId: number;
@@ -35,30 +32,72 @@ export default function GuarantorSelection({
   disabled = false 
 }: GuarantorSelectionProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedMemberId, setSelectedMemberId] = useState<string>("");
+  const [memberIdInput, setMemberIdInput] = useState("");
   const [guaranteeAmount, setGuaranteeAmount] = useState<string>("");
   const [formError, setFormError] = useState<string | null>(null);
-  const [memberSearchOpen, setMemberSearchOpen] = useState(false);
-
-  const { data: members = [] } = useQuery<Member[]>({
-    queryKey: ['/api/guarantors/eligible-members'],
-    enabled: isDialogOpen,
-  });
-
-  // Filter out already selected guarantors
-  const availableMembers = members.filter(member => 
-    !guarantors.some(g => g.guarantorMemberId === member.id)
-  );
+  const [validationState, setValidationState] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [validationMessage, setValidationMessage] = useState("");
+  const [validatedMemberId, setValidatedMemberId] = useState<number | null>(null);
+  const [validatedMemberNumber, setValidatedMemberNumber] = useState<string>("");
 
   const totalGuaranteed = guarantors.reduce((sum, g) => sum + parseFloat(g.guaranteeAmount || '0'), 0);
   const amountToGuarantee = Math.max(0, loanAmount - memberSavings);
   const guaranteeCoverage = amountToGuarantee > 0 ? (totalGuaranteed / amountToGuarantee) * 100 : 100;
 
+  const validateMember = async () => {
+    const trimmed = memberIdInput.trim();
+    if (!trimmed) {
+      setValidationState('invalid');
+      setValidationMessage('Please enter a member ID');
+      setValidatedMemberId(null);
+      return;
+    }
+
+    setValidationState('validating');
+    setValidationMessage('');
+
+    try {
+      const res = await apiRequest('POST', '/api/guarantors/validate-member', { memberNumber: trimmed });
+      const data = await res.json();
+
+      if (data.valid) {
+        const alreadyAdded = guarantors.some(g => g.guarantorMemberId === data.memberId);
+        if (alreadyAdded) {
+          setValidationState('invalid');
+          setValidationMessage('This member has already been added as a guarantor');
+          setValidatedMemberId(null);
+          return;
+        }
+
+        setValidationState('valid');
+        setValidationMessage('Member ID verified');
+        setValidatedMemberId(data.memberId);
+        setValidatedMemberNumber(data.memberNumber);
+      } else {
+        setValidationState('invalid');
+        setValidationMessage(data.message || 'Invalid member ID');
+        setValidatedMemberId(null);
+      }
+    } catch (error: any) {
+      let msg = 'Failed to validate member ID';
+      try {
+        const parts = error.message?.split(': ');
+        if (parts && parts.length > 1) {
+          const parsed = JSON.parse(parts.slice(1).join(': '));
+          msg = parsed.message || msg;
+        }
+      } catch {}
+      setValidationState('invalid');
+      setValidationMessage(msg);
+      setValidatedMemberId(null);
+    }
+  };
+
   const addGuarantor = () => {
     setFormError(null);
 
-    if (!selectedMemberId) {
-      setFormError("Please select a member to add as guarantor");
+    if (validationState !== 'valid' || !validatedMemberId) {
+      setFormError("Please verify the member ID first");
       return;
     }
 
@@ -67,24 +106,21 @@ export default function GuarantorSelection({
       return;
     }
 
-    const selectedMember = members.find(m => m.id === parseInt(selectedMemberId));
-    if (!selectedMember) {
-      setFormError("Selected member not found");
-      return;
-    }
-
     const newGuarantor: GuarantorData = {
-      guarantorMemberId: parseInt(selectedMemberId),
+      guarantorMemberId: validatedMemberId,
       guaranteeAmount,
-      memberName: selectedMember.fullName || selectedMember.memberNumber,
-      memberNumber: selectedMember.memberNumber,
+      memberNumber: validatedMemberNumber,
     };
 
     onGuarantorsChange([...guarantors, newGuarantor]);
     
-    setSelectedMemberId("");
+    setMemberIdInput("");
     setGuaranteeAmount("");
     setFormError(null);
+    setValidationState('idle');
+    setValidationMessage('');
+    setValidatedMemberId(null);
+    setValidatedMemberNumber('');
     setIsDialogOpen(false);
   };
 
@@ -100,6 +136,16 @@ export default function GuarantorSelection({
     onGuarantorsChange(updated);
   };
 
+  const resetDialogState = () => {
+    setMemberIdInput("");
+    setGuaranteeAmount("");
+    setFormError(null);
+    setValidationState('idle');
+    setValidationMessage('');
+    setValidatedMemberId(null);
+    setValidatedMemberNumber('');
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -108,7 +154,7 @@ export default function GuarantorSelection({
             <UserPlus className="h-5 w-5" />
             Guarantors ({guarantors.length})
           </div>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (open) setFormError(null); }}>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (open) resetDialogState(); }}>
             <DialogTrigger asChild>
               <Button 
                 size="sm" 
@@ -125,55 +171,59 @@ export default function GuarantorSelection({
               </DialogHeader>
               <div className="space-y-4">
                 <div className="p-3 bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800 rounded-lg text-sm text-blue-700">
-                  <strong>Note:</strong> Only approved/active SACCO members can serve as guarantors for loan applications.
+                  Enter the member ID of the person you want to add as a guarantor and click Verify.
                 </div>
                 
-                <div className="space-y-1">
-                  <Label>Select Member</Label>
-                  <Popover open={memberSearchOpen} onOpenChange={setMemberSearchOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={memberSearchOpen}
-                        className="w-full justify-between font-normal"
-                      >
-                        {selectedMemberId
-                          ? (() => {
-                              const m = availableMembers.find(m => m.id.toString() === selectedMemberId);
-                              return m ? `${m.fullName || m.memberNumber} (${m.memberNumber})` : "Choose a member...";
-                            })()
-                          : "Search and select a member..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Search by name or member number..." className="h-9" />
-                        <CommandList>
-                          <CommandEmpty>No eligible members found.</CommandEmpty>
-                          <CommandGroup>
-                            {availableMembers.map((member) => (
-                              <CommandItem
-                                key={member.id}
-                                value={`${member.fullName} ${member.memberNumber}`}
-                                onSelect={() => {
-                                  setSelectedMemberId(member.id.toString());
-                                  setMemberSearchOpen(false);
-                                }}
-                              >
-                                <div className="flex flex-col">
-                                  <span className="font-medium">{member.fullName || member.memberNumber}</span>
-                                  <span className="text-xs text-muted-foreground">{member.memberNumber}</span>
-                                </div>
-                                <Check className={cn("ml-auto h-4 w-4", selectedMemberId === member.id.toString() ? "opacity-100" : "opacity-0")} />
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                <div className="space-y-2">
+                  <Label>Member ID</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter member ID (e.g. MEM-001)"
+                      value={memberIdInput}
+                      onChange={(e) => {
+                        setMemberIdInput(e.target.value);
+                        if (validationState !== 'idle') {
+                          setValidationState('idle');
+                          setValidationMessage('');
+                          setValidatedMemberId(null);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          validateMember();
+                        }
+                      }}
+                      className={
+                        validationState === 'valid' ? 'border-green-500 focus-visible:ring-green-500' :
+                        validationState === 'invalid' ? 'border-red-500 focus-visible:ring-red-500' : ''
+                      }
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={validateMember}
+                      disabled={validationState === 'validating' || !memberIdInput.trim()}
+                    >
+                      {validationState === 'validating' ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Verify"
+                      )}
+                    </Button>
+                  </div>
+                  {validationMessage && (
+                    <div className={`flex items-center gap-1.5 text-sm ${
+                      validationState === 'valid' ? 'text-green-600' : 'text-red-600'
+                    }`}>
+                      {validationState === 'valid' ? (
+                        <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                      )}
+                      {validationMessage}
+                    </div>
+                  )}
                 </div>
                 
                 <div>
@@ -183,7 +233,7 @@ export default function GuarantorSelection({
                     type="number"
                     value={guaranteeAmount}
                     onChange={(e) => setGuaranteeAmount(e.target.value)}
-                    placeholder="0.00"
+                    placeholder="0"
                     min="0"
                     step="1000"
                   />
@@ -197,10 +247,10 @@ export default function GuarantorSelection({
                 )}
 
                 <div className="flex gap-2">
-                  <Button onClick={addGuarantor}>
+                  <Button onClick={addGuarantor} disabled={validationState !== 'valid'}>
                     Add Guarantor
                   </Button>
-                  <Button variant="outline" onClick={() => { setIsDialogOpen(false); setFormError(null); }}>
+                  <Button variant="outline" onClick={() => { setIsDialogOpen(false); resetDialogState(); }}>
                     Cancel
                   </Button>
                 </div>
@@ -242,7 +292,6 @@ export default function GuarantorSelection({
           </div>
         )}
 
-        {/* Guarantors List */}
         {guarantors.length === 0 ? (
           <div className="text-center py-8 text-slate-500 dark:text-slate-400">
             <UserPlus className="h-12 w-12 mx-auto mb-3 text-slate-300" />
@@ -258,10 +307,7 @@ export default function GuarantorSelection({
               >
                 <div className="flex-1">
                   <div className="font-medium">
-                    {guarantor.memberName || 'Unknown Member'}
-                  </div>
-                  <div className="text-sm text-slate-600 dark:text-slate-300">
-                    Member: {guarantor.memberNumber}
+                    {guarantor.memberNumber || 'Unknown Member'}
                   </div>
                 </div>
                 
@@ -295,11 +341,10 @@ export default function GuarantorSelection({
           </div>
         )}
 
-        {/* Validation Messages */}
         {guarantors.length > 0 && guaranteeCoverage < 50 && (
           <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg">
             <p className="text-sm text-amber-700">
-              ⚠️ Low guarantee coverage. Consider adding more guarantors or increasing guarantee amounts.
+              Low guarantee coverage. Consider adding more guarantors or increasing guarantee amounts.
             </p>
           </div>
         )}

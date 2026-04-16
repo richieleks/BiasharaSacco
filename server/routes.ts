@@ -3697,6 +3697,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post('/api/guarantors/validate-member', isAuthenticated, async (req: any, res) => {
+    try {
+      const { memberNumber } = req.body;
+      if (!memberNumber || typeof memberNumber !== 'string') {
+        return res.status(400).json({ valid: false, message: 'Member ID is required' });
+      }
+      const allMembers = await storage.getAllMembers();
+      const member = allMembers.find((m: any) => m.memberNumber === memberNumber.trim());
+      if (!member) {
+        return res.status(404).json({ valid: false, message: 'No member found with this ID' });
+      }
+      if (member.status !== 'active') {
+        return res.status(400).json({ valid: false, message: 'This member is not eligible to be a guarantor' });
+      }
+      res.json({ valid: true, memberId: member.id, memberNumber: member.memberNumber });
+    } catch (error) {
+      console.error("Error validating guarantor member:", error);
+      res.status(500).json({ valid: false, message: "Failed to validate member" });
+    }
+  });
+
   // Guarantor routes
   app.post('/api/guarantors', isAuthenticated, async (req: any, res) => {
     try {

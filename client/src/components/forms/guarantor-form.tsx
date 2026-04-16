@@ -6,19 +6,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check, ChevronsUpDown, AlertCircle } from "lucide-react";
-import { cn, formatCurrency } from "@/lib/utils";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { insertGuarantorSchema } from "@shared/schema";
-import type { MemberWithDetails } from "@shared/schema";
 import { useAuth } from "@/hooks/useAuth";
 
 const guarantorFormSchema = insertGuarantorSchema.omit({ guarantorMemberNumber: true }).extend({
-  guarantorMemberId: z.number().min(1, "Please select a guarantor"),
+  guarantorMemberId: z.number().min(1, "Please enter a valid member ID"),
 });
 
 type GuarantorFormData = z.infer<typeof guarantorFormSchema>;
@@ -33,8 +29,10 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const [open, setOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [memberIdInput, setMemberIdInput] = useState("");
+  const [validationState, setValidationState] = useState<'idle' | 'validating' | 'valid' | 'invalid'>('idle');
+  const [validationMessage, setValidationMessage] = useState("");
 
   const form = useForm<GuarantorFormData>({
     resolver: zodResolver(guarantorFormSchema),
@@ -44,15 +42,6 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
       guaranteeAmount: "",
       status: "pending",
     },
-  });
-
-  const { data: allMembers = [] } = useQuery<MemberWithDetails[]>({
-    queryKey: ['/api/guarantors/eligible-members'],
-  });
-
-  const { data: currentMember } = useQuery<MemberWithDetails>({
-    queryKey: [`/api/members/by-user/${user?.id || 'undefined'}`],
-    enabled: !!user?.id,
   });
 
   const { data: loanDetails } = useQuery<any>({
@@ -80,17 +69,64 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
     enabled: !!loanId,
   });
 
-  const existingGuarantorMemberIds = existingGuarantors.map((g: any) => g.guarantorMemberId);
-
   const loanAmount = parseFloat(loanDetails?.principalAmount || '0');
   const totalSavings = memberSavings?.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0) || 0;
   const amountToGuarantee = Math.max(0, loanAmount - totalSavings);
 
-  const eligibleMembers = allMembers.filter(member => 
-    member.id !== currentMember?.id &&
-    member.id !== loanDetails?.memberId &&
-    !existingGuarantorMemberIds.includes(member.id)
-  );
+  const validateMember = async () => {
+    const trimmed = memberIdInput.trim();
+    if (!trimmed) {
+      setValidationState('invalid');
+      setValidationMessage('Please enter a member ID');
+      form.setValue('guarantorMemberId', 0);
+      return;
+    }
+
+    setValidationState('validating');
+    setValidationMessage('');
+
+    try {
+      const res = await apiRequest('POST', '/api/guarantors/validate-member', { memberNumber: trimmed });
+      const data = await res.json();
+
+      if (data.valid) {
+        if (data.memberId === loanDetails?.memberId) {
+          setValidationState('invalid');
+          setValidationMessage('The loan applicant cannot be their own guarantor');
+          form.setValue('guarantorMemberId', 0);
+          return;
+        }
+
+        const alreadyAdded = existingGuarantors.some((g: any) => g.guarantorMemberId === data.memberId);
+        if (alreadyAdded) {
+          setValidationState('invalid');
+          setValidationMessage('This member is already a guarantor for this loan');
+          form.setValue('guarantorMemberId', 0);
+          return;
+        }
+
+        setValidationState('valid');
+        setValidationMessage('Member ID verified');
+        form.setValue('guarantorMemberId', data.memberId);
+      } else {
+        setValidationState('invalid');
+        setValidationMessage(data.message || 'Invalid member ID');
+        form.setValue('guarantorMemberId', 0);
+      }
+    } catch (error: any) {
+      let msg = 'Failed to validate member ID';
+      try {
+        const parts = error.message?.split(': ');
+        if (parts && parts.length > 1) {
+          const parsed = JSON.parse(parts.slice(1).join(': '));
+          msg = parsed.message || msg;
+        }
+      } catch {}
+      setValidationState('invalid');
+      setValidationMessage(msg);
+      form.setValue('guarantorMemberId', 0);
+    }
+  };
 
   const mutation = useMutation({
     mutationFn: async (data: GuarantorFormData) => {
@@ -125,14 +161,12 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
     mutation.mutate(data);
   };
 
-  const selectedMember = eligibleMembers.find(m => m.id === form.watch('guarantorMemberId'));
-
   return (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-medium">Add Guarantor</h3>
         <p className="text-sm text-muted-foreground">
-          Add a guarantor for this loan application. The guarantor must have enough savings to cover the guarantee amount.
+          Enter the member ID of the person you want to add as a guarantor for this loan.
         </p>
       </div>
 
@@ -155,82 +189,57 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="guarantorMemberId"
-            render={({ field }) => (
-              <FormItem className="flex flex-col">
-                <FormLabel>Select Guarantor</FormLabel>
-                <Popover open={open} onOpenChange={setOpen}>
-                  <PopoverTrigger asChild>
-                    <FormControl>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={open}
-                        className={cn(
-                          "w-full justify-between",
-                          !field.value && "text-muted-foreground"
-                        )}
-                      >
-                        {field.value
-                          ? `${selectedMember?.fullName || selectedMember?.memberNumber} (${selectedMember?.memberNumber})`
-                          : "Search and select a member..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </FormControl>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[400px] p-0" align="start">
-                    <Command>
-                      <CommandInput 
-                        placeholder="Search members by name or number..." 
-                        className="h-9" 
-                      />
-                      <CommandEmpty>No eligible members found.</CommandEmpty>
-                      <CommandGroup>
-                        {eligibleMembers.map((member) => (
-                          <CommandItem
-                            key={member.id}
-                            value={`${member.fullName} ${member.memberNumber}`}
-                            onSelect={() => {
-                              form.setValue("guarantorMemberId", member.id);
-                              setOpen(false);
-                            }}
-                          >
-                            <div className="flex flex-col">
-                              <span className="font-medium">
-                                {member.fullName || `${member.user?.firstName} ${member.user?.lastName}`}
-                              </span>
-                              <span className="text-sm text-muted-foreground">
-                                {member.memberNumber} • {member.department || 'No Department'}
-                              </span>
-                            </div>
-                            <Check
-                              className={cn(
-                                "ml-auto h-4 w-4",
-                                member.id === field.value
-                                  ? "opacity-100"
-                                  : "opacity-0"
-                              )}
-                            />
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-                <FormMessage />
-                {selectedMember && (
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">
-                      Selected: {selectedMember.fullName} ({selectedMember.memberNumber})
-                      {selectedMember.department && ` • ${selectedMember.department}`}
-                    </span>
-                  </div>
+          <div className="space-y-2">
+            <FormLabel>Member ID</FormLabel>
+            <div className="flex gap-2">
+              <Input
+                placeholder="Enter member ID (e.g. MEM-001)"
+                value={memberIdInput}
+                onChange={(e) => {
+                  setMemberIdInput(e.target.value);
+                  if (validationState !== 'idle') {
+                    setValidationState('idle');
+                    setValidationMessage('');
+                    form.setValue('guarantorMemberId', 0);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    validateMember();
+                  }
+                }}
+                className={
+                  validationState === 'valid' ? 'border-green-500 focus-visible:ring-green-500' :
+                  validationState === 'invalid' ? 'border-red-500 focus-visible:ring-red-500' : ''
+                }
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={validateMember}
+                disabled={validationState === 'validating' || !memberIdInput.trim()}
+              >
+                {validationState === 'validating' ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Verify"
                 )}
-              </FormItem>
+              </Button>
+            </div>
+            {validationMessage && (
+              <div className={`flex items-center gap-1.5 text-sm ${
+                validationState === 'valid' ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {validationState === 'valid' ? (
+                  <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+                ) : (
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
+                )}
+                {validationMessage}
+              </div>
             )}
-          />
+          </div>
 
           <FormField
             control={form.control}
@@ -266,7 +275,7 @@ export default function GuarantorForm({ loanId, onSuccess, onCancel }: Guarantor
           <div className="flex gap-3 pt-4">
             <Button
               type="submit"
-              disabled={mutation.isPending || !selectedMember || !form.watch('guaranteeAmount')}
+              disabled={mutation.isPending || validationState !== 'valid' || !form.watch('guaranteeAmount')}
               className="flex-1"
             >
               {mutation.isPending ? "Sending Request..." : "Send Guarantor Request"}
