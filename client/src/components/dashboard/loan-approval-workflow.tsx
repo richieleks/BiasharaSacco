@@ -96,9 +96,21 @@ export default function LoanApprovalWorkflow() {
     mutationFn: async ({ loan, reason }: { loan: any; reason: string }) => {
       await apiRequest('POST', `/api/loans/${loan.uuid}/reject`, { reason });
     },
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['/api/loans/approval'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/my-approval-activity'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans/my-loans'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/loans'] });
       queryClient.invalidateQueries({ queryKey: ['/api/dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/notifications'] });
+      const rejectedLoan = variables?.loan;
+      if (rejectedLoan?.id) {
+        queryClient.invalidateQueries({ queryKey: ['/api/loans', rejectedLoan.id] });
+        queryClient.invalidateQueries({ queryKey: ['/api/loans', rejectedLoan.id, 'approvals'] });
+      }
+      if (rejectedLoan?.uuid) {
+        queryClient.invalidateQueries({ queryKey: ['/api/loans', rejectedLoan.uuid] });
+      }
       setIsDialogOpen(false);
       setRejectionReason("");
       toast({ title: "Loan Rejected",
