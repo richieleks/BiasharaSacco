@@ -3143,7 +3143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
 
-          broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/savings', '/api/transactions']);
+          broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/savings', '/api/transactions', '/api/loans/my-approval-activity']);
 
           res.json({ 
             message: `Loan fully approved at committee stage (${approvalCount}/${minApprovers} approvals)`, 
@@ -3152,7 +3152,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             minApprovers
           });
         } else {
-          broadcastDataUpdate(['/api/loans/approval', '/api/loans']);
+          broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/loans/my-approval-activity']);
 
           res.json({ 
             message: `Your approval has been recorded (${approvalCount}/${minApprovers} approvals needed). Waiting for more committee approvals.`, 
@@ -3237,7 +3237,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/savings', '/api/transactions']);
+        broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/savings', '/api/transactions', '/api/loans/my-approval-activity']);
         res.json({ message: `Loan ${loan.loanNumber} disbursed successfully`, loan });
       } else {
         const loan = await storage.approveLoanAtStage(loanByUuid.id, stage, userId, comments);
@@ -3256,7 +3256,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         
-        broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans']);
+        broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/loans/my-approval-activity']);
         res.json({ message: `Loan approved at ${stage} stage`, loan });
       }
     } catch (error) {
@@ -3297,7 +3297,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans']);
+      broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/loans/my-approval-activity']);
       res.json({ message: "Loan rejected", loan });
     } catch (error) {
       console.error("Error rejecting loan:", error);
