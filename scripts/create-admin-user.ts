@@ -14,7 +14,8 @@ async function createAdminUser() {
 
     // Admin credentials
     const adminUsername = "admin";
-    const adminPassword = "admin123"; // Change this in production
+    const adminPassword = process.env.ADMIN_PASSWORD ||
+      require("crypto").randomBytes(16).toString("hex");
     const adminEmail = "admin@biasharasacco.com";
 
     // Check if admin user already exists
