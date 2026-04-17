@@ -1392,6 +1392,9 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
             ordinaryGroup.repayments.push({ date: postingDate, amount: principalRepyt, details, rowIndex: i });
             ordinaryGroup.totalRepaid += principalRepyt;
             ordinaryGroup.lastInstallmentAmount = principalRepyt;
+          } else if (principalRepyt > 0) {
+            ordinaryGroup.repayments.push({ date: postingDate, amount: principalRepyt, details, rowIndex: i });
+            ordinaryGroup.totalRepaid += principalRepyt;
           }
         }
 
