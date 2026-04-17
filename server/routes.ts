@@ -5948,7 +5948,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
           
         default:
-          return res.status(400).json({ message: "Invalid report type" });
+          return next();
       }
 
       res.json(reportData);
@@ -6099,7 +6099,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         }
         default:
-          return res.status(400).json({ message: "Invalid report type" });
+          return next();
       }
 
       if (format === 'csv') {
