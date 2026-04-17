@@ -2,6 +2,24 @@ import { storage } from './storage';
 import { insertMemberSchema, insertSavingsAccountSchema, insertTransactionSchema, insertLoanSchema } from '@shared/schema';
 import { z } from 'zod';
 import { hashPassword } from './localAuth';
+import ExcelJS from 'exceljs';
+
+function worksheetToAoa(worksheet: ExcelJS.Worksheet): any[][] {
+  const result: any[][] = [];
+  worksheet.eachRow({ includeEmpty: false }, (row: ExcelJS.Row) => {
+    const vals = (row.values as any[]).slice(1).map((v: any) => {
+      if (v === null || v === undefined) return null;
+      if (typeof v === 'object') {
+        if (v.richText) return v.richText.map((t: any) => t.text ?? '').join('');
+        if (typeof v.text === 'string') return v.text;
+        if (v.result !== undefined) return v.result;
+      }
+      return v;
+    });
+    result.push(vals);
+  });
+  return result;
+}
 
 function generateDefaultPassword(fullName: string): string {
   const namePart = fullName.trim().split(/\s+/)[0] || 'Member';
@@ -111,7 +129,6 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
   };
 
   try {
-    const XLSX = await import('xlsx');
     const fs = await import('fs');
     
     if (!fs.existsSync(filePath)) {
@@ -120,20 +137,20 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
     }
     
     console.log('Reading file from:', filePath);
-    const workbook = XLSX.default ? XLSX.default.readFile(filePath) : XLSX.readFile(filePath);
-    const utils = XLSX.default ? XLSX.default.utils : XLSX.utils;
-    console.log('Workbook sheets:', workbook.SheetNames);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    const sheetNames = workbook.worksheets.map(ws => ws.name);
+    console.log('Workbook sheets:', sheetNames);
 
-    result.totalSheets = workbook.SheetNames.length;
+    result.totalSheets = sheetNames.length;
     const onProgress = options?.onProgress;
 
-    const sheetsToProcess = workbook.SheetNames.filter(name => {
-      const ws = workbook.Sheets[name];
-      const data = utils.sheet_to_json(ws, { header: 1 });
-      return data.length > 0;
+    const sheetsToProcess = sheetNames.filter(name => {
+      const ws = workbook.getWorksheet(name);
+      return ws ? worksheetToAoa(ws).length > 0 : false;
     });
 
-    const emptySheets = workbook.SheetNames.filter(name => !sheetsToProcess.includes(name));
+    const emptySheets = sheetNames.filter(name => !sheetsToProcess.includes(name));
     for (const name of emptySheets) {
       result.exceptions.push({ sheet: name, type: 'skipped_empty', detail: 'Sheet has no data' });
     }
@@ -155,8 +172,8 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
     console.log(`System settings: entranceFee=${entranceFee}, sharePrice=${sharePrice}`);
 
     for (const sheetName of sheetsToProcess) {
-      const worksheet = workbook.Sheets[sheetName];
-      const rawData = utils.sheet_to_json(worksheet, { header: 1 });
+      const worksheet = workbook.getWorksheet(sheetName)!;
+      const rawData = worksheetToAoa(worksheet);
 
       console.log(`\n--- Processing sheet: "${sheetName}" (${rawData.length} rows) ---`);
 
@@ -631,7 +648,6 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
   };
 
   try {
-    const XLSX = await import('xlsx');
     const fs = await import('fs');
 
     if (!fs.existsSync(filePath)) {
@@ -639,11 +655,11 @@ export async function importMembersFromExcel(filePath: string, options?: { userI
       return result;
     }
 
-    const workbook = XLSX.default ? XLSX.default.readFile(filePath) : XLSX.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const worksheet = workbook.Sheets[sheetName];
-    const utils = XLSX.default ? XLSX.default.utils : XLSX.utils;
-    const rawData = utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    const sheetName = workbook.worksheets[0]?.name;
+    const worksheet = sheetName ? workbook.getWorksheet(sheetName)! : null;
+    const rawData: any[][] = worksheet ? worksheetToAoa(worksheet) : [];
 
     if (rawData.length < 2) {
       result.errors.push({ row: 0, error: "File has no data rows (only header or empty)" });
@@ -1087,7 +1103,6 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
   };
 
   try {
-    const XLSX = await import('xlsx');
     const fs = await import('fs');
     
     if (!fs.existsSync(filePath)) {
@@ -1096,19 +1111,19 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
     }
     
     console.log('Reading loan file from:', filePath);
-    const workbook = XLSX.default ? XLSX.default.readFile(filePath) : XLSX.readFile(filePath);
-    const utils = XLSX.default ? XLSX.default.utils : XLSX.utils;
-    console.log('Workbook sheets:', workbook.SheetNames);
+    const workbook = new ExcelJS.Workbook();
+    await workbook.xlsx.readFile(filePath);
+    const loanSheetNames = workbook.worksheets.map(ws => ws.name);
+    console.log('Workbook sheets:', loanSheetNames);
 
-    result.totalSheets = workbook.SheetNames.length;
+    result.totalSheets = loanSheetNames.length;
 
-    const sheetsWithData = workbook.SheetNames.filter(name => {
-      const ws = workbook.Sheets[name];
-      const data = utils.sheet_to_json(ws, { header: 1 });
-      return data.length > 0;
+    const sheetsWithData = loanSheetNames.filter(name => {
+      const ws = workbook.getWorksheet(name);
+      return ws ? worksheetToAoa(ws).length > 0 : false;
     });
 
-    const emptySheets = workbook.SheetNames.filter(name => !sheetsWithData.includes(name));
+    const emptySheets = loanSheetNames.filter(name => !sheetsWithData.includes(name));
     for (const name of emptySheets) {
       result.skippedSheets = (result.skippedSheets || 0) + 1;
       result.exceptions.push({ sheet: name, type: 'skipped_empty', detail: 'Sheet has no data' });
@@ -1169,8 +1184,8 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
     };
 
     for (const sheetName of sheetsWithData) {
-      const worksheet = workbook.Sheets[sheetName];
-      const rawData = utils.sheet_to_json(worksheet, { header: 1 });
+      const worksheet = workbook.getWorksheet(sheetName)!;
+      const rawData = worksheetToAoa(worksheet);
 
       console.log(`\n--- Processing loan sheet: "${sheetName}" (${rawData.length} rows) ---`);
 

@@ -13,7 +13,7 @@ import { seedAdminUser, seedRBAC } from "./seed";
 import { z } from "zod";
 import { db } from "./db";
 import { eq, and, inArray, sql, lt, isNull, isNotNull, or, not } from "drizzle-orm";
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 interface ImportJob {
   id: string;
@@ -5388,13 +5388,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Helper: generate KCB bank schedule Excel workbook
-  function generateBankScheduleWorkbook(
+  async function generateBankScheduleWorkbook(
     rows: Array<{ accountNumber: string; name: string; amount: number }>,
     sheetName: string,
     detailsPrefix: string,
     bankSettings: Record<string, string>,
     month: string
-  ): Buffer {
+  ): Promise<Buffer> {
     const validMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const safeMonth = validMonths.includes(month) ? month : validMonths[new Date().getMonth()];
 
@@ -5405,10 +5405,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       'ORDERING_CUST_IDNO', 'ORDERING_CUST_DOB'
     ];
 
-    const data: any[][] = [header];
+    const wb = new ExcelJS.Workbook();
+    const ws = wb.addWorksheet(sheetName);
+    ws.addRow(header);
+
     for (const row of rows) {
       if (!row.accountNumber || row.amount <= 0) continue;
-      data.push([
+      ws.addRow([
         'P',
         parseInt(bankSettings.saccoBankBranch) || bankSettings.saccoBankBranch,
         sanitizeCell(row.accountNumber),
@@ -5429,10 +5432,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ]);
     }
 
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.aoa_to_sheet(data);
-    XLSX.utils.book_append_sheet(wb, ws, sheetName);
-    return Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
+    return Buffer.from(await wb.xlsx.writeBuffer());
   }
 
   // Download savings deduction schedule (Excel)
@@ -5456,7 +5456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const safeMonth = validMonths.includes(month) ? month : validMonths[new Date().getMonth()];
       const fileName = `BIASHARA_${safeMonth.toUpperCase()}_${new Date().getFullYear()}_SAVINGS_SCHEDULE.xlsx`;
-      const buffer = generateBankScheduleWorkbook(rows, `${safeMonth.toUpperCase()} SAVINGS`, 'Savings Deduction', bankSettings, safeMonth);
+      const buffer = await generateBankScheduleWorkbook(rows, `${safeMonth.toUpperCase()} SAVINGS`, 'Savings Deduction', bankSettings, safeMonth);
 
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -5506,7 +5506,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       const safeMonth = validMonths.includes(month) ? month : validMonths[new Date().getMonth()];
       const fileName = `BIASHARA_${safeMonth.toUpperCase()}_${new Date().getFullYear()}_LOAN_SCHEDULE.xlsx`;
-      const buffer = generateBankScheduleWorkbook(rows, `${safeMonth.toUpperCase()} LOAN`, 'Loan Deduction', bankSettings, safeMonth);
+      const buffer = await generateBankScheduleWorkbook(rows, `${safeMonth.toUpperCase()} LOAN`, 'Loan Deduction', bankSettings, safeMonth);
 
       res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
@@ -6119,20 +6119,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
         return res.send(csvContent);
       } else if (format === 'excel') {
-        const XLSX = await import('xlsx');
-        const ws = XLSX.utils.json_to_sheet(rows, { header: headers });
-        const colWidths = headers.map(h => {
+        const sheetTitle = reportType.charAt(0).toUpperCase() + reportType.slice(1);
+        const wb = new ExcelJS.Workbook();
+        const ws = wb.addWorksheet(sheetTitle);
+        ws.addRow(headers);
+        for (const row of rows) {
+          ws.addRow(headers.map((h: string) => row[h] ?? ''));
+        }
+        headers.forEach((h: string, i: number) => {
           let maxLen = h.length;
           for (const row of rows) { const val = String(row[h] ?? ''); if (val.length > maxLen) maxLen = val.length; }
-          return { wch: Math.min(maxLen + 2, 40) };
+          ws.getColumn(i + 1).width = Math.min(maxLen + 2, 40);
         });
-        ws['!cols'] = colWidths;
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, reportType.charAt(0).toUpperCase() + reportType.slice(1));
-        const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+        const buf = await wb.xlsx.writeBuffer();
         res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}.xlsx"`);
-        return res.send(buf);
+        return res.send(Buffer.from(buf));
       } else if (format === 'pdf') {
         const PDFDocument = (await import('pdfkit')).default;
         const doc = new PDFDocument({ size: 'A4', layout: headers.length > 5 ? 'landscape' : 'portrait', margin: 40 });
