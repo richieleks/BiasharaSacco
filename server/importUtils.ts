@@ -1358,7 +1358,8 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
                                           detailsLower.includes('top up') ||
                                           detailsLower.includes('top-up') ||
                                           detailsLower.includes('topup') ||
-                                          detailsLower.includes('loan topup');
+                                          detailsLower.includes('loan topup') ||
+                                          detailsLower.trim() === 'loan';
 
           if (isSpecialDisbursement) {
             const amount = Math.abs(principalRepyt) || Math.abs(amtDebited);
