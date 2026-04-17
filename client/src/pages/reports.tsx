@@ -658,9 +658,9 @@ function PARRiskTab() {
       const res = await apiRequest("POST", "/api/admin/run-provisioning");
       return res.json();
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['/api/reports/provisioning-summary'] });
-      toast({ title: "Provisioning Complete", description: `Processed ${data.totalLoans} loans. Total provision: ${formatCurrency(data.totalProvision)}`, variant: "success" });
+      toast({ title: "Provisioning complete", description: "Updated figures are shown below.", variant: "success" });
     },
     onError: (err: Error) => toast({ title: "Error", description: err.message, variant: "destructive" }),
   });
@@ -707,6 +707,10 @@ function PARRiskTab() {
         </div>
         {parLoading ? (
           <div className="p-6 space-y-3">{[1,2,3].map(i => <Skeleton key={i} className="h-16 w-full" />)}</div>
+        ) : !parData || (parData.totalLoans ?? 0) === 0 ? (
+          <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">
+            No active loans to analyze. PAR figures will appear here once loans have been disbursed.
+          </div>
         ) : parData ? (
           <div className="p-4 sm:p-6 space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
