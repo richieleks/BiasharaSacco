@@ -7,7 +7,10 @@ async function createDennisLekuCredentials() {
   try {
     // Generate username and password
     const username = "dennisleku";
-    const password = "dennis123"; // You should change this on first login
+    const password = process.env.DENNIS_LEKU_PASSWORD;
+    if (!password) {
+      throw new Error("DENNIS_LEKU_PASSWORD environment variable is required");
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     
     // Update DENNIS LEKU's user account
@@ -26,7 +29,6 @@ async function createDennisLekuCredentials() {
       console.log("✅ Successfully created credentials for DENNIS LEKU");
       console.log("📧 Email:", updatedUser.email);
       console.log("👤 Username:", username);
-      console.log("🔑 Password:", password);
       console.log("\n⚠️  Please change the password on first login!");
     } else {
       console.error("❌ User not found");
