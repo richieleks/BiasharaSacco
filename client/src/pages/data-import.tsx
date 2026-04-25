@@ -60,17 +60,49 @@ export default function DataImport() {
     enabled: importType === 'loans' || importType === 'loan-repayments',
   });
 
-  const canImport = hasPermission('execute', 'data-import');
+  const canImportMembers = hasPermission('execute', 'import-members');
+  const canImportSavings = hasPermission('execute', 'import-savings');
+  const canImportLoans = hasPermission('execute', 'import-loans');
+  const canImportLoanRepayments = hasPermission('execute', 'import-loan-repayments');
+  const canImportBulkSavings = hasPermission('execute', 'import-bulk-savings');
+  const canImport =
+    canImportMembers ||
+    canImportSavings ||
+    canImportLoans ||
+    canImportLoanRepayments ||
+    canImportBulkSavings;
+
+  const canDoCurrentImport =
+    (importType === 'members' && canImportMembers) ||
+    (importType === 'savings' && canImportSavings) ||
+    (importType === 'loans' && canImportLoans) ||
+    (importType === 'loan-repayments' && canImportLoanRepayments) ||
+    (importType === 'bulk-savings' && canImportBulkSavings);
 
   useEffect(() => {
     if (!canImport) {
       toast({
         title: "Access Denied",
-        description: "Only administrators can access the data import functionality.",
+        description: "You do not have permission to access the data import functionality.",
         variant: "destructive",
       });
+      return;
     }
-  }, [canImport, toast]);
+    if (!canDoCurrentImport) {
+      const firstAllowed: typeof importType | null = canImportMembers
+        ? 'members'
+        : canImportSavings
+        ? 'savings'
+        : canImportLoans
+        ? 'loans'
+        : canImportLoanRepayments
+        ? 'loan-repayments'
+        : canImportBulkSavings
+        ? 'bulk-savings'
+        : null;
+      if (firstAllowed) setImportType(firstAllowed);
+    }
+  }, [canImport, canDoCurrentImport, canImportMembers, canImportSavings, canImportLoans, canImportLoanRepayments, canImportBulkSavings, toast]);
 
   useEffect(() => {
     return () => {
@@ -374,7 +406,7 @@ export default function DataImport() {
         <Shield className="h-16 w-16 text-red-500" />
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Access Denied</h1>
         <p className="text-slate-500 dark:text-slate-400 text-center max-w-md">
-          Only administrators have permission to access the data import functionality. 
+          You don't have permission to import any type of data.
           Contact your system administrator if you need access.
         </p>
       </div>
@@ -403,90 +435,105 @@ export default function DataImport() {
         </div>
         <div className="p-4 sm:p-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-            <button
-              onClick={() => handleImportTypeChange('members')}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                importType === 'members'
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Users className={`h-6 w-6 ${importType === 'members' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
-                <div className="text-left">
-                  <div className="font-semibold text-sm">Members</div>
-                  <div className="text-xs text-muted-foreground">Member registration data</div>
+            {canImportMembers && (
+              <button
+                onClick={() => handleImportTypeChange('members')}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  importType === 'members'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+                data-testid="button-import-type-members"
+              >
+                <div className="flex items-center gap-3">
+                  <Users className={`h-6 w-6 ${importType === 'members' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
+                  <div className="text-left">
+                    <div className="font-semibold text-sm">Members</div>
+                    <div className="text-xs text-muted-foreground">Member registration data</div>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            )}
 
-            <button
-              onClick={() => handleImportTypeChange('savings')}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                importType === 'savings'
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <PiggyBank className={`h-6 w-6 ${importType === 'savings' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
-                <div className="text-left">
-                  <div className="font-semibold text-sm">Savings Accounts</div>
-                  <div className="text-xs text-muted-foreground">Savings statement data</div>
+            {canImportSavings && (
+              <button
+                onClick={() => handleImportTypeChange('savings')}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  importType === 'savings'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+                data-testid="button-import-type-savings"
+              >
+                <div className="flex items-center gap-3">
+                  <PiggyBank className={`h-6 w-6 ${importType === 'savings' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
+                  <div className="text-left">
+                    <div className="font-semibold text-sm">Savings Accounts</div>
+                    <div className="text-xs text-muted-foreground">Savings statement data</div>
+                  </div>
                 </div>
-              </div>
-            </button>
-            
-            <button
-              onClick={() => handleImportTypeChange('loans')}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                importType === 'loans'
-                  ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <FileSpreadsheet className={`h-6 w-6 ${importType === 'loans' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
-                <div className="text-left">
-                  <div className="font-semibold text-sm">Loan Statements</div>
-                  <div className="text-xs text-muted-foreground">Loan data and information</div>
-                </div>
-              </div>
-            </button>
+              </button>
+            )}
 
-            <button
-              onClick={() => handleImportTypeChange('loan-repayments')}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                importType === 'loan-repayments'
-                  ? 'border-green-500 bg-green-50 dark:bg-green-950'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <Banknote className={`h-6 w-6 ${importType === 'loan-repayments' ? 'text-green-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
-                <div className="text-left">
-                  <div className="font-semibold text-sm">Loan Repayments</div>
-                  <div className="text-xs text-muted-foreground">Bulk CSV repayments</div>
+            {canImportLoans && (
+              <button
+                onClick={() => handleImportTypeChange('loans')}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  importType === 'loans'
+                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+                data-testid="button-import-type-loans"
+              >
+                <div className="flex items-center gap-3">
+                  <FileSpreadsheet className={`h-6 w-6 ${importType === 'loans' ? 'text-blue-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
+                  <div className="text-left">
+                    <div className="font-semibold text-sm">Loan Statements</div>
+                    <div className="text-xs text-muted-foreground">Loan data and information</div>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            )}
 
-            <button
-              onClick={() => handleImportTypeChange('bulk-savings')}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                importType === 'bulk-savings'
-                  ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950'
-                  : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
-              }`}
-            >
-              <div className="flex items-center gap-3">
-                <CreditCard className={`h-6 w-6 ${importType === 'bulk-savings' ? 'text-emerald-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
-                <div className="text-left">
-                  <div className="font-semibold text-sm">Bulk Savings</div>
-                  <div className="text-xs text-muted-foreground">CSV savings deposits</div>
+            {canImportLoanRepayments && (
+              <button
+                onClick={() => handleImportTypeChange('loan-repayments')}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  importType === 'loan-repayments'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-950'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+                data-testid="button-import-type-loan-repayments"
+              >
+                <div className="flex items-center gap-3">
+                  <Banknote className={`h-6 w-6 ${importType === 'loan-repayments' ? 'text-green-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
+                  <div className="text-left">
+                    <div className="font-semibold text-sm">Loan Repayments</div>
+                    <div className="text-xs text-muted-foreground">Bulk CSV repayments</div>
+                  </div>
                 </div>
-              </div>
-            </button>
+              </button>
+            )}
+
+            {canImportBulkSavings && (
+              <button
+                onClick={() => handleImportTypeChange('bulk-savings')}
+                className={`p-4 rounded-lg border-2 transition-all ${
+                  importType === 'bulk-savings'
+                    ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950'
+                    : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                }`}
+                data-testid="button-import-type-bulk-savings"
+              >
+                <div className="flex items-center gap-3">
+                  <CreditCard className={`h-6 w-6 ${importType === 'bulk-savings' ? 'text-emerald-600' : 'text-gray-500 dark:text-gray-400 dark:text-gray-500'}`} />
+                  <div className="text-left">
+                    <div className="font-semibold text-sm">Bulk Savings</div>
+                    <div className="text-xs text-muted-foreground">CSV savings deposits</div>
+                  </div>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -619,7 +666,7 @@ export default function DataImport() {
             {/* Import Button */}
             <Button 
               onClick={handleImport}
-              disabled={isImporting || importMutation.isPending || !selectedFile || (importType === 'loan-repayments' && !selectedLoanTypeId)}
+              disabled={isImporting || importMutation.isPending || !selectedFile || !canDoCurrentImport || (importType === 'loan-repayments' && !selectedLoanTypeId)}
               className="w-full rounded-xl"
             >
               {isImporting || importMutation.isPending ? (

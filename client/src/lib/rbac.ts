@@ -38,7 +38,20 @@ export const ALL_NAVIGATION_ITEMS: NavItem[] = [
   { name: 'SACCO Accounts', path: '/sacco-accounts', icon: 'Landmark', group: 'Finance', permission: { action: 'read', resource: 'sacco-accounts' } },
   { name: 'Settings', path: '/admin-settings', icon: 'Settings', group: 'Administration', permission: { action: 'update', resource: 'system-settings' } },
   { name: 'Audit Logs', path: '/audit-logs', icon: 'FileText', group: 'Administration', permission: { action: 'read', resource: 'audit-logs' } },
-  { name: 'Data Import', path: '/data-import', icon: 'Upload', group: 'Administration', permission: { action: 'execute', resource: 'data-import' } },
+  {
+    name: 'Data Import',
+    path: '/data-import',
+    icon: 'Upload',
+    group: 'Administration',
+    permission: { action: 'execute', resource: 'import-members' },
+    anyPermissions: [
+      { action: 'execute', resource: 'import-members' },
+      { action: 'execute', resource: 'import-savings' },
+      { action: 'execute', resource: 'import-loans' },
+      { action: 'execute', resource: 'import-loan-repayments' },
+      { action: 'execute', resource: 'import-bulk-savings' },
+    ],
+  },
 ];
 
 export function hasPermission(_userRoles: UserRole | UserRole[], action: string, resource: string, dynamicPermissions?: Permission[]): boolean {

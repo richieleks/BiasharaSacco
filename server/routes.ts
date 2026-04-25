@@ -6441,7 +6441,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.post('/api/import/savings', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/savings', isAuthenticated, requirePermission('execute', 'import-savings'), upload.single('file'), async (req: any, res) => {
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: 'Authentication required' });
     const job = createImportJob(userId);
@@ -6498,7 +6498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })();
   });
 
-  app.post('/api/import/members', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/members', isAuthenticated, requirePermission('execute', 'import-members'), upload.single('file'), async (req: any, res) => {
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: 'Authentication required' });
     const job = createImportJob(userId);
@@ -6546,7 +6546,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })();
   });
 
-  app.post('/api/import/loans', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/loans', isAuthenticated, requirePermission('execute', 'import-loans'), upload.single('file'), async (req: any, res) => {
     const filePath = req.file ? req.file.path : '';
     const loanTypeId = req.body?.loanTypeId ? parseInt(req.body.loanTypeId) : undefined;
     const userId = getUserId(req);
@@ -6598,7 +6598,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })();
   });
 
-  app.post('/api/import/loan-repayments', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/loan-repayments', isAuthenticated, requirePermission('execute', 'import-loan-repayments'), upload.single('file'), async (req: any, res) => {
     const filePath = req.file ? req.file.path : null;
     if (!filePath) return res.status(400).json({ message: 'No file uploaded' });
 
@@ -6806,7 +6806,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     })();
   });
 
-  app.post('/api/import/bulk-savings', isAuthenticated, requirePermission('execute', 'data-import'), upload.single('file'), async (req: any, res) => {
+  app.post('/api/import/bulk-savings', isAuthenticated, requirePermission('execute', 'import-bulk-savings'), upload.single('file'), async (req: any, res) => {
     const filePath = req.file ? req.file.path : null;
     if (!filePath) return res.status(400).json({ message: 'No file uploaded' });
 

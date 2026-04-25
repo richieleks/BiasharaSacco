@@ -660,7 +660,15 @@ function Router() {
               </ProtectedRoute>
             </Route>
             <Route path="/data-import">
-              <ProtectedRoute requiredPermission={{ action: 'execute', resource: 'data-import' }}>
+              <ProtectedRoute
+                requiredAnyPermission={[
+                  { action: 'execute', resource: 'import-members' },
+                  { action: 'execute', resource: 'import-savings' },
+                  { action: 'execute', resource: 'import-loans' },
+                  { action: 'execute', resource: 'import-loan-repayments' },
+                  { action: 'execute', resource: 'import-bulk-savings' },
+                ]}
+              >
                 <DataImport />
               </ProtectedRoute>
             </Route>
