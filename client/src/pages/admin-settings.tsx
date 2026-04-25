@@ -1699,6 +1699,23 @@ export default function AdminSettingsPage() {
           {activeTab === 'preferences' && (
             <Form {...userForm}>
               <form onSubmit={userForm.handleSubmit(handleUserSettingsSubmit)} className="space-y-8">
+                <Tabs defaultValue="notifications" className="w-full">
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="notifications" data-testid="tab-preferences-notifications">
+                      <Bell className="h-4 w-4 mr-2" />
+                      Notifications
+                    </TabsTrigger>
+                    <TabsTrigger value="appearance" data-testid="tab-preferences-appearance">
+                      <Palette className="h-4 w-4 mr-2" />
+                      Appearance
+                    </TabsTrigger>
+                    <TabsTrigger value="security" data-testid="tab-preferences-security">
+                      <Shield className="h-4 w-4 mr-2" />
+                      Security
+                    </TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="notifications" className="mt-4">
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
@@ -1838,7 +1855,9 @@ export default function AdminSettingsPage() {
                     </CardContent>
                   </Card>
                 </div>
+                  </TabsContent>
 
+                  <TabsContent value="appearance" className="mt-4">
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
@@ -1945,7 +1964,9 @@ export default function AdminSettingsPage() {
                     </CardContent>
                   </Card>
                 </div>
+                  </TabsContent>
 
+                  <TabsContent value="security" className="mt-4">
                 <div className="space-y-6">
                   <div>
                     <h3 className="text-lg font-medium mb-4 flex items-center gap-2">
@@ -2026,6 +2047,8 @@ export default function AdminSettingsPage() {
                     </CardContent>
                   </Card>
                 </div>
+                  </TabsContent>
+                </Tabs>
 
                 <div className="flex justify-end gap-4 pt-4 border-t">
                   <Button 
