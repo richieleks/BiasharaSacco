@@ -5478,7 +5478,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }
 
   // Download savings deduction schedule (Excel)
-  app.get('/api/reports/savings-schedule', isAuthenticated, requirePermission('read', 'reports'), async (req: any, res) => {
+  app.get('/api/reports/savings-schedule', isAuthenticated, requirePermission('download', 'schedules'), async (req: any, res) => {
     try {
       const bankSettings = await getBankScheduleSettings();
       const month = (req.query.month as string) || new Date().toLocaleString('en-US', { month: 'short' });
@@ -5510,7 +5510,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Download loan repayment schedule (Excel)
-  app.get('/api/reports/loan-schedule', isAuthenticated, requirePermission('read', 'reports'), async (req: any, res) => {
+  app.get('/api/reports/loan-schedule', isAuthenticated, requirePermission('download', 'schedules'), async (req: any, res) => {
     try {
       const bankSettings = await getBankScheduleSettings();
       const month = (req.query.month as string) || new Date().toLocaleString('en-US', { month: 'short' });

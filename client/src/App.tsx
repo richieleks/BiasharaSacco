@@ -50,17 +50,33 @@ import Header from "@/components/layout/header";
 import CollapsibleSidebar from "@/components/layout/collapsible-sidebar";
 import { QRCodeSVG } from "qrcode.react";
 
-function ProtectedRoute({ children, requiredPermission }: { children: React.ReactNode, requiredPermission?: { action: string, resource: string } }) {
+function ProtectedRoute({
+  children,
+  requiredPermission,
+  requiredAnyPermission,
+}: {
+  children: React.ReactNode;
+  requiredPermission?: { action: string; resource: string };
+  requiredAnyPermission?: { action: string; resource: string }[];
+}) {
   const { hasPermission, isLoading } = useRBAC();
-  
+
   if (isLoading) {
     return null;
   }
-  
+
   if (requiredPermission && !hasPermission(requiredPermission.action, requiredPermission.resource)) {
     return <Forbidden />;
   }
-  
+
+  if (
+    requiredAnyPermission &&
+    requiredAnyPermission.length > 0 &&
+    !requiredAnyPermission.some(p => hasPermission(p.action, p.resource))
+  ) {
+    return <Forbidden />;
+  }
+
   return <>{children}</>;
 }
 
