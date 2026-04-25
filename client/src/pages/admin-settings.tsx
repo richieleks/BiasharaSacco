@@ -80,6 +80,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRBAC } from "@/hooks/useRBAC";
 import { formatCurrency } from "@/lib/utils";
 import { RBACManagementTab } from "@/components/rbac-management";
@@ -1097,6 +1098,15 @@ export default function AdminSettingsPage() {
                     </p>
                   </div>
 
+                  <Tabs defaultValue="membership" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+                      <TabsTrigger value="membership" data-testid="tab-business-membership">Membership</TabsTrigger>
+                      <TabsTrigger value="loan-limits" data-testid="tab-business-loan-limits">Loan Limits</TabsTrigger>
+                      <TabsTrigger value="loan-eligibility" data-testid="tab-business-loan-eligibility">Loan Eligibility</TabsTrigger>
+                      <TabsTrigger value="bank-details" data-testid="tab-business-bank-details">Bank Details</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="membership" className="mt-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base flex items-center gap-2">
@@ -1152,7 +1162,9 @@ export default function AdminSettingsPage() {
                       </div>
                     </CardContent>
                   </Card>
+                    </TabsContent>
 
+                    <TabsContent value="loan-limits" className="mt-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base flex items-center gap-2">
@@ -1233,7 +1245,9 @@ export default function AdminSettingsPage() {
                       </div>
                     </CardContent>
                   </Card>
+                    </TabsContent>
 
+                    <TabsContent value="loan-eligibility" className="mt-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base flex items-center gap-2">
@@ -1359,7 +1373,9 @@ export default function AdminSettingsPage() {
                       </div>
                     </CardContent>
                   </Card>
+                    </TabsContent>
 
+                    <TabsContent value="bank-details" className="mt-4">
                   <Card>
                     <CardHeader>
                       <CardTitle className="text-base flex items-center gap-2">
@@ -1484,6 +1500,8 @@ export default function AdminSettingsPage() {
                       </div>
                     </CardContent>
                   </Card>
+                    </TabsContent>
+                  </Tabs>
                 </div>
               )}
 
@@ -2227,6 +2245,17 @@ function UserManagementTab() {
         </p>
       </div>
 
+      <Tabs defaultValue="system-staff" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="system-staff" data-testid="tab-users-system-staff">
+            System Staff ({systemUsers.length})
+          </TabsTrigger>
+          <TabsTrigger value="member-accounts" data-testid="tab-users-member-accounts">
+            Member Accounts ({allMemberUsers.length})
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="system-staff" className="mt-4">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
@@ -2450,7 +2479,9 @@ function UserManagementTab() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
 
+        <TabsContent value="member-accounts" className="mt-4">
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
@@ -2588,6 +2619,8 @@ function UserManagementTab() {
           )}
         </CardContent>
       </Card>
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent className="max-h-[85vh] overflow-y-auto">
