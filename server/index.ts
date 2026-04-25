@@ -50,7 +50,16 @@ app.use((req, res, next) => {
     await storage.upsertSystemSetting('seedCompleted', 'true');
     log("Initial seed completed and flagged.");
   } else {
-    log("Seed already completed — skipping automatic seed.");
+    log("Seed already completed — skipping one-time seed steps.");
+    // RBAC seeding is idempotent and self-heals built-in role metadata
+    // (e.g. dashboardType) on every boot, so it must run regardless of the
+    // one-time seedCompleted flag. It will not duplicate existing roles or
+    // permission mappings.
+    try {
+      await seedRBAC();
+    } catch (err) {
+      log(`RBAC reconciliation failed: ${err}`);
+    }
   }
 
   try {

@@ -82,11 +82,29 @@ export function useRBAC() {
     },
     enabled: !!user,
   });
-  
+
+  // Fetch the dashboard layout type configured for the active role.
+  // This lets admins map any new role (custom or built-in) to one of the
+  // existing dashboard layouts without code changes.
+  const { data: roleInfo } = useQuery<{ name: string; displayName: string; dashboardType: string }>({
+    queryKey: ["/api/auth/role-info", effectiveRole],
+    queryFn: async () => {
+      const res = await fetch(`/api/auth/role-info?name=${encodeURIComponent(effectiveRole)}`, {
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('Failed to fetch role info');
+      return res.json();
+    },
+    enabled: !!user && !!effectiveRole,
+  });
+
+  const dashboardType = roleInfo?.dashboardType || effectiveRole || 'member';
+
   return {
     userRole: effectiveRole,
     userRoles,
     activeRole: effectiveRole,
+    dashboardType,
     switchRole,
     canSwitchRoles: userRoles.length > 1,
     isLoading: isLoading || (!!user && permissionsLoading),

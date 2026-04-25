@@ -37,11 +37,27 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface RoleFormData {
   name: string;
   displayName: string;
   description: string;
+  dashboardType: string;
+}
+
+const DASHBOARD_TYPE_OPTIONS: { value: string; label: string; description: string }[] = [
+  { value: 'admin', label: 'Admin', description: 'Full system overview, approvals, analytics' },
+  { value: 'treasurer', label: 'Treasurer', description: 'Loan approvals, financials, transactions' },
+  { value: 'committee', label: 'Committee', description: 'Loan review queue and approval activity' },
+  { value: 'manager', label: 'Manager', description: 'Reports, analytics, member approvals' },
+  { value: 'auditor', label: 'Auditor', description: 'Read-only access to logs, reports, transactions' },
+  { value: 'teller', label: 'Teller', description: 'Daily operations and transaction processing' },
+  { value: 'member', label: 'Member', description: 'Personal savings, loans, and transactions' },
+];
+
+function dashboardTypeLabel(value?: string) {
+  return DASHBOARD_TYPE_OPTIONS.find(o => o.value === value)?.label || 'Member';
 }
 
 export function RBACManagementTab() {
@@ -50,11 +66,14 @@ export function RBACManagementTab() {
   const [activeSection, setActiveSection] = useState<'roles' | 'members'>('roles');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isPermissionsDialogOpen, setIsPermissionsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<any>(null);
   const [selectedRole, setSelectedRole] = useState<any>(null);
   const [roleFormData, setRoleFormData] = useState<RoleFormData>({
     name: "",
     displayName: "",
     description: "",
+    dashboardType: "member",
   });
   const [selectedPermissions, setSelectedPermissions] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -86,7 +105,23 @@ export function RBACManagementTab() {
       queryClient.invalidateQueries({ queryKey: ["/api/rbac/roles"] });
       toast({ title: "Success", description: "Role created successfully", variant: "success" });
       setIsCreateDialogOpen(false);
-      setRoleFormData({ name: "", displayName: "", description: "" });
+      setRoleFormData({ name: "", displayName: "", description: "", dashboardType: "member" });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ id, updates }: { id: number; updates: Partial<RoleFormData> }) => {
+      await apiRequest("PUT", `/api/rbac/roles/${id}`, updates);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/rbac/roles"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/role-info"] });
+      toast({ title: "Success", description: "Role updated successfully", variant: "success" });
+      setIsEditDialogOpen(false);
+      setEditingRole(null);
     },
     onError: (error: Error) => {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -230,16 +265,32 @@ export function RBACManagementTab() {
             ) : (
               <div className="space-y-3">
                 {(roles as any[]).map((role: any) => (
-                  <div key={role.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div key={role.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <p className="font-medium">{role.displayName}</p>
                         <Badge variant={getRoleBadgeVariant(role.name)}>{role.name}</Badge>
+                        <Badge variant="secondary" className="text-xs" data-testid={`badge-dashboard-${role.name}`}>
+                          Dashboard: {dashboardTypeLabel(role.dashboardType)}
+                        </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">{role.description}</p>
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge variant="outline">{role.permissions?.length || 0} permissions</Badge>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setEditingRole({ ...role, dashboardType: role.dashboardType || 'member' });
+                          setIsEditDialogOpen(true);
+                        }}
+                        data-testid={`button-edit-role-${role.name}`}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
                       <Button type="button" variant="outline" size="sm" onClick={() => openPermissionsDialog(role)}>
                         <KeyRound className="h-4 w-4 mr-1" />
                         Manage
@@ -321,7 +372,7 @@ export function RBACManagementTab() {
       )}
 
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Role</DialogTitle>
             <DialogDescription>Create a new role with specific permissions</DialogDescription>
@@ -334,6 +385,7 @@ export function RBACManagementTab() {
                 value={roleFormData.name}
                 onChange={(e) => setRoleFormData({ ...roleFormData, name: e.target.value })}
                 placeholder="e.g., reviewer"
+                data-testid="input-role-name"
               />
             </div>
             <div>
@@ -343,6 +395,7 @@ export function RBACManagementTab() {
                 value={roleFormData.displayName}
                 onChange={(e) => setRoleFormData({ ...roleFormData, displayName: e.target.value })}
                 placeholder="e.g., Content Reviewer"
+                data-testid="input-role-display-name"
               />
             </div>
             <div>
@@ -352,15 +405,139 @@ export function RBACManagementTab() {
                 value={roleFormData.description}
                 onChange={(e) => setRoleFormData({ ...roleFormData, description: e.target.value })}
                 placeholder="Describe the role's purpose"
+                data-testid="input-role-description"
               />
+            </div>
+            <div>
+              <Label className="mb-2 block">Dashboard Layout</Label>
+              <p className="text-xs text-muted-foreground mb-3">
+                Choose which existing dashboard view users with this role will see when they sign in.
+              </p>
+              <RadioGroup
+                value={roleFormData.dashboardType}
+                onValueChange={(value) => setRoleFormData({ ...roleFormData, dashboardType: value })}
+                className="space-y-2"
+              >
+                {DASHBOARD_TYPE_OPTIONS.map(opt => (
+                  <label
+                    key={opt.value}
+                    htmlFor={`dashboard-type-${opt.value}`}
+                    className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50"
+                  >
+                    <RadioGroupItem
+                      value={opt.value}
+                      id={`dashboard-type-${opt.value}`}
+                      className="mt-0.5"
+                      data-testid={`radio-dashboard-type-${opt.value}`}
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{opt.label}</p>
+                      <p className="text-xs text-muted-foreground">{opt.description}</p>
+                    </div>
+                  </label>
+                ))}
+              </RadioGroup>
             </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>Cancel</Button>
-              <Button onClick={() => createRoleMutation.mutate(roleFormData)} disabled={createRoleMutation.isPending}>
+              <Button
+                onClick={() => createRoleMutation.mutate(roleFormData)}
+                disabled={createRoleMutation.isPending || !roleFormData.name || !roleFormData.displayName}
+                data-testid="button-submit-create-role"
+              >
                 {createRoleMutation.isPending ? "Creating..." : "Create Role"}
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isEditDialogOpen}
+        onOpenChange={(open) => {
+          setIsEditDialogOpen(open);
+          if (!open) setEditingRole(null);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Role - {editingRole?.displayName}</DialogTitle>
+            <DialogDescription>
+              Update the role's display name, description, and dashboard layout.
+            </DialogDescription>
+          </DialogHeader>
+          {editingRole && (
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="edit-display-name">Display Name</Label>
+                <Input
+                  id="edit-display-name"
+                  value={editingRole.displayName || ""}
+                  onChange={(e) => setEditingRole({ ...editingRole, displayName: e.target.value })}
+                  data-testid="input-edit-role-display-name"
+                />
+              </div>
+              <div>
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea
+                  id="edit-description"
+                  value={editingRole.description || ""}
+                  onChange={(e) => setEditingRole({ ...editingRole, description: e.target.value })}
+                  data-testid="input-edit-role-description"
+                />
+              </div>
+              <div>
+                <Label className="mb-2 block">Dashboard Layout</Label>
+                <p className="text-xs text-muted-foreground mb-3">
+                  Users with the <Badge variant="outline" className="text-xs">{editingRole.name}</Badge> role
+                  will see this dashboard when they sign in.
+                </p>
+                <RadioGroup
+                  value={editingRole.dashboardType || 'member'}
+                  onValueChange={(value) => setEditingRole({ ...editingRole, dashboardType: value })}
+                  className="space-y-2"
+                >
+                  {DASHBOARD_TYPE_OPTIONS.map(opt => (
+                    <label
+                      key={opt.value}
+                      htmlFor={`edit-dashboard-type-${opt.value}`}
+                      className="flex items-start gap-3 p-3 border rounded-lg cursor-pointer hover:bg-muted/50"
+                    >
+                      <RadioGroupItem
+                        value={opt.value}
+                        id={`edit-dashboard-type-${opt.value}`}
+                        className="mt-0.5"
+                        data-testid={`radio-edit-dashboard-type-${opt.value}`}
+                      />
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{opt.label}</p>
+                        <p className="text-xs text-muted-foreground">{opt.description}</p>
+                      </div>
+                    </label>
+                  ))}
+                </RadioGroup>
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t">
+                <Button variant="outline" onClick={() => { setIsEditDialogOpen(false); setEditingRole(null); }}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={() => updateRoleMutation.mutate({
+                    id: editingRole.id,
+                    updates: {
+                      displayName: editingRole.displayName,
+                      description: editingRole.description,
+                      dashboardType: editingRole.dashboardType,
+                    },
+                  })}
+                  disabled={updateRoleMutation.isPending || !editingRole.displayName}
+                  data-testid="button-submit-edit-role"
+                >
+                  {updateRoleMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 

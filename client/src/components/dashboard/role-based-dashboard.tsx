@@ -1127,13 +1127,16 @@ function MemberDashboard() {
 }
 
 export default function RoleBasedDashboard() {
-  const { userRole, isLoading } = useRBAC();
-  
+  const { dashboardType, isLoading } = useRBAC();
+
   if (isLoading) {
     return <div>Loading dashboard...</div>;
   }
-  
-  switch (userRole) {
+
+  // Switch on the dashboardType configured for the active role.
+  // Admins choose this when creating/editing a role, so adding new
+  // roles never requires code changes here.
+  switch (dashboardType) {
     case 'admin':
       return <AdminDashboard />;
     case 'treasurer':

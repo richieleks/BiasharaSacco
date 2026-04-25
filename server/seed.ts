@@ -33,10 +33,10 @@ export async function seedAdminUser() {
 }
 
 const SYSTEM_ROLES = [
-  { name: "admin", displayName: "Administrator", description: "Full system access — can view and modify all data, manage roles, and configure system settings" },
-  { name: "treasurer", displayName: "Treasurer", description: "Financial operations, final loan approvals (UGX 100k–500k), access to all financial reports and analytics" },
-  { name: "committee", displayName: "Committee", description: "Policy enforcement, initial loan reviews, member registration, deposits/withdrawals processing" },
-  { name: "member", displayName: "Member", description: "Self-service access to personal account information, loan applications, and statements" },
+  { name: "admin", displayName: "Administrator", description: "Full system access — can view and modify all data, manage roles, and configure system settings", dashboardType: "admin" },
+  { name: "treasurer", displayName: "Treasurer", description: "Financial operations, final loan approvals (UGX 100k–500k), access to all financial reports and analytics", dashboardType: "treasurer" },
+  { name: "committee", displayName: "Committee", description: "Policy enforcement, initial loan reviews, member registration, deposits/withdrawals processing", dashboardType: "committee" },
+  { name: "member", displayName: "Member", description: "Self-service access to personal account information, loan applications, and statements", dashboardType: "member" },
 ];
 
 const SYSTEM_PERMISSIONS = [
@@ -217,6 +217,13 @@ export async function seedRBAC() {
       const existing = await storage.getRoleByName(role.name);
       if (existing) {
         roleIds[existing.name] = existing.id;
+        // Self-heal: ensure built-in roles always point at their canonical
+        // dashboard layout, even on environments seeded before the
+        // dashboard_type column existed (where it would default to 'member').
+        if ((existing as any).dashboardType !== role.dashboardType) {
+          await storage.updateRole(existing.id, { dashboardType: role.dashboardType } as any);
+          log(`  Updated dashboardType for built-in role '${role.name}' -> '${role.dashboardType}'`);
+        }
       } else {
         const [created] = await db
           .insert(roles)

@@ -369,6 +369,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Lightweight role metadata (e.g. dashboardType) for the current user's roles.
+  // Used by the frontend to decide which dashboard layout to render for the
+  // active role without needing the broader 'read:roles' permission.
+  app.get('/api/auth/role-info', isAuthenticated, async (req: AuthRequest, res) => {
+    try {
+      const userId = getUserId(req)!;
+      const requestedRole = (req.query.name as string | undefined)?.trim();
+      if (!requestedRole) {
+        return res.status(400).json({ message: "Missing 'name' query parameter" });
+      }
+
+      const member = await storage.getMemberByUserId(userId);
+      const user = await storage.getUser(userId);
+      let roleNames: string[] = [];
+      if (member) {
+        const memberRoles = await storage.getMemberRoles(member.id);
+        roleNames = memberRoles.length > 0 ? memberRoles : ['member'];
+      } else if (user?.role) {
+        roleNames = [user.role];
+      }
+
+      // Only return metadata for roles the caller actually has.
+      if (!roleNames.includes(requestedRole)) {
+        return res.status(403).json({ message: "Role not assigned to current user" });
+      }
+
+      const role = await storage.getRoleByName(requestedRole);
+      if (!role) {
+        return res.status(404).json({ message: "Role not found" });
+      }
+
+      res.json({
+        name: role.name,
+        displayName: role.displayName,
+        dashboardType: (role as any).dashboardType || 'member',
+      });
+    } catch (error) {
+      console.error("Error fetching role info:", error);
+      res.status(500).json({ message: "Failed to fetch role info" });
+    }
+  });
+
   // Update user profile
   app.patch('/api/auth/profile', isAuthenticated, async (req: AuthRequest, res) => {
     try {

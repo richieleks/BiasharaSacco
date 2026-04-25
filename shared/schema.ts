@@ -635,6 +635,9 @@ export const roles = pgTable("roles", {
   displayName: varchar("display_name", { length: 100 }).notNull(),
   description: text("description"),
   isSystem: boolean("is_system").default(false).notNull(), // For built-in roles that can't be deleted
+  // Determines which dashboard layout users with this role will see.
+  // Allowed values: 'admin' | 'treasurer' | 'manager' | 'committee' | 'auditor' | 'teller' | 'member'
+  dashboardType: varchar("dashboard_type", { length: 30 }).default('member').notNull(),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
