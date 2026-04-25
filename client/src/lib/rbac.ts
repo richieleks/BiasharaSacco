@@ -5,7 +5,17 @@ export interface Permission {
   resource: string;
 }
 
-export const ALL_NAVIGATION_ITEMS = [
+type NavPermission = { action: string; resource: string };
+type NavItem = {
+  name: string;
+  path: string;
+  icon: string;
+  group: string;
+  permission: NavPermission;
+  anyPermissions?: NavPermission[];
+};
+
+export const ALL_NAVIGATION_ITEMS: NavItem[] = [
   { name: 'Dashboard', path: '/', icon: 'LayoutDashboard', group: 'Main', permission: { action: 'read', resource: 'dashboard' } },
   { name: 'Members', path: '/members', icon: 'Users', group: 'Main', permission: { action: 'read', resource: 'members' } },
   { name: 'Savings', path: '/savings', icon: 'PiggyBank', group: 'Finance', permission: { action: 'read', resource: 'savings' } },
@@ -22,7 +32,7 @@ export const ALL_NAVIGATION_ITEMS = [
   { name: 'Interest Rates', path: '/interest-rates', icon: 'Percent', group: 'Finance', permission: { action: 'read', resource: 'interest-rates' } },
   { name: 'Interest Calculations', path: '/interest-calculations', icon: 'Calculator', group: 'Finance', permission: { action: 'read', resource: 'interest-calculations' } },
   { name: 'Financial Statements', path: '/financial-statements', icon: 'FileText', group: 'Reports', permission: { action: 'read', resource: 'reports' } },
-  { name: 'Reports', path: '/reports', icon: 'BarChart3', group: 'Reports', permission: { action: 'read', resource: 'reports' } },
+  { name: 'Reports', path: '/reports', icon: 'BarChart3', group: 'Reports', permission: { action: 'read', resource: 'reports' }, anyPermissions: [{ action: 'read', resource: 'reports' }, { action: 'download', resource: 'schedules' }] },
   { name: 'Dividends', path: '/dividends', icon: 'Coins', group: 'Finance', permission: { action: 'read', resource: 'reports' } },
   { name: 'Notifications', path: '/notifications', icon: 'Bell', group: 'Reports', permission: { action: 'read', resource: 'notifications' } },
   { name: 'SACCO Accounts', path: '/sacco-accounts', icon: 'Landmark', group: 'Finance', permission: { action: 'read', resource: 'sacco-accounts' } },
@@ -68,9 +78,14 @@ export function canAccessDashboardComponent(userRoles: UserRole | UserRole[], co
 export function getNavigationItems(userRoles: UserRole | UserRole[], dynamicPermissions?: Permission[]) {
   const roles = Array.isArray(userRoles) ? userRoles : [userRoles];
 
-  return ALL_NAVIGATION_ITEMS.filter(item =>
-    hasPermission(roles, item.permission.action, item.permission.resource, dynamicPermissions)
-  );
+  return ALL_NAVIGATION_ITEMS.filter(item => {
+    if (item.anyPermissions && item.anyPermissions.length > 0) {
+      return item.anyPermissions.some(p =>
+        hasPermission(roles, p.action, p.resource, dynamicPermissions)
+      );
+    }
+    return hasPermission(roles, item.permission.action, item.permission.resource, dynamicPermissions);
+  });
 }
 
 export function canAccessRoute(userRoles: UserRole | UserRole[], route: string, dynamicPermissions?: Permission[]): boolean {

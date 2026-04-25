@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
+import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -828,7 +829,10 @@ function PARRiskTab() {
 }
 
 export default function Reports() {
-  const [activeTab, setActiveTab] = useState("overview");
+  const { hasPermission } = useRBAC();
+  const canReadReports = hasPermission('read', 'reports');
+  const canDownloadSchedules = hasPermission('download', 'schedules');
+  const [activeTab, setActiveTab] = useState(canReadReports ? "overview" : "schedules");
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [filters, setFilters] = useState<ReportFilter>({});
@@ -876,7 +880,7 @@ export default function Reports() {
     repaymentRate: string;
   }>({
     queryKey: ['/api/dashboard/metrics'],
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && canReadReports,
   });
 
   const reportEndpoint = activeTab === 'custom' ? selectedReport : activeTab;
@@ -988,14 +992,24 @@ export default function Reports() {
       <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); setRptPage(1); setDelinqPage(1); }} className="space-y-6">
         <div className="overflow-x-auto -mx-1 px-1">
           <TabsList className="w-full inline-flex sm:grid sm:grid-cols-4 lg:grid-cols-8 h-auto gap-1 p-1 rounded-xl min-w-max sm:min-w-0">
-            <TabsTrigger value="overview" className="text-xs sm:text-sm px-3 sm:px-2">Overview</TabsTrigger>
-            <TabsTrigger value="members" className="text-xs sm:text-sm px-3 sm:px-2">Members</TabsTrigger>
-            <TabsTrigger value="financial" className="text-xs sm:text-sm px-3 sm:px-2">Financial</TabsTrigger>
-            <TabsTrigger value="par" className="text-xs sm:text-sm px-3 sm:px-2">PAR & Risk</TabsTrigger>
-            <TabsTrigger value="activity" className="text-xs sm:text-sm px-3 sm:px-2">Activity</TabsTrigger>
-            <TabsTrigger value="schedules" className="text-xs sm:text-sm px-3 sm:px-2">Schedules</TabsTrigger>
-            <TabsTrigger value="reconciliation" className="text-xs sm:text-sm px-3 sm:px-2">Reconciliation</TabsTrigger>
-            <TabsTrigger value="custom" className="text-xs sm:text-sm px-3 sm:px-2">Custom</TabsTrigger>
+            {canReadReports && (
+              <>
+                <TabsTrigger value="overview" className="text-xs sm:text-sm px-3 sm:px-2">Overview</TabsTrigger>
+                <TabsTrigger value="members" className="text-xs sm:text-sm px-3 sm:px-2">Members</TabsTrigger>
+                <TabsTrigger value="financial" className="text-xs sm:text-sm px-3 sm:px-2">Financial</TabsTrigger>
+                <TabsTrigger value="par" className="text-xs sm:text-sm px-3 sm:px-2">PAR & Risk</TabsTrigger>
+                <TabsTrigger value="activity" className="text-xs sm:text-sm px-3 sm:px-2">Activity</TabsTrigger>
+              </>
+            )}
+            {canDownloadSchedules && (
+              <TabsTrigger value="schedules" className="text-xs sm:text-sm px-3 sm:px-2">Schedules</TabsTrigger>
+            )}
+            {canReadReports && (
+              <>
+                <TabsTrigger value="reconciliation" className="text-xs sm:text-sm px-3 sm:px-2">Reconciliation</TabsTrigger>
+                <TabsTrigger value="custom" className="text-xs sm:text-sm px-3 sm:px-2">Custom</TabsTrigger>
+              </>
+            )}
           </TabsList>
         </div>
 
@@ -1487,16 +1501,16 @@ export default function Reports() {
         </TabsContent>
 
         {/* PAR & Risk Tab */}
-        <PARRiskTab />
+        {canReadReports && <PARRiskTab />}
 
         {/* Member Activity Tab */}
-        <MemberActivityTab />
+        {canReadReports && <MemberActivityTab />}
 
         {/* Bank Schedules Tab */}
-        <BankSchedulesTab />
+        {canDownloadSchedules && <BankSchedulesTab />}
 
         {/* Reconciliation Tab */}
-        <ReconciliationTab />
+        {canReadReports && <ReconciliationTab />}
 
         {/* Custom/Detail Reports Tab */}
         <TabsContent value="custom" className="space-y-6">

@@ -589,7 +589,12 @@ function Router() {
             </Route>
 
             <Route path="/reports">
-              <ProtectedRoute requiredPermission={{ action: 'read', resource: 'reports' }}>
+              <ProtectedRoute
+                requiredAnyPermission={[
+                  { action: 'read', resource: 'reports' },
+                  { action: 'download', resource: 'schedules' },
+                ]}
+              >
                 <Reports />
               </ProtectedRoute>
             </Route>
