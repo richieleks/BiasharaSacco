@@ -502,6 +502,104 @@ function CommitteeDashboard() {
   );
 }
 
+function AuditorDashboard() {
+  const [, setLocation] = useLocation();
+  return (
+    <div className="space-y-6">
+      <MetricsGrid />
+      <AnalyticsCharts />
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Shield className="h-4 w-4" />
+            Auditor Tools
+          </CardTitle>
+          <CardDescription>
+            Read-only access to system records for review and oversight
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <Button
+              variant="outline"
+              className="h-auto py-4 justify-start"
+              onClick={() => setLocation('/audit-logs')}
+              data-testid="button-auditor-audit-logs"
+            >
+              <FileText className="h-5 w-5 mr-3 text-blue-600" />
+              <div className="text-left">
+                <p className="text-sm font-semibold">Audit Logs</p>
+                <p className="text-xs text-muted-foreground">System activity trail</p>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4 justify-start"
+              onClick={() => setLocation('/financial-statements')}
+              data-testid="button-auditor-financial-statements"
+            >
+              <Banknote className="h-5 w-5 mr-3 text-emerald-600" />
+              <div className="text-left">
+                <p className="text-sm font-semibold">Financial Statements</p>
+                <p className="text-xs text-muted-foreground">Income, balance sheet</p>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4 justify-start"
+              onClick={() => setLocation('/reports')}
+              data-testid="button-auditor-reports"
+            >
+              <Activity className="h-5 w-5 mr-3 text-purple-600" />
+              <div className="text-left">
+                <p className="text-sm font-semibold">Reports</p>
+                <p className="text-xs text-muted-foreground">Detailed analytics</p>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4 justify-start"
+              onClick={() => setLocation('/transactions')}
+              data-testid="button-auditor-transactions"
+            >
+              <CreditCard className="h-5 w-5 mr-3 text-orange-600" />
+              <div className="text-left">
+                <p className="text-sm font-semibold">Transactions</p>
+                <p className="text-xs text-muted-foreground">All account movements</p>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4 justify-start"
+              onClick={() => setLocation('/loans')}
+              data-testid="button-auditor-loans"
+            >
+              <HandCoins className="h-5 w-5 mr-3 text-indigo-600" />
+              <div className="text-left">
+                <p className="text-sm font-semibold">Loans</p>
+                <p className="text-xs text-muted-foreground">Loan portfolio review</p>
+              </div>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-auto py-4 justify-start"
+              onClick={() => setLocation('/members')}
+              data-testid="button-auditor-members"
+            >
+              <Users className="h-5 w-5 mr-3 text-pink-600" />
+              <div className="text-left">
+                <p className="text-sm font-semibold">Members</p>
+                <p className="text-xs text-muted-foreground">Membership records</p>
+              </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+      <RecentTransactions />
+    </div>
+  );
+}
+
 function TellerDashboard() {
   return (
     <div className="space-y-6">
@@ -1044,6 +1142,10 @@ export default function RoleBasedDashboard() {
       return <ManagerDashboard />;
     case 'committee':
       return <CommitteeDashboard />;
+    case 'auditor':
+      return <AuditorDashboard />;
+    case 'teller':
+      return <TellerDashboard />;
     case 'member':
       return <MemberDashboard />;
     default:

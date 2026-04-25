@@ -84,20 +84,22 @@ export function hasAnyRole(userRoles: UserRole | UserRole[], requiredRoles: User
   return roles.some(role => requiredRoles.includes(role));
 }
 
-export function getHighestRole(userRoles: UserRole[]): UserRole {
-  if (!userRoles || userRoles.length === 0) return 'member';
-  const hierarchy: Record<string, number> = { member: 1, treasurer: 2, committee: 3, admin: 5 };
-  return userRoles.reduce((highest, current) =>
-    (hierarchy[current] || 1) > (hierarchy[highest] || 1) ? current : highest
-  , userRoles[0]);
-}
-
 export const ROLE_HIERARCHY: Record<string, number> = {
   member: 1,
+  teller: 2,
   treasurer: 2,
   committee: 3,
+  manager: 3,
+  auditor: 4,
   admin: 5,
 };
+
+export function getHighestRole(userRoles: UserRole[]): UserRole {
+  if (!userRoles || userRoles.length === 0) return 'member';
+  return userRoles.reduce((highest, current) =>
+    (ROLE_HIERARCHY[current] || 1) > (ROLE_HIERARCHY[highest] || 1) ? current : highest
+  , userRoles[0]);
+}
 
 export function hasHigherRole(userRole: UserRole, compareRole: UserRole): boolean {
   return (ROLE_HIERARCHY[userRole] || 1) > (ROLE_HIERARCHY[compareRole] || 1);

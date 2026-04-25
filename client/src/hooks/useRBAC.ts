@@ -8,6 +8,7 @@ import {
   canAccessRoute,
   canApproveAtStage,
   getHighestRole,
+  ROLE_HIERARCHY,
   type UserRole 
 } from "@/lib/rbac";
 
@@ -116,8 +117,7 @@ export function useRBAC() {
     hasRole: (role: UserRole) => userRoles.includes(role),
     
     isHigherThan: (role: UserRole) => {
-      const hierarchy: Record<string, number> = { member: 1, treasurer: 2, committee: 3, admin: 5 };
-      return (hierarchy[effectiveRole] || 1) > (hierarchy[role] || 1);
+      return (ROLE_HIERARCHY[effectiveRole] || 1) > (ROLE_HIERARCHY[role] || 1);
     }
   };
 }
