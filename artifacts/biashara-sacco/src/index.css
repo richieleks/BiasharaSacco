@@ -1,0 +1,330 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 224 71% 4%;
+    --card: 0 0% 100%;
+    --card-foreground: 224 71% 4%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 224 71% 4%;
+    --primary: 220 70% 50%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 220 9% 46%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --accent: 220 14% 96%;
+    --accent-foreground: 224 71% 4%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 70% 50%;
+    --radius: 0.75rem;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 210 20% 98%;
+    --card: 224 71% 4%;
+    --card-foreground: 210 20% 98%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 210 20% 98%;
+    --primary: 220 70% 50%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 215 28% 17%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 28% 17%;
+    --muted-foreground: 218 11% 65%;
+    --accent: 215 28% 17%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 28% 17%;
+    --input: 215 28% 17%;
+    --ring: 216 34% 17%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .sacco-gradient {
+    background: linear-gradient(135deg, hsl(220, 70%, 50%) 0%, hsl(240, 60%, 60%) 100%);
+  }
+
+  .sacco-gradient-subtle {
+    background: linear-gradient(135deg, hsl(220, 70%, 97%) 0%, hsl(240, 60%, 97%) 100%);
+  }
+  
+  .dark .sacco-gradient-subtle {
+    background: linear-gradient(135deg, hsl(220, 40%, 15%) 0%, hsl(240, 30%, 18%) 100%);
+  }
+  
+  .sacco-text-gradient {
+    background: linear-gradient(135deg, hsl(220, 70%, 50%) 0%, hsl(240, 60%, 60%) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  .animate-shimmer {
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s ease-in-out infinite;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.4s ease-out forwards;
+  }
+
+  .glass {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+  }
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(220, 13%, 82%) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(220, 13%, 82%);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(220, 13%, 68%);
+}
+
+.transition-smooth {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@layer components {
+  [data-radix-dialog-overlay],
+  [data-radix-alert-dialog-overlay],
+  [data-radix-sheet-overlay] {
+    background-color: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+  }
+  
+  [data-radix-dialog-content],
+  [data-radix-alert-dialog-content],
+  [data-radix-sheet-content] {
+    background-color: white !important;
+    border: 1px solid hsl(var(--border)) !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  .dark [data-radix-dialog-content],
+  .dark [data-radix-alert-dialog-content],
+  .dark [data-radix-sheet-content] {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+  
+  [data-radix-popper-content-wrapper],
+  [data-radix-select-content],
+  [data-radix-dropdown-menu-content],
+  [data-radix-popover-content],
+  [data-radix-context-menu-content],
+  [data-radix-menubar-content],
+  [data-radix-navigation-menu-content] {
+    background-color: white !important;
+    border: 1px solid hsl(var(--border)) !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 4px 10px -3px rgba(0, 0, 0, 0.04) !important;
+  }
+  
+  .dark [data-radix-popper-content-wrapper],
+  .dark [data-radix-select-content],
+  .dark [data-radix-dropdown-menu-content],
+  .dark [data-radix-popover-content],
+  .dark [data-radix-context-menu-content],
+  .dark [data-radix-menubar-content],
+  .dark [data-radix-navigation-menu-content] {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+  
+  [data-radix-tooltip-content] {
+    background-color: hsl(var(--foreground)) !important;
+    color: hsl(var(--background)) !important;
+    border: none !important;
+    font-size: 0.8125rem !important;
+  }
+
+  .page-container {
+    @apply max-w-[1440px] mx-auto;
+  }
+
+  .metric-card {
+    @apply relative overflow-hidden rounded-xl border border-slate-200/60 bg-white p-4 sm:p-6 shadow-sm transition-all duration-200 hover:shadow-md hover:border-slate-300/60 dark:bg-slate-800/90 dark:border-slate-700/60 dark:hover:border-slate-600/60;
+  }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 0.75rem 0.75rem 0 0;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .metric-card:hover::before {
+    opacity: 1;
+  }
+
+  .section-card {
+    @apply rounded-xl border border-slate-200/60 bg-white shadow-sm overflow-hidden dark:bg-slate-800/90 dark:border-slate-700/60;
+  }
+
+  .table-modern thead {
+    @apply bg-slate-50/80 dark:bg-slate-800/80;
+  }
+
+  .table-modern th {
+    @apply text-xs font-semibold uppercase tracking-wider text-slate-500 py-3 dark:text-slate-400;
+  }
+
+  .table-modern td {
+    @apply py-3.5;
+  }
+
+  .table-modern tbody tr {
+    @apply transition-colors hover:bg-slate-50/60 dark:hover:bg-slate-700/40;
+  }
+}
+
+@keyframes pageSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes topBarLoad {
+  0% {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  50% {
+    transform: scaleX(0.7);
+    transform-origin: left;
+  }
+  100% {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+@keyframes topBarFade {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.page-transition {
+  animation: pageSlideIn 0.3s ease-out;
+}
+
+.top-loading-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 9999;
+  background: linear-gradient(90deg, hsl(220, 70%, 50%), hsl(200, 80%, 55%), hsl(220, 70%, 50%));
+  background-size: 200% 100%;
+  animation: topBarLoad 0.4s ease-out forwards, shimmer 1s linear infinite;
+}
+
+.top-loading-bar-done {
+  animation: topBarFade 0.3s ease-out 0.1s forwards;
+}
+
+.page-skeleton {
+  background: linear-gradient(90deg, hsl(220, 14%, 96%) 25%, hsl(220, 14%, 92%) 50%, hsl(220, 14%, 96%) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 0.5rem;
+}
+
+.dark .page-skeleton {
+  background: linear-gradient(90deg, hsl(220, 20%, 18%) 25%, hsl(220, 20%, 22%) 50%, hsl(220, 20%, 18%) 75%);
+  background-size: 200% 100%;
+}
+
+.loading-dots span {
+  animation: pulseGlow 1.4s ease-in-out infinite;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.4s;
+}

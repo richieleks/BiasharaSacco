@@ -1,0 +1,32 @@
+react-dom.development.js:29895 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+react-dom.development.js:86  Warning: validateDOMNesting(...): <a> cannot appear as a descendant of <a>.
+    at a
+    at a
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=3964c7e8:337:18
+    at div
+    at div
+    at MobileNav (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/components/layout/mobile-nav.tsx:50:22)
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=KNNYH2MZfigtex2mNyuTZ:38:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-7SUNRGEF.js?v=3964c7e8:38:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=3964c7e8:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=3964c7e8:2805:3)
+    at App
+printWarning @ react-dom.development.js:86
+dialog.tsx:542  Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ dialog.tsx:542
+api/members/by-user:1 
+            
+            
+            Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+dialog.tsx:542  Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}.
+(anonymous) @ dialog.tsx:542
+api/members/by-user:1 
+            
+            
+            Failed to load resource: the server responded with a status of 500 (Internal Server Error)
+[NEW] Explain Console errors by using Copilot in Edge: click
+         
+         to explain an error. 
+        Learn more
+        Don't show again

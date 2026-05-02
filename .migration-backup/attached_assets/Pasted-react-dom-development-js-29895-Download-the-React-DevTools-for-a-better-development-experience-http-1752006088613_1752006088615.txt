@@ -1,0 +1,157 @@
+react-dom.development.js:29895 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+role-management.tsx:348  Uncaught ReferenceError: getRoleBadgeVariant is not defined
+    at role-management.tsx:348:38
+    at Array.map (<anonymous>)
+    at Object.render (role-management.tsx:325:39)
+    at Controller (controller.tsx:53:9)
+    at renderWithHooks (react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (react-dom.development.js:20103:13)
+    at beginWork (react-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback2 (react-dom.development.js:4164:14)
+    at Object.invokeGuardedCallbackDev (react-dom.development.js:4213:16)
+    at invokeGuardedCallback (react-dom.development.js:4277:31)
+(anonymous) @ role-management.tsx:348
+render @ role-management.tsx:325
+Controller @ controller.tsx:53
+renderWithHooks @ react-dom.development.js:15486
+mountIndeterminateComponent @ react-dom.development.js:20103
+beginWork @ react-dom.development.js:21626
+callCallback2 @ react-dom.development.js:4164
+invokeGuardedCallbackDev @ react-dom.development.js:4213
+invokeGuardedCallback @ react-dom.development.js:4277
+beginWork$1 @ react-dom.development.js:27490
+performUnitOfWork @ react-dom.development.js:26596
+workLoopSync @ react-dom.development.js:26505
+renderRootSync @ react-dom.development.js:26473
+performSyncWorkOnRoot @ react-dom.development.js:26124
+flushSyncCallbacks @ react-dom.development.js:12042
+(anonymous) @ react-dom.development.js:25690
+role-management.tsx:348  Uncaught ReferenceError: getRoleBadgeVariant is not defined
+    at role-management.tsx:348:38
+    at Array.map (<anonymous>)
+    at Object.render (role-management.tsx:325:39)
+    at Controller (controller.tsx:53:9)
+    at renderWithHooks (react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (react-dom.development.js:20103:13)
+    at beginWork (react-dom.development.js:21626:16)
+    at HTMLUnknownElement.callCallback2 (react-dom.development.js:4164:14)
+    at Object.invokeGuardedCallbackDev (react-dom.development.js:4213:16)
+    at invokeGuardedCallback (react-dom.development.js:4277:31)
+(anonymous) @ role-management.tsx:348
+render @ role-management.tsx:325
+Controller @ controller.tsx:53
+renderWithHooks @ react-dom.development.js:15486
+mountIndeterminateComponent @ react-dom.development.js:20103
+beginWork @ react-dom.development.js:21626
+callCallback2 @ react-dom.development.js:4164
+invokeGuardedCallbackDev @ react-dom.development.js:4213
+invokeGuardedCallback @ react-dom.development.js:4277
+beginWork$1 @ react-dom.development.js:27490
+performUnitOfWork @ react-dom.development.js:26596
+workLoopSync @ react-dom.development.js:26505
+renderRootSync @ react-dom.development.js:26473
+recoverFromConcurrentError @ react-dom.development.js:25889
+performSyncWorkOnRoot @ react-dom.development.js:26135
+flushSyncCallbacks @ react-dom.development.js:12042
+(anonymous) @ react-dom.development.js:25690
+react-dom.development.js:18704  The above error occurred in the <Controller> component:
+
+    at Controller (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4BFJKWC4.js?v=eb06f6d4:298:35)
+    at FormField (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/components/ui/form.tsx:33:6)
+    at div
+    at form
+    at FormProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-4BFJKWC4.js?v=eb06f6d4:102:11)
+    at div
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=eb06f6d4:42:13
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BNESBGCN.js?v=eb06f6d4:59:7
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=eb06f6d4:79:13
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=eb06f6d4:56:13
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=eb06f6d4:42:13
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-CLPYIDGD.js?v=eb06f6d4:29:5
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-C3PYKF7N.js?v=eb06f6d4:235:13
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-C3PYKF7N.js?v=eb06f6d4:158:58
+    at Presence (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-YE5GEEUL.js?v=eb06f6d4:24:11)
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-C3PYKF7N.js?v=eb06f6d4:149:64
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=eb06f6d4:79:13
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-2K77HOHX.js?v=eb06f6d4:56:13
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-AXMZZQ2X.js?v=eb06f6d4:42:13
+    at https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-BNESBGCN.js?v=eb06f6d4:258:22
+    at Presence (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-YE5GEEUL.js?v=eb06f6d4:24:11)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb06f6d4:38:15)
+    at DialogPortal (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-C3PYKF7N.js?v=eb06f6d4:111:11)
+    at _c3 (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/components/ui/dialog.tsx:52:12)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb06f6d4:38:15)
+    at Dialog (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-C3PYKF7N.js?v=eb06f6d4:52:5)
+    at RoleAssignmentDialog (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/role-management.tsx:430:3)
+    at td
+    at _c13 (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/components/ui/table.tsx:152:13)
+    at tr
+    at _c9 (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/components/ui/table.tsx:102:12)
+    at tbody
+    at _c5 (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/components/ui/table.tsx:55:12)
+    at table
+    at div
+    at _c (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/components/ui/table.tsx:20:11)
+    at div
+    at _c9 (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/components/ui/card.tsx:114:12)
+    at div
+    at _c (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/components/ui/card.tsx:20:11)
+    at div
+    at RoleManagementPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/role-management.tsx:68:20)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=hVPo7-K7utsXNOAXKUpNM:50:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=eb06f6d4:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=eb06f6d4:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=hVPo7-K7utsXNOAXKUpNM:72:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=eb06f6d4:38:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=eb06f6d4:63:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=eb06f6d4:2805:3)
+    at App
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+logCapturedError @ react-dom.development.js:18704
+update.callback @ react-dom.development.js:18737
+callCallback @ react-dom.development.js:15036
+commitUpdateQueue @ react-dom.development.js:15057
+commitLayoutEffectOnFiber @ react-dom.development.js:23430
+commitLayoutMountEffects_complete @ react-dom.development.js:24727
+commitLayoutEffects_begin @ react-dom.development.js:24713
+commitLayoutEffects @ react-dom.development.js:24651
+commitRootImpl @ react-dom.development.js:26862
+commitRoot @ react-dom.development.js:26721
+performSyncWorkOnRoot @ react-dom.development.js:26156
+flushSyncCallbacks @ react-dom.development.js:12042
+(anonymous) @ react-dom.development.js:25690
+react-dom.development.js:12056  Uncaught ReferenceError: getRoleBadgeVariant is not defined
+    at role-management.tsx:348:38
+    at Array.map (<anonymous>)
+    at Object.render (role-management.tsx:325:39)
+    at Controller (controller.tsx:53:9)
+    at renderWithHooks (react-dom.development.js:15486:18)
+    at mountIndeterminateComponent (react-dom.development.js:20103:13)
+    at beginWork (react-dom.development.js:21626:16)
+    at beginWork$1 (react-dom.development.js:27465:14)
+    at performUnitOfWork (react-dom.development.js:26596:12)
+    at workLoopSync (react-dom.development.js:26505:5)
+(anonymous) @ role-management.tsx:348
+render @ role-management.tsx:325
+Controller @ controller.tsx:53
+renderWithHooks @ react-dom.development.js:15486
+mountIndeterminateComponent @ react-dom.development.js:20103
+beginWork @ react-dom.development.js:21626
+beginWork$1 @ react-dom.development.js:27465
+performUnitOfWork @ react-dom.development.js:26596
+workLoopSync @ react-dom.development.js:26505
+renderRootSync @ react-dom.development.js:26473
+recoverFromConcurrentError @ react-dom.development.js:25889
+performSyncWorkOnRoot @ react-dom.development.js:26135
+flushSyncCallbacks @ react-dom.development.js:12042
+(anonymous) @ react-dom.development.js:25690
+[NEW] Explain Console errors by using Copilot in Edge: click
+         
+         to explain an error. 
+        Learn more
+        Don't show again

@@ -1,0 +1,321 @@
+react-dom.development.js:29895 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
+react-jsx-dev-runtime.development.js:87  Warning: Invalid prop `data-replit-metadata` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.
+    at RolesMatrix
+    at div
+    at RolesMatrixPage (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/pages/roles-matrix.tsx:24:21)
+    at ProtectedRoute (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:43:27)
+    at Route (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:323:16)
+    at Switch (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=54501680:379:17)
+    at main
+    at div
+    at div
+    at Router (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/src/App.tsx?v=Y1VfepcDxZLMktGPAHJD8:65:42)
+    at Provider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-M3NVYRND.js?v=54501680:48:15)
+    at TooltipProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=54501680:59:5)
+    at QueryClientProvider (https://d916efcf-94e8-4024-b04b-d295e0410394-00-2zb4uleynn365.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=54501680:2805:3)
+    at App
+printWarning @ react-jsx-dev-runtime.development.js:87
