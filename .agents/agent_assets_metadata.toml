@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "ubJsAqdMlzu2OKyXeuIsX"
+uri = "file://.local/outputs/BiasharaSacco.pdf"
+type = "pdf"
+title = "BiasharaSacco.pdf"
