@@ -1,0 +1,31 @@
+kind = "slides"
+previewPath = "/biashara-showcase/"
+title = "Biashara SACCO — Product Showcase"
+version = "1.0.0"
+id = "artifacts/biashara-showcase"
+router = "path"
+
+[[integratedSkills]]
+name = "slides"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/biashara-showcase/" ]
+localPort = 21988
+
+[services.development]
+run = "pnpm --filter @workspace/biashara-showcase run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/biashara-showcase", "run", "build" ]
+publicDir = "artifacts/biashara-showcase/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21988"
+BASE_PATH = "/biashara-showcase/"
