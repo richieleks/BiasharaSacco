@@ -3,7 +3,11 @@
 @theme inline {
   --color-primary: var(--slide-primary);
   --color-accent: var(--slide-accent);
+  --color-warning: var(--slide-warning);
+  --color-danger: var(--slide-danger);
   --color-bg: var(--slide-bg);
+  --color-surface: var(--slide-surface);
+  --color-ink: var(--slide-ink);
   --color-text: var(--slide-text);
   --color-muted: var(--slide-muted);
   --font-display: var(--font-display-family);
@@ -11,14 +15,18 @@
 }
 
 :root {
-  /* Replace these with brand colors */
-  --slide-primary: #4f46e5;
-  --slide-accent: #06b6d4;
-  --slide-bg: #f8fafc;
-  --slide-text: #0f172a;
-  --slide-muted: #64748b;
-  --font-display-family: "Inter", system-ui, sans-serif;
-  --font-body-family: "Inter", system-ui, sans-serif;
+  /* Biashara brand palette — pulled verbatim from the existing app's index.css HSL tokens */
+  --slide-primary: hsl(220, 70%, 50%);
+  --slide-accent: hsl(160, 60%, 45%);
+  --slide-warning: hsl(30, 80%, 55%);
+  --slide-danger: hsl(0, 84%, 60%);
+  --slide-bg: hsl(210, 20%, 98%);
+  --slide-surface: hsl(220, 14%, 96%);
+  --slide-ink: hsl(224, 71%, 4%);
+  --slide-text: hsl(224, 71%, 4%);
+  --slide-muted: hsl(220, 9%, 46%);
+  --font-display-family: "Manrope", system-ui, sans-serif;
+  --font-body-family: "Manrope", system-ui, sans-serif;
   color-scheme: light;
 }
 
@@ -33,6 +41,9 @@ body,
 body {
   background: var(--slide-bg);
   color: var(--slide-text);
+  font-family: var(--font-body-family);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .slide {

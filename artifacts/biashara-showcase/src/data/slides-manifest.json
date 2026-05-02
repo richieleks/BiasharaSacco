@@ -1,1 +1,122 @@
-[]
+[
+  {
+    "id": "01HZAA0001COVERBIASHARASHOW",
+    "position": 1,
+    "filepath": "src/pages/slides/CoverSlide.tsx",
+    "title": "Cover",
+    "description": "Title slide with Biashara logo, product name and tagline.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "02HZAA0002OVERVIEWBIASHARA",
+    "position": 2,
+    "filepath": "src/pages/slides/OverviewSlide.tsx",
+    "title": "What is Biashara",
+    "description": "Overview of the Biashara SACCO management system with three highlights.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "03HZAA0003MODULEMAPBIASHARA",
+    "position": 3,
+    "filepath": "src/pages/slides/ModuleMapSlide.tsx",
+    "title": "Module Map",
+    "description": "Visual grid of every module covered in the deck.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "04HZAA0004DASHBOARDBIASHARA",
+    "position": 4,
+    "filepath": "src/pages/slides/DashboardSlide.tsx",
+    "title": "Dashboard",
+    "description": "Role-based analytics, key metrics and quick actions.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "05HZAA0005MEMBERSBIASHARA",
+    "position": 5,
+    "filepath": "src/pages/slides/MembersSlide.tsx",
+    "title": "Members",
+    "description": "Member registration, profiles and lifecycle status.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "06HZAA0006SAVINGSBIASHARA",
+    "position": 6,
+    "filepath": "src/pages/slides/SavingsSlide.tsx",
+    "title": "Savings",
+    "description": "Deposits, withdrawals, statements and three account types.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "07HZAA0007LOANSBIASHARA",
+    "position": 7,
+    "filepath": "src/pages/slides/LoansSlide.tsx",
+    "title": "Loans",
+    "description": "Full loan lifecycle from application to final repayment.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "08HZAA0008GUARANTORSBIASHARA",
+    "position": 8,
+    "filepath": "src/pages/slides/GuarantorsSlide.tsx",
+    "title": "Guarantors",
+    "description": "Request, accept and decline guarantee flows tied to loans.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "09HZAA0009TRANSACTIONSBIASHARA",
+    "position": 9,
+    "filepath": "src/pages/slides/TransactionsSlide.tsx",
+    "title": "Transactions",
+    "description": "Unified financial ledger and audit trail.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "10HZAA0010SHARECAPITALBIASHARA",
+    "position": 10,
+    "filepath": "src/pages/slides/ShareCapitalSlide.tsx",
+    "title": "Share Capital",
+    "description": "Member equity tracking and dividend distribution.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "11HZAA0011REPORTSBIASHARA",
+    "position": 11,
+    "filepath": "src/pages/slides/ReportsSlide.tsx",
+    "title": "Reports",
+    "description": "Six families of reports for risk, reconciliation and compliance.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "12HZAA0012DATAIMPORTBIASHARA",
+    "position": 12,
+    "filepath": "src/pages/slides/DataImportSlide.tsx",
+    "title": "Data Import",
+    "description": "Five granular per-type imports with role-based access.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "13HZAA0013ROLESACCESSBIASHARA",
+    "position": 13,
+    "filepath": "src/pages/slides/RolesAccessSlide.tsx",
+    "title": "Roles & Access",
+    "description": "Fine-grained permissions, custom roles and a visual matrix.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "14HZAA0014TRUSTBIASHARA",
+    "position": 14,
+    "filepath": "src/pages/slides/BuiltForTrustSlide.tsx",
+    "title": "Built for Trust",
+    "description": "Audit logs, role enforcement and automated backups.",
+    "speakerNotes": ""
+  },
+  {
+    "id": "15HZAA0015CLOSINGBIASHARA",
+    "position": 15,
+    "filepath": "src/pages/slides/ClosingSlide.tsx",
+    "title": "Closing",
+    "description": "Logo lockup with a closing call to action.",
+    "speakerNotes": ""
+  }
+]
