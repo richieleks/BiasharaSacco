@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { PiggyBank, Users, HandCoins, TrendingUp, Shield, Globe, ArrowRight, CheckCircle2, BarChart3, Lock, Sparkles } from "lucide-react";
+import { PiggyBank, Users, HandCoins, TrendingUp, Shield, Globe, ArrowRight, CheckCircle2, BarChart3, Lock, Sparkles, FileText, Presentation } from "lucide-react";
 import { SaccoLogo } from "@/components/sacco-logo";
 import { motion } from "framer-motion";
 
@@ -311,6 +311,64 @@ export default function Landing() {
               </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section id="showcase" className="relative z-10 py-12 sm:py-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="rounded-3xl bg-white/[0.04] border border-white/[0.06] backdrop-blur-sm p-6 sm:p-10 text-center"
+          >
+            <div className="inline-flex items-center gap-2 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-4 py-1.5 mb-5">
+              <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="text-xs font-medium text-emerald-300">Product Showcase Deck</span>
+            </div>
+            <h3 className="text-2xl sm:text-3xl font-bold mb-3">
+              Take the showcase offline
+            </h3>
+            <p className="text-sm sm:text-base text-slate-400 mb-8 max-w-xl mx-auto">
+              Download the 15-slide Biashara SACCO product showcase to email, print,
+              or present without an internet connection.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button
+                asChild
+                size="lg"
+                className="h-12 px-6 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white shadow-lg shadow-blue-500/25 rounded-xl"
+              >
+                <a
+                  href="/biashara-showcase/exports/biashara-sacco-showcase.pdf"
+                  download
+                  data-testid="link-download-pdf"
+                >
+                  <FileText className="mr-2 h-4 w-4" />
+                  Download PDF
+                </a>
+              </Button>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="h-12 px-6 text-sm font-semibold border-white/[0.1] text-slate-200 hover:bg-white/[0.06] hover:text-white rounded-xl"
+              >
+                <a
+                  href="/biashara-showcase/exports/biashara-sacco-showcase.pptx"
+                  download
+                  data-testid="link-download-pptx"
+                >
+                  <Presentation className="mr-2 h-4 w-4" />
+                  Download PPTX
+                </a>
+              </Button>
+            </div>
+            <p className="text-xs text-slate-500 mt-6">
+              15 slides &middot; 16:9 &middot; Biashara branding preserved
+            </p>
+          </motion.div>
         </div>
       </section>
 

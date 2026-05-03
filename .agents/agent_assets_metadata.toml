@@ -6,3 +6,15 @@ id = "ubJsAqdMlzu2OKyXeuIsX"
 uri = "file://.local/outputs/BiasharaSacco.pdf"
 type = "pdf"
 title = "BiasharaSacco.pdf"
+
+[[outputs]]
+id = "H08SQQ_XYZH0OB7hfPo-d"
+uri = "file://.local/outputs/Biashara-SACCO-Product-Showcase.pdf"
+type = "pdf"
+title = "Biashara SACCO Product Showcase (PDF)"
+
+[[outputs]]
+id = "ZMsqd0fULW7zKd9sQs9fM"
+uri = "file://.local/outputs/Biashara-SACCO-Product-Showcase.pptx"
+type = "slides"
+title = "Biashara SACCO Product Showcase (PPTX)"
