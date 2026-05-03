@@ -1,3 +1,5 @@
+const base = import.meta.env.BASE_URL;
+
 export default function LoansSlide() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-bg font-display text-text">
@@ -31,52 +33,61 @@ export default function LoansSlide() {
         </div>
       </div>
 
-      <div className="absolute left-[6vw] right-[6vw] top-[50vh] bottom-[10vh]">
-        <div className="grid grid-cols-5 gap-[1.2vw]">
-          <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh]">
-            <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-primary">Step 01</div>
-            <div className="mt-[0.8vh] text-[1.8vw] font-extrabold leading-tight text-ink">Apply</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Member submits with documents.</div>
+      <div className="absolute left-[6vw] right-[6vw] top-[50vh] bottom-[10vh] grid grid-cols-12 gap-[1.4vw]">
+        <div className="col-span-5 flex flex-col gap-[1vh]">
+          <div className="grid grid-cols-5 gap-[0.8vw]">
+            <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+              <div className="text-[0.9vw] font-semibold tracking-[0.2em] uppercase text-primary">01</div>
+              <div className="mt-[0.4vh] text-[1.3vw] font-extrabold leading-tight text-ink">Apply</div>
+            </div>
+            <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+              <div className="text-[0.9vw] font-semibold tracking-[0.2em] uppercase text-primary">02</div>
+              <div className="mt-[0.4vh] text-[1.3vw] font-extrabold leading-tight text-ink">Guarantee</div>
+            </div>
+            <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+              <div className="text-[0.9vw] font-semibold tracking-[0.2em] uppercase text-primary">03</div>
+              <div className="mt-[0.4vh] text-[1.3vw] font-extrabold leading-tight text-ink">Approve</div>
+            </div>
+            <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+              <div className="text-[0.9vw] font-semibold tracking-[0.2em] uppercase text-primary">04</div>
+              <div className="mt-[0.4vh] text-[1.3vw] font-extrabold leading-tight text-ink">Disburse</div>
+            </div>
+            <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+              <div className="text-[0.9vw] font-semibold tracking-[0.2em] uppercase text-accent">05</div>
+              <div className="mt-[0.4vh] text-[1.3vw] font-extrabold leading-tight text-ink">Repay</div>
+            </div>
           </div>
-          <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh]">
-            <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-primary">Step 02</div>
-            <div className="mt-[0.8vh] text-[1.8vw] font-extrabold leading-tight text-ink">Guarantee</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Invited; accept or decline.</div>
+          <div className="rounded-[1vh] border border-primary/20 bg-primary/5 px-[1.2vw] py-[1.2vh]">
+            <div className="text-[1.4vw] font-semibold text-ink leading-tight">New loans, top-ups &amp; documents</div>
+            <div className="mt-[0.4vh] text-[1.3vw] font-light text-text/70 leading-snug">Each with its own approval path; payslips and IDs on every file.</div>
           </div>
-          <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh]">
-            <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-primary">Step 03</div>
-            <div className="mt-[0.8vh] text-[1.8vw] font-extrabold leading-tight text-ink">Approve</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Reviewed by committee.</div>
+          <div className="rounded-[1vh] border border-primary/20 bg-primary/5 px-[1.2vw] py-[1.2vh]">
+            <div className="text-[1.4vw] font-semibold text-ink leading-tight">Amortization schedules</div>
+            <div className="mt-[0.4vh] text-[1.3vw] font-light text-text/70 leading-snug">Generated automatically for every active loan.</div>
           </div>
-          <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh]">
-            <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-primary">Step 04</div>
-            <div className="mt-[0.8vh] text-[1.8vw] font-extrabold leading-tight text-ink">Disburse</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Funds out; schedule set.</div>
-          </div>
-          <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh]">
-            <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-accent">Step 05</div>
-            <div className="mt-[0.8vh] text-[1.8vw] font-extrabold leading-tight text-ink">Repay</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Tracked to the schedule.</div>
+          <div className="rounded-[1vh] border border-accent/30 bg-accent/5 px-[1.2vw] py-[1.2vh]">
+            <div className="text-[1.4vw] font-semibold text-ink leading-tight tabular-nums">Live tenant: 0 active loans · 100% repayment</div>
+            <div className="mt-[0.4vh] text-[1.3vw] font-light text-text/70 leading-snug">Members imported; loan book seeding next.</div>
           </div>
         </div>
-        <div className="mt-[2vh] grid grid-cols-3 gap-[1.2vw]">
-          <div className="rounded-[1vh] border border-primary/20 bg-primary/5 px-[1.4vw] py-[1.4vh]">
-            <div className="text-[1.6vw] font-semibold text-ink leading-tight">New loans &amp; top-ups</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light text-text/70 leading-snug">Each with its own approval path.</div>
+
+        <div className="col-span-7 rounded-[1.2vh] border border-text/10 bg-surface p-[1vh] overflow-hidden flex flex-col gap-[0.8vh]">
+          <div className="flex items-center justify-between px-[0.6vw]">
+            <span className="text-[1.1vw] font-semibold tracking-[0.3em] uppercase text-text/50">Loan management</span>
+            <span className="text-[1.1vw] font-light tracking-[0.2em] uppercase text-primary">Live screen</span>
           </div>
-          <div className="rounded-[1vh] border border-primary/20 bg-primary/5 px-[1.4vw] py-[1.4vh]">
-            <div className="text-[1.6vw] font-semibold text-ink leading-tight">Document uploads</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light text-text/70 leading-snug">Payslips and IDs on every file.</div>
-          </div>
-          <div className="rounded-[1vh] border border-primary/20 bg-primary/5 px-[1.4vw] py-[1.4vh]">
-            <div className="text-[1.6vw] font-semibold text-ink leading-tight">Amortization schedules</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light text-text/70 leading-snug">Generated for every active loan.</div>
+          <div className="flex-1 overflow-hidden rounded-[0.8vh] border border-text/10 bg-bg">
+            <img
+              src={`${base}screens/loans.png`}
+              alt="Loan management screen with applications queue, totals and default rate"
+              className="block h-full w-full object-cover object-top"
+            />
           </div>
         </div>
       </div>
 
       <div className="absolute bottom-[5vh] left-[6vw] right-[6vw] flex items-center justify-between text-[1.5vw] font-light tracking-[0.3em] uppercase text-text/40">
-        <span>Loans</span>
+        <span>Loans · Captured from the running app</span>
         <span>Five-step lifecycle</span>
       </div>
     </div>

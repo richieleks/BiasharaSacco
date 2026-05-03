@@ -1,3 +1,5 @@
+const base = import.meta.env.BASE_URL;
+
 export default function ReportsSlide() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-bg font-display text-text">
@@ -30,47 +32,50 @@ export default function ReportsSlide() {
         </div>
       </div>
 
-      <div className="absolute left-[6vw] right-[6vw] top-[50vh] bottom-[8vh] grid grid-cols-3 grid-rows-2 gap-[1.2vw]">
-        <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh] flex flex-col justify-between">
-          <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-warning">Risk</div>
-          <div>
-            <div className="text-[2vw] font-extrabold leading-tight text-ink">Dormant detection</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Flag members who stopped saving.</div>
+      <div className="absolute left-[6vw] right-[6vw] top-[50vh] bottom-[8vh] grid grid-cols-12 gap-[1.4vw]">
+        <div className="col-span-5 grid grid-cols-2 gap-[1vh] content-start">
+          <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+            <div className="text-[1.1vw] font-semibold tracking-[0.2em] uppercase text-primary">Members</div>
+            <div className="mt-[0.2vh] text-[1.3vw] font-extrabold text-ink leading-tight">Roster &amp; status</div>
+          </div>
+          <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+            <div className="text-[1.1vw] font-semibold tracking-[0.2em] uppercase text-accent">Savings</div>
+            <div className="mt-[0.2vh] text-[1.3vw] font-extrabold text-ink leading-tight">Balances summary</div>
+          </div>
+          <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+            <div className="text-[1.1vw] font-semibold tracking-[0.2em] uppercase text-primary">Loans</div>
+            <div className="mt-[0.2vh] text-[1.3vw] font-extrabold text-ink leading-tight">Portfolio &amp; arrears</div>
+          </div>
+          <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+            <div className="text-[1.1vw] font-semibold tracking-[0.2em] uppercase text-primary">Compliance</div>
+            <div className="mt-[0.2vh] text-[1.3vw] font-extrabold text-ink leading-tight">Financial stmts.</div>
+          </div>
+          <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+            <div className="text-[1.1vw] font-semibold tracking-[0.2em] uppercase text-warning">Risk</div>
+            <div className="mt-[0.2vh] text-[1.3vw] font-extrabold text-ink leading-tight">Dormant &amp; PAR</div>
+          </div>
+          <div className="rounded-[0.8vh] bg-surface border border-text/5 p-[1vh]">
+            <div className="text-[1.1vw] font-semibold tracking-[0.2em] uppercase text-primary">Trail</div>
+            <div className="mt-[0.2vh] text-[1.3vw] font-extrabold text-ink leading-tight">Audit logs</div>
+          </div>
+          <div className="col-span-2 rounded-[0.8vh] border border-accent/30 bg-accent/5 px-[1vw] py-[1vh]">
+            <div className="text-[1.3vw] font-semibold text-ink leading-tight tabular-nums">
+              Live tenant: 371 members · UGX 899,889,012 · 100% repayment
+            </div>
           </div>
         </div>
-        <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh] flex flex-col justify-between">
-          <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-accent">Reconciliation</div>
-          <div>
-            <div className="text-[2vw] font-extrabold leading-tight text-ink">Bank schedules</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Match records to bank statements.</div>
+
+        <div className="col-span-7 rounded-[1.2vh] border border-text/10 bg-surface p-[1vh] overflow-hidden flex flex-col gap-[0.8vh]">
+          <div className="flex items-center justify-between px-[0.6vw]">
+            <span className="text-[1.1vw] font-semibold tracking-[0.3em] uppercase text-text/50">Reports &amp; Analytics</span>
+            <span className="text-[1.1vw] font-light tracking-[0.2em] uppercase text-primary">Live screen</span>
           </div>
-        </div>
-        <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh] flex flex-col justify-between">
-          <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-primary">Compliance</div>
-          <div>
-            <div className="text-[2vw] font-extrabold leading-tight text-ink">Financial statements</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Income, balance, position.</div>
-          </div>
-        </div>
-        <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh] flex flex-col justify-between">
-          <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-primary">Activity</div>
-          <div>
-            <div className="text-[2vw] font-extrabold leading-tight text-ink">Member activity</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Saving and borrowing patterns.</div>
-          </div>
-        </div>
-        <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh] flex flex-col justify-between">
-          <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-primary">Loans</div>
-          <div>
-            <div className="text-[2vw] font-extrabold leading-tight text-ink">Portfolio &amp; arrears</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Balances, health and aging.</div>
-          </div>
-        </div>
-        <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.6vh] flex flex-col justify-between">
-          <div className="text-[1.5vw] font-semibold tracking-[0.2em] uppercase text-primary">Trail</div>
-          <div>
-            <div className="text-[2vw] font-extrabold leading-tight text-ink">Audit logs</div>
-            <div className="mt-[0.4vh] text-[1.5vw] font-light leading-snug text-text/65">Searchable, by record and actor.</div>
+          <div className="flex-1 overflow-hidden rounded-[0.8vh] border border-text/10 bg-bg">
+            <img
+              src={`${base}screens/reports.png`}
+              alt="Reports & Analytics screen with member, savings, loan, financial, transaction and audit reports"
+              className="block h-full w-full object-cover object-top"
+            />
           </div>
         </div>
       </div>
@@ -78,7 +83,7 @@ export default function ReportsSlide() {
       <div className="pointer-events-none absolute inset-x-[6vw] bottom-[3vh] h-[1vh] bg-gradient-to-t from-bg to-transparent" />
 
       <div className="absolute bottom-[5vh] left-[6vw] right-[6vw] flex items-center justify-between text-[1.5vw] font-light tracking-[0.3em] uppercase text-text/40">
-        <span>Reports</span>
+        <span>Reports · Captured from the running app</span>
         <span>Six report families</span>
       </div>
     </div>

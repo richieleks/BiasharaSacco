@@ -58,6 +58,13 @@ export default function SavingsSlide() {
         </div>
 
         <div className="col-span-5 grid grid-cols-1 gap-[1.4vh]">
+          <div className="rounded-[1vh] bg-surface border border-accent/30 p-[2vh] flex items-center justify-between">
+            <div>
+              <div className="text-[1.5vw] font-semibold tracking-[0.25em] uppercase text-accent">Total on book</div>
+              <div className="mt-[0.4vh] text-[1.5vw] font-light text-text/70">Live, across all accounts</div>
+            </div>
+            <div className="text-[2.4vw] font-extrabold text-ink tabular-nums">UGX 899,889,012</div>
+          </div>
           <div className="rounded-[1vh] bg-surface border border-text/5 p-[2vh] flex items-center justify-between">
             <div>
               <div className="text-[1.5vw] font-semibold tracking-[0.25em] uppercase text-accent">Regular</div>
@@ -67,23 +74,16 @@ export default function SavingsSlide() {
           </div>
           <div className="rounded-[1vh] bg-surface border border-text/5 p-[2vh] flex items-center justify-between">
             <div>
-              <div className="text-[1.5vw] font-semibold tracking-[0.25em] uppercase text-accent">Fixed</div>
-              <div className="mt-[0.4vh] text-[1.5vw] font-light text-text/70">Term deposits</div>
+              <div className="text-[1.5vw] font-semibold tracking-[0.25em] uppercase text-accent">Fixed &amp; Group</div>
+              <div className="mt-[0.4vh] text-[1.5vw] font-light text-text/70">Term deposits, chama / merry-go-round</div>
             </div>
-            <div className="text-[2.4vw] font-extrabold text-ink tabular-nums">02</div>
-          </div>
-          <div className="rounded-[1vh] bg-surface border border-text/5 p-[2vh] flex items-center justify-between">
-            <div>
-              <div className="text-[1.5vw] font-semibold tracking-[0.25em] uppercase text-accent">Group</div>
-              <div className="mt-[0.4vh] text-[1.5vw] font-light text-text/70">Chama / merry-go-round</div>
-            </div>
-            <div className="text-[2.4vw] font-extrabold text-ink tabular-nums">03</div>
+            <div className="text-[2.4vw] font-extrabold text-ink tabular-nums">02·03</div>
           </div>
         </div>
       </div>
 
       <div className="absolute bottom-[5vh] left-[6vw] right-[6vw] flex items-center justify-between text-[1.5vw] font-light tracking-[0.3em] uppercase text-text/40">
-        <span>Savings</span>
+        <span>Savings · Live from Biashara SACCO tenant</span>
         <span>Three account types</span>
       </div>
     </div>

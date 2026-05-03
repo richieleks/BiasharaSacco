@@ -32,34 +32,34 @@ export default function OverviewSlide() {
         <div className="rounded-[1.2vh] bg-surface p-[1.8vh] border border-text/5">
           <div className="text-[1.5vw] font-semibold tracking-[0.3em] uppercase text-primary">Members</div>
           <div className="mt-[0.6vh] text-[3vw] font-extrabold leading-none tracking-tight text-ink tabular-nums">
-            500+
+            371
           </div>
           <div className="mt-[0.8vh] text-[1.5vw] font-light leading-snug text-text/70">
-            registrations in one workspace
+            live in the Biashara workspace
           </div>
         </div>
         <div className="rounded-[1.2vh] bg-surface p-[1.8vh] border border-text/5">
-          <div className="text-[1.5vw] font-semibold tracking-[0.3em] uppercase text-accent">Loans</div>
+          <div className="text-[1.5vw] font-semibold tracking-[0.3em] uppercase text-accent">Savings</div>
           <div className="mt-[0.6vh] text-[3vw] font-extrabold leading-none tracking-tight text-ink tabular-nums">
-            End&#8209;to&#8209;end
+            UGX 899M
           </div>
           <div className="mt-[0.8vh] text-[1.5vw] font-light leading-snug text-text/70">
-            application to final repayment
+            on the books across member accounts
           </div>
         </div>
         <div className="rounded-[1.2vh] bg-surface p-[1.8vh] border border-text/5">
-          <div className="text-[1.5vw] font-semibold tracking-[0.3em] uppercase text-warning">Reports</div>
+          <div className="text-[1.5vw] font-semibold tracking-[0.3em] uppercase text-warning">Ledger</div>
           <div className="mt-[0.6vh] text-[3vw] font-extrabold leading-none tracking-tight text-ink tabular-nums">
-            Real&#8209;time
+            27
           </div>
           <div className="mt-[0.8vh] text-[1.5vw] font-light leading-snug text-text/70">
-            statements and audit trails
+            chart-of-accounts entries, double-entry
           </div>
         </div>
       </div>
 
       <div className="absolute bottom-[5vh] left-[6vw] right-[6vw] flex items-center justify-between text-[1.5vw] font-light tracking-[0.3em] uppercase text-text/40">
-        <span>Overview</span>
+        <span>Overview · Live Biashara SACCO tenant</span>
         <span>One platform. Ten modules.</span>
       </div>
     </div>

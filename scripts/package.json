@@ -5,10 +5,12 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "capture-sacco-screenshots": "tsx ./src/captureSaccoScreenshots.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "puppeteer-core": "23.6.0",
     "tsx": "catalog:"
   }
 }

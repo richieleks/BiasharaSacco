@@ -1,3 +1,5 @@
+const base = import.meta.env.BASE_URL;
+
 export default function DashboardSlide() {
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-bg font-display text-text">
@@ -58,28 +60,27 @@ export default function DashboardSlide() {
           </div>
         </div>
 
-        <div className="rounded-[1.4vh] bg-surface border border-text/5 p-[3vh] flex flex-col justify-between">
-          <div className="text-[1.5vw] font-semibold tracking-[0.3em] uppercase text-text/50">
-            At a glance
+        <div className="rounded-[1.4vh] bg-surface border border-text/5 p-[1.4vh] flex flex-col gap-[1vh] overflow-hidden">
+          <div className="flex items-center justify-between">
+            <span className="text-[1.2vw] font-semibold tracking-[0.3em] uppercase text-text/50">
+              Live screen · Biashara SACCO
+            </span>
+            <span className="text-[1.2vw] font-light tracking-[0.2em] uppercase text-primary">
+              371 members · UGX 899M
+            </span>
           </div>
-          <div>
-            <div className="text-[5.6vw] font-extrabold leading-none tracking-tight text-ink tabular-nums">
-              360°
-            </div>
-            <div className="mt-[1.2vh] text-[1.5vw] font-light leading-snug text-text/70 text-pretty">
-              of the SACCO&#8217;s health visible on a single screen — savings,
-              credit, members and pending approvals.
-            </div>
-          </div>
-          <div className="flex items-center gap-[1vw] text-[1.5vw] font-semibold tracking-[0.25em] uppercase text-primary">
-            <span className="block h-[0.4vh] w-[3vw] bg-primary" />
-            Built for daily use
+          <div className="flex-1 overflow-hidden rounded-[0.8vh] border border-text/10 bg-bg">
+            <img
+              src={`${base}screens/dashboard.png`}
+              alt="Biashara SACCO dashboard with live member, savings, loan and repayment metrics"
+              className="block h-full w-full object-cover object-top"
+            />
           </div>
         </div>
       </div>
 
       <div className="absolute bottom-[5vh] left-[6vw] right-[6vw] flex items-center justify-between text-[1.5vw] font-light tracking-[0.3em] uppercase text-text/40">
-        <span>Dashboard</span>
+        <span>Dashboard · Captured from the running app</span>
         <span>Start here</span>
       </div>
     </div>

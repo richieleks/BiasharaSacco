@@ -60,12 +60,12 @@ export default function MembersSlide() {
 
         <div className="col-span-5 grid grid-cols-2 gap-[1.2vw]">
           <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.8vh] flex flex-col justify-end">
-            <div className="text-[2.6vw] font-extrabold text-primary leading-none">Active</div>
-            <div className="mt-[0.6vh] text-[1.5vw] font-light text-text/60">trading members</div>
+            <div className="text-[2.6vw] font-extrabold text-primary leading-none tabular-nums">371</div>
+            <div className="mt-[0.6vh] text-[1.5vw] font-light text-text/60">active members</div>
           </div>
           <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.8vh] flex flex-col justify-end">
-            <div className="text-[2.6vw] font-extrabold text-warning leading-none">Pending</div>
-            <div className="mt-[0.6vh] text-[1.5vw] font-light text-text/60">awaiting approval</div>
+            <div className="text-[2.6vw] font-extrabold text-warning leading-none tabular-nums">0</div>
+            <div className="mt-[0.6vh] text-[1.5vw] font-light text-text/60">pending approval</div>
           </div>
           <div className="rounded-[1vh] bg-surface border border-text/5 p-[1.8vh] flex flex-col justify-end">
             <div className="text-[2.6vw] font-extrabold text-text/55 leading-none">Inactive</div>
@@ -79,7 +79,7 @@ export default function MembersSlide() {
       </div>
 
       <div className="absolute bottom-[5vh] left-[6vw] right-[6vw] flex items-center justify-between text-[1.5vw] font-light tracking-[0.3em] uppercase text-text/40">
-        <span>Members</span>
+        <span>Members · Live from Biashara SACCO tenant</span>
         <span>Know who you serve</span>
       </div>
     </div>
