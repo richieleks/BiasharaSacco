@@ -6452,7 +6452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     (async () => {
       try {
-        const { importSavingsFromExcel } = await import('./importUtils');
+        const { importSavingsFromExcel } = await import('../importUtils');
         job.status = 'processing';
         job.stage = 'Processing file...';
         job.progress = 5;
@@ -6509,7 +6509,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     (async () => {
       try {
-        const { importMembersFromExcel } = await import('./importUtils');
+        const { importMembersFromExcel } = await import('../importUtils');
         job.status = 'processing';
         job.stage = 'Processing members...';
         job.progress = 5;
@@ -6561,7 +6561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     (async () => {
       try {
-        const { importLoansFromExcel } = await import('./importUtils');
+        const { importLoansFromExcel } = await import('../importUtils');
         job.status = 'processing';
         job.stage = 'Processing loans...';
         job.progress = 5;
