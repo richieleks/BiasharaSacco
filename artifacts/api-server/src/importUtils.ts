@@ -1381,6 +1381,10 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
                                           detailsLower.includes('loan topup') ||
                                           detailsLower.trim() === 'loan';
 
+          if (detailsLower.includes('special')) {
+            console.log(`Sheet "${sheetName}" row ${i}: SPECIAL-related row: details="${details}", detailsLower="${detailsLower}", isSpecialDisbursement=${isSpecialDisbursement}, isSpecialRepayment=${isSpecialRepayment}, isOrdinaryDisbursement=${isOrdinaryDisbursement}, amtDebited=${amtDebited}, principalRepyt=${principalRepyt}`);
+          }
+
           if (isSpecialDisbursement) {
             const amount = Math.ceil(parseFloat(row[3]) || 0) || Math.abs(amtDebited);
             if (amount > 0) {
