@@ -1339,17 +1339,9 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           fullyPaidByThirdInstallment: false,
         };
 
-        const specialGroup: LoanGroup = {
-          category: 'special',
-          loanType: specialLoanType ? specialLoanType.name : fallbackLoanTypeName,
-          disbursements: [],
-          repayments: [],
-          totalDisbursed: 0,
-          totalRepaid: 0,
-          firstDisbursementDate: null,
-          lastInstallmentAmount: 0,
-          fullyPaidByThirdInstallment: false,
-        };
+        const specialLoanTypeName = specialLoanType ? specialLoanType.name : fallbackLoanTypeName;
+        const specialGroups: LoanGroup[] = [];
+        let currentSpecialGroup: LoanGroup | null = null;
 
         let lastKnownLoanDate: Date | null = null;
 
@@ -1392,19 +1384,30 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           if (isSpecialDisbursement) {
             const amount = Math.ceil(parseFloat(row[3]) || 0) || Math.abs(amtDebited);
             if (amount > 0) {
-              specialGroup.disbursements.push({ date: postingDate, amount, details, rowIndex: i });
-              specialGroup.totalDisbursed += amount;
-              if (!specialGroup.firstDisbursementDate) specialGroup.firstDisbursementDate = postingDate;
+              currentSpecialGroup = {
+                category: 'special',
+                loanType: specialLoanTypeName,
+                disbursements: [{ date: postingDate, amount, details, rowIndex: i }],
+                repayments: [],
+                totalDisbursed: amount,
+                totalRepaid: 0,
+                firstDisbursementDate: postingDate,
+                lastInstallmentAmount: 0,
+                fullyPaidByThirdInstallment: false,
+              };
+              specialGroups.push(currentSpecialGroup);
             }
           } else if (isSpecialRepayment) {
-            const repayAmount = amtDebited > 0 ? amtDebited : Math.abs(principalRepyt);
-            if (repayAmount > 0) {
-              specialGroup.repayments.push({ date: postingDate, amount: repayAmount, details, rowIndex: i });
-              specialGroup.totalRepaid += repayAmount;
-              specialGroup.lastInstallmentAmount = repayAmount;
-            }
-            if (detailsLower.includes('3rd installment special') || detailsLower.includes('3rd instalment special')) {
-              specialGroup.fullyPaidByThirdInstallment = true;
+            if (currentSpecialGroup) {
+              const repayAmount = amtDebited > 0 ? amtDebited : Math.abs(principalRepyt);
+              if (repayAmount > 0) {
+                currentSpecialGroup.repayments.push({ date: postingDate, amount: repayAmount, details, rowIndex: i });
+                currentSpecialGroup.totalRepaid += repayAmount;
+                currentSpecialGroup.lastInstallmentAmount = repayAmount;
+              }
+              if (detailsLower.includes('3rd installment special') || detailsLower.includes('3rd instalment special')) {
+                currentSpecialGroup.fullyPaidByThirdInstallment = true;
+              }
             }
           } else if (isOrdinaryDisbursement) {
             const amount = Math.abs(principalRepyt) || Math.abs(amtDebited);
@@ -1430,9 +1433,15 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           }
         }
 
-        const loanGroups = [ordinaryGroup, specialGroup].filter(g =>
-          g.disbursements.length > 0 || g.repayments.length > 0
-        );
+        const loanGroups: LoanGroup[] = [];
+        if (ordinaryGroup.disbursements.length > 0 || ordinaryGroup.repayments.length > 0) {
+          loanGroups.push(ordinaryGroup);
+        }
+        for (const sg of specialGroups) {
+          if (sg.disbursements.length > 0 || sg.repayments.length > 0) {
+            loanGroups.push(sg);
+          }
+        }
 
         if (loanGroups.length === 0) {
           result.exceptions.push({ sheet: sheetName, type: 'processing_error', detail: 'No loan transactions found in this sheet' });
@@ -1469,7 +1478,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
 
           const loanData = {
             memberId: member.id,
-            loanNumber: `LOAN${String(Date.now()).slice(-6)}${group.category === 'special' ? 'S' : ''}`,
+            loanNumber: `LOAN${String(Date.now()).slice(-6)}${group.category === 'special' ? 'S' + (specialGroups.indexOf(group) + 1) : ''}`,
             loanType: group.loanType,
             principalAmount: principalAmount.toString(),
             interestRate: interestRateValue.toString(),
