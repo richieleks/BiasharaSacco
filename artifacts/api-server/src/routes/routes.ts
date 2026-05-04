@@ -3997,20 +3997,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const offset = (page - 1) * limit;
       const paginatedTransactions = allTransactions.slice(offset, offset + limit);
 
-      const [interestRow] = await db
-        .select({
-          total: sql<string>`ROUND(COALESCE(
-            sum(CASE WHEN ${transactions.transactionType} = 'interest_credit' THEN CAST(${transactions.amount} AS decimal) ELSE 0 END)
-            +
-            sum(CASE WHEN ${transactions.transactionType} = 'loan_payment' AND ${transactions.metadata} IS NOT NULL THEN COALESCE((${transactions.metadata}::jsonb->>'interest')::decimal, 0) ELSE 0 END)
-          , 0), 2)::text`
-        })
+      const [savingsInt] = await db
+        .select({ total: sql<string>`COALESCE(sum(CAST(${transactions.amount} AS decimal)), 0)` })
         .from(transactions)
         .where(and(
           eq(transactions.memberId, memberId),
+          eq(transactions.transactionType, 'interest_credit'),
           eq(transactions.status, 'completed')
         ));
-      const totalInterestPaid = interestRow?.total || '0';
+
+      const [calcInt] = await db
+        .select({ total: sql<string>`COALESCE(sum(${interestCalculations.grossInterest}::numeric), 0)` })
+        .from(interestCalculations)
+        .where(and(
+          eq(interestCalculations.memberId, memberId),
+          sql`${interestCalculations.status} IN ('posted', 'paid')`
+        ));
+
+      const totalInterestPaid = (parseFloat(savingsInt?.total || '0') + parseFloat(calcInt?.total || '0')).toFixed(2);
 
       res.json({
         transactions: paginatedTransactions,

@@ -1551,16 +1551,22 @@ export class DatabaseStorage implements IStorage {
       .from(transactions)
       .where(sql`${transactions.transactionDate} >= ${startOfMonth}`);
 
-    const [interestTotal] = await db
-      .select({
-        total: sql<string>`ROUND(COALESCE(
-          sum(CASE WHEN ${transactions.transactionType} = 'interest_credit' THEN CAST(${transactions.amount} AS decimal) ELSE 0 END)
-          +
-          sum(CASE WHEN ${transactions.transactionType} = 'loan_payment' AND ${transactions.metadata} IS NOT NULL THEN COALESCE((${transactions.metadata}::jsonb->>'interest')::decimal, 0) ELSE 0 END)
-        , 0), 2)::text`
-      })
+    const [savingsInterest] = await db
+      .select({ total: sql<string>`COALESCE(sum(CAST(${transactions.amount} AS decimal)), 0)` })
       .from(transactions)
-      .where(eq(transactions.status, 'completed'));
+      .where(and(
+        eq(transactions.transactionType, 'interest_credit'),
+        eq(transactions.status, 'completed')
+      ));
+
+    const [calcInterest] = await db
+      .select({ total: sql<string>`COALESCE(sum(${interestCalculations.grossInterest}::numeric), 0)` })
+      .from(interestCalculations)
+      .where(sql`${interestCalculations.status} IN ('posted', 'paid')`);
+
+    const interestTotal = {
+      total: (parseFloat(savingsInterest?.total || '0') + parseFloat(calcInterest?.total || '0')).toFixed(2)
+    };
 
     // Repayment rate: 100% unless there are loans behind on scheduled payments
     // Compare expected principal repaid by now vs actual principal repaid (both principal-based for consistency)
