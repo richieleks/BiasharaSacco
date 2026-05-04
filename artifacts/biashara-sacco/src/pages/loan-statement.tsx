@@ -47,8 +47,9 @@ export default function LoanStatement() {
     }
     
     const getTransactionDate = (transaction: any) => {
-      if (transaction.createdAt) return new Date(transaction.createdAt);
+      if (transaction.transactionDate) return new Date(transaction.transactionDate);
       if (transaction.date) return new Date(transaction.date);
+      if (transaction.createdAt) return new Date(transaction.createdAt);
       return new Date();
     };
 
@@ -194,8 +195,9 @@ export default function LoanStatement() {
                   <tbody>
                     {(() => {
                       const getTransactionDate = (transaction: any) => {
-                        if (transaction.createdAt) return new Date(transaction.createdAt);
+                        if (transaction.transactionDate) return new Date(transaction.transactionDate);
                         if (transaction.date) return new Date(transaction.date);
+                        if (transaction.createdAt) return new Date(transaction.createdAt);
                         return new Date();
                       };
 

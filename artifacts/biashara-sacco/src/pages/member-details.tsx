@@ -734,13 +734,13 @@ export default function MemberDetails() {
                             #{loan.loanNumber} &middot; Applied {formatDate(loan.applicationDate)}
                           </p>
                           <div className="flex flex-wrap gap-1.5">
-                            <Button variant="outline" size="sm" onClick={() => setLocation(isStaff ? `/loans?loanId=${loan.uuid}` : `/my-loans?loanId=${loan.uuid}`)} className="h-7 text-xs rounded-lg">
+                            <Button variant="outline" size="sm" onClick={() => setLocation(`/loans/${loan.uuid}/details`)} className="h-7 text-xs rounded-lg">
                               <Eye className="mr-1 h-3 w-3" /> View
                             </Button>
                             <Button variant="outline" size="sm" onClick={() => setLocation(`/loans/${loan.uuid}/statement`)} className="h-7 text-xs rounded-lg">
                               <FileText className="mr-1 h-3 w-3" /> Statement
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => setLocation(`/loans/${loan.uuid}/amortization`)} className="h-7 text-xs rounded-lg">
+                            <Button variant="outline" size="sm" onClick={() => setLocation(`/loans/${loan.uuid}/details`)} className="h-7 text-xs rounded-lg">
                               <Calculator className="mr-1 h-3 w-3" /> Schedule
                             </Button>
                           </div>
