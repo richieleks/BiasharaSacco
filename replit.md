@@ -49,3 +49,4 @@ pnpm workspace monorepo using TypeScript. Each package manages its own dependenc
 - Frontend imports `@workspace/db` for Zod schemas only; the vite alias in `vite.config.ts` maps it directly to `lib/db/src/schema/schema.ts` to avoid triggering DB connection code in the browser.
 - Backend schema lives at `lib/db/src/schema/schema.ts` and is exported from `@workspace/db`.
 - The original app was migrated from `.migration-backup/` — legacy code patterns are preserved intentionally.
+- Savings Excel import detects "CREDIT INTEREST PAYMENT" rows and tags them as `interest_credit` transactions. The admin/treasurer/committee MetricsGrid shows a "Total Interest Paid" card; the member dashboard shows an "Interest Earned" card computed from their personal `interest_credit` transactions.

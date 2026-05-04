@@ -161,6 +161,7 @@ export interface IStorage {
     newMembersThisMonth: number;
     pendingLoans: number;
     totalTransactionsThisMonth: number;
+    totalInterestPaid: string;
   }>;
   
   getDashboardAnalytics(months?: number): Promise<{
@@ -1497,6 +1498,7 @@ export class DatabaseStorage implements IStorage {
     newMembersThisMonth: number;
     pendingLoans: number;
     totalTransactionsThisMonth: number;
+    totalInterestPaid: string;
   }> {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -1536,6 +1538,14 @@ export class DatabaseStorage implements IStorage {
       .select({ count: sql<number>`count(*)` })
       .from(transactions)
       .where(sql`${transactions.transactionDate} >= ${startOfMonth}`);
+
+    const [interestTotal] = await db
+      .select({ total: sql<string>`COALESCE(sum(amount), '0')` })
+      .from(transactions)
+      .where(and(
+        eq(transactions.transactionType, 'interest_credit'),
+        eq(transactions.status, 'completed')
+      ));
 
     // Repayment rate: 100% unless there are loans behind on scheduled payments
     // Compare expected principal repaid by now vs actual principal repaid (both principal-based for consistency)
@@ -1593,6 +1603,7 @@ export class DatabaseStorage implements IStorage {
       newMembersThisMonth: newMembersCount?.count || 0,
       pendingLoans: pendingLoansCount?.count || 0,
       totalTransactionsThisMonth: txnCount?.count || 0,
+      totalInterestPaid: interestTotal?.total || '0',
     };
   }
 

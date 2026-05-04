@@ -406,6 +406,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 
         const isMembershipRow = (text: string) => /membership/i.test(text);
         const isSharesRow = (text: string) => /shares/i.test(text);
+        const isInterestRow = (text: string) => /credit\s+interest\s+payment/i.test(text);
 
         for (let i = 0; i < transactionRows.length; i++) {
           const row = transactionRows[i] as any[];
@@ -443,10 +444,18 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
               continue;
             }
 
+            const txType: 'deposit' | 'withdrawal' | 'interest_credit' =
+              isInterestRow(details) ? 'interest_credit' :
+              creditAmount > 0 ? 'deposit' : 'withdrawal';
+
+            if (txType === 'interest_credit') {
+              console.log(`Sheet "${sheetName}" row ${i + 1}: Detected interest credit — ${details} (UGX ${rowAmount.toLocaleString()})`);
+            }
+
             const transactionData = {
               memberId: member.id,
               savingsAccountId: regularAccount.id,
-              transactionType: creditAmount > 0 ? 'deposit' as const : 'withdrawal' as const,
+              transactionType: txType,
               amount: rowAmount.toString(),
               description: details,
               transactionDate: postingDate,

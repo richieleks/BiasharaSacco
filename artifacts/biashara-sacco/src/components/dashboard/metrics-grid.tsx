@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Users, PiggyBank, HandCoins, TrendingUp, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { Users, PiggyBank, HandCoins, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, Percent } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function MetricsGrid() {
@@ -10,8 +10,8 @@ export default function MetricsGrid() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 mb-8">
-        {Array.from({ length: 4 }).map((_, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 mb-8">
+        {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="metric-card animate-pulse">
             <div className="flex items-center justify-between">
               <div className="flex-1">
@@ -84,6 +84,16 @@ export default function MetricsGrid() {
       subtitle: `${metrics.pendingLoans || 0} pending approval`,
     },
     {
+      title: "Interest Paid",
+      value: formatCurrency(metrics.totalInterestPaid || "0"),
+      icon: Percent,
+      gradient: "from-teal-500 to-cyan-600",
+      iconBg: "bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400",
+      accentColor: "bg-teal-500",
+      change: '0',
+      subtitle: "Total interest credited",
+    },
+    {
       title: "Repayment Rate",
       value: `${metrics.repaymentRate || "0"}%`,
       icon: TrendingUp,
@@ -96,7 +106,7 @@ export default function MetricsGrid() {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 mb-8">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 mb-8">
       {metricCards.map((metric, index) => {
         const changeVal = parseFloat(metric.change || '0');
         return (

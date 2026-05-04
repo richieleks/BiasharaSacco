@@ -21,7 +21,7 @@ import {
   PiggyBank, HandCoins, ArrowUp, ArrowDown, CreditCard, TrendingUp, 
   User, Phone, Mail, MapPin, Calendar, Building, Hash, Wallet, 
   Banknote, Shield, Briefcase, Heart, Users, Activity, Eye, FileText,
-  DollarSign, CheckCircle, XCircle, ClipboardList
+  DollarSign, CheckCircle, XCircle, ClipboardList, Percent
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { format } from "date-fns";
@@ -638,6 +638,7 @@ function MemberStatCard({ icon: Icon, label, value, color, subtext }: { icon: an
     blue: "from-blue-500 to-blue-600 shadow-blue-200",
     orange: "from-amber-500 to-amber-600 shadow-amber-200",
     purple: "from-violet-500 to-violet-600 shadow-violet-200",
+    teal: "from-teal-500 to-cyan-600 shadow-teal-200",
   };
   return (
     <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -772,7 +773,7 @@ function MemberDashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <MemberStatCard
           icon={PiggyBank}
           label="Total Savings"
@@ -792,6 +793,19 @@ function MemberDashboard() {
           label="Transactions"
           value={Array.isArray(memberTransactions) ? memberTransactions.length : 0}
           color="blue"
+        />
+        <MemberStatCard
+          icon={Percent}
+          label="Interest Earned"
+          value={formatCurrency(
+            Array.isArray(memberTransactions)
+              ? memberTransactions
+                  .filter((t: any) => t.transactionType === 'interest_credit')
+                  .reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0)
+              : 0
+          )}
+          color="teal"
+          subtext="From savings interest"
         />
         <MemberStatCard
           icon={TrendingUp}
