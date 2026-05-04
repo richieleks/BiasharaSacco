@@ -113,6 +113,7 @@ export default function MemberDetails() {
   const [isShareCapitalDialogOpen, setIsShareCapitalDialogOpen] = useState(false);
   const [isExitDialogOpen, setIsExitDialogOpen] = useState(false);
   const [exitReason, setExitReason] = useState("");
+  const [loanStatusFilter, setLoanStatusFilter] = useState("active");
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -151,6 +152,14 @@ export default function MemberDetails() {
     },
     enabled: !!memberId,
   });
+
+  const filteredLoans = Array.isArray(loans)
+    ? loanStatusFilter === 'all'
+      ? loans
+      : loanStatusFilter === 'active'
+        ? loans.filter((l: any) => ['active', 'approved', 'disbursed'].includes(l.status))
+        : loans.filter((l: any) => l.status === loanStatusFilter)
+    : [];
 
   const [txPage, setTxPage] = useState(1);
   const txLimit = 25;
@@ -686,16 +695,27 @@ export default function MemberDetails() {
 
         <TabsContent value="loans" className="mt-4">
           <Card className="border-slate-200 dark:border-slate-700/60 shadow-sm">
-            <CardHeader className="pb-3">
+            <CardHeader className="pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <CardTitle className="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
                 <div className="rounded-md bg-amber-50 dark:bg-amber-950/50 p-1.5"><Banknote className="h-3.5 w-3.5 text-amber-600" /></div>
                 Loan History
               </CardTitle>
+              <Select value={loanStatusFilter} onValueChange={setLoanStatusFilter}>
+                <SelectTrigger className="w-[140px] h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Loans</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                </SelectContent>
+              </Select>
             </CardHeader>
             <CardContent className="pt-0">
-              {Array.isArray(loans) && loans.length > 0 ? (
+              {filteredLoans.length > 0 ? (
                 <div className="space-y-3">
-                  {loans.map((loan: any) => (
+                  {filteredLoans.map((loan: any) => (
                     <div key={loan.id} className="p-4 rounded-xl border border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50/50 hover:bg-slate-50 dark:hover:bg-slate-800 dark:bg-slate-800/50 transition-colors">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -738,7 +758,14 @@ export default function MemberDetails() {
               ) : (
                 <div className="text-center py-8">
                   <Banknote className="h-10 w-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm text-slate-500 dark:text-slate-400">No loans found</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                    {loanStatusFilter === 'all' ? 'No loans found' : `No ${loanStatusFilter} loans found`}
+                  </p>
+                  {loanStatusFilter !== 'all' && Array.isArray(loans) && loans.length > 0 && (
+                    <Button variant="link" size="sm" className="text-xs mt-1" onClick={() => setLoanStatusFilter('all')}>
+                      View all loans
+                    </Button>
+                  )}
                 </div>
               )}
             </CardContent>
