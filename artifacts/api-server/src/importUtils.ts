@@ -1371,7 +1371,8 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
 
           const isSpecialDisbursement = detailsLower === 'special loan' || detailsLower.startsWith('special loan ');
           const isSpecialRepayment = detailsLower.includes('installment - special') || detailsLower.includes('instalment - special')
-            || detailsLower.includes('installment special') || detailsLower.includes('instalment special');
+            || detailsLower.includes('installment special') || detailsLower.includes('instalment special')
+            || detailsLower.includes('special installment') || detailsLower.includes('special instalment');
 
           const isOrdinaryDisbursement = detailsLower.includes('disburs') ||
                                           detailsLower.includes('loan amount') ||
@@ -1381,12 +1382,8 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
                                           detailsLower.includes('loan topup') ||
                                           detailsLower.trim() === 'loan';
 
-          if (detailsLower.includes('special')) {
-            console.log(`Sheet "${sheetName}" row ${i}: SPECIAL-related row: details="${details}", detailsLower="${detailsLower}", isSpecialDisbursement=${isSpecialDisbursement}, isSpecialRepayment=${isSpecialRepayment}, isOrdinaryDisbursement=${isOrdinaryDisbursement}, amtDebited=${amtDebited}, principalRepyt=${principalRepyt}`);
-          }
-
           if (isSpecialDisbursement) {
-            const amount = Math.ceil(parseFloat(row[3]) || 0) || Math.abs(amtDebited);
+            const amount = Math.abs(Math.ceil(parseFloat(row[3]) || 0)) || Math.abs(amtDebited);
             if (amount > 0) {
               currentSpecialGroup = {
                 category: 'special',
@@ -1409,7 +1406,8 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
                 currentSpecialGroup.totalRepaid += repayAmount;
                 currentSpecialGroup.lastInstallmentAmount = repayAmount;
               }
-              if (detailsLower.includes('3rd installment special') || detailsLower.includes('3rd instalment special')) {
+              if (detailsLower.includes('3rd installment special') || detailsLower.includes('3rd instalment special')
+                || detailsLower.includes('3rd special installment') || detailsLower.includes('3rd special instalment')) {
                 currentSpecialGroup.fullyPaidByThirdInstallment = true;
               }
             }
