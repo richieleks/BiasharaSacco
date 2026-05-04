@@ -1473,7 +1473,9 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
                 ? closingBalance
                 : Math.max(0, group.totalDisbursed - group.totalRepaid);
 
-          const termMonths = headerTermMonths || tenure || 12;
+          const termMonths = group.category === 'special' && specialLoanType?.maxTerm
+            ? specialLoanType.maxTerm
+            : (headerTermMonths || tenure || 12);
           const monthlyPayment = (group.category === 'ordinary' && headerMonthlyRepayment > 0)
             ? headerMonthlyRepayment
             : group.lastInstallmentAmount;
