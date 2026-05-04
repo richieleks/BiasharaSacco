@@ -155,7 +155,7 @@ export default function MemberDetails() {
   const [txPage, setTxPage] = useState(1);
   const txLimit = 25;
 
-  const { data: transactionsData, isLoading: txLoading } = useQuery<{ transactions: any[]; total: number; page: number; totalPages: number }>({
+  const { data: transactionsData, isLoading: txLoading } = useQuery<{ transactions: any[]; total: number; page: number; totalPages: number; totalInterestPaid: string }>({
     queryKey: ['/api/members', memberId, 'transactions', txPage],
     queryFn: async () => {
       const response = await fetch(`/api/members/${memberId}/transactions?page=${txPage}&limit=${txLimit}`, { credentials: 'include' });

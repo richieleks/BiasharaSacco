@@ -3975,10 +3975,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const offset = (page - 1) * limit;
       const paginatedTransactions = allTransactions.slice(offset, offset + limit);
 
-      const totalInterestPaid = allTransactions
-        .filter((t: any) => t.transactionType === 'interest_credit' && t.status === 'completed')
-        .reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0)
-        .toString();
+      const [interestRow] = await db
+        .select({ total: sql<string>`COALESCE(sum(amount), '0')` })
+        .from(transactions)
+        .where(and(
+          eq(transactions.memberId, memberId),
+          eq(transactions.transactionType, 'interest_credit'),
+          eq(transactions.status, 'completed')
+        ));
+      const totalInterestPaid = interestRow?.total || '0';
 
       res.json({
         transactions: paginatedTransactions,
