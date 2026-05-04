@@ -256,32 +256,72 @@ export default function AccountStatement() {
     return str;
   };
 
-  const handleDownloadStatement = () => {
-    if (!statementData) return;
-    const { account, transactions } = statementData;
-    const csvContent = [
-      ['Transaction Date', 'Value Date', 'Transaction Details', 'Money Out', 'Money In', 'Ledger Balance'],
-      ...(transactions || []).map((txn: any, idx: number) => {
-        const isDebit = txn.transactionType === 'withdrawal' || txn.transactionType === 'fee_charge';
-        const isCredit = txn.transactionType === 'deposit' || txn.transactionType === 'interest_credit' || txn.transactionType === 'share_capital';
-        return [
-          new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
-          new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
-          txn.description || txn.transactionType,
-          isDebit ? parseFloat(txn.amount || '0').toFixed(0) : '',
-          isCredit ? parseFloat(txn.amount || '0').toFixed(0) : '',
-          runningBalances[idx]?.toFixed(0) || ''
-        ];
-      })
-    ].map(row => row.map(escapeCsv).join(',')).join('\n');
+  const [exporting, setExporting] = useState(false);
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `statement-${account?.accountNumber || 'account'}-${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    window.URL.revokeObjectURL(url);
+  const handleDownloadStatement = async () => {
+    if (!statementData || !effectiveAccountId) return;
+    setExporting(true);
+    try {
+      const qp = new URLSearchParams();
+      qp.set('export', 'true');
+      if (appliedStartDate) qp.set('startDate', appliedStartDate);
+      if (appliedEndDate) qp.set('endDate', appliedEndDate);
+      const res = await fetch(`/api/savings-accounts/${effectiveAccountId}/statement?${qp.toString()}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('Failed to fetch all transactions');
+      const allData = await res.json();
+
+      const allTxns: any[] = allData.transactions || [];
+      const currentBalance = parseFloat(allData.account?.balance || '0');
+      let totalCredits = 0;
+      let totalDebits = 0;
+      allTxns.forEach((t: any) => {
+        const amt = parseFloat(t.amount || '0');
+        if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
+          totalCredits += amt;
+        } else {
+          totalDebits += amt;
+        }
+      });
+      const startBal = currentBalance - totalCredits + totalDebits;
+      let bal = startBal;
+      const balances = allTxns.map((t: any) => {
+        const amt = parseFloat(t.amount || '0');
+        if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
+          bal += amt;
+        } else {
+          bal -= amt;
+        }
+        return bal;
+      });
+
+      const csvContent = [
+        ['Transaction Date', 'Value Date', 'Transaction Details', 'Money Out', 'Money In', 'Ledger Balance'],
+        ...allTxns.map((txn: any, idx: number) => {
+          const isDebit = txn.transactionType === 'withdrawal' || txn.transactionType === 'fee_charge';
+          const isCredit = txn.transactionType === 'deposit' || txn.transactionType === 'interest_credit' || txn.transactionType === 'share_capital';
+          return [
+            new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
+            new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
+            txn.description || txn.transactionType,
+            isDebit ? parseFloat(txn.amount || '0').toFixed(0) : '',
+            isCredit ? parseFloat(txn.amount || '0').toFixed(0) : '',
+            balances[idx]?.toFixed(0) || ''
+          ];
+        })
+      ].map(row => row.map(escapeCsv).join(',')).join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `statement-${allData.account?.accountNumber || 'account'}-${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      toast({ title: 'Export failed', description: 'Could not download the full statement.', variant: 'destructive' });
+    } finally {
+      setExporting(false);
+    }
   };
 
   const accountDisplayLabel = useMemo(() => {
@@ -315,10 +355,10 @@ export default function AccountStatement() {
           <h2 className="text-xl sm:text-2xl font-semibold text-slate-900 dark:text-slate-100">Account Statement</h2>
         </div>
         {statementData && (
-          <Button onClick={handleDownloadStatement} className="sacco-gradient text-white" size="sm">
+          <Button onClick={handleDownloadStatement} className="sacco-gradient text-white" size="sm" disabled={exporting}>
             <Download className="w-4 h-4 mr-1.5" />
-            <span className="hidden sm:inline">Download CSV</span>
-            <span className="sm:hidden">CSV</span>
+            <span className="hidden sm:inline">{exporting ? 'Exporting...' : 'Download CSV'}</span>
+            <span className="sm:hidden">{exporting ? '...' : 'CSV'}</span>
           </Button>
         )}
       </div>

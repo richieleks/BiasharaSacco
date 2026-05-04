@@ -4007,8 +4007,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Savings account not found" });
       }
 
-      const page = parseInt(req.query.page as string) || 1;
-      const limit = Math.min(parseInt(req.query.limit as string) || 25, 100);
+      const exportAll = req.query.export === 'true';
+      const page = exportAll ? 1 : (parseInt(req.query.page as string) || 1);
+      const limit = exportAll ? 1_000_000 : Math.min(parseInt(req.query.limit as string) || 25, 100);
       const startDate = req.query.startDate ? new Date(req.query.startDate as string) : undefined;
       const endDate = req.query.endDate ? new Date(req.query.endDate as string) : undefined;
 
