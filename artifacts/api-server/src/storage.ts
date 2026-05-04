@@ -1552,12 +1552,15 @@ export class DatabaseStorage implements IStorage {
       .where(sql`${transactions.transactionDate} >= ${startOfMonth}`);
 
     const [interestTotal] = await db
-      .select({ total: sql<string>`COALESCE(sum(amount), '0')` })
+      .select({
+        total: sql<string>`ROUND(COALESCE(
+          sum(CASE WHEN ${transactions.transactionType} = 'interest_credit' THEN CAST(${transactions.amount} AS decimal) ELSE 0 END)
+          +
+          sum(CASE WHEN ${transactions.transactionType} = 'loan_payment' AND ${transactions.metadata} IS NOT NULL THEN COALESCE((${transactions.metadata}::jsonb->>'interest')::decimal, 0) ELSE 0 END)
+        , 0), 2)::text`
+      })
       .from(transactions)
-      .where(and(
-        eq(transactions.transactionType, 'interest_credit'),
-        eq(transactions.status, 'completed')
-      ));
+      .where(eq(transactions.status, 'completed'));
 
     // Repayment rate: 100% unless there are loans behind on scheduled payments
     // Compare expected principal repaid by now vs actual principal repaid (both principal-based for consistency)

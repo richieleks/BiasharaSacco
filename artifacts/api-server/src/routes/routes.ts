@@ -3364,6 +3364,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           await storage.updateLoanStatus(loanDetails.topUpOfLoanId, 'completed');
           const settleRef = `STL${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+          const topUpSplit1 = prevBalanceNum > 0 && originalLoan
+            ? await splitLoanRepayment(originalLoan, prevBalanceNum, prevOutstandingNum)
+            : { interestPortion: 0, principalPortion: prevBalanceNum, balanceReduction: prevBalanceNum };
           await storage.createTransaction({
             memberId: loan.memberId,
             loanId: loanDetails.topUpOfLoanId,
@@ -3372,10 +3375,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             referenceNumber: settleRef,
             description: `Loan settled via top-up - ${originalLoan?.loanNumber || 'N/A'} replaced by ${loan.loanNumber}`,
             status: 'completed',
+            metadata: JSON.stringify({
+              interest: topUpSplit1.interestPortion,
+              principalRepyt: topUpSplit1.principalPortion,
+              balanceReduction: topUpSplit1.balanceReduction,
+              source: 'topup_settlement'
+            }),
           });
           if (prevBalanceNum > 0 && originalLoan) {
-            const split = await splitLoanRepayment(originalLoan, prevBalanceNum, prevOutstandingNum);
-            await postLoanRepaymentJournals(originalLoan, split.interestPortion, split.principalPortion, 'Loan settlement via top-up', settleRef, userId);
+            await postLoanRepaymentJournals(originalLoan, topUpSplit1.interestPortion, topUpSplit1.principalPortion, 'Loan settlement via top-up', settleRef, userId);
           }
         }
 
@@ -3616,6 +3624,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.updateLoanStatus(loanDetails.topUpOfLoanId, 'completed');
 
         const settleRef = `STL${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+        const topUpSplit2 = prevBalanceNum > 0 && originalLoan
+          ? await splitLoanRepayment(originalLoan, prevBalanceNum, prevOutstandingNum)
+          : { interestPortion: 0, principalPortion: prevBalanceNum, balanceReduction: prevBalanceNum };
         await storage.createTransaction({
           memberId: loan.memberId,
           loanId: loanDetails.topUpOfLoanId,
@@ -3625,10 +3636,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: `Loan settled via top-up - ${originalLoan?.loanNumber || 'N/A'} replaced by ${loan.loanNumber}`,
           status: 'completed',
           processedBy: getUserId(req),
+          metadata: JSON.stringify({
+            interest: topUpSplit2.interestPortion,
+            principalRepyt: topUpSplit2.principalPortion,
+            balanceReduction: topUpSplit2.balanceReduction,
+            source: 'topup_settlement'
+          }),
         });
         if (prevBalanceNum > 0 && originalLoan) {
-          const split = await splitLoanRepayment(originalLoan, prevBalanceNum, prevOutstandingNum);
-          await postLoanRepaymentJournals(originalLoan, split.interestPortion, split.principalPortion, 'Loan settlement via top-up', settleRef, userId);
+          await postLoanRepaymentJournals(originalLoan, topUpSplit2.interestPortion, topUpSplit2.principalPortion, 'Loan settlement via top-up', settleRef, userId);
         }
       }
 
@@ -3783,6 +3799,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: description || `Loan payment - ${loan.loanNumber}`,
         status: 'completed',
         processedBy: getUserId(req),
+        metadata: JSON.stringify({
+          interest: interestPortion,
+          principalRepyt: principalPortion,
+          balanceReduction: balanceReduction,
+          source: 'manual_payment'
+        }),
       });
 
       if (interestPortion > 0) {
@@ -3976,11 +3998,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const paginatedTransactions = allTransactions.slice(offset, offset + limit);
 
       const [interestRow] = await db
-        .select({ total: sql<string>`COALESCE(sum(amount), '0')` })
+        .select({
+          total: sql<string>`ROUND(COALESCE(
+            sum(CASE WHEN ${transactions.transactionType} = 'interest_credit' THEN CAST(${transactions.amount} AS decimal) ELSE 0 END)
+            +
+            sum(CASE WHEN ${transactions.transactionType} = 'loan_payment' AND ${transactions.metadata} IS NOT NULL THEN COALESCE((${transactions.metadata}::jsonb->>'interest')::decimal, 0) ELSE 0 END)
+          , 0), 2)::text`
+        })
         .from(transactions)
         .where(and(
           eq(transactions.memberId, memberId),
-          eq(transactions.transactionType, 'interest_credit'),
           eq(transactions.status, 'completed')
         ));
       const totalInterestPaid = interestRow?.total || '0';
@@ -6738,6 +6765,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               await storage.updateLoanStatus(loan.id, 'completed');
             }
 
+            const importRef = reference || `IMP-LR-${Date.now()}-${i}`;
+            const split = await splitLoanRepayment(loan, repaymentAmount, outstandingBalance);
+
             await storage.createTransaction({
               memberId: member.id,
               savingsAccountId: savingsAccount?.id || null,
@@ -6748,10 +6778,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
               referenceNumber: reference,
               performedBy: userId,
               status: 'completed',
+              metadata: JSON.stringify({
+                interest: split.interestPortion,
+                principalRepyt: split.principalPortion,
+                balanceReduction: split.balanceReduction,
+                source: 'repayment_import'
+              }),
             });
-
-            const importRef = reference || `IMP-LR-${Date.now()}-${i}`;
-            const split = await splitLoanRepayment(loan, repaymentAmount, outstandingBalance);
             if (split.balanceReduction !== repaymentAmount) {
               const correctedNewBalance = Math.max(0, outstandingBalance - split.balanceReduction);
               await storage.updateLoanBalance(loan.id, split.balanceReduction.toFixed(2));
