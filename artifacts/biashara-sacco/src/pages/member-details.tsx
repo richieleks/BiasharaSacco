@@ -22,7 +22,7 @@ import {
   ArrowLeft, Edit, User, Phone, Mail, MapPin, Calendar, CreditCard, Building,
   Users, Eye, FileText, Calculator, DollarSign, TrendingUp, Banknote, Shield,
   Briefcase, Heart, Clock, Hash, Wallet, PiggyBank, ChevronRight, Activity,
-  LogOut, AlertTriangle, CheckCircle, XCircle
+  LogOut, AlertTriangle, CheckCircle, XCircle, Percent
 } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { format } from "date-fns";
@@ -88,6 +88,7 @@ function StatCard({ icon: Icon, label, value, color, subtext }: { icon: any; lab
     blue: "from-blue-500 to-blue-600 shadow-blue-200",
     orange: "from-amber-500 to-amber-600 shadow-amber-200",
     purple: "from-violet-500 to-violet-600 shadow-violet-200",
+    teal: "from-teal-500 to-cyan-600 shadow-teal-200",
   };
   return (
     <div className="relative overflow-hidden rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 p-4 shadow-sm hover:shadow-md transition-shadow">
@@ -167,6 +168,7 @@ export default function MemberDetails() {
   const transactions = transactionsData?.transactions || [];
   const totalTransactions = transactionsData?.total || 0;
   const totalTxPages = transactionsData?.totalPages || 1;
+  const memberInterestPaid = transactionsData?.totalInterestPaid || '0';
 
   const { data: systemConfig } = useQuery<any>({
     queryKey: ['/api/system/settings/public'],
@@ -417,7 +419,7 @@ export default function MemberDetails() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
         <StatCard
           icon={PiggyBank}
           label="Total Savings"
@@ -437,6 +439,13 @@ export default function MemberDetails() {
           label="Transactions"
           value={totalTransactions}
           color="blue"
+        />
+        <StatCard
+          icon={Percent}
+          label="Interest Paid"
+          value={formatCurrency(memberInterestPaid)}
+          color="teal"
+          subtext="From savings interest"
         />
         <StatCard
           icon={TrendingUp}

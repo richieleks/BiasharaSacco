@@ -3975,11 +3975,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const offset = (page - 1) * limit;
       const paginatedTransactions = allTransactions.slice(offset, offset + limit);
 
+      const totalInterestPaid = allTransactions
+        .filter((t: any) => t.transactionType === 'interest_credit' && t.status === 'completed')
+        .reduce((sum: number, t: any) => sum + parseFloat(t.amount || '0'), 0)
+        .toString();
+
       res.json({
         transactions: paginatedTransactions,
         total,
         page,
         totalPages,
+        totalInterestPaid,
       });
     } catch (error) {
       console.error("Error fetching member transactions:", error);
