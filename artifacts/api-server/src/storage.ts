@@ -78,7 +78,7 @@ import {
 } from "@workspace/db";
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
-import { eq, ne, desc, sql, like, ilike, or, and, gte, lte, count, getTableColumns, inArray } from "drizzle-orm";
+import { eq, ne, desc, sql, like, ilike, or, and, gte, lte, count, getTableColumns, inArray, isNull } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -1321,17 +1321,29 @@ export class DatabaseStorage implements IStorage {
     savingsAccountId: number,
     options: { startDate?: Date; endDate?: Date; page: number; limit: number }
   ): Promise<{ transactions: TransactionWithDetails[]; total: number; totalDeposits: number; totalWithdrawals: number; totalInterest: number }> {
-    const conditions = [eq(transactions.savingsAccountId, savingsAccountId)];
+    const [acct] = await db.select({ memberId: savingsAccounts.memberId }).from(savingsAccounts).where(eq(savingsAccounts.id, savingsAccountId));
+    const ownerMemberId = acct?.memberId;
+
+    const accountCondition = ownerMemberId
+      ? or(
+          eq(transactions.savingsAccountId, savingsAccountId),
+          and(eq(transactions.memberId, ownerMemberId), isNull(transactions.savingsAccountId))
+        )!
+      : eq(transactions.savingsAccountId, savingsAccountId);
+
+    const dateConditions: any[] = [];
     if (options.startDate) {
-      conditions.push(gte(transactions.transactionDate, options.startDate));
+      dateConditions.push(gte(transactions.transactionDate, options.startDate));
     }
     if (options.endDate) {
       const endOfDay = new Date(options.endDate);
       endOfDay.setHours(23, 59, 59, 999);
-      conditions.push(lte(transactions.transactionDate, endOfDay));
+      dateConditions.push(lte(transactions.transactionDate, endOfDay));
     }
 
-    const whereClause = and(...conditions);
+    const whereClause = dateConditions.length > 0
+      ? and(accountCondition, ...dateConditions)
+      : accountCondition;
 
     const [countResult] = await db
       .select({ value: count() })
