@@ -1312,6 +1312,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           totalRepaid: number;
           firstDisbursementDate: Date | null;
           lastInstallmentAmount: number;
+          fullyPaidByThirdInstallment: boolean;
         }
 
         const specialLoanType = allLoanTypes.find(lt =>
@@ -1335,6 +1336,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           totalRepaid: 0,
           firstDisbursementDate: null,
           lastInstallmentAmount: 0,
+          fullyPaidByThirdInstallment: false,
         };
 
         const specialGroup: LoanGroup = {
@@ -1346,6 +1348,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           totalRepaid: 0,
           firstDisbursementDate: null,
           lastInstallmentAmount: 0,
+          fullyPaidByThirdInstallment: false,
         };
 
         let lastKnownLoanDate: Date | null = null;
@@ -1375,7 +1378,8 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           const balanceAmt = Math.ceil(parseFloat(row[5]) || 0);
 
           const isSpecialDisbursement = detailsLower === 'special loan' || detailsLower.startsWith('special loan ');
-          const isSpecialRepayment = detailsLower.includes('installment - special') || detailsLower.includes('instalment - special');
+          const isSpecialRepayment = detailsLower.includes('installment - special') || detailsLower.includes('instalment - special')
+            || detailsLower.includes('installment special') || detailsLower.includes('instalment special');
 
           const isOrdinaryDisbursement = detailsLower.includes('disburs') ||
                                           detailsLower.includes('loan amount') ||
@@ -1386,7 +1390,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
                                           detailsLower.trim() === 'loan';
 
           if (isSpecialDisbursement) {
-            const amount = Math.abs(principalRepyt) || Math.abs(amtDebited);
+            const amount = Math.ceil(parseFloat(row[3]) || 0) || Math.abs(amtDebited);
             if (amount > 0) {
               specialGroup.disbursements.push({ date: postingDate, amount, details, rowIndex: i });
               specialGroup.totalDisbursed += amount;
@@ -1398,6 +1402,9 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               specialGroup.repayments.push({ date: postingDate, amount: repayAmount, details, rowIndex: i });
               specialGroup.totalRepaid += repayAmount;
               specialGroup.lastInstallmentAmount = repayAmount;
+            }
+            if (detailsLower.includes('3rd installment special') || detailsLower.includes('3rd instalment special')) {
+              specialGroup.fullyPaidByThirdInstallment = true;
             }
           } else if (isOrdinaryDisbursement) {
             const amount = Math.abs(principalRepyt) || Math.abs(amtDebited);
@@ -1446,11 +1453,14 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               ? headerLoanAmount
               : group.totalDisbursed;
 
-          const outstandingBalance = (loanGroups.length === 1 && closingBalance > 0)
-            ? closingBalance
-            : (closingBalance > 0 && group.category === 'ordinary')
+          const isSpecialFullyPaid = group.category === 'special' && group.fullyPaidByThirdInstallment === true;
+          const outstandingBalance = isSpecialFullyPaid
+            ? 0
+            : (loanGroups.length === 1 && closingBalance > 0)
               ? closingBalance
-              : Math.max(0, group.totalDisbursed - group.totalRepaid);
+              : (closingBalance > 0 && group.category === 'ordinary')
+                ? closingBalance
+                : Math.max(0, group.totalDisbursed - group.totalRepaid);
 
           const termMonths = headerTermMonths || tenure || 12;
           const monthlyPayment = (group.category === 'ordinary' && headerMonthlyRepayment > 0)
