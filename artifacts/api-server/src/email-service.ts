@@ -1,12 +1,21 @@
-import nodemailer from 'nodemailer';
-import type { Transporter } from 'nodemailer';
+// Email sending via Resend, using the Replit Resend connector (integration: resend).
+// Credentials are handled automatically by the Replit Connectors SDK — no API keys in code.
+import { ReplitConnectors } from '@replit/connectors-sdk';
+import { logger } from './lib/logger';
+
+const RESEND_CONNECTOR = 'resend';
+// Resend's shared sender works without a verified domain (useful before a custom
+// domain is verified). Once a domain is verified in Resend, set emailFromAddress
+// in Admin Settings to an address on that domain.
+const DEFAULT_FROM_ADDRESS = 'onboarding@resend.dev';
 
 interface EmailConfig {
-  smtpServer: string;
-  smtpPort: number;
   emailFromAddress: string;
   emailFromName?: string;
   emailEnabled: boolean;
+  // Retained for backward compatibility with stored settings; not used by Resend.
+  smtpServer?: string;
+  smtpPort?: number;
 }
 
 interface EmailOptions {
@@ -16,40 +25,13 @@ interface EmailOptions {
   text?: string;
 }
 
-let cachedTransporter: Transporter | null = null;
-let cachedConfigKey = '';
+let cachedConnectors: ReplitConnectors | null = null;
 
-function getConfigKey(config: EmailConfig): string {
-  return `${config.smtpServer}:${config.smtpPort}:${config.emailFromAddress}`;
-}
-
-function createTransporter(config: EmailConfig): Transporter {
-  const username = process.env.SES_SMTP_USERNAME;
-  const password = process.env.SES_SMTP_PASSWORD;
-
-  if (!username || !password) {
-    throw new Error('SES SMTP credentials not configured. Set SES_SMTP_USERNAME and SES_SMTP_PASSWORD environment variables.');
+function getConnectors(): ReplitConnectors {
+  if (!cachedConnectors) {
+    cachedConnectors = new ReplitConnectors();
   }
-
-  return nodemailer.createTransport({
-    host: config.smtpServer,
-    port: config.smtpPort,
-    secure: config.smtpPort === 465,
-    auth: {
-      user: username,
-      pass: password,
-    },
-  });
-}
-
-function getTransporter(config: EmailConfig): Transporter {
-  const key = getConfigKey(config);
-  if (cachedTransporter && cachedConfigKey === key) {
-    return cachedTransporter;
-  }
-  cachedTransporter = createTransporter(config);
-  cachedConfigKey = key;
-  return cachedTransporter;
+  return cachedConnectors;
 }
 
 export async function sendEmail(config: EmailConfig, options: EmailOptions): Promise<{ success: boolean; messageId?: string; error?: string }> {
@@ -57,42 +39,49 @@ export async function sendEmail(config: EmailConfig, options: EmailOptions): Pro
     return { success: false, error: 'Email system is disabled' };
   }
 
-  if (!config.smtpServer || !config.emailFromAddress) {
-    return { success: false, error: 'Email configuration incomplete. Set SMTP server and From address in Admin Settings.' };
-  }
+  const fromAddress = config.emailFromAddress || DEFAULT_FROM_ADDRESS;
+  const fromName = config.emailFromName || 'Biashara SACCO';
 
   try {
-    const transporter = getTransporter(config);
-    const fromName = config.emailFromName || 'Biashara SACCO';
-    const result = await transporter.sendMail({
-      from: `"${fromName}" <${config.emailFromAddress}>`,
-      to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text || options.html.replace(/<[^>]*>/g, ''),
+    const response = await getConnectors().proxy(RESEND_CONNECTOR, '/emails', {
+      method: 'POST',
+      body: {
+        from: `${fromName} <${fromAddress}>`,
+        to: Array.isArray(options.to) ? options.to : [options.to],
+        subject: options.subject,
+        html: options.html,
+        text: options.text || options.html.replace(/<[^>]*>/g, ''),
+      },
     });
 
-    return { success: true, messageId: result.messageId };
+    if (!response.ok) {
+      const errText = await response.text();
+      logger.error({ status: response.status, body: errText }, 'Resend send error');
+      return { success: false, error: `Resend API error (${response.status}): ${errText}` };
+    }
+
+    const data = await response.json() as { id?: string };
+    return { success: true, messageId: data.id };
   } catch (error: any) {
-    console.error('Email send error:', error);
-    return { success: false, error: error.message || 'Failed to send email' };
+    logger.error({ err: error }, 'Resend send exception');
+    return { success: false, error: error?.message || 'Failed to send email' };
   }
 }
 
-export async function verifyConnection(config: EmailConfig): Promise<{ success: boolean; error?: string }> {
-  if (!config.smtpServer || !config.emailFromAddress) {
-    return { success: false, error: 'Email configuration incomplete' };
-  }
-
+export async function verifyConnection(_config: EmailConfig): Promise<{ success: boolean; error?: string }> {
   try {
-    const transporter = getTransporter(config);
-    await transporter.verify();
+    const connections = await getConnectors().listConnections({ connector_names: RESEND_CONNECTOR });
+    const active = connections.find(c => c.connector_name === RESEND_CONNECTOR);
+    if (!active) {
+      return { success: false, error: 'Resend is not connected. Connect the Resend integration in the Replit Integrations panel.' };
+    }
+    if (active.status && active.status.toLowerCase() !== 'active' && active.status.toLowerCase() !== 'connected') {
+      return { success: false, error: `Resend connection status: ${active.status}` };
+    }
     return { success: true };
   } catch (error: any) {
-    cachedTransporter = null;
-    cachedConfigKey = '';
-    console.error('SMTP verification error:', error);
-    return { success: false, error: error.message || 'SMTP connection failed' };
+    logger.error({ err: error }, 'Resend verify exception');
+    return { success: false, error: error?.message || 'Resend connection failed' };
   }
 }
 
@@ -146,9 +135,7 @@ export async function getEmailConfig(storage: any): Promise<EmailConfig> {
 
   return {
     emailEnabled: settingsMap['emailEnabled'] !== 'false',
-    smtpServer: settingsMap['smtpServer'] || 'email-smtp.us-east-1.amazonaws.com',
-    smtpPort: parseInt(settingsMap['smtpPort'] || '587', 10),
-    emailFromAddress: settingsMap['emailFromAddress'] || '',
+    emailFromAddress: settingsMap['emailFromAddress'] || DEFAULT_FROM_ADDRESS,
     emailFromName: settingsMap['emailFromName'] || 'Biashara SACCO',
   };
 }

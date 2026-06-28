@@ -99,10 +99,8 @@ const adminSettingsSchema = z.object({
   passwordComplexity: z.enum(["low", "medium", "high"]).default("medium"),
   twoFactorRequired: z.boolean().default(false),
   
-  // Email Configuration (Amazon SES)
+  // Email Configuration (Resend)
   emailEnabled: z.boolean().default(true),
-  smtpServer: z.string().default("email-smtp.us-east-1.amazonaws.com"),
-  smtpPort: z.coerce.number().min(1).max(65535).default(587),
   emailFromAddress: z.string().default(""),
   emailFromName: z.string().default("Biashara SACCO"),
   
@@ -312,10 +310,10 @@ function EmailConfigTab({ form }: { form: any }) {
     },
     onSuccess: () => {
       setConnectionStatus('success');
-      toast({ title: "Connection Successful", description: "SMTP connection to Amazon SES verified." });
+      toast({ title: "Connection Successful", description: "Resend email connection verified." });
     },
     onError: (error: Error) => {
-      const description = parseErrorMessage(error, "SMTP connection failed");
+      const description = parseErrorMessage(error, "Email connection failed");
       setConnectionStatus('error');
       setConnectionError(description);
       toast({ title: "Connection Failed", description, variant: "destructive" });
@@ -342,7 +340,7 @@ function EmailConfigTab({ form }: { form: any }) {
       <div>
         <h3 className="text-lg font-medium mb-2">Email Configuration</h3>
         <p className="text-sm text-muted-foreground mb-6">
-          Configure Amazon SES email delivery for member notifications and system alerts
+          Configure Resend email delivery for member notifications and system alerts
         </p>
       </div>
 
@@ -350,10 +348,10 @@ function EmailConfigTab({ form }: { form: any }) {
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Mail className="h-4 w-4" />
-            Amazon SES SMTP Settings
+            Resend Email Settings
           </CardTitle>
           <CardDescription>
-            SMTP credentials are stored securely as environment variables (SES_SMTP_USERNAME, SES_SMTP_PASSWORD)
+            Emails are delivered via Resend. Credentials are managed securely through the Replit integration — no API keys to configure here.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -380,46 +378,6 @@ function EmailConfigTab({ form }: { form: any }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <FormField
               control={form.control}
-              name="smtpServer"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>SES SMTP Endpoint</FormLabel>
-                  <FormControl>
-                    <Input placeholder="email-smtp.us-east-1.amazonaws.com" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Amazon SES SMTP endpoint for your region
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="smtpPort"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>SMTP Port</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min="1" 
-                      max="65535"
-                      {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Use 587 (STARTTLS) or 465 (TLS)
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
               name="emailFromAddress"
               render={({ field }) => (
                 <FormItem>
@@ -432,7 +390,7 @@ function EmailConfigTab({ form }: { form: any }) {
                     />
                   </FormControl>
                   <FormDescription>
-                    Must be a verified identity in Amazon SES
+                    Must be on a domain verified in Resend. Leave blank to use Resend's shared sender for testing.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -485,13 +443,13 @@ function EmailConfigTab({ form }: { form: any }) {
               {testConnectionMutation.isPending ? (
                 <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Testing...</>
               ) : (
-                <><Wifi className="h-4 w-4 mr-2" />Test SMTP Connection</>
+                <><Wifi className="h-4 w-4 mr-2" />Test Email Connection</>
               )}
             </Button>
             {connectionStatus === 'success' && (
               <span className="flex items-center gap-1.5 text-sm text-green-600 dark:text-green-400">
                 <CheckCircle className="h-4 w-4" />
-                Connected to Amazon SES
+                Connected to Resend
               </span>
             )}
             {connectionStatus === 'error' && (
@@ -557,8 +515,6 @@ export default function AdminSettingsPage() {
     passwordComplexity: "medium",
     twoFactorRequired: false,
     emailEnabled: true,
-    smtpServer: "email-smtp.us-east-1.amazonaws.com",
-    smtpPort: 587,
     emailFromAddress: "",
     emailFromName: "Biashara SACCO",
     systemNotifications: true,

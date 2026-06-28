@@ -1040,9 +1040,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         passwordComplexity: "medium",
         twoFactorRequired: false,
         emailEnabled: true,
-        smtpServer: "email-smtp.us-east-1.amazonaws.com",
-        smtpPort: 587,
-        emailFromAddress: "noreply@biasharasacco.com",
+        emailFromAddress: "",
         emailFromName: "Biashara SACCO",
         systemNotifications: true,
         memberNotifications: true,
@@ -1091,7 +1089,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const settings = req.body;
       const userId = getUserId(req);
 
-      const numberFields = ['maxLoanAmount', 'maxLoanTerm', 'defaultInterestRate', 'sessionTimeout', 'maxLoginAttempts', 'smtpPort', 'minimumSavingsBalance', 'loanToSavingsRatio', 'membershipDurationMonths', 'minLoanApprovers', 'logRetentionDays', 'entranceFee', 'sharePrice', 'memberExitFee'];
+      const numberFields = ['maxLoanAmount', 'maxLoanTerm', 'defaultInterestRate', 'sessionTimeout', 'maxLoginAttempts', 'minimumSavingsBalance', 'loanToSavingsRatio', 'membershipDurationMonths', 'minLoanApprovers', 'logRetentionDays', 'entranceFee', 'sharePrice', 'memberExitFee'];
       const booleanFields = ['maintenanceMode', 'twoFactorRequired', 'emailEnabled', 'systemNotifications', 'memberNotifications', 'loanNotifications', 'autoBackupEnabled'];
       const enumFields: Record<string, string[]> = {
         passwordComplexity: ['low', 'medium', 'high'],
@@ -1103,7 +1101,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         logRetentionDays: { min: 30, max: 365 },
         maxLoanTerm: { min: 1, max: 60 },
         defaultInterestRate: { min: 0, max: 100 },
-        smtpPort: { min: 1, max: 65535 },
         loanToSavingsRatio: { min: 1, max: 10 },
         membershipDurationMonths: { min: 1, max: 12 },
         minLoanApprovers: { min: 1, max: 10 },
@@ -1164,20 +1161,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             action: 'email_test_connection',
             resource: 'system-settings',
             resourceId: 'email',
-            details: `SMTP connection test: ${result.success ? 'success' : 'failed'}`,
+            details: `Email connection test: ${result.success ? 'success' : 'failed'}`,
             ipAddress: req.ip,
             userAgent: req.headers['user-agent'],
           });
         } catch (e) {}
       }
       if (result.success) {
-        res.json({ message: 'SMTP connection successful', success: true });
+        res.json({ message: 'Resend email connection successful', success: true });
       } else {
-        res.status(400).json({ message: 'SMTP connection failed. Check your SES endpoint, port, and credentials.', success: false });
+        res.status(400).json({ message: result.error || 'Resend connection failed. Ensure the Resend integration is connected.', success: false });
       }
     } catch (error: any) {
       console.error('Email connection test error:', error);
-      res.status(500).json({ message: 'Connection test failed. Verify your SMTP settings.', success: false });
+      res.status(500).json({ message: 'Connection test failed. Verify the Resend integration is connected.', success: false });
     }
   });
 
@@ -1195,7 +1192,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           This is a test email from the Biashara SACCO Management System.
         </p>
         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">
-          If you received this message, your email configuration is working correctly with Amazon SES.
+          If you received this message, your email configuration is working correctly with Resend.
         </p>
         <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:16px;margin:16px 0;">
           <p style="color:#166534;font-size:14px;margin:0;font-weight:600;">✓ Email delivery confirmed</p>
@@ -1220,7 +1217,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (result.success) {
         res.json({ message: `Test email sent to ${to}`, success: true });
       } else {
-        res.status(400).json({ message: 'Failed to send test email. Check your SES configuration and verified sender address.', success: false });
+        res.status(400).json({ message: result.error || 'Failed to send test email. Check the Resend integration and your verified sender address.', success: false });
       }
     } catch (error: any) {
       console.error('Email send-test error:', error);
