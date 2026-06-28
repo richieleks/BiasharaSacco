@@ -126,6 +126,34 @@ export function buildEmailTemplate(title: string, bodyContent: string, footerTex
 </html>`;
 }
 
+// Best-effort notification email. Never throws and never blocks the caller's
+// main flow — it loads config, respects the emailEnabled flag, wraps the body
+// in the standard template, and logs (does not surface) any failure.
+export async function sendNotificationEmail(
+  storage: any,
+  to: string | null | undefined,
+  subject: string,
+  bodyContent: string,
+  footerText?: string,
+): Promise<void> {
+  try {
+    if (!to || typeof to !== 'string' || !to.includes('@')) {
+      return;
+    }
+    const config = await getEmailConfig(storage);
+    if (!config.emailEnabled) {
+      return;
+    }
+    const html = buildEmailTemplate(subject, bodyContent, footerText);
+    const result = await sendEmail(config, { to, subject: `Biashara SACCO - ${subject}`, html });
+    if (!result.success) {
+      logger.warn({ to, subject, error: result.error }, 'Notification email not sent');
+    }
+  } catch (error: any) {
+    logger.error({ err: error, to, subject }, 'Notification email exception');
+  }
+}
+
 export async function getEmailConfig(storage: any): Promise<EmailConfig> {
   const settings = await storage.getAllSystemSettings();
   const settingsMap: Record<string, string> = {};

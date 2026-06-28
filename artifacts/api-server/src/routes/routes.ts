@@ -8,7 +8,7 @@ import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "../rbac-middleware";
 import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations, saccoAccounts, loanDocuments, guarantors } from "@workspace/db";
 import { businessRulesValidator } from "../business-rules-validator";
-import { sendEmail, verifyConnection, buildEmailTemplate, getEmailConfig } from "../email-service";
+import { sendEmail, verifyConnection, buildEmailTemplate, getEmailConfig, sendNotificationEmail } from "../email-service";
 import { seedAdminUser, seedRBAC } from "../seed";
 import { z } from 'zod';
 import { db } from "../db";
@@ -781,6 +781,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tempPassword = 'changeme123';
       const hashedPassword = await hashPassword(tempPassword);
       await storage.updateUser(id, { password: hashedPassword, mustChangePassword: true });
+
+      const resetUser = await storage.getUser(id);
+      await sendNotificationEmail(
+        storage,
+        resetUser?.email,
+        'Your Password Has Been Reset',
+        `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Hello ${resetUser?.firstName || resetUser?.username || 'there'},</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Your Biashara SACCO account password has been reset by an administrator.</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Your temporary password is: <strong>${tempPassword}</strong></p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">For your security, you will be required to set a new password the next time you log in. If you did not expect this change, please contact your SACCO administrator.</p>`
+      );
+
       res.json({ message: "Password reset successfully. User must change password on next login.", tempPassword });
     } catch (error) {
       console.error("Error resetting password:", error);
@@ -885,6 +897,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.updateUser(userId, { twoFactorEnabled: true });
+
+      await sendNotificationEmail(
+        storage,
+        user.email,
+        'Two-Factor Authentication Enabled',
+        `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Hello ${user.firstName || user.username || 'there'},</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Two-factor authentication has just been enabled on your Biashara SACCO account, adding an extra layer of security at login.</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">If you did not make this change, please contact your SACCO administrator immediately.</p>`
+      );
+
       res.json({ message: "Two-factor authentication enabled successfully" });
     } catch (error) {
       console.error("Error verifying 2FA:", error);
@@ -898,6 +920,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) return res.status(401).json({ message: "User not authenticated" });
 
       await storage.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null });
+
+      const disabledUser = await storage.getUser(userId);
+      await sendNotificationEmail(
+        storage,
+        disabledUser?.email,
+        'Two-Factor Authentication Disabled',
+        `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Hello ${disabledUser?.firstName || disabledUser?.username || 'there'},</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Two-factor authentication has just been disabled on your Biashara SACCO account.</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">If you did not make this change, please contact your SACCO administrator immediately and secure your account.</p>`
+      );
+
       res.json({ message: "Two-factor authentication disabled" });
     } catch (error) {
       console.error("Error disabling 2FA:", error);
@@ -1585,6 +1618,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       broadcastDataUpdate(['/api/members', '/api/dashboard']);
+
+      await sendNotificationEmail(
+        storage,
+        member.email,
+        member.status === 'active' ? 'Welcome to Biashara SACCO' : 'Membership Application Received',
+        member.status === 'active'
+          ? `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${member.fullName},</p>
+             <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Welcome to Biashara SACCO! Your membership is now active. Your member number is <strong>${member.memberNumber}</strong>.</p>
+             <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">You can now log in to access your account, view your savings, and apply for loans.</p>`
+          : `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${member.fullName},</p>
+             <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Thank you for applying to join Biashara SACCO. Your application (member number <strong>${member.memberNumber}</strong>) has been received and is pending approval.</p>
+             <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">We will notify you by email as soon as your application has been reviewed.</p>`
+      );
+
       res.status(201).json(member);
     } catch (error) {
       console.error("Error creating member:", error);
@@ -1644,6 +1691,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userId: member.userId,
         isRead: false
       });
+
+      await sendNotificationEmail(
+        storage,
+        member.email,
+        'Membership Approved',
+        `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${member.fullName},</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Congratulations! Your membership application has been approved. Welcome to Biashara SACCO.</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">Your member number is <strong>${member.memberNumber}</strong>. You can now log in to start saving and access member services.</p>`
+      );
 
       res.json({ message: "Member approved successfully", member });
     } catch (error) {
@@ -2160,6 +2216,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.headers['user-agent'],
       });
 
+      await sendNotificationEmail(
+        storage,
+        member.email,
+        'Exit Request Submitted',
+        `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${member.fullName},</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Your request to exit Biashara SACCO has been submitted and is now awaiting treasurer approval.</p>
+         ${eligibility.canUseSavingsForLoan ? `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Note: your savings will be used to repay an outstanding loan balance of <strong>UGX ${eligibility.totalOutstandingLoan.toLocaleString()}</strong> as part of the exit.</p>` : ''}
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">We will notify you by email once your request has been processed.</p>`
+      );
+
       broadcastDataUpdate(['/api/exit-requests', '/api/members']);
       res.status(201).json({ message: "Exit request submitted successfully. Awaiting treasurer approval.", exitRequest });
     } catch (error: any) {
@@ -2331,6 +2397,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.headers['user-agent'],
       });
 
+      await sendNotificationEmail(
+        storage,
+        member.email,
+        'Exit Request Approved',
+        `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${member.fullName},</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Your exit request has been approved and your Biashara SACCO membership account has been closed.</p>
+         ${actualLoanRepayment > 0 ? `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">An outstanding loan balance of <strong>UGX ${actualLoanRepayment.toLocaleString()}</strong> was repaid from your savings.</p>` : ''}
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Exit fee charged: <strong>UGX ${exitFee.toLocaleString()}</strong>.</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">Thank you for being part of Biashara SACCO.</p>`
+      );
+
       broadcastDataUpdate(['/api/exit-requests', '/api/members', '/api/dashboard', '/api/savings', '/api/transactions']);
       res.json({ message: "Exit request approved. Member account has been closed.", exitRequest });
     } catch (error: any) {
@@ -2442,6 +2519,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      await sendNotificationEmail(
+        storage,
+        member?.email,
+        'Deposit Received',
+        `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${member?.fullName || 'Member'},</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">A deposit of <strong>UGX ${parseFloat(amount).toLocaleString()}</strong> has been recorded to your savings account <strong>${account.accountNumber}</strong>.</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">Reference: ${referenceNumber}. Log in to view your updated balance.</p>`
+      );
+
       broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard', '/api/sacco-accounts', '/api/sacco-journal-entries']);
       res.status(201).json(transaction);
     } catch (error) {
@@ -2496,6 +2582,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isRead: false
         });
       }
+
+      await sendNotificationEmail(
+        storage,
+        withdrawMember?.email,
+        'Withdrawal Request Submitted',
+        `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${withdrawMember?.fullName || 'Member'},</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Your withdrawal request of <strong>UGX ${parseFloat(amount).toLocaleString()}</strong> from account <strong>${withdrawalAccount.accountNumber}</strong> has been submitted and is pending approval.</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">Reference: ${referenceNumber}. We will notify you once it has been processed.</p>`
+      );
 
       broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard']);
       res.status(201).json(transaction);
@@ -2664,6 +2759,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
       }
+
+      await sendNotificationEmail(
+        storage,
+        applicantMember.email,
+        'Loan Application Received',
+        `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${applicantMember.fullName},</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Your loan application <strong>${loanNumber}</strong> for <strong>UGX ${Number(principalAmount).toLocaleString()}</strong> (${loanType}, ${termMonths} months) has been received and is pending approval.</p>
+         <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">We will notify you by email as your application moves through the approval stages.</p>`
+      );
 
       broadcastDataUpdate(['/api/loans', '/api/loans/approval', '/api/dashboard', '/api/loans/my-loans']);
       res.status(201).json(loan);
@@ -3321,6 +3425,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
               userId: member.userId,
               isRead: false
             });
+
+            await sendNotificationEmail(
+              storage,
+              member.email,
+              'Loan Approved by Committee',
+              `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${member.fullName},</p>
+               <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Good news — your loan application <strong>${loan.loanNumber}</strong> has been approved by the committee.</p>
+               <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">It is now pending treasurer disbursement. We will notify you once the funds are disbursed.</p>`
+            );
           }
 
           broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/savings', '/api/transactions', '/api/loans/my-approval-activity']);
@@ -3429,6 +3542,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             isRead: false,
           });
         }
+
+        await sendNotificationEmail(
+          storage,
+          disburseMember?.email,
+          'Loan Disbursed',
+          `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${disburseMember?.fullName || 'Member'},</p>
+           <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Your loan <strong>${loan.loanNumber}</strong> of <strong>UGX ${parseFloat(loan.principalAmount).toLocaleString()}</strong> has been disbursed.</p>
+           <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">Please check your account. Reference: ${referenceNumber}.</p>`
+        );
 
         broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/savings', '/api/transactions', '/api/loans/my-approval-activity']);
         res.json({ message: `Loan ${loan.loanNumber} disbursed successfully`, loan });
@@ -3738,6 +3860,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           userId: disburseMember.userId,
           isRead: false
         });
+      }
+
+      {
+        const feeNote = feesCollected.length > 0 ? `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Fees deducted from your savings: ${feesCollected.join(', ')}.</p>` : '';
+        await sendNotificationEmail(
+          storage,
+          disburseMember?.email,
+          'Loan Disbursed',
+          `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${disburseMember?.fullName || 'Member'},</p>
+           <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Your loan <strong>${loan.loanNumber}</strong> of <strong>UGX ${parseFloat(loan.principalAmount).toLocaleString()}</strong> has been disbursed.</p>
+           ${feeNote}
+           <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">Please check your account. Reference: ${referenceNumber}.</p>`
+        );
       }
 
       broadcastDataUpdate(['/api/loans', '/api/loans/approval', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans', '/api/sacco-accounts', '/api/sacco-journal-entries']);
@@ -7190,6 +7325,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const id = parseInt(req.params.id);
       const calculation = await storage.postInterestCalculation(id);
+
+      try {
+        const member = await storage.getMember(calculation.memberId);
+        const amount = parseFloat(calculation.grossInterest || '0');
+        await sendNotificationEmail(
+          storage,
+          member?.email,
+          'Interest Credited to Your Savings',
+          `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Dear ${member?.fullName || 'Member'},</p>
+           <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Savings interest of <strong>UGX ${amount.toLocaleString()}</strong> has been credited to your account.</p>
+           <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">Log in to view your updated savings balance and interest earned.</p>`
+        );
+      } catch (emailErr) {
+        req.log.warn({ err: emailErr }, 'Interest credit email skipped');
+      }
+
       res.json(calculation);
     } catch (error) {
       console.error('Error posting interest calculation:', error);
