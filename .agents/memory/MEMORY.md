@@ -1,0 +1,1 @@
+- [Savings statement transaction direction](savings-statement-classification.md) — all 8 transactionType enums must map to Money In/Out in both UI classifier and backend totals SQL.

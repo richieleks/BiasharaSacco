@@ -28,6 +28,13 @@ import { Link } from 'wouter';
 import { formatCurrency, cn } from '@/lib/utils';
 import { apiRequest } from '@/lib/queryClient';
 
+// Classify every savings-ledger transaction type as Money In (credit) or Money Out (debit).
+// Covers all transaction types so no statement row is left blank.
+const MONEY_IN_TYPES = ['deposit', 'interest_credit', 'share_capital', 'loan_disbursement'];
+const MONEY_OUT_TYPES = ['withdrawal', 'fee_charge', 'loan_payment', 'membership_fee'];
+const isMoneyIn = (type: string) => MONEY_IN_TYPES.includes(type);
+const isMoneyOut = (type: string) => MONEY_OUT_TYPES.includes(type);
+
 type PeriodOption = 'current_month' | 'last_2_months' | 'last_3_months' | 'last_6_months' | 'user_defined';
 
 function getDateRange(period: PeriodOption): { start: string; end: string } {
@@ -211,7 +218,7 @@ export default function AccountStatement() {
     let totalDebits = 0;
     (statementData?.transactions || []).forEach((t: any) => {
       const amt = parseFloat(t.amount || '0');
-      if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
+      if (isMoneyIn(t.transactionType)) {
         totalCredits += amt;
       } else {
         totalDebits += amt;
@@ -223,7 +230,7 @@ export default function AccountStatement() {
     let balance = periodStartBal;
     return filteredTransactions.map((t: any) => {
       const amt = parseFloat(t.amount || '0');
-      if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
+      if (isMoneyIn(t.transactionType)) {
         balance += amt;
       } else {
         balance -= amt;
@@ -239,7 +246,7 @@ export default function AccountStatement() {
     let totalDebits = 0;
     (statementData.transactions || []).forEach((t: any) => {
       const amt = parseFloat(t.amount || '0');
-      if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
+      if (isMoneyIn(t.transactionType)) {
         totalCredits += amt;
       } else {
         totalDebits += amt;
@@ -276,7 +283,7 @@ export default function AccountStatement() {
       let totalDebits = 0;
       allTxns.forEach((t: any) => {
         const amt = parseFloat(t.amount || '0');
-        if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
+        if (isMoneyIn(t.transactionType)) {
           totalCredits += amt;
         } else {
           totalDebits += amt;
@@ -286,7 +293,7 @@ export default function AccountStatement() {
       let bal = startBal;
       const balances = allTxns.map((t: any) => {
         const amt = parseFloat(t.amount || '0');
-        if (t.transactionType === 'deposit' || t.transactionType === 'interest_credit' || t.transactionType === 'share_capital') {
+        if (isMoneyIn(t.transactionType)) {
           bal += amt;
         } else {
           bal -= amt;
@@ -297,8 +304,8 @@ export default function AccountStatement() {
       const csvContent = [
         ['Transaction Date', 'Value Date', 'Transaction Details', 'Money Out', 'Money In', 'Ledger Balance'],
         ...allTxns.map((txn: any, idx: number) => {
-          const isDebit = txn.transactionType === 'withdrawal' || txn.transactionType === 'fee_charge';
-          const isCredit = txn.transactionType === 'deposit' || txn.transactionType === 'interest_credit' || txn.transactionType === 'share_capital';
+          const isDebit = isMoneyOut(txn.transactionType);
+          const isCredit = isMoneyIn(txn.transactionType);
           return [
             new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
             new Date(txn.transactionDate || txn.createdAt).toLocaleDateString(),
@@ -570,8 +577,8 @@ export default function AccountStatement() {
                       </TableHeader>
                       <TableBody>
                         {filteredTransactions.map((transaction: any, idx: number) => {
-                          const isDebit = transaction.transactionType === 'withdrawal' || transaction.transactionType === 'fee_charge';
-                          const isCredit = transaction.transactionType === 'deposit' || transaction.transactionType === 'interest_credit' || transaction.transactionType === 'share_capital';
+                          const isDebit = isMoneyOut(transaction.transactionType);
+                          const isCredit = isMoneyIn(transaction.transactionType);
                           return (
                             <TableRow key={transaction.id} className="border-b">
                               <TableCell className="text-xs sm:text-sm whitespace-nowrap">

@@ -1352,8 +1352,8 @@ export class DatabaseStorage implements IStorage {
 
     const [summaryResult] = await db
       .select({
-        totalDeposits: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} IN ('deposit') AND ${transactions.status} = 'completed' THEN CAST(${transactions.amount} AS DECIMAL) ELSE 0 END), 0)`,
-        totalWithdrawals: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} IN ('withdrawal', 'fee_charge') AND ${transactions.status} = 'completed' THEN CAST(${transactions.amount} AS DECIMAL) ELSE 0 END), 0)`,
+        totalDeposits: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} IN ('deposit', 'interest_credit', 'share_capital', 'loan_disbursement') AND ${transactions.status} = 'completed' THEN CAST(${transactions.amount} AS DECIMAL) ELSE 0 END), 0)`,
+        totalWithdrawals: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} IN ('withdrawal', 'fee_charge', 'loan_payment', 'membership_fee') AND ${transactions.status} = 'completed' THEN CAST(${transactions.amount} AS DECIMAL) ELSE 0 END), 0)`,
         totalInterest: sql<string>`COALESCE(SUM(CASE WHEN ${transactions.transactionType} = 'interest_credit' AND ${transactions.status} = 'completed' THEN CAST(${transactions.amount} AS DECIMAL) ELSE 0 END), 0)`,
       })
       .from(transactions)
