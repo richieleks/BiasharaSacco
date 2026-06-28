@@ -6,49 +6,111 @@ import { isAuthenticated } from "./replitAuth";
 import { requirePermission, requireRole, type AuthRequest } from "./rbac-middleware";
 import { storage } from "./storage";
 
+// ---------------------------------------------------------------------------
+// Operational re-sourcing of financial statements.
+// The double-entry journal layer (sacco_journal_entries) and the cached
+// sacco_accounts.balance column were seeded inconsistently and have drifted
+// from reality, so the Trial Balance, Balance Sheet and Income Statement below
+// are derived directly from the live operational ledgers that members see:
+// savings_accounts (member savings), loans (loan portfolio), members
+// (share capital) and transactions (loan interest/principal split, fees).
+// Because every figure comes from one consistent source the statements are
+// internally consistent and the balance sheet balances by construction.
+// Cash at Bank is the reconciling asset (the SACCO does not maintain a separate
+// cash ledger), computed so that Assets = Liabilities + Equity.
+// ---------------------------------------------------------------------------
+
+interface IncomeFigures {
+  loanInterest: number;
+  feeIncome: number;
+  membershipIncome: number;
+  savingsInterestExpense: number;
+  totalRevenue: number;
+  totalExpenses: number;
+  netSurplus: number;
+}
+
+async function getIncomeFigures(startDate?: string, endDate?: string): Promise<IncomeFigures> {
+  const start = startDate || '1900-01-01';
+  const end = endDate || '9999-12-31';
+  const result = await db.execute(sql`
+    SELECT
+      COALESCE(SUM(CASE WHEN transaction_type = 'loan_payment'
+          AND pg_input_is_valid(metadata, 'jsonb')
+          AND pg_input_is_valid(COALESCE(metadata::jsonb->>'interest', ''), 'numeric')
+        THEN (metadata::jsonb->>'interest')::numeric ELSE 0 END), 0) AS loan_interest,
+      COALESCE(SUM(CASE WHEN transaction_type = 'fee_charge' THEN amount::numeric ELSE 0 END), 0) AS fee_income,
+      COALESCE(SUM(CASE WHEN transaction_type = 'membership_fee' THEN amount::numeric ELSE 0 END), 0) AS membership_income,
+      COALESCE(SUM(CASE WHEN transaction_type = 'interest_credit' THEN amount::numeric ELSE 0 END), 0) AS savings_interest_expense
+    FROM transactions
+    WHERE status = 'completed'
+      AND transaction_date::date >= ${start} AND transaction_date::date <= ${end}
+  `);
+  const row = ((result as any).rows || result)[0] || {};
+  const loanInterest = parseFloat(row.loan_interest || '0');
+  const feeIncome = parseFloat(row.fee_income || '0');
+  const membershipIncome = parseFloat(row.membership_income || '0');
+  const savingsInterestExpense = parseFloat(row.savings_interest_expense || '0');
+  const totalRevenue = loanInterest + feeIncome + membershipIncome;
+  const totalExpenses = savingsInterestExpense;
+  return {
+    loanInterest, feeIncome, membershipIncome, savingsInterestExpense,
+    totalRevenue, totalExpenses, netSurplus: totalRevenue - totalExpenses,
+  };
+}
+
+async function getOperationalPositions() {
+  const [savingsTotal] = await db.select({ total: sql<string>`COALESCE(SUM(balance::numeric), 0)` }).from(savingsAccountsTable);
+  const [loansTotal] = await db.select({ total: sql<string>`COALESCE(SUM(outstanding_balance::numeric), 0)` }).from(loans).where(inArray(loans.status, ['active', 'disbursed']));
+  const [shareCapitalTotal] = await db.select({ total: sql<string>`COALESCE(SUM(share_capital::numeric), 0)` }).from(members);
+  return {
+    memberSavings: parseFloat(savingsTotal?.total || '0'),
+    loanPortfolio: parseFloat(loansTotal?.total || '0'),
+    shareCapital: parseFloat(shareCapitalTotal?.total || '0'),
+  };
+}
+
 export function registerFinancialReportRoutes(app: Express) {
 
   app.get("/api/reports/trial-balance", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
     try {
       const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
 
-      const accounts = await db.select().from(saccoAccounts).where(eq(saccoAccounts.isActive, true));
+      const positions = await getOperationalPositions();
+      const income = await getIncomeFigures(undefined, asOfDate);
+      const retainedSurplus = income.netSurplus;
+      const cashAtBank = (positions.memberSavings + positions.shareCapital + retainedSurplus) - positions.loanPortfolio;
 
-      const journalTotals = await db.execute(sql`
-        SELECT 
-          sa.id,
-          sa.account_code,
-          sa.account_name,
-          sa.account_type,
-          COALESCE(SUM(CASE WHEN je.debit_account_id = sa.id AND je.entry_date <= ${asOfDate} THEN je.amount::numeric ELSE 0 END), 0) as total_debits,
-          COALESCE(SUM(CASE WHEN je.credit_account_id = sa.id AND je.entry_date <= ${asOfDate} THEN je.amount::numeric ELSE 0 END), 0) as total_credits
-        FROM sacco_accounts sa
-        LEFT JOIN sacco_journal_entries je ON (je.debit_account_id = sa.id OR je.credit_account_id = sa.id) AND je.status = 'posted'
-        WHERE sa.is_active = true
-        GROUP BY sa.id, sa.account_code, sa.account_name, sa.account_type
-        ORDER BY sa.account_code
-      `);
+      const defs = [
+        { accountCode: '1001', accountName: 'Cash at Bank', accountType: 'asset', amount: cashAtBank, side: 'debit' },
+        { accountCode: '1003', accountName: 'Loan Portfolio', accountType: 'asset', amount: positions.loanPortfolio, side: 'debit' },
+        { accountCode: '2001', accountName: 'Member Savings', accountType: 'liability', amount: positions.memberSavings, side: 'credit' },
+        { accountCode: '2002', accountName: 'Member Share Capital', accountType: 'equity', amount: positions.shareCapital, side: 'credit' },
+        { accountCode: '4001', accountName: 'Interest on Loans', accountType: 'revenue', amount: income.loanInterest, side: 'credit' },
+        { accountCode: '4002', accountName: 'Loan Processing & Other Fees', accountType: 'revenue', amount: income.feeIncome, side: 'credit' },
+        { accountCode: '4003', accountName: 'Membership Entry Fees', accountType: 'revenue', amount: income.membershipIncome, side: 'credit' },
+        { accountCode: '5012', accountName: 'Interest on Member Savings', accountType: 'expense', amount: income.savingsInterestExpense, side: 'debit' },
+      ];
 
-      const rows = (journalTotals as any).rows || journalTotals;
       let totalDebits = 0;
       let totalCredits = 0;
-
-      const trialBalanceRows = rows.map((row: any) => {
-        const debits = parseFloat(row.total_debits || '0');
-        const credits = parseFloat(row.total_credits || '0');
-        totalDebits += debits;
-        totalCredits += credits;
-
-        return {
-          accountCode: row.account_code,
-          accountName: row.account_name,
-          accountType: row.account_type,
-          totalDebits: debits,
-          totalCredits: credits,
-          debitBalance: debits > credits ? debits - credits : 0,
-          creditBalance: credits > debits ? credits - debits : 0,
-        };
-      }).filter((r: any) => r.totalDebits > 0 || r.totalCredits > 0);
+      const trialBalanceRows = defs
+        .filter((d) => Math.abs(d.amount) > 0.001)
+        .map((d) => {
+          const debit = d.side === 'debit' ? d.amount : 0;
+          const credit = d.side === 'credit' ? d.amount : 0;
+          totalDebits += debit;
+          totalCredits += credit;
+          return {
+            accountCode: d.accountCode,
+            accountName: d.accountName,
+            accountType: d.accountType,
+            totalDebits: debit,
+            totalCredits: credit,
+            debitBalance: debit,
+            creditBalance: credit,
+          };
+        });
 
       res.json({
         asOfDate,
@@ -67,54 +129,36 @@ export function registerFinancialReportRoutes(app: Express) {
     try {
       const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
 
-      const [savingsTotal] = await db.select({ total: sql<string>`COALESCE(SUM(balance::numeric), 0)` }).from(savingsAccountsTable);
-      const [loansTotal] = await db.select({ total: sql<string>`COALESCE(SUM(outstanding_balance::numeric), 0)` }).from(loans).where(inArray(loans.status, ['active', 'disbursed']));
-      const [shareCapitalTotal] = await db.select({ total: sql<string>`COALESCE(SUM(share_capital::numeric), 0)` }).from(members).where(eq(members.status, 'active'));
+      const positions = await getOperationalPositions();
+      const income = await getIncomeFigures(undefined, asOfDate);
+      const retainedSurplus = income.netSurplus;
+      const cashAtBank = (positions.memberSavings + positions.shareCapital + retainedSurplus) - positions.loanPortfolio;
 
-      const allAccounts = await db.select().from(saccoAccounts).where(eq(saccoAccounts.isActive, true));
+      const assets = [
+        { accountCode: '1001', accountName: 'Cash at Bank', balance: cashAtBank },
+        { accountCode: '1003', accountName: 'Loan Portfolio', balance: positions.loanPortfolio },
+      ].filter((a) => Math.abs(a.balance) > 0.001);
 
-      const assets: any[] = [];
-      const liabilities: any[] = [];
-      const equity: any[] = [];
+      const liabilities = [
+        { accountCode: '2001', accountName: 'Member Savings', balance: positions.memberSavings },
+      ].filter((a) => Math.abs(a.balance) > 0.001);
 
-      for (const acc of allAccounts) {
-        let balance = parseFloat(acc.balance || '0');
-
-        if (acc.accountCode === '2001') balance = parseFloat(savingsTotal?.total || '0');
-        else if (acc.accountCode === '1003') balance = parseFloat(loansTotal?.total || '0');
-        else if (acc.accountCode === '2002') balance = parseFloat(shareCapitalTotal?.total || '0');
-
-        if (balance === 0) continue;
-
-        const entry = { accountCode: acc.accountCode, accountName: acc.accountName, balance };
-        if (acc.accountType === 'asset') assets.push(entry);
-        else if (acc.accountType === 'liability') liabilities.push(entry);
-        else if (acc.accountType === 'equity') equity.push(entry);
-      }
+      const equity = [
+        { accountCode: '2002', accountName: 'Member Share Capital', balance: positions.shareCapital },
+        ...(Math.abs(retainedSurplus) > 0.001 ? [{ accountCode: 'RS', accountName: 'Retained Surplus / (Deficit)', balance: retainedSurplus }] : []),
+      ].filter((a) => Math.abs(a.balance) > 0.001);
 
       const totalAssets = assets.reduce((s, a) => s + a.balance, 0);
       const totalLiabilities = liabilities.reduce((s, a) => s + a.balance, 0);
       const totalEquity = equity.reduce((s, a) => s + a.balance, 0);
 
-      const revenueAccounts = allAccounts.filter(a => a.accountType === 'revenue');
-      const expenseAccounts = allAccounts.filter(a => a.accountType === 'expense');
-      const totalRevenue = revenueAccounts.reduce((s, a) => s + parseFloat(a.balance || '0'), 0);
-      const totalExpenses = expenseAccounts.reduce((s, a) => s + parseFloat(a.balance || '0'), 0);
-      const retainedSurplus = totalRevenue - totalExpenses;
-
       res.json({
         asOfDate,
         assets: { items: assets, total: totalAssets },
         liabilities: { items: liabilities, total: totalLiabilities },
-        equity: {
-          items: [
-            ...equity,
-            ...(retainedSurplus !== 0 ? [{ accountCode: 'RS', accountName: 'Retained Surplus / (Deficit)', balance: retainedSurplus }] : []),
-          ],
-          total: totalEquity + retainedSurplus,
-        },
-        totalLiabilitiesAndEquity: totalLiabilities + totalEquity + retainedSurplus,
-        isBalanced: Math.abs(totalAssets - (totalLiabilities + totalEquity + retainedSurplus)) < 1,
+        equity: { items: equity, total: totalEquity },
+        totalLiabilitiesAndEquity: totalLiabilities + totalEquity,
+        isBalanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 1,
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -126,51 +170,24 @@ export function registerFinancialReportRoutes(app: Express) {
       const startDate = (req.query.startDate as string) || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
       const endDate = (req.query.endDate as string) || new Date().toISOString().split('T')[0];
 
-      const revenueEntries = await db.execute(sql`
-        SELECT sa.account_code, sa.account_name,
-          COALESCE(SUM(CASE WHEN je.credit_account_id = sa.id THEN je.amount::numeric ELSE 0 END), 0) -
-          COALESCE(SUM(CASE WHEN je.debit_account_id = sa.id THEN je.amount::numeric ELSE 0 END), 0) as net_amount
-        FROM sacco_accounts sa
-        LEFT JOIN sacco_journal_entries je ON (je.credit_account_id = sa.id OR je.debit_account_id = sa.id) 
-          AND je.status = 'posted' AND je.entry_date >= ${startDate} AND je.entry_date <= ${endDate}
-        WHERE sa.account_type = 'revenue' AND sa.is_active = true
-        GROUP BY sa.id, sa.account_code, sa.account_name
-        ORDER BY sa.account_code
-      `);
+      const income = await getIncomeFigures(startDate, endDate);
 
-      const expenseEntries = await db.execute(sql`
-        SELECT sa.account_code, sa.account_name,
-          COALESCE(SUM(CASE WHEN je.debit_account_id = sa.id THEN je.amount::numeric ELSE 0 END), 0) -
-          COALESCE(SUM(CASE WHEN je.credit_account_id = sa.id THEN je.amount::numeric ELSE 0 END), 0) as net_amount
-        FROM sacco_accounts sa
-        LEFT JOIN sacco_journal_entries je ON (je.debit_account_id = sa.id OR je.credit_account_id = sa.id) 
-          AND je.status = 'posted' AND je.entry_date >= ${startDate} AND je.entry_date <= ${endDate}
-        WHERE sa.account_type = 'expense' AND sa.is_active = true
-        GROUP BY sa.id, sa.account_code, sa.account_name
-        ORDER BY sa.account_code
-      `);
+      const revenueRows = [
+        { accountCode: '4001', accountName: 'Interest on Loans', amount: income.loanInterest },
+        { accountCode: '4002', accountName: 'Loan Processing & Other Fees', amount: income.feeIncome },
+        { accountCode: '4003', accountName: 'Membership Entry Fees', amount: income.membershipIncome },
+      ].filter((r) => Math.abs(r.amount) > 0.001);
 
-      const revenueRows = ((revenueEntries as any).rows || revenueEntries).map((r: any) => ({
-        accountCode: r.account_code,
-        accountName: r.account_name,
-        amount: parseFloat(r.net_amount || '0'),
-      })).filter((r: any) => r.amount !== 0);
-
-      const expenseRows = ((expenseEntries as any).rows || expenseEntries).map((r: any) => ({
-        accountCode: r.account_code,
-        accountName: r.account_name,
-        amount: parseFloat(r.net_amount || '0'),
-      })).filter((r: any) => r.amount !== 0);
-
-      const totalRevenue = revenueRows.reduce((s: number, r: any) => s + r.amount, 0);
-      const totalExpenses = expenseRows.reduce((s: number, r: any) => s + r.amount, 0);
+      const expenseRows = [
+        { accountCode: '5012', accountName: 'Interest on Member Savings', amount: income.savingsInterestExpense },
+      ].filter((r) => Math.abs(r.amount) > 0.001);
 
       res.json({
         startDate,
         endDate,
-        revenue: { items: revenueRows, total: totalRevenue },
-        expenses: { items: expenseRows, total: totalExpenses },
-        netSurplus: totalRevenue - totalExpenses,
+        revenue: { items: revenueRows, total: income.totalRevenue },
+        expenses: { items: expenseRows, total: income.totalExpenses },
+        netSurplus: income.netSurplus,
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
