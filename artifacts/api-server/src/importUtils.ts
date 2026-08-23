@@ -4,6 +4,16 @@ import { z } from 'zod';
 import { hashPassword } from './localAuth';
 import ExcelJS from 'exceljs';
 
+/**
+ * Returns true if the string contains a word that looks like "installment" or
+ * "instalment", including common misspellings such as "installmet" (missing n),
+ * "installmant" (a instead of e), or single-l variants.
+ * Pattern: instal + 1-2 l's + m + [ae] + optional n + t
+ */
+function looksLikeInstallment(s: string): boolean {
+  return /instal{1,2}m[ae]n?t/i.test(s);
+}
+
 function worksheetToAoa(worksheet: ExcelJS.Worksheet): any[][] {
   const result: any[][] = [];
   worksheet.eachRow({ includeEmpty: false }, (row: ExcelJS.Row) => {
@@ -1370,9 +1380,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           const balanceAmt = Math.ceil(parseFloat(row[5]) || 0);
 
           const isSpecialDisbursement = detailsLower === 'special loan' || detailsLower.startsWith('special loan ');
-          const isSpecialRepayment = detailsLower.includes('installment - special') || detailsLower.includes('instalment - special')
-            || detailsLower.includes('installment special') || detailsLower.includes('instalment special')
-            || detailsLower.includes('special installment') || detailsLower.includes('special instalment');
+          const isSpecialRepayment = looksLikeInstallment(detailsLower) && detailsLower.includes('special');
 
           const isOrdinaryDisbursement = detailsLower.includes('disburs') ||
                                           detailsLower.includes('loan amount') ||
@@ -1406,8 +1414,7 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
                 currentSpecialGroup.totalRepaid += repayAmount;
                 currentSpecialGroup.lastInstallmentAmount = repayAmount;
               }
-              if (detailsLower.includes('3rd installment special') || detailsLower.includes('3rd instalment special')
-                || detailsLower.includes('3rd special installment') || detailsLower.includes('3rd special instalment')) {
+              if (detailsLower.includes('3rd') && looksLikeInstallment(detailsLower) && detailsLower.includes('special')) {
                 currentSpecialGroup.fullyPaidByThirdInstallment = true;
               }
             }
@@ -1418,14 +1425,14 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               ordinaryGroup.totalDisbursed += amount;
               if (!ordinaryGroup.firstDisbursementDate) ordinaryGroup.firstDisbursementDate = postingDate;
             }
-          } else if (amtDebited > 0 && (detailsLower.includes('installment') || detailsLower.includes('instalment') || detailsLower.includes('repayment') || detailsLower.includes('loan repayment') || detailsLower.includes('loan payment') || detailsLower.includes('payment using savings'))) {
+          } else if (amtDebited > 0 && (looksLikeInstallment(detailsLower) || detailsLower.includes('repayment') || detailsLower.includes('loan repayment') || detailsLower.includes('loan payment') || detailsLower.includes('payment using savings'))) {
             ordinaryGroup.repayments.push({ date: postingDate, amount: amtDebited, details, rowIndex: i });
             ordinaryGroup.totalRepaid += amtDebited;
             ordinaryGroup.lastInstallmentAmount = amtDebited;
           } else if (amtDebited > 0) {
             ordinaryGroup.repayments.push({ date: postingDate, amount: amtDebited, details, rowIndex: i });
             ordinaryGroup.totalRepaid += amtDebited;
-          } else if (principalRepyt > 0 && (detailsLower.includes('repayment') || detailsLower.includes('installment') || detailsLower.includes('instalment') || detailsLower.includes('loan payment') || detailsLower.includes('payment using savings'))) {
+          } else if (principalRepyt > 0 && (detailsLower.includes('repayment') || looksLikeInstallment(detailsLower) || detailsLower.includes('loan payment') || detailsLower.includes('payment using savings'))) {
             ordinaryGroup.repayments.push({ date: postingDate, amount: principalRepyt, details, rowIndex: i });
             ordinaryGroup.totalRepaid += principalRepyt;
             ordinaryGroup.lastInstallmentAmount = principalRepyt;
