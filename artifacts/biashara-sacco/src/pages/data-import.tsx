@@ -14,13 +14,19 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useRBAC } from "@/hooks/useRBAC";
 import type { LoanType } from "@workspace/db";
+import { createTsvRow, sanitizeTsvCell } from "@/lib/import-report";
 
 interface ImportResult {
   success: boolean;
   totalRows: number;
   successfulImports: number;
+  failedRows?: number;
+  skippedRows?: number;
+  totalAmount?: number;
+  failureBreakdown?: Record<string, number>;
   errors: Array<{
     row: number;
+    category?: string;
     error: string;
     data?: any;
   }>;
@@ -38,6 +44,18 @@ interface ImportResult {
   processedSheets?: number;
   skippedSheets?: number;
 }
+
+const failureCategoryLabels: Record<string, string> = {
+  invalid_row: 'Invalid row',
+  transaction_rejected: 'Bank rejected',
+  duplicate_reference: 'Duplicate reference',
+  unmatched_member: 'Member not found',
+  unmatched_loan: 'Loan not found',
+  fully_paid_loan: 'Loan already paid',
+  missing_savings_account: 'Savings account missing',
+  processing_error: 'Processing error',
+  file_error: 'File error',
+};
 
 export default function DataImport() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
@@ -213,8 +231,9 @@ export default function DataImport() {
           if (progressTimerRef.current) clearInterval(progressTimerRef.current);
           setIsImporting(false);
           setImportStage('Failed');
+          if (status.result) setImportResult(status.result);
           toast({ title: "Import Failed", description: status.error || "Unknown error occurred", variant: "destructive" });
-          setTimeout(() => { setImportProgress(0); setImportStage(''); }, 3000);
+          setImportProgress(0);
         }
       } catch {
         failCount++;
@@ -232,39 +251,62 @@ export default function DataImport() {
     poll();
   }, [importType, toast, queryClient]);
 
-  const downloadExceptionsReport = useCallback(() => {
+  const downloadImportReport = useCallback(() => {
     if (!importResult) return;
     const lines: string[] = [];
-    lines.push('IMPORT EXCEPTIONS REPORT');
-    lines.push(`Date: ${new Date().toLocaleString()}`);
-    lines.push(`File: ${selectedFile?.name || 'Unknown'}`);
-    lines.push(`Import Type: ${importType}`);
+    lines.push('BULK IMPORT FAILURE REPORT');
+    lines.push(`Date: ${sanitizeTsvCell(new Date().toLocaleString())}`);
+    lines.push(`File: ${sanitizeTsvCell(selectedFile?.name || 'Unknown')}`);
+    lines.push(`Import Type: ${sanitizeTsvCell(importType)}`);
     lines.push('');
     lines.push('=== SUMMARY ===');
+    lines.push(`Total Rows: ${importResult.totalRows}`);
+    lines.push(`Successful Rows: ${importResult.successfulImports}`);
+    lines.push(`Skipped Rows: ${importResult.skippedRows ?? 0}`);
+    lines.push(`Failed Rows: ${importResult.failedRows ?? 0}`);
+    if (importResult.totalAmount != null) lines.push(`Total Amount: UGX ${importResult.totalAmount.toLocaleString()}`);
     lines.push(`Total Sheets: ${importResult.totalSheets ?? 'N/A'}`);
     lines.push(`Processed: ${importResult.processedSheets ?? importResult.successfulImports}`);
     lines.push(`Skipped: ${importResult.skippedSheets ?? 0}`);
-    lines.push(`Successful Imports: ${importResult.successfulImports}`);
     lines.push(`Errors: ${importResult.errors?.length ?? 0}`);
     lines.push(`Exceptions: ${importResult.exceptions?.length ?? 0}`);
     lines.push('');
+
+    if (importResult.failureBreakdown && Object.keys(importResult.failureBreakdown).length > 0) {
+      lines.push('=== FAILURE BREAKDOWN ===');
+      lines.push('Category\tCount');
+      for (const [category, count] of Object.entries(importResult.failureBreakdown)) {
+        lines.push(createTsvRow([category, count]));
+      }
+      lines.push('');
+    }
 
     if (importResult.exceptions?.length > 0) {
       lines.push('=== EXCEPTIONS ===');
       lines.push('Sheet\tType\tDetail\tExtra Data');
       for (const ex of importResult.exceptions) {
         const extra = ex.data ? JSON.stringify(ex.data) : '';
-        lines.push(`${ex.sheet}\t${ex.type}\t${ex.detail}\t${extra}`);
+        lines.push(createTsvRow([ex.sheet, ex.type, ex.detail, extra]));
       }
       lines.push('');
     }
 
     if (importResult.errors?.length > 0) {
       lines.push('=== ERRORS ===');
-      lines.push('Row\tError\tData');
+      lines.push('Row\tCategory\tError\tAccount\tReference\tAmount\tDescription\tData');
       for (const err of importResult.errors) {
         const extra = err.data ? JSON.stringify(err.data) : '';
-        lines.push(`${err.row}\t${err.error}\t${extra}`);
+        const data = err.data || {};
+        lines.push(createTsvRow([
+          err.row,
+          err.category || 'processing_error',
+          err.error,
+          data.remitterAccount || data.account || '',
+          data.reference || '',
+          data.amount ?? '',
+          data.description || '',
+          extra,
+        ]));
       }
     }
 
@@ -272,7 +314,7 @@ export default function DataImport() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `import-exceptions-${new Date().toISOString().slice(0, 10)}.tsv`;
+    a.download = `bulk-import-failure-report-${new Date().toISOString().slice(0, 10)}.tsv`;
     a.click();
     URL.revokeObjectURL(url);
   }, [importResult, selectedFile, importType]);
@@ -334,6 +376,7 @@ export default function DataImport() {
   });
 
   const isCsvImportType = importType === 'loan-repayments' || importType === 'bulk-savings';
+  const isBulkTransactionImport = isCsvImportType;
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -811,9 +854,17 @@ export default function DataImport() {
               )}
               Import Results
             </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-              Results from importing savings account data
-            </p>
+             <div className="flex items-center justify-between gap-3">
+               <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                 {isBulkTransactionImport ? 'Detailed results for the uploaded bank transaction file' : 'Results from importing savings account data'}
+               </p>
+               {isBulkTransactionImport && (
+                 <Button variant="outline" size="sm" onClick={downloadImportReport} className="gap-1.5 text-xs shrink-0">
+                   <Download className="h-3.5 w-3.5" />
+                   Download Report
+                 </Button>
+               )}
+             </div>
           </div>
           <div className="p-6 space-y-4">
             {/* Progress Bar */}
@@ -828,29 +879,65 @@ export default function DataImport() {
               </span>
             </div>
 
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
-              <div className="text-center p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-blue-600">{importResult.totalRows}</div>
-                <div className="text-xs sm:text-sm text-blue-600">Total Rows</div>
-              </div>
-              <div className="text-center p-3 sm:p-4 bg-green-50 dark:bg-green-950/50 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-green-600">{importResult.importedMembers}</div>
-                <div className="text-xs sm:text-sm text-green-600">New Members</div>
-              </div>
-              <div className="text-center p-3 sm:p-4 bg-purple-50 dark:bg-purple-950/50 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-purple-600">{importResult.importedAccounts}</div>
-                <div className="text-xs sm:text-sm text-purple-600">Savings Accounts</div>
-              </div>
-              <div className="text-center p-3 sm:p-4 bg-amber-50 dark:bg-amber-950/50 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-amber-600">{importResult.skippedDuplicates || 0}</div>
-                <div className="text-xs sm:text-sm text-amber-600">Duplicates Skipped</div>
-              </div>
-              <div className="text-center p-3 sm:p-4 bg-red-50 dark:bg-red-950/50 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-red-600">{(importResult.errors?.length || 0) - (importResult.skippedDuplicates || 0)}</div>
-                <div className="text-xs sm:text-sm text-red-600">Other Errors</div>
-              </div>
-            </div>
+             {/* Statistics Cards */}
+             {isBulkTransactionImport ? (
+               <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+                 <div className="text-center p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg">
+                   <div className="text-lg sm:text-2xl font-bold text-blue-600">{importResult.totalRows}</div>
+                   <div className="text-xs sm:text-sm text-blue-600">Total Rows</div>
+                 </div>
+                 <div className="text-center p-3 sm:p-4 bg-green-50 dark:bg-green-950/50 rounded-lg">
+                   <div className="text-lg sm:text-2xl font-bold text-green-600">{importResult.successfulImports}</div>
+                   <div className="text-xs sm:text-sm text-green-600">Successful</div>
+                 </div>
+                 <div className="text-center p-3 sm:p-4 bg-amber-50 dark:bg-amber-950/50 rounded-lg">
+                   <div className="text-lg sm:text-2xl font-bold text-amber-600">{importResult.skippedRows ?? 0}</div>
+                   <div className="text-xs sm:text-sm text-amber-600">Skipped</div>
+                 </div>
+                 <div className="text-center p-3 sm:p-4 bg-red-50 dark:bg-red-950/50 rounded-lg">
+                   <div className="text-lg sm:text-2xl font-bold text-red-600">{importResult.failedRows ?? 0}</div>
+                   <div className="text-xs sm:text-sm text-red-600">Failed</div>
+                 </div>
+                 <div className="text-center p-3 sm:p-4 bg-purple-50 dark:bg-purple-950/50 rounded-lg">
+                   <div className="text-lg sm:text-2xl font-bold text-purple-600">UGX {(importResult.totalAmount ?? 0).toLocaleString()}</div>
+                   <div className="text-xs sm:text-sm text-purple-600">Imported Amount</div>
+                 </div>
+               </div>
+             ) : (
+               <div className="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+                 <div className="text-center p-3 sm:p-4 bg-blue-50 dark:bg-blue-950/50 rounded-lg">
+                   <div className="text-lg sm:text-2xl font-bold text-blue-600">{importResult.totalRows}</div>
+                   <div className="text-xs sm:text-sm text-blue-600">Total Rows</div>
+                 </div>
+                 <div className="text-center p-3 sm:p-4 bg-green-50 dark:bg-green-950/50 rounded-lg">
+                   <div className="text-lg sm:text-2xl font-bold text-green-600">{importResult.importedMembers}</div>
+                   <div className="text-xs sm:text-sm text-green-600">New Members</div>
+                 </div>
+                 <div className="text-center p-3 sm:p-4 bg-purple-50 dark:bg-purple-950/50 rounded-lg">
+                   <div className="text-lg sm:text-2xl font-bold text-purple-600">{importResult.importedAccounts}</div>
+                   <div className="text-xs sm:text-sm text-purple-600">Savings Accounts</div>
+                 </div>
+                 <div className="text-center p-3 sm:p-4 bg-amber-50 dark:bg-amber-950/50 rounded-lg">
+                   <div className="text-lg sm:text-2xl font-bold text-amber-600">{importResult.skippedDuplicates || 0}</div>
+                   <div className="text-xs sm:text-sm text-amber-600">Duplicates Skipped</div>
+                 </div>
+                 <div className="text-center p-3 sm:p-4 bg-red-50 dark:bg-red-950/50 rounded-lg">
+                   <div className="text-lg sm:text-2xl font-bold text-red-600">{(importResult.errors?.length || 0) - (importResult.skippedDuplicates || 0)}</div>
+                   <div className="text-xs sm:text-sm text-red-600">Other Errors</div>
+                 </div>
+               </div>
+             )}
+
+             {isBulkTransactionImport && importResult.failureBreakdown && Object.keys(importResult.failureBreakdown).length > 0 && (
+               <div className="flex flex-wrap items-center gap-2 text-xs">
+                 <span className="font-medium text-slate-600 dark:text-slate-300">Failure breakdown:</span>
+                 {Object.entries(importResult.failureBreakdown).map(([category, count]) => (
+                   <Badge key={category} variant="outline">
+                     {failureCategoryLabels[category] || category}: {count}
+                   </Badge>
+                 ))}
+               </div>
+             )}
 
             {importResult.totalSheets != null && (
               <div className="space-y-2">
@@ -884,20 +971,20 @@ export default function DataImport() {
                     <AlertCircle className="h-4 w-4" />
                     Exceptions Report ({importResult.exceptions.length})
                   </h4>
-                  <Button variant="outline" size="sm" onClick={downloadExceptionsReport} className="gap-1.5 text-xs">
+                   <Button variant="outline" size="sm" onClick={downloadImportReport} className="gap-1.5 text-xs">
                     <Download className="h-3.5 w-3.5" />
                     Download Report
                   </Button>
                 </div>
                 <div className="max-h-60 overflow-y-auto space-y-2">
                   {importResult.exceptions.map((ex, index) => {
-                    const typeLabels: Record<string, string> = {
-                      skipped_empty: 'Empty Sheet',
-                      skipped_no_structure: 'Invalid Structure',
-                      skipped_no_account_name: 'Missing Account Name',
-                      skipped_no_account_number: 'Missing Account Number',
-                      processing_error: 'Processing Error',
-                    };
+                     const typeLabels: Record<string, string> = {
+                       skipped_empty: 'Empty Sheet',
+                       skipped_no_structure: 'Invalid Structure',
+                       skipped_no_account_name: 'Missing Account Name',
+                       skipped_no_account_number: 'Missing Account Number',
+                       processing_error: 'Processing Error',
+                     };
                     const isError = ex.type === 'processing_error';
                     return (
                       <Alert key={index} className={isError ? '!border-red-300 dark:!border-red-700 !bg-red-50 dark:!bg-red-950/50' : '!border-orange-300 dark:!border-orange-700 !bg-orange-50 dark:!bg-orange-950/50'}>
@@ -934,7 +1021,20 @@ export default function DataImport() {
                     return (
                       <Alert key={index} variant="destructive" className={isDuplicate ? '!border-amber-300 dark:!border-amber-700 !bg-amber-50 dark:!bg-amber-950/50 !text-amber-900 dark:!text-amber-300' : isMissing ? '!border-orange-300 dark:!border-orange-700 !bg-orange-50 dark:!bg-orange-950/50 !text-orange-900 dark:!text-orange-300' : ''}>
                         <AlertDescription>
-                          <strong>Row {error.row}:</strong> {error.error}
+                           <strong>Row {error.row}:</strong>{' '}
+                           {error.category && (
+                             <Badge variant="outline" className="mr-1 text-xs">
+                               {failureCategoryLabels[error.category] || error.category}
+                             </Badge>
+                           )}
+                           {error.error}
+                           {error.data && (
+                             <div className="mt-1 text-xs opacity-80">
+                               {error.data.remitterAccount && <>Account: {error.data.remitterAccount} </>}
+                               {error.data.reference && <>• Reference: {error.data.reference} </>}
+                               {error.data.amount != null && <>• Amount: {error.data.amount}</>}
+                             </div>
+                           )}
                           {error.data?.matchedField && (
                             <span className="ml-1 text-xs font-medium px-1.5 py-0.5 rounded bg-amber-200/60 text-amber-800 dark:text-amber-300">
                               matched by: {error.data.matchedField === 'idNumber' ? 'ID Number' : error.data.matchedField === 'staffAccountNumber' ? 'Staff Account' : 'Bank Account'}

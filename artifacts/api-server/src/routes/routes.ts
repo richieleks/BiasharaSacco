@@ -31,6 +31,72 @@ interface ImportJob {
   completedAt: Date | null;
 }
 
+type ImportFailureCategory =
+  | 'invalid_row'
+  | 'transaction_rejected'
+  | 'duplicate_reference'
+  | 'unmatched_member'
+  | 'unmatched_loan'
+  | 'fully_paid_loan'
+  | 'missing_savings_account'
+  | 'processing_error'
+  | 'file_error';
+
+interface ImportFailure {
+  row: number;
+  category: ImportFailureCategory;
+  error: string;
+  data?: Record<string, unknown>;
+}
+
+const skippedImportFailureCategories = new Set<ImportFailureCategory>([
+  'transaction_rejected',
+  'duplicate_reference',
+  'unmatched_member',
+  'unmatched_loan',
+  'fully_paid_loan',
+]);
+
+function summarizeImportFailures(errors: ImportFailure[]) {
+  const failureBreakdown = errors.reduce<Record<string, number>>((counts, error) => {
+    counts[error.category] = (counts[error.category] || 0) + 1;
+    return counts;
+  }, {});
+
+  return {
+    failedRows: errors.filter(error => !skippedImportFailureCategories.has(error.category)).length,
+    skippedRows: errors.filter(error => skippedImportFailureCategories.has(error.category)).length,
+    failureBreakdown,
+  };
+}
+
+function createImportFailureResult(message: string): {
+  success: false;
+  totalRows: number;
+  successfulImports: number;
+  failedRows: number;
+  skippedRows: number;
+  totalAmount: number;
+  errors: ImportFailure[];
+  failureBreakdown: Record<string, number>;
+  importedMembers: number;
+  importedAccounts: number;
+} {
+  const errors: ImportFailure[] = [{ row: 0, category: 'file_error', error: message }];
+  return {
+    success: false,
+    totalRows: 0,
+    successfulImports: 0,
+    failedRows: 1,
+    skippedRows: 0,
+    totalAmount: 0,
+    errors,
+    failureBreakdown: { file_error: 1 },
+    importedMembers: 0,
+    importedAccounts: 0,
+  };
+}
+
 const importJobs = new Map<string, ImportJob>();
 
 function createImportJob(userId: string): ImportJob {
@@ -6807,9 +6873,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const lines = csvContent.split('\n').map(l => l.replace(/\r$/, '').trim()).filter(l => l.length > 0);
 
         if (lines.length < 3) {
+          const result = createImportFailureResult('CSV file has insufficient rows');
           job.status = 'error';
-          job.error = 'CSV file has insufficient rows';
+          job.error = result.errors[0].error;
           job.stage = 'Failed';
+          job.result = result;
           job.completedAt = new Date();
           return;
         }
@@ -6823,7 +6891,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingTxns = await storage.getRecentTransactions(10000);
         const existingRefs = new Set(existingTxns.filter((t: any) => t.referenceNumber).map((t: any) => t.referenceNumber));
         const userId = getUserId(req)!;
-        const errors: any[] = [];
+        const errors: ImportFailure[] = [];
         let successCount = 0;
         let totalAmount = 0;
         let skippedNoMember = 0;
@@ -6833,11 +6901,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (let i = 2; i < lines.length; i++) {
           try {
             const cols = lines[i].split(',').map(c => sanitize(c));
-            if (cols.length < 12) { errors.push({ row: i + 1, error: 'Insufficient columns' }); continue; }
+             if (cols.length < 12) {
+               errors.push({ row: i + 1, category: 'invalid_row', error: 'Insufficient columns' });
+               continue;
+             }
 
             const txStatus = cols[6].toLowerCase();
             if (txStatus && txStatus !== 'success') {
-              errors.push({ row: i + 1, error: `Transaction status: ${txStatus}`, data: { account: cols[10] } });
+               errors.push({
+                 row: i + 1,
+                 category: 'transaction_rejected',
+                 error: `Transaction status: ${txStatus}`,
+                 data: { remitterAccount: cols[10], reference: cols[7], amount: cols[9] },
+               });
               continue;
             }
 
@@ -6847,12 +6923,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const description = cols[11] || 'Loan Repayment';
 
             if (!remitterAccount || amount <= 0) {
-              errors.push({ row: i + 1, error: 'Missing account number or invalid amount' });
+               errors.push({
+                 row: i + 1,
+                 category: 'invalid_row',
+                 error: 'Missing account number or invalid amount',
+                 data: { remitterAccount, reference, amount: cols[9], description },
+               });
               continue;
             }
 
             if (reference && existingRefs.has(reference)) {
-              errors.push({ row: i + 1, error: `Duplicate reference: ${reference}`, data: { remitterAccount, amount } });
+               errors.push({
+                 row: i + 1,
+                 category: 'duplicate_reference',
+                 error: `Duplicate reference: ${reference}`,
+                 data: { remitterAccount, reference, amount, description },
+               });
               continue;
             }
 
@@ -6867,7 +6953,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (!member) {
               skippedNoMember++;
-              errors.push({ row: i + 1, error: `No member found for account: ${remitterAccount}`, data: { remitterAccount, amount } });
+               errors.push({
+                 row: i + 1,
+                 category: 'unmatched_member',
+                 error: `No member found for account: ${remitterAccount}`,
+                 data: { remitterAccount, reference, amount, description },
+               });
               continue;
             }
 
@@ -6878,7 +6969,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             );
             if (!matchingLoan) {
               skippedNoLoan++;
-              errors.push({ row: i + 1, error: `No active ${loanType.displayName} loan for member: ${member.fullName} (${member.memberNumber})`, data: { remitterAccount, amount } });
+               errors.push({
+                 row: i + 1,
+                 category: 'unmatched_loan',
+                 error: `No active ${loanType.displayName} loan for member: ${member.fullName} (${member.memberNumber})`,
+                 data: { remitterAccount, memberNumber: member.memberNumber, reference, amount, description },
+               });
               continue;
             }
 
@@ -6887,7 +6983,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const repaymentAmount = Math.min(amount, outstandingBalance);
 
             if (repaymentAmount <= 0) {
-              errors.push({ row: i + 1, error: `Loan already fully paid for ${member.fullName}`, data: { remitterAccount, amount } });
+               errors.push({
+                 row: i + 1,
+                 category: 'fully_paid_loan',
+                 error: `Loan already fully paid for ${member.fullName}`,
+                 data: { remitterAccount, memberNumber: member.memberNumber, reference, amount, description },
+               });
               continue;
             }
 
@@ -6943,7 +7044,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             successCount++;
             totalAmount += repaymentAmount;
           } catch (rowError: any) {
-            errors.push({ row: i + 1, error: rowError.message || 'Unknown error' });
+             errors.push({
+               row: i + 1,
+               category: 'processing_error',
+               error: rowError.message || 'Unknown error',
+             });
           }
           job.progress = Math.min(95, Math.round(((i - 1) / totalRows) * 95));
           job.stage = `Processing row ${i - 1} of ${totalRows}...`;
@@ -6961,14 +7066,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         job.status = 'complete';
         job.progress = 100;
         job.stage = 'Complete!';
+        const failureSummary = summarizeImportFailures(errors);
         job.result = {
-          success: true,
+          success: errors.length === 0,
           totalRows,
           successfulImports: successCount,
           totalAmount,
           skippedNoMember,
           importedMembers: 0,
           importedAccounts: 0,
+          skippedNoLoan,
+          skippedDuplicates: errors.filter(error => error.category === 'duplicate_reference').length,
+          ...failureSummary,
           errors,
         };
         job.completedAt = new Date();
@@ -7008,9 +7117,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const lines = csvContent.split('\n').map(l => l.replace(/\r$/, '').trim()).filter(l => l.length > 0);
 
         if (lines.length < 3) {
+          const result = createImportFailureResult('CSV file has insufficient rows');
           job.status = 'error';
-          job.error = 'CSV file has insufficient rows';
+          job.error = result.errors[0].error;
           job.stage = 'Failed';
+          job.result = result;
           job.completedAt = new Date();
           return;
         }
@@ -7024,7 +7135,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const existingTxns = await storage.getRecentTransactions(10000);
         const existingRefs = new Set(existingTxns.filter((t: any) => t.referenceNumber).map((t: any) => t.referenceNumber));
         const userId = getUserId(req)!;
-        const errors: any[] = [];
+        const errors: ImportFailure[] = [];
         let successCount = 0;
         let totalAmount = 0;
         let skippedNoMember = 0;
@@ -7033,11 +7144,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (let i = 2; i < lines.length; i++) {
           try {
             const cols = lines[i].split(',').map(c => sanitize(c));
-            if (cols.length < 12) { errors.push({ row: i + 1, error: 'Insufficient columns' }); continue; }
+             if (cols.length < 12) {
+               errors.push({ row: i + 1, category: 'invalid_row', error: 'Insufficient columns' });
+               continue;
+             }
 
             const txStatus = cols[6].toLowerCase();
             if (txStatus && txStatus !== 'success') {
-              errors.push({ row: i + 1, error: `Transaction status: ${txStatus}`, data: { account: cols[10] } });
+               errors.push({
+                 row: i + 1,
+                 category: 'transaction_rejected',
+                 error: `Transaction status: ${txStatus}`,
+                 data: { remitterAccount: cols[10], reference: cols[7], amount: cols[9] },
+               });
               continue;
             }
 
@@ -7047,12 +7166,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const description = cols[11] || 'Savings Deposit';
 
             if (!remitterAccount || amount <= 0) {
-              errors.push({ row: i + 1, error: 'Missing account number or invalid amount' });
+               errors.push({
+                 row: i + 1,
+                 category: 'invalid_row',
+                 error: 'Missing account number or invalid amount',
+                 data: { remitterAccount, reference, amount: cols[9], description },
+               });
               continue;
             }
 
             if (reference && existingRefs.has(reference)) {
-              errors.push({ row: i + 1, error: `Duplicate reference: ${reference}`, data: { remitterAccount, amount } });
+               errors.push({
+                 row: i + 1,
+                 category: 'duplicate_reference',
+                 error: `Duplicate reference: ${reference}`,
+                 data: { remitterAccount, reference, amount, description },
+               });
               continue;
             }
 
@@ -7067,7 +7196,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             if (!member) {
               skippedNoMember++;
-              errors.push({ row: i + 1, error: `No member found for account: ${remitterAccount}`, data: { remitterAccount, amount } });
+               errors.push({
+                 row: i + 1,
+                 category: 'unmatched_member',
+                 error: `No member found for account: ${remitterAccount}`,
+                 data: { remitterAccount, reference, amount, description },
+               });
               continue;
             }
 
@@ -7075,7 +7209,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             let savingsAccount = savingsAccounts.find((s: any) => s.accountType === 'regular') || savingsAccounts[0];
 
             if (!savingsAccount) {
-              errors.push({ row: i + 1, error: `No savings account for member: ${member.fullName} (${member.memberNumber})`, data: { remitterAccount, amount } });
+               errors.push({
+                 row: i + 1,
+                 category: 'missing_savings_account',
+                 error: `No savings account for member: ${member.fullName} (${member.memberNumber})`,
+                 data: { remitterAccount, memberNumber: member.memberNumber, reference, amount, description },
+               });
               continue;
             }
 
@@ -7114,7 +7253,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             successCount++;
             totalAmount += amount;
           } catch (rowError: any) {
-            errors.push({ row: i + 1, error: rowError.message || 'Unknown error' });
+             errors.push({
+               row: i + 1,
+               category: 'processing_error',
+               error: rowError.message || 'Unknown error',
+             });
           }
           job.progress = Math.min(95, Math.round(((i - 1) / totalRows) * 95));
           job.stage = `Processing row ${i - 1} of ${totalRows}...`;
@@ -7132,14 +7275,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         job.status = 'complete';
         job.progress = 100;
         job.stage = 'Complete!';
+        const failureSummary = summarizeImportFailures(errors);
         job.result = {
-          success: true,
+          success: errors.length === 0,
           totalRows,
           successfulImports: successCount,
           totalAmount,
           skippedNoMember,
           importedMembers: 0,
           importedAccounts: 0,
+          skippedDuplicates: errors.filter(error => error.category === 'duplicate_reference').length,
+          ...failureSummary,
           errors,
         };
         job.completedAt = new Date();
