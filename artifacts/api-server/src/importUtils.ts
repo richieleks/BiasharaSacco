@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { hashPassword } from './localAuth';
 import ExcelJS from 'exceljs';
 import { classifyLoanTransaction, looksLikeInstallment } from './loanImportClassification';
+import { InterestCalculator } from './interest-calculator';
 
 function worksheetToAoa(worksheet: ExcelJS.Worksheet): any[][] {
   const result: any[][] = [];
@@ -1490,16 +1491,47 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           const termMonths = group.category === 'special' && specialLoanType?.maxTerm
             ? specialLoanType.maxTerm
             : (headerTermMonths || tenure || 12);
-          const monthlyPayment = (group.category === 'ordinary' && headerMonthlyRepayment > 0)
+          const configuredLoanType = group.category === 'special' ? specialLoanType : normalLoanType;
+          const configuredRate = configuredLoanType ? Number(configuredLoanType.interestRate) : 0;
+          const normalizedHeaderRate = interestRateValue > 0 && interestRateValue <= 1
+            ? interestRateValue * 100
+            : interestRateValue;
+          const annualInterestRate = normalizedHeaderRate > 0 ? normalizedHeaderRate : configuredRate;
+          const importedMonthlyPayment = (group.category === 'ordinary' && headerMonthlyRepayment > 0)
             ? headerMonthlyRepayment
             : group.lastInstallmentAmount;
+          let calculatedMonthlyPayment = principalAmount / termMonths;
+          if (configuredLoanType?.interestType === 'simple') {
+            calculatedMonthlyPayment = InterestCalculator.calculateSimpleInterest(
+              principalAmount,
+              annualInterestRate,
+              termMonths / 12
+            ).monthlyPayment;
+          } else if (configuredLoanType?.interestType === 'compound') {
+            const frequencies: Record<string, number> = { monthly: 12, quarterly: 4, annually: 1 };
+            calculatedMonthlyPayment = InterestCalculator.calculateCompoundInterest(
+              principalAmount,
+              annualInterestRate,
+              termMonths / 12,
+              frequencies[configuredLoanType.compoundingFrequency || 'monthly'] || 12
+            ).monthlyPayment;
+          } else {
+            calculatedMonthlyPayment = InterestCalculator.calculateReducingBalancePayment(
+              principalAmount,
+              annualInterestRate,
+              termMonths
+            );
+          }
+          const monthlyPayment = importedMonthlyPayment > 0
+            ? importedMonthlyPayment
+            : Math.round(calculatedMonthlyPayment * 100) / 100;
 
           const loanData = {
             memberId: member.id,
             loanNumber: `LOAN${String(Date.now()).slice(-6)}${group.category === 'special' ? 'S' + (specialGroups.indexOf(group) + 1) : ''}`,
             loanType: group.loanType,
             principalAmount: principalAmount.toString(),
-            interestRate: interestRateValue.toString(),
+            interestRate: annualInterestRate.toString(),
             termMonths: termMonths,
             monthlyPayment: monthlyPayment.toString(),
             outstandingBalance: outstandingBalance.toString(),
@@ -1590,6 +1622,12 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               }
             }
             console.log(`Sheet "${sheetName}": Imported ${transactionEntries.length} ${group.category} loan transactions`);
+          }
+
+          if (outstandingBalance > 0) {
+            await storage.generateLoanAmortization(createdLoan.id);
+            await storage.updateLoan(createdLoan.id, { repaymentScheduleAttached: true });
+            console.log(`Sheet "${sheetName}": Generated ${termMonths}-payment schedule for active ${group.category} loan ${loanData.loanNumber}`);
           }
         }
 

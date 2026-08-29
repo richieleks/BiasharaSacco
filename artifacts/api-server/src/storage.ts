@@ -120,6 +120,7 @@ export interface IStorage {
   getLoan(id: number): Promise<LoanWithDetails | undefined>;
   getLoanByUuid(uuid: string): Promise<LoanWithDetails | undefined>;
   getLoansByMember(memberId: number): Promise<LoanWithDetails[]>;
+  updateLoan(id: number, updates: Partial<InsertLoan>): Promise<Loan>;
   updateLoanStatus(id: number, status: string): Promise<Loan>;
   updateLoanBalance(id: number, amount: string): Promise<Loan>;
   getAllPendingLoans(): Promise<LoanWithDetails[]>;
@@ -859,6 +860,15 @@ export class DatabaseStorage implements IStorage {
         user: result.users || undefined,
       } : undefined,
     }));
+  }
+
+  async updateLoan(id: number, updates: Partial<InsertLoan>): Promise<Loan> {
+    const [loan] = await db
+      .update(loans)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(loans.id, id))
+      .returning();
+    return loan;
   }
 
   async getMemberPendingLoans(memberId: number): Promise<LoanWithDetails[]> {
@@ -2456,34 +2466,55 @@ export class DatabaseStorage implements IStorage {
 
     const loanType = loan.loanType ?? 'normal_loan';
     const interestRate = await this.getInterestRateByProduct(loanType);
-    const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loanType, Number(loan.principalAmount));
-
-    const result = InterestCalculator.calculateReducingBalancePayment(
-      Number(loan.principalAmount),
-      rate,
-      loan.termMonths
-    );
+    const activeLoanTypes = await this.getActiveLoanTypes();
+    const loanTypeConfig = activeLoanTypes.find(lt => lt.name === loanType);
+    const rate = interestRate
+      ? Number(interestRate.baseRate)
+      : loanTypeConfig
+        ? Number(loanTypeConfig.interestRate)
+        : InterestCalculator.getRecommendedRate(loanType, Number(loan.principalAmount));
+    const interestType = (loanTypeConfig?.interestType as 'simple' | 'compound' | 'reducing_balance') || 'reducing_balance';
+    const principal = Number(loan.principalAmount);
+    const termYears = loan.termMonths / 12;
+    const compoundFrequencies: Record<string, number> = { monthly: 12, quarterly: 4, annually: 1 };
+    const calculation = interestType === 'simple'
+      ? InterestCalculator.calculateSimpleInterest(principal, rate, termYears)
+      : interestType === 'compound'
+        ? InterestCalculator.calculateCompoundInterest(
+            principal,
+            rate,
+            termYears,
+            compoundFrequencies[loanTypeConfig?.compoundingFrequency || 'monthly'] || 12
+          )
+        : (() => {
+            const monthlyPayment = InterestCalculator.calculateReducingBalancePayment(principal, rate, loan.termMonths);
+            return {
+              totalInterest: monthlyPayment * loan.termMonths - principal,
+              monthlyPayment,
+              totalAmount: monthlyPayment * loan.termMonths,
+              effectiveRate: rate
+            };
+          })();
 
     // Save calculation record
     await this.createInterestCalculation(
       InterestCalculator.createCalculationRecord(
         loanId,
-        'reducing_balance',
-        Number(loan.principalAmount),
+        interestType,
+        principal,
         rate,
-        loan.termMonths / 12,
-        result,
-        'PMT = P * [r(1+r)^n] / [(1+r)^n - 1]',
+        termYears,
+        calculation.totalInterest,
+        interestType === 'simple'
+          ? 'I = P * R * T'
+          : interestType === 'compound'
+            ? 'A = P(1 + r/n)^(nt)'
+            : 'PMT = P * [r(1+r)^n] / [(1+r)^n - 1]',
         `Calculated for ${loanType} loan`
       )
     );
 
-    return {
-      totalInterest: result * loan.termMonths - Number(loan.principalAmount),
-      monthlyPayment: result,
-      totalAmount: result * loan.termMonths,
-      effectiveRate: rate
-    };
+    return calculation;
   }
 
   // Advanced loan calculations
@@ -2495,10 +2526,13 @@ export class DatabaseStorage implements IStorage {
 
     const loanTypeName = loan.loanType ?? 'normal_loan';
     const interestRate = await this.getInterestRateByProduct(loanTypeName);
-    const rate = interestRate ? Number(interestRate.baseRate) : InterestCalculator.getRecommendedRate(loanTypeName, Number(loan.principalAmount));
-
     const activeLoanTypes = await this.getActiveLoanTypes();
     const loanTypeConfig = activeLoanTypes.find(lt => lt.name === loanTypeName);
+    const rate = interestRate
+      ? Number(interestRate.baseRate)
+      : loanTypeConfig
+        ? Number(loanTypeConfig.interestRate)
+        : InterestCalculator.getRecommendedRate(loanTypeName, Number(loan.principalAmount));
     const interestType = (loanTypeConfig?.interestType as 'simple' | 'compound' | 'reducing_balance') || 'reducing_balance';
     const compoundingFrequency = loanTypeConfig?.compoundingFrequency || 'monthly';
 
@@ -2529,10 +2563,12 @@ export class DatabaseStorage implements IStorage {
     await db.delete(amortizationSchedules).where(eq(amortizationSchedules.loanId, loanId));
 
     const loanTypeName = loan.loanType ?? 'normal_loan';
-    const rate = newRate || InterestCalculator.getRecommendedRate(loanTypeName, Number(loan.principalAmount));
-
     const activeLoanTypes = await this.getActiveLoanTypes();
     const loanTypeConfig = activeLoanTypes.find(lt => lt.name === loanTypeName);
+    const rate = newRate
+      ?? (loanTypeConfig
+        ? Number(loanTypeConfig.interestRate)
+        : InterestCalculator.getRecommendedRate(loanTypeName, Number(loan.principalAmount)));
     const interestType = (loanTypeConfig?.interestType as 'simple' | 'compound' | 'reducing_balance') || 'reducing_balance';
     const compoundingFrequency = loanTypeConfig?.compoundingFrequency || 'monthly';
 
