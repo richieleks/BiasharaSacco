@@ -1,3 +1,4 @@
 - [Savings statement transaction direction](savings-statement-classification.md) — all 8 transactionType enums must map to Money In/Out in both UI classifier and backend totals SQL.
 - [Financial statements re-sourcing](financial-statements-resourcing.md) — TB/BalanceSheet/IncomeStmt derive from operational ledgers, not the drifted journal layer; cash is the balancing plug.
 - [Loan import category fallback](loan-import-category-fallback.md) — an empty loan-product configuration must not collapse recognized special loans into the ordinary fallback.
+- [Bank import CSV parsing](bank-import-csv-parsing.md) — reject malformed syntax at file level while preserving row-level reports for variable column counts.

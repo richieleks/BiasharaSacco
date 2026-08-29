@@ -14,6 +14,7 @@ import { z } from 'zod';
 import { db } from "../db";
 import { eq, and, inArray, sql, lt, isNull, isNotNull, or, not } from "drizzle-orm";
 import ExcelJS from "exceljs";
+import { parseBankImportCsv } from "../csvUtils";
 
 interface ImportJob {
   id: string;
@@ -6868,9 +6869,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         job.progress = 5;
 
         const fs = await import('fs');
-        let csvContent = await fs.promises.readFile(filePath, 'utf-8');
-        csvContent = csvContent.replace(/^\uFEFF/, '');
-        const lines = csvContent.split('\n').map(l => l.replace(/\r$/, '').trim()).filter(l => l.length > 0);
+        const csvContent = await fs.promises.readFile(filePath, 'utf-8');
+        let lines: string[][];
+        try {
+          lines = parseBankImportCsv(csvContent);
+        } catch (parseError) {
+          const message = parseError instanceof Error ? parseError.message : 'Invalid CSV syntax';
+          const result = createImportFailureResult(`CSV parsing failed: ${message}`);
+          job.status = 'error';
+          job.error = result.errors[0].error;
+          job.stage = 'Failed';
+          job.result = result;
+          job.completedAt = new Date();
+          return;
+        }
 
         if (lines.length < 3) {
           const result = createImportFailureResult('CSV file has insufficient rows');
@@ -6900,7 +6912,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         for (let i = 2; i < lines.length; i++) {
           try {
-            const cols = lines[i].split(',').map(c => sanitize(c));
+            const cols = lines[i].map(c => sanitize(c));
              if (cols.length < 12) {
                errors.push({ row: i + 1, category: 'invalid_row', error: 'Insufficient columns' });
                continue;
@@ -7112,9 +7124,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         job.progress = 5;
 
         const fs = await import('fs');
-        let csvContent = await fs.promises.readFile(filePath, 'utf-8');
-        csvContent = csvContent.replace(/^\uFEFF/, '');
-        const lines = csvContent.split('\n').map(l => l.replace(/\r$/, '').trim()).filter(l => l.length > 0);
+        const csvContent = await fs.promises.readFile(filePath, 'utf-8');
+        let lines: string[][];
+        try {
+          lines = parseBankImportCsv(csvContent);
+        } catch (parseError) {
+          const message = parseError instanceof Error ? parseError.message : 'Invalid CSV syntax';
+          const result = createImportFailureResult(`CSV parsing failed: ${message}`);
+          job.status = 'error';
+          job.error = result.errors[0].error;
+          job.stage = 'Failed';
+          job.result = result;
+          job.completedAt = new Date();
+          return;
+        }
 
         if (lines.length < 3) {
           const result = createImportFailureResult('CSV file has insufficient rows');
@@ -7143,7 +7166,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         for (let i = 2; i < lines.length; i++) {
           try {
-            const cols = lines[i].split(',').map(c => sanitize(c));
+            const cols = lines[i].map(c => sanitize(c));
              if (cols.length < 12) {
                errors.push({ row: i + 1, category: 'invalid_row', error: 'Insufficient columns' });
                continue;
