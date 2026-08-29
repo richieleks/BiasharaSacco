@@ -1340,7 +1340,11 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
           fullyPaidByThirdInstallment: false,
         };
 
-        const specialLoanTypeName = specialLoanType ? specialLoanType.name : fallbackLoanTypeName;
+        // Never collapse a recognized special loan into the ordinary fallback.
+        // Some imported databases have no loan_types rows yet; loans.loanType is
+        // intentionally a varchar, so the stable category name remains valid
+        // until an administrator configures a matching product.
+        const specialLoanTypeName = specialLoanType ? specialLoanType.name : 'special_loan';
         const specialGroups: LoanGroup[] = [];
         let currentSpecialGroup: LoanGroup | null = null;
 
