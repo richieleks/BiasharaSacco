@@ -10,7 +10,7 @@ export default function MetricsGrid() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 mb-8">
         {Array.from({ length: 5 }).map((_, i) => (
           <div key={i} className="metric-card animate-pulse">
             <div className="flex items-center justify-between">
@@ -106,7 +106,7 @@ export default function MetricsGrid() {
   ];
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 mb-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 lg:gap-5 mb-8">
       {metricCards.map((metric, index) => {
         const changeVal = parseFloat(metric.change || '0');
         return (
@@ -115,11 +115,7 @@ export default function MetricsGrid() {
             <div className="flex items-start justify-between">
               <div className="space-y-1 min-w-0 flex-1">
                 <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wide">{metric.title}</p>
-                <p className={`font-bold text-slate-900 dark:text-slate-100 tracking-tight break-all leading-tight ${
-                  metric.value.length > 15 ? 'text-sm sm:text-base lg:text-lg' :
-                  metric.value.length > 10 ? 'text-base sm:text-lg lg:text-xl' :
-                  'text-lg sm:text-2xl'
-                }`}>{metric.value}</p>
+                <p className="font-bold text-slate-900 dark:text-slate-100 tracking-tight whitespace-nowrap tabular-nums leading-tight text-[clamp(1.125rem,1.6vw,1.5rem)]">{metric.value}</p>
               </div>
               <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center ${metric.iconBg} transition-transform group-hover:scale-105 shrink-0 ml-2`}>
                 <metric.icon className="h-4 w-4 sm:h-5 sm:w-5" />
