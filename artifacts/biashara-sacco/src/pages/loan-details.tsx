@@ -166,12 +166,17 @@ export default function LoanDetails() {
   const totalRepayable = monthlyPayment * termMonths;
   const outstandingBalance = parseFloat(loan?.outstandingBalance || '0');
 
-  const loanTypeConfigForProgress = loanTypes?.find((lt: any) => lt.name === loan?.loanType);
-  const interestMethodForProgress = loanTypeConfigForProgress?.interestType || loanTypeConfigForProgress?.interest_type || 'reducing_balance';
-  const isFixedInterest = interestMethodForProgress === 'simple' || interestMethodForProgress === 'compound';
-  const progressTotal = isFixedInterest ? totalRepayable : principal;
-  const amountPaid = progressTotal - outstandingBalance;
-  const progressPercent = progressTotal > 0 ? Math.min((amountPaid / progressTotal) * 100, 100) : 0;
+  const progressTotal = totalRepayable;
+  const amountPaid = useMemo(() => {
+    return (transactions || []).reduce((total: number, txn: any) => {
+      if (!['loan_payment', 'loan_repayment'].includes(txn.transactionType)) return total;
+      const amount = Number(txn.amount || 0);
+      return Number.isFinite(amount) ? total + Math.abs(amount) : total;
+    }, 0);
+  }, [transactions]);
+  const progressPercent = progressTotal > 0
+    ? Math.min(Math.max((amountPaid / progressTotal) * 100, 0), 100)
+    : 0;
 
   const loanTypeConfig = useMemo(() => {
     if (!loan || !loanTypes.length) return null;
@@ -197,7 +202,7 @@ export default function LoanDetails() {
     }> = [];
 
     if (interestMethod === 'simple') {
-      const totalInterest = principal * interestRate * (termMonths / 12);
+      const totalInterest = principal * (interestRate / 100) * (termMonths / 12);
       const monthlyInterest = totalInterest / termMonths;
       const monthlyPrincipal = principal / termMonths;
       let balance = principal;
@@ -223,7 +228,7 @@ export default function LoanDetails() {
       if (compFreq === 'quarterly') n = 4;
       if (compFreq === 'annually') n = 1;
       const timeInYears = termMonths / 12;
-      const totalAmount = principal * Math.pow(1 + interestRate / n, n * timeInYears);
+      const totalAmount = principal * Math.pow(1 + (interestRate / 100) / n, n * timeInYears);
       const totalInterest = totalAmount - principal;
       const monthlyInterest = totalInterest / termMonths;
       const monthlyPrincipal = principal / termMonths;
@@ -245,7 +250,7 @@ export default function LoanDetails() {
         });
       }
     } else {
-      const monthlyRate = interestRate / 12;
+      const monthlyRate = (interestRate / 100) / 12;
       let balance = principal;
 
       for (let i = 1; i <= termMonths; i++) {
@@ -351,7 +356,7 @@ export default function LoanDetails() {
             interestPortion = scheduleEntry.interestPortion;
             repaymentIdx++;
           } else if (interestRate > 0 && termMonths > 0) {
-            const monthlyRate = interestRate / 12;
+            const monthlyRate = (interestRate / 100) / 12;
             interestPortion = runningBalance * monthlyRate;
             principalPortion = amount - interestPortion;
             if (principalPortion < 0) {
@@ -599,7 +604,7 @@ export default function LoanDetails() {
               <div>
                 <Label>New Interest Rate (%)</Label>
                 <Input type="number" step="0.01" min="0" placeholder="e.g. 12" value={restructureRate} onChange={(e) => setRestructureRate(e.target.value)} />
-                <p className="text-xs text-slate-400 mt-1">Current: {(parseFloat(loan.interestRate || '0') * 100).toFixed(1)}%</p>
+            <p className="text-xs text-slate-400 mt-1">Current: {parseFloat(loan.interestRate || '0').toFixed(1)}%</p>
               </div>
               <div>
                 <Label>New Term (months)</Label>
@@ -659,7 +664,7 @@ export default function LoanDetails() {
           </div>
           <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mt-2">
             <span>Paid: {formatCurrency(amountPaid)}</span>
-            <span>{isFixedInterest ? 'Total Repayable' : 'Principal'}: {formatCurrency(progressTotal)}</span>
+            <span>Total Repayable: {formatCurrency(progressTotal)}</span>
           </div>
         </div>
       )}
@@ -773,7 +778,7 @@ export default function LoanDetails() {
                   <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <Percent className="h-3.5 w-3.5" /> Interest Rate
                   </span>
-                  <span className="text-sm text-slate-900 dark:text-slate-100">{(parseFloat(loan.interestRate) * 100).toFixed(1)}% per annum</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{parseFloat(loan.interestRate).toFixed(1)}% per annum</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
@@ -937,7 +942,7 @@ export default function LoanDetails() {
                         Repayment Schedule
                       </CardTitle>
                       <CardDescription className="text-xs mt-1">
-                        Detailed breakdown of {termMonths} monthly payments at {(interestRate * 100).toFixed(1)}% per annum ({interestMethod.replace(/_/g, ' ')})
+                        Detailed breakdown of {termMonths} monthly payments at {interestRate.toFixed(1)}% per annum ({interestMethod.replace(/_/g, ' ')})
                       </CardDescription>
                     </div>
                     <Button
