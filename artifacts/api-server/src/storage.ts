@@ -79,6 +79,18 @@ import {
 import InterestCalculator, { type InterestCalculationResult } from "./interest-calculator";
 import { db } from "./db";
 import { eq, ne, desc, sql, like, ilike, or, and, gte, lte, count, getTableColumns, inArray, isNull } from "drizzle-orm";
+import {
+  rebuildLedgerBalances,
+  type LedgerRebuildResult,
+  type SaccoAccountType,
+} from "./sacco-ledger";
+
+export interface SaccoBalanceRecalculationResult extends LedgerRebuildResult {
+  message: string;
+  rebuiltAt: string;
+}
+
+const SACCO_LEDGER_ADVISORY_LOCK_ID = 741_290_031;
 
 // Interface for storage operations
 export interface IStorage {
@@ -334,7 +346,13 @@ export interface IStorage {
   getSaccoJournalEntries(filters?: { page?: number; limit?: number; accountId?: number; startDate?: string; endDate?: string }): Promise<{ data: any[]; total: number }>;
   getSaccoJournalEntry(id: number): Promise<any>;
   createSaccoJournalEntry(data: InsertSaccoJournalEntry): Promise<SaccoJournalEntry>;
+  createSaccoJournalEntryInTransaction(executor: any, data: InsertSaccoJournalEntry, recalculate?: boolean): Promise<SaccoJournalEntry>;
+  createMappedSaccoJournalEntryInTransaction(executor: any, mappingKey: string, data: Omit<InsertSaccoJournalEntry, 'debitAccountId' | 'creditAccountId'>, recalculate?: boolean): Promise<SaccoJournalEntry>;
+  runSaccoLedgerTransaction<T>(work: (executor: any) => Promise<T>): Promise<T>;
   reverseSaccoJournalEntry(id: number, userId: string): Promise<SaccoJournalEntry>;
+  reverseSaccoJournalEntryInTransaction(executor: any, id: number, userId: string): Promise<SaccoJournalEntry>;
+  recalculateSaccoAccountBalances(): Promise<SaccoBalanceRecalculationResult>;
+  recalculateSaccoAccountBalancesInTransaction(executor: any): Promise<SaccoBalanceRecalculationResult>;
   getSaccoAccountStatement(accountId: number, startDate?: string, endDate?: string): Promise<any[]>;
   getSaccoAccountsSummary(): Promise<any>;
   seedDefaultSaccoAccounts(): Promise<void>;
@@ -3244,42 +3262,62 @@ export class DatabaseStorage implements IStorage {
   }
 
   async processInterestPayment(id: number, processedBy: string): Promise<InterestPayment> {
-    const [payment] = await db
-      .update(interestPayments)
-      .set({ 
+    return this.runSaccoLedgerTransaction(async (tx) => {
+      const [payment] = await tx.select().from(interestPayments)
+        .where(eq(interestPayments.id, id))
+        .for('update');
+      if (!payment) throw new Error('Interest payment not found');
+      if (payment.status === 'completed') throw new Error('Interest payment is already completed');
+
+      const reference = payment.transactionReference || `INT-${Date.now()}`;
+      if (payment.paymentMethod === 'credit_to_account') {
+        if (!payment.savingsAccountId) throw new Error('Interest payment has no savings account');
+        const [account] = await tx.select().from(savingsAccounts)
+          .where(eq(savingsAccounts.id, payment.savingsAccountId))
+          .for('update');
+        if (!account) throw new Error('Savings account not found');
+        await tx.update(savingsAccounts).set({
+          balance: sql`${savingsAccounts.balance}::numeric + ${payment.paymentAmount}::numeric`,
+          updatedAt: new Date(),
+        }).where(eq(savingsAccounts.id, payment.savingsAccountId));
+        await tx.update(members).set({
+          totalSavings: sql`(SELECT COALESCE(SUM(balance::numeric), 0) FROM savings_accounts WHERE member_id = ${payment.memberId})`,
+        }).where(eq(members.id, payment.memberId));
+        await tx.insert(transactions).values({
+          memberId: payment.memberId,
+          savingsAccountId: payment.savingsAccountId,
+          transactionType: 'interest_credit',
+          amount: payment.paymentAmount,
+          description: 'Interest payment for Financial Year',
+          referenceNumber: reference,
+          status: 'completed',
+          processedBy,
+          transactionDate: new Date(),
+        });
+      }
+
+      await this.createMappedSaccoJournalEntryInTransaction(
+        tx,
+        payment.paymentMethod === 'credit_to_account' ? 'savings_interest_credit' : 'savings_interest_cash_payment',
+        {
+          entryNumber: `JE-${Date.now()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`,
+          entryDate: new Date().toISOString().split('T')[0],
+          description: `Savings interest payment - member ${payment.memberId}`,
+          reference,
+          amount: payment.paymentAmount,
+          createdBy: processedBy,
+          status: 'posted',
+        },
+      );
+
+      const [completed] = await tx.update(interestPayments).set({
         status: 'completed',
         processedBy,
-        updatedAt: new Date()
-      })
-      .where(eq(interestPayments.id, id))
-      .returning();
-
-    // Credit the amount to the member's savings account
-    if (payment.paymentMethod === 'credit_to_account') {
-      await db
-        .update(savingsAccounts)
-        .set({
-          balance: sql`${savingsAccounts.balance} + ${payment.paymentAmount}`,
-          updatedAt: new Date()
-        })
-        .where(eq(savingsAccounts.id, payment.savingsAccountId));
-      this.syncMemberTotalSavings(payment.memberId);
-
-      // Create a transaction record
-      await this.createTransaction({
-        memberId: payment.memberId,
-        savingsAccountId: payment.savingsAccountId,
-        transactionType: 'interest_credit',
-        amount: payment.paymentAmount,
-        description: `Interest payment for Financial Year`,
-        referenceNumber: payment.transactionReference || `INT-${Date.now()}`,
-        status: 'completed',
-        processedBy,
-        transactionDate: new Date(),
-      });
-    }
-
-    return payment;
+        transactionReference: reference,
+        updatedAt: new Date(),
+      }).where(eq(interestPayments.id, id)).returning();
+      return completed;
+    });
   }
 
   async generateInterestReport(financialYearId: number): Promise<any> {
@@ -3436,6 +3474,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateSaccoAccount(id: number, data: Partial<InsertSaccoAccount>): Promise<SaccoAccount> {
+    if (Object.prototype.hasOwnProperty.call(data, 'balance')) {
+      throw new Error("Account balances can only be changed by posted journal entries");
+    }
     const [account] = await db.update(saccoAccounts)
       .set({ ...data, updatedAt: new Date() })
       .where(eq(saccoAccounts.id, id))
@@ -3448,8 +3489,7 @@ export class DatabaseStorage implements IStorage {
     const limit = filters?.limit || 25;
     const offset = (page - 1) * limit;
 
-    const conditions = [];
-    conditions.push(eq(saccoJournalEntries.status, 'posted'));
+    const conditions = [inArray(saccoJournalEntries.status, ['posted', 'reversed'])];
     if (filters?.accountId) {
       conditions.push(or(
         eq(saccoJournalEntries.debitAccountId, filters.accountId),
@@ -3515,82 +3555,145 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createSaccoJournalEntry(data: InsertSaccoJournalEntry): Promise<SaccoJournalEntry> {
-    return await db.transaction(async (tx) => {
-      const [debitAccount] = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.id, data.debitAccountId));
-      const [creditAccount] = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.id, data.creditAccountId));
-      if (!debitAccount || !creditAccount) throw new Error("Invalid account IDs");
+    return db.transaction(async (tx) => this.createSaccoJournalEntryInTransaction(tx, data));
+  }
 
-      const amount = parseFloat(data.amount);
-      if (isNaN(amount) || amount <= 0) throw new Error("Amount must be a positive number");
-      if (data.debitAccountId === data.creditAccountId) throw new Error("Debit and credit accounts must be different");
-
-      const debitDelta = ['asset', 'expense'].includes(debitAccount.accountType) ? amount : -amount;
-      const creditDelta = ['liability', 'equity', 'revenue'].includes(creditAccount.accountType) ? amount : -amount;
-
-      await tx.update(saccoAccounts)
-        .set({ balance: sql`(${saccoAccounts.balance}::numeric + ${debitDelta})::decimal(15,2)`, updatedAt: new Date() })
-        .where(eq(saccoAccounts.id, data.debitAccountId));
-
-      await tx.update(saccoAccounts)
-        .set({ balance: sql`(${saccoAccounts.balance}::numeric + ${creditDelta})::decimal(15,2)`, updatedAt: new Date() })
-        .where(eq(saccoAccounts.id, data.creditAccountId));
-
-      const [entry] = await tx.insert(saccoJournalEntries).values(data).returning();
-      return entry;
+  async runSaccoLedgerTransaction<T>(work: (executor: any) => Promise<T>): Promise<T> {
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${SACCO_LEDGER_ADVISORY_LOCK_ID})`);
+      return work(tx);
     });
   }
 
+  async createMappedSaccoJournalEntryInTransaction(
+    executor: any,
+    mappingKey: string,
+    data: Omit<InsertSaccoJournalEntry, 'debitAccountId' | 'creditAccountId'>,
+    recalculate = true,
+  ): Promise<SaccoJournalEntry> {
+    const [mapping] = await executor.select().from(saccoAccountMappings)
+      .where(eq(saccoAccountMappings.mappingKey, mappingKey));
+    if (!mapping) throw new Error(`No journal account mapping configured for ${mappingKey}`);
+    if (!mapping.debitAccountId || !mapping.creditAccountId) {
+      throw new Error(`Journal account mapping ${mappingKey} is missing a debit or credit account`);
+    }
+    return this.createSaccoJournalEntryInTransaction(executor, {
+      ...data,
+      debitAccountId: mapping.debitAccountId,
+      creditAccountId: mapping.creditAccountId,
+    }, recalculate);
+  }
+
+  async createSaccoJournalEntryInTransaction(
+    executor: any,
+    data: InsertSaccoJournalEntry,
+    recalculate = true,
+  ): Promise<SaccoJournalEntry> {
+    await executor.execute(sql`SELECT pg_advisory_xact_lock(${SACCO_LEDGER_ADVISORY_LOCK_ID})`);
+    const [debitAccount] = await executor.select().from(saccoAccounts).where(eq(saccoAccounts.id, data.debitAccountId));
+    const [creditAccount] = await executor.select().from(saccoAccounts).where(eq(saccoAccounts.id, data.creditAccountId));
+    if (!debitAccount || !creditAccount) throw new Error("Invalid account IDs");
+
+    const amount = parseFloat(data.amount);
+    if (isNaN(amount) || amount <= 0) throw new Error("Amount must be a positive number");
+    if (data.debitAccountId === data.creditAccountId) throw new Error("Debit and credit accounts must be different");
+
+    const [entry] = await executor.insert(saccoJournalEntries).values(data).returning();
+    if (recalculate) {
+      await this.recalculateSaccoAccountBalancesWithExecutor(executor);
+    }
+    return entry;
+  }
+
   async reverseSaccoJournalEntry(id: number, userId: string): Promise<SaccoJournalEntry> {
-    return await db.transaction(async (tx) => {
-      const [original] = await tx.select().from(saccoJournalEntries).where(eq(saccoJournalEntries.id, id));
-      if (!original) throw new Error("Journal entry not found");
-      if (original.status === 'reversed') throw new Error("Entry is already reversed");
+    return db.transaction(async (tx) => this.reverseSaccoJournalEntryInTransaction(tx, id, userId));
+  }
 
-      await tx.update(saccoJournalEntries)
-        .set({ status: 'reversed' })
-        .where(eq(saccoJournalEntries.id, id));
+  async reverseSaccoJournalEntryInTransaction(executor: any, id: number, userId: string): Promise<SaccoJournalEntry> {
+    await executor.execute(sql`SELECT pg_advisory_xact_lock(${SACCO_LEDGER_ADVISORY_LOCK_ID})`);
+    const [original] = await executor.select().from(saccoJournalEntries).where(eq(saccoJournalEntries.id, id));
+    if (!original) throw new Error("Journal entry not found");
+    if (original.status === 'reversed') throw new Error("Entry is already reversed");
 
-      const [debitAccount] = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.id, original.creditAccountId));
-      const [creditAccount] = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.id, original.debitAccountId));
-      if (!debitAccount || !creditAccount) throw new Error("Original accounts no longer exist");
+    await executor.update(saccoJournalEntries)
+      .set({ status: 'reversed' })
+      .where(eq(saccoJournalEntries.id, id));
 
-      const amount = parseFloat(original.amount);
-      const debitDelta = ['asset', 'expense'].includes(debitAccount.accountType) ? amount : -amount;
-      const creditDelta = ['liability', 'equity', 'revenue'].includes(creditAccount.accountType) ? amount : -amount;
+    const [debitAccount] = await executor.select().from(saccoAccounts).where(eq(saccoAccounts.id, original.creditAccountId));
+    const [creditAccount] = await executor.select().from(saccoAccounts).where(eq(saccoAccounts.id, original.debitAccountId));
+    if (!debitAccount || !creditAccount) throw new Error("Original accounts no longer exist");
 
-      await tx.update(saccoAccounts)
-        .set({ balance: sql`(${saccoAccounts.balance}::numeric + ${debitDelta})::decimal(15,2)`, updatedAt: new Date() })
-        .where(eq(saccoAccounts.id, original.creditAccountId));
+    const reversalNumber = `REV-${original.entryNumber}`;
+    const [reversal] = await executor.insert(saccoJournalEntries).values({
+      entryNumber: reversalNumber,
+      entryDate: new Date().toISOString().split('T')[0],
+      description: `Reversal of ${original.entryNumber}: ${original.description}`,
+      reference: original.reference,
+      debitAccountId: original.creditAccountId,
+      creditAccountId: original.debitAccountId,
+      amount: original.amount,
+      createdBy: userId,
+      status: 'posted',
+      reversedById: id,
+    }).returning();
 
-      await tx.update(saccoAccounts)
-        .set({ balance: sql`(${saccoAccounts.balance}::numeric + ${creditDelta})::decimal(15,2)`, updatedAt: new Date() })
-        .where(eq(saccoAccounts.id, original.debitAccountId));
+    await this.recalculateSaccoAccountBalancesWithExecutor(executor);
+    return reversal;
+  }
 
-      const reversalNumber = `REV-${original.entryNumber}`;
-      const [reversal] = await tx.insert(saccoJournalEntries).values({
-        entryNumber: reversalNumber,
-        entryDate: new Date().toISOString().split('T')[0],
-        description: `Reversal of ${original.entryNumber}: ${original.description}`,
-        reference: original.reference,
-        debitAccountId: original.creditAccountId,
-        creditAccountId: original.debitAccountId,
-        amount: original.amount,
-        createdBy: userId,
-        status: 'posted',
-        reversedById: id,
-      }).returning();
+  private async recalculateSaccoAccountBalancesWithExecutor(executor: any): Promise<SaccoBalanceRecalculationResult> {
+    await executor.execute(sql`SELECT pg_advisory_xact_lock(${SACCO_LEDGER_ADVISORY_LOCK_ID})`);
+    const accounts = await executor.select().from(saccoAccounts).orderBy(saccoAccounts.accountCode);
+    const postedEntries = await executor.select({
+        id: saccoJournalEntries.id,
+        debitAccountId: saccoJournalEntries.debitAccountId,
+        creditAccountId: saccoJournalEntries.creditAccountId,
+        amount: saccoJournalEntries.amount,
+      }).from(saccoJournalEntries)
+      .where(inArray(saccoJournalEntries.status, ['posted', 'reversed']));
 
-      return reversal;
-    });
+    const result = rebuildLedgerBalances(
+      accounts.map((account: SaccoAccount) => ({
+        id: account.id,
+        accountCode: account.accountCode,
+        accountName: account.accountName,
+        accountType: account.accountType as SaccoAccountType,
+      })),
+      postedEntries,
+    );
+
+    for (const account of result.accounts) {
+      await executor.update(saccoAccounts)
+        .set({ balance: account.balance.toFixed(2), updatedAt: new Date() })
+        .where(eq(saccoAccounts.id, account.id));
+    }
+
+    if (!result.isBalanced) {
+      throw new Error(`Trial balance discrepancy: debits ${result.totalDebits.toFixed(2)}, credits ${result.totalCredits.toFixed(2)}, difference ${result.difference.toFixed(2)}`);
+    }
+
+    return {
+      ...result,
+      message: `Rebuilt ${result.accounts.length} SACCO account balances from ${result.postedEntryCount} posted journal entries`,
+      rebuiltAt: new Date().toISOString(),
+    };
+  }
+
+  async recalculateSaccoAccountBalances(): Promise<SaccoBalanceRecalculationResult> {
+    return db.transaction(async (tx) => this.recalculateSaccoAccountBalancesWithExecutor(tx));
+  }
+
+  async recalculateSaccoAccountBalancesInTransaction(executor: any): Promise<SaccoBalanceRecalculationResult> {
+    return this.recalculateSaccoAccountBalancesWithExecutor(executor);
   }
 
   async getSaccoAccountStatement(accountId: number, startDate?: string, endDate?: string): Promise<any[]> {
     const conditions = [
+      inArray(saccoJournalEntries.status, ['posted', 'reversed']),
       or(
         eq(saccoJournalEntries.debitAccountId, accountId),
         eq(saccoJournalEntries.creditAccountId, accountId)
       )!,
-      eq(saccoJournalEntries.status, 'posted'),
     ];
     if (startDate) conditions.push(gte(saccoJournalEntries.entryDate, startDate));
     if (endDate) conditions.push(lte(saccoJournalEntries.entryDate, endDate));
@@ -3628,6 +3731,17 @@ export class DatabaseStorage implements IStorage {
     const totalEquity = summary['equity']?.totalBalance || 0;
     const totalRevenue = summary['revenue']?.totalBalance || 0;
     const totalExpenses = summary['expense']?.totalBalance || 0;
+    const [trialBalance] = await db
+      .select({
+        postedEntryCount: count(),
+        totalDebits: sql<string>`COALESCE(SUM(${saccoJournalEntries.amount}::numeric), 0)`,
+        totalCredits: sql<string>`COALESCE(SUM(${saccoJournalEntries.amount}::numeric), 0)`,
+      })
+      .from(saccoJournalEntries)
+      .where(inArray(saccoJournalEntries.status, ['posted', 'reversed']));
+    const totalDebits = parseFloat(trialBalance?.totalDebits || '0');
+    const totalCredits = parseFloat(trialBalance?.totalCredits || '0');
+    const difference = Math.round((totalDebits - totalCredits) * 100) / 100;
     return {
       byType: summary,
       totalAssets,
@@ -3637,6 +3751,13 @@ export class DatabaseStorage implements IStorage {
       totalExpenses,
       netIncome: totalRevenue - totalExpenses,
       balanceSheetBalance: totalAssets - totalLiabilities - totalEquity,
+      trialBalance: {
+        postedEntryCount: trialBalance?.postedEntryCount || 0,
+        totalDebits,
+        totalCredits,
+        difference,
+        isBalanced: Math.abs(difference) < 0.01,
+      },
     };
   }
 
@@ -3710,9 +3831,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async seedDefaultAccountMappings(): Promise<void> {
-    const existing = await db.select().from(saccoAccountMappings).limit(1);
-    if (existing.length > 0) return;
-
     const allAccounts = await db.select().from(saccoAccounts);
     const byCode = (code: string) => allAccounts.find(a => a.accountCode === code)?.id || null;
 
@@ -3725,6 +3843,8 @@ export class DatabaseStorage implements IStorage {
       { mappingKey: 'member_deposit', mappingLabel: 'Member Savings Deposit', category: 'savings' as const, description: 'When a member deposits into their savings account', debitAccountId: byCode('1001'), creditAccountId: byCode('2001') },
       { mappingKey: 'member_withdrawal', mappingLabel: 'Member Savings Withdrawal', category: 'savings' as const, description: 'When a member withdraws from their savings account', debitAccountId: byCode('2001'), creditAccountId: byCode('1001') },
       { mappingKey: 'savings_interest_accrual', mappingLabel: 'Savings Interest Accrual', category: 'savings' as const, description: 'Interest accrued and payable to members on savings', debitAccountId: byCode('5010'), creditAccountId: byCode('2004') },
+      { mappingKey: 'savings_interest_credit', mappingLabel: 'Savings Interest Credit', category: 'savings' as const, description: 'Interest payable transferred into member savings', debitAccountId: byCode('2004'), creditAccountId: byCode('2001') },
+      { mappingKey: 'savings_interest_cash_payment', mappingLabel: 'Savings Interest Cash Payment', category: 'savings' as const, description: 'Interest payable settled from cash at bank', debitAccountId: byCode('2004'), creditAccountId: byCode('1001') },
       { mappingKey: 'share_capital_contribution', mappingLabel: 'Share Capital Contribution', category: 'membership' as const, description: 'When a member buys shares in the SACCO', debitAccountId: byCode('1001'), creditAccountId: byCode('2002') },
       { mappingKey: 'membership_entry_fee', mappingLabel: 'Membership Entry Fee', category: 'membership' as const, description: 'One-time registration fee for new members', debitAccountId: byCode('1001'), creditAccountId: byCode('4003') },
       { mappingKey: 'bank_charges', mappingLabel: 'Bank Charges', category: 'operations' as const, description: 'Fees charged by the bank for transactions', debitAccountId: byCode('5009'), creditAccountId: byCode('1001') },
@@ -3734,7 +3854,7 @@ export class DatabaseStorage implements IStorage {
     ];
 
     for (const mapping of defaults) {
-      await db.insert(saccoAccountMappings).values(mapping);
+      await db.insert(saccoAccountMappings).values(mapping).onConflictDoNothing();
     }
   }
 }

@@ -6,7 +6,7 @@ import { setupAuth, isAuthenticated } from "../replitAuth";
 import { setupLocalAuth, hashPassword, validatePasswordComplexity, getSecuritySettings, getPasswordRequirementsText } from "../localAuth";
 import passport from "passport";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "../rbac-middleware";
-import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations, saccoAccounts, loanDocuments, guarantors } from "@workspace/db";
+import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations, interestPayments, saccoAccounts, loanDocuments, guarantors } from "@workspace/db";
 import { businessRulesValidator } from "../business-rules-validator";
 import { sendEmail, verifyConnection, buildEmailTemplate, getEmailConfig, sendNotificationEmail } from "../email-service";
 import { seedAdminUser, seedRBAC } from "../seed";
@@ -269,49 +269,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return { interestPortion, principalPortion, balanceReduction };
   }
 
-  async function postLoanRepaymentJournals(loan: any, interestPortion: number, principalPortion: number, descriptionPrefix: string, reference: string, userId: string) {
+  async function postLoanRepaymentJournals(loan: any, interestPortion: number, principalPortion: number, descriptionPrefix: string, reference: string, userId: string, executor?: any, recalculate = true) {
     if (interestPortion > 0) {
-      await recordJournalEntry('loan_interest_income', interestPortion, `${descriptionPrefix} (interest) - ${loan?.loanNumber || ''}`.trim(), reference, userId);
+      await recordJournalEntry('loan_interest_income', interestPortion, `${descriptionPrefix} (interest) - ${loan?.loanNumber || ''}`.trim(), reference, userId, executor, principalPortion <= 0 && recalculate);
     }
     if (principalPortion > 0) {
-      await recordJournalEntry('loan_repayment_principal', principalPortion, `${descriptionPrefix} (principal) - ${loan?.loanNumber || ''}`.trim(), reference, userId);
+      await recordJournalEntry('loan_repayment_principal', principalPortion, `${descriptionPrefix} (principal) - ${loan?.loanNumber || ''}`.trim(), reference, userId, executor, recalculate);
     }
   }
 
-  async function recordJournalEntry(mappingKey: string, amount: string | number, description: string, reference: string, userId: string) {
-    try {
-      const numericAmount = typeof amount === 'number' ? amount : parseFloat(amount);
-      if (!numericAmount || isNaN(numericAmount) || numericAmount <= 0) return;
-
-      const mappings = await storage.getSaccoAccountMappings();
-      const mapping = mappings.find((m: any) => m.mappingKey === mappingKey);
-      if (!mapping) {
-        console.warn(`[JournalEntry] No mapping found for key: ${mappingKey}`);
-        return;
-      }
-
-      const debitId = (mapping as any).debitAccountId;
-      const creditId = (mapping as any).creditAccountId;
-      if (!debitId || !creditId) {
-        console.warn(`[JournalEntry] Mapping ${mappingKey} missing debit/credit account IDs`);
-        return;
-      }
-
-      const entryNumber = `JE-${Date.now()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-      await storage.createSaccoJournalEntry({
-        entryNumber,
-        entryDate: new Date().toISOString().split('T')[0],
-        description,
-        reference,
-        debitAccountId: debitId,
-        creditAccountId: creditId,
-        amount: numericAmount.toFixed(2),
-        createdBy: userId,
-        status: 'posted',
-      });
-    } catch (err) {
-      console.error(`[JournalEntry] Failed to record ${mappingKey}:`, err);
+  async function recordJournalEntry(mappingKey: string, amount: string | number, description: string, reference: string, userId: string, executor?: any, recalculate = true) {
+    const numericAmount = typeof amount === 'number' ? amount : parseFloat(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      throw new Error(`Journal amount for ${mappingKey} must be a positive number`);
     }
+
+    const entryNumber = `JE-${Date.now()}-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+    const entryData = {
+      entryNumber,
+      entryDate: new Date().toISOString().split('T')[0],
+      description,
+      reference,
+      amount: numericAmount.toFixed(2),
+      createdBy: userId,
+      status: 'posted' as const,
+    };
+    if (executor) {
+      await storage.createMappedSaccoJournalEntryInTransaction(executor, mappingKey, entryData, recalculate);
+      return;
+    }
+    await storage.runSaccoLedgerTransaction(async (tx) => {
+      await storage.createMappedSaccoJournalEntryInTransaction(tx, mappingKey, entryData);
+    });
   }
 
   // Auth middleware
@@ -1993,7 +1982,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Post share capital for a member (admin only)
-  app.post('/api/members/:id/share-capital', isAuthenticated, async (req: any, res) => {
+  app.post('/api/members/:id/share-capital', isAuthenticated, requirePermission('create', 'transactions'), async (req: any, res) => {
     try {
       const memberId = await storage.resolveMemberId(req.params.id);
       const { amount, description } = req.body;
@@ -2007,37 +1996,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Amount must be greater than zero" });
       }
 
-      const member = await storage.getMember(memberId);
-      if (!member) {
-        return res.status(404).json({ message: "Member not found" });
-      }
-
       const paymentAmount = parseFloat(amount);
-      const currentShareCapital = parseFloat(member.shareCapital || "0");
-      const newShareCapital = currentShareCapital + paymentAmount;
       const sharePriceSetting = await storage.getSystemSetting('sharePrice');
       const perSharePrice = sharePriceSetting ? parseFloat(sharePriceSetting.settingValue) : 5000;
-      const expectedTotal = perSharePrice * (member.numberOfShares || 4);
-      const isPaidUp = newShareCapital >= expectedTotal;
 
       const referenceNumber = `SHR${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-      const transaction = await storage.createTransaction({
-        memberId,
-        transactionType: 'share_capital',
-        amount: amount.toString(),
-        referenceNumber,
-        description: description || 'Share capital payment',
-        status: 'completed',
-        processedBy: getUserId(req),
-      });
-
-      await recordJournalEntry('share_capital_contribution', amount, `Share capital payment - ${member.memberNumber}`, referenceNumber, getUserId(req)!);
-
-      await storage.updateMember(memberId, {
-        shareCapital: newShareCapital.toString(),
-        isPaidUp,
-        isFullyPaidShareholder: isPaidUp,
+      const { transaction, newShareCapital, isPaidUp, expectedTotal } = await storage.runSaccoLedgerTransaction(async (tx) => {
+        const lockedMembers = await tx.execute(sql`SELECT * FROM ${members} WHERE ${members.id} = ${memberId} FOR UPDATE`);
+        const member = lockedMembers.rows[0] as typeof members.$inferSelect | undefined;
+        if (!member) throw new Error("Member not found");
+        const currentShareCapital = parseFloat(member.shareCapital || "0");
+        const newShareCapital = currentShareCapital + paymentAmount;
+        const expectedTotal = perSharePrice * (member.numberOfShares || 4);
+        const isPaidUp = newShareCapital >= expectedTotal;
+        const [createdTransaction] = await tx.insert(transactions).values({
+          memberId,
+          transactionType: 'share_capital',
+          amount: amount.toString(),
+          referenceNumber,
+          description: description || 'Share capital payment',
+          status: 'completed',
+          processedBy: getUserId(req),
+        }).returning();
+        await recordJournalEntry('share_capital_contribution', amount, `Share capital payment - ${member.memberNumber}`, referenceNumber, getUserId(req)!, tx);
+        await tx.update(members).set({
+          shareCapital: newShareCapital.toString(),
+          isPaidUp,
+          isFullyPaidShareholder: isPaidUp,
+          updatedAt: new Date(),
+        }).where(eq(members.id, memberId));
+        return { transaction: createdTransaction, newShareCapital, isPaidUp, expectedTotal };
       });
 
       res.json({
@@ -2379,16 +2368,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       let actualLoanRepayment = 0;
+      const exitFeeSetting = await storage.getSystemSetting('memberExitFee');
+      const exitFee = exitFeeSetting ? parseFloat(exitFeeSetting.settingValue) : 0;
+      await storage.runSaccoLedgerTransaction(async (tx) => {
       if (runningLoans.length > 0) {
         actualLoanRepayment = runningLoans.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
         const currentSavings = savingsAccounts.reduce((sum: number, s: any) => sum + parseFloat(s.balance || '0'), 0);
         if (currentSavings < actualLoanRepayment) {
-          return res.status(400).json({ message: `Cannot approve: member savings (UGX ${currentSavings.toLocaleString()}) are insufficient to cover outstanding loans (UGX ${actualLoanRepayment.toLocaleString()})` });
+          throw new Error(`Cannot approve: member savings (UGX ${currentSavings.toLocaleString()}) are insufficient to cover outstanding loans (UGX ${actualLoanRepayment.toLocaleString()})`);
         }
 
         if (primaryAccount && actualLoanRepayment > 0) {
           const repayRefNumber = `EXIT-LOAN-REPAY-${Date.now()}`;
-          await storage.createTransaction({
+          await tx.insert(transactions).values({
             memberId: exitRequest.memberId,
             savingsAccountId: primaryAccount.id,
             transactionType: 'withdrawal',
@@ -2398,21 +2390,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             status: 'completed',
             processedBy: userId,
           });
-          await storage.updateSavingsAccountBalance(primaryAccount.id, actualLoanRepayment.toString(), 'subtract');
+          await tx.update(savingsAccountsTable).set({ balance: sql`${savingsAccountsTable.balance} - ${actualLoanRepayment.toString()}`, updatedAt: new Date() }).where(eq(savingsAccountsTable.id, primaryAccount.id));
 
           for (const loan of runningLoans) {
-            await storage.updateLoanStatus(loan.id, 'completed');
-            await storage.updateLoanBalance(loan.id, '0');
+            const outstanding = parseFloat(loan.outstandingBalance || '0');
+            const split = await splitLoanRepayment(loan, outstanding, outstanding);
+            await tx.update(loans).set({ status: 'completed', outstandingBalance: '0', updatedAt: new Date() }).where(eq(loans.id, loan.id));
+            await postLoanRepaymentJournals(loan, split.interestPortion, split.principalPortion, 'Loan settlement on member exit', repayRefNumber, userId, tx, false);
           }
         }
       }
 
       // Record and deduct exit fee from savings
-      const exitFeeSetting = await storage.getSystemSetting('memberExitFee');
-      const exitFee = exitFeeSetting ? parseFloat(exitFeeSetting.settingValue) : 0;
       if (exitFee > 0 && primaryAccount) {
         const feeRefNumber = `EXIT-FEE-${Date.now()}`;
-        await storage.createTransaction({
+        await tx.insert(transactions).values({
           memberId: exitRequest.memberId,
           savingsAccountId: primaryAccount.id,
           transactionType: 'fee_charge',
@@ -2422,11 +2414,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: 'completed',
           processedBy: userId,
         });
-        await storage.updateSavingsAccountBalance(primaryAccount.id, exitFee.toString(), 'subtract');
+        await tx.update(savingsAccountsTable).set({ balance: sql`${savingsAccountsTable.balance} - ${exitFee.toString()}`, updatedAt: new Date() }).where(eq(savingsAccountsTable.id, primaryAccount.id));
+        await recordJournalEntry('loan_processing_fee', exitFee, 'Member exit fee', feeRefNumber, userId, tx, false);
       }
 
       // Mark exit request as approved
-      await db.update(memberExitRequests).set({
+      await tx.update(memberExitRequests).set({
         status: 'approved',
         approvedBy: userId,
         approvedAt: new Date(),
@@ -2438,20 +2431,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }).where(eq(memberExitRequests.id, requestId));
 
       // Update member status to exited
-      await storage.updateMember(exitRequest.memberId, {
+      await tx.update(members).set({
         status: 'exited' as any,
         exitedAt: new Date(),
         exitReason: exitRequest.reason || null,
         exitFeeCharged: exitFee > 0 ? exitFee.toString() : null,
-      } as any);
+        updatedAt: new Date(),
+      } as any).where(eq(members.id, exitRequest.memberId));
 
       // Close all savings accounts for the exited member
       for (const account of savingsAccounts) {
-        await db.update(savingsAccountsTable).set({
+        await tx.update(savingsAccountsTable).set({
           status: 'closed',
           updatedAt: new Date(),
         }).where(eq(savingsAccountsTable.id, account.id));
       }
+      await storage.recalculateSaccoAccountBalancesInTransaction(tx);
+      });
 
       await storage.createAuditLog({
         userId,
@@ -2537,10 +2533,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { accountId, amount, description } = req.body;
       
-      // Update account balance
-      await storage.updateSavingsAccountBalance(accountId, amount, 'add');
-      
-      // Create transaction record
       const account = await storage.getSavingsAccount(accountId);
       if (!account) {
         return res.status(404).json({ message: "Account not found" });
@@ -2548,19 +2540,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const referenceNumber = `DEP${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
       
-      const transaction = await storage.createTransaction({
-        memberId: account.memberId,
-        savingsAccountId: accountId,
-        transactionType: 'deposit',
-        amount,
-        referenceNumber,
-        description: description || 'Savings deposit',
-        status: 'completed',
-        processedBy: getUserId(req),
-      });
-
-      await recordJournalEntry('member_deposit', amount, `Savings deposit - ${account.accountNumber}`, referenceNumber, getUserId(req)!);
-
       const memberBeforeUpdate = await storage.getMember(account.memberId);
       const updateFields: any = {
         lastSavingsDate: new Date(),
@@ -2570,7 +2549,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (memberBeforeUpdate && ['inactive', 'dormant'].includes(memberBeforeUpdate.status)) {
         updateFields.status = 'active';
       }
-      await db.update(members).set(updateFields).where(eq(members.id, account.memberId));
+      const transaction = await storage.runSaccoLedgerTransaction(async (tx) => {
+        await tx.update(savingsAccountsTable).set({
+          balance: sql`${savingsAccountsTable.balance}::numeric + ${amount}::numeric`,
+          updatedAt: new Date(),
+        }).where(eq(savingsAccountsTable.id, accountId));
+        const [createdTransaction] = await tx.insert(transactions).values({
+          memberId: account.memberId,
+          savingsAccountId: accountId,
+          transactionType: 'deposit',
+          amount,
+          referenceNumber,
+          description: description || 'Savings deposit',
+          status: 'completed',
+          processedBy: getUserId(req),
+        }).returning();
+        await recordJournalEntry('member_deposit', amount, `Savings deposit - ${account.accountNumber}`, referenceNumber, getUserId(req)!, tx);
+        await tx.update(members).set({
+          ...updateFields,
+          totalSavings: sql`(SELECT COALESCE(SUM(balance::numeric), 0) FROM savings_accounts WHERE member_id = ${account.memberId})`,
+        }).where(eq(members.id, account.memberId));
+        return createdTransaction;
+      });
 
       const member = memberBeforeUpdate;
       if (member?.userId) {
@@ -3527,30 +3527,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Loan must be approved before treasurer can disburse" });
         }
 
-        const loan = await storage.updateLoanStatus(loanByUuid.id, 'disbursed');
-
         const referenceNumber = `DIS${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-
-        if (loanDetails.isTopUp && loanDetails.topUpOfLoanId) {
+        const processingFeeSetting = await storage.getSystemSetting('loanProcessingFee');
+        const feePercent = processingFeeSetting ? parseFloat(processingFeeSetting.settingValue) : 1;
+        const loan = await storage.runSaccoLedgerTransaction(async (tx) => {
+          const [disbursedLoan] = await tx.update(loans).set({ status: 'disbursed', updatedAt: new Date() })
+            .where(eq(loans.id, loanByUuid.id)).returning();
+          if (loanDetails.isTopUp && loanDetails.topUpOfLoanId) {
           const originalLoan = await storage.getLoan(loanDetails.topUpOfLoanId);
           const previousBalance = loanDetails.previousLoanBalance || originalLoan?.outstandingBalance || '0';
           const prevBalanceNum = parseFloat(previousBalance);
           const prevOutstandingNum = parseFloat(originalLoan?.outstandingBalance || '0');
           if (prevBalanceNum > 0) {
-            await storage.updateLoanBalance(loanDetails.topUpOfLoanId, previousBalance);
+            await tx.update(loans).set({ outstandingBalance: previousBalance, updatedAt: new Date() }).where(eq(loans.id, loanDetails.topUpOfLoanId));
           }
-          await storage.updateLoanStatus(loanDetails.topUpOfLoanId, 'completed');
+          await tx.update(loans).set({ status: 'completed', updatedAt: new Date() }).where(eq(loans.id, loanDetails.topUpOfLoanId));
           const settleRef = `STL${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
           const topUpSplit1 = prevBalanceNum > 0 && originalLoan
             ? await splitLoanRepayment(originalLoan, prevBalanceNum, prevOutstandingNum)
             : { interestPortion: 0, principalPortion: prevBalanceNum, balanceReduction: prevBalanceNum };
-          await storage.createTransaction({
-            memberId: loan.memberId,
+          await tx.insert(transactions).values({
+            memberId: disbursedLoan.memberId,
             loanId: loanDetails.topUpOfLoanId,
             transactionType: 'loan_payment',
             amount: previousBalance,
             referenceNumber: settleRef,
-            description: `Loan settled via top-up - ${originalLoan?.loanNumber || 'N/A'} replaced by ${loan.loanNumber}`,
+            description: `Loan settled via top-up - ${originalLoan?.loanNumber || 'N/A'} replaced by ${disbursedLoan.loanNumber}`,
             status: 'completed',
             metadata: JSON.stringify({
               interest: topUpSplit1.interestPortion,
@@ -3560,41 +3562,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }),
           });
           if (prevBalanceNum > 0 && originalLoan) {
-            await postLoanRepaymentJournals(originalLoan, topUpSplit1.interestPortion, topUpSplit1.principalPortion, 'Loan settlement via top-up', settleRef, userId);
+            await postLoanRepaymentJournals(originalLoan, topUpSplit1.interestPortion, topUpSplit1.principalPortion, 'Loan settlement via top-up', settleRef, userId, tx, false);
           }
         }
 
-        await storage.createTransaction({
-          memberId: loan.memberId,
-          loanId: loan.id,
+        await tx.insert(transactions).values({
+          memberId: disbursedLoan.memberId,
+          loanId: disbursedLoan.id,
           transactionType: 'loan_disbursement',
-          amount: loan.principalAmount,
+          amount: disbursedLoan.principalAmount,
           referenceNumber,
-          description: `${loanDetails.isTopUp ? 'Top-up loan' : 'Loan'} disbursement - ${loan.loanNumber}`,
+          description: `${loanDetails.isTopUp ? 'Top-up loan' : 'Loan'} disbursement - ${disbursedLoan.loanNumber}`,
           status: 'completed',
         });
-        await recordJournalEntry('loan_disbursement', loan.principalAmount, `Loan disbursement - ${loan.loanNumber}`, referenceNumber, userId);
+        await recordJournalEntry('loan_disbursement', disbursedLoan.principalAmount, `Loan disbursement - ${disbursedLoan.loanNumber}`, referenceNumber, userId, tx, feePercent <= 0);
 
-        try {
-          const processingFeeSetting = await storage.getSystemSetting('loanProcessingFee');
-          const feePercent = processingFeeSetting ? parseFloat(processingFeeSetting.settingValue) : 1;
-          if (feePercent > 0) {
-            const feeAmount = (parseFloat(loan.principalAmount) * feePercent / 100).toFixed(2);
+        if (feePercent > 0) {
+            const feeAmount = (parseFloat(disbursedLoan.principalAmount) * feePercent / 100).toFixed(2);
             const feeRef = `FEE${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-            await storage.createTransaction({
-              memberId: loan.memberId,
-              loanId: loan.id,
+            await tx.insert(transactions).values({
+              memberId: disbursedLoan.memberId,
+              loanId: disbursedLoan.id,
               transactionType: 'loan_payment',
               amount: feeAmount,
               referenceNumber: feeRef,
-              description: `Loan processing fee (${feePercent}%) - ${loan.loanNumber}`,
+              description: `Loan processing fee (${feePercent}%) - ${disbursedLoan.loanNumber}`,
               status: 'completed',
             });
-            await recordJournalEntry('loan_processing_fee', feeAmount, `Loan processing fee - ${loan.loanNumber}`, feeRef, userId);
-          }
-        } catch (feeError) {
-          console.error('Error collecting loan fees at disbursement:', feeError);
+            await recordJournalEntry('loan_processing_fee', feeAmount, `Loan processing fee - ${disbursedLoan.loanNumber}`, feeRef, userId, tx);
         }
+        return disbursedLoan;
+        });
 
         const disburseMember = await storage.getMember(loan.memberId);
         if (disburseMember?.userId) {
@@ -3793,27 +3791,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const loanId = await storage.resolveLoanId(req.params.id);
       const loanDetails = await storage.getLoan(loanId);
-      const loan = await storage.updateLoanStatus(loanId, 'disbursed');
-      
+      if (!loanDetails || loanDetails.status !== 'approved') {
+        return res.status(400).json({ message: 'Loan must be approved before disbursement' });
+      }
       const referenceNumber = `DIS${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-      
-      if (loanDetails?.isTopUp && loanDetails?.topUpOfLoanId) {
-        const originalLoan = await storage.getLoan(loanDetails.topUpOfLoanId);
+      const loanTypeInfo = await storage.getLoanTypeByName(loanDetails.loanType || '');
+      const feesCollected: string[] = [];
+      const loan = await storage.runSaccoLedgerTransaction(async (tx) => {
+        const lockedLoans = await tx.execute(sql`SELECT * FROM ${loans} WHERE ${loans.id} = ${loanId} FOR UPDATE`);
+        const loan = lockedLoans.rows[0] as typeof loans.$inferSelect | undefined;
+        if (!loan || loan.status !== 'approved') throw new Error('Loan must be approved before disbursement');
+        await tx.update(loans).set({ status: 'disbursed', updatedAt: new Date() }).where(eq(loans.id, loanId));
+      if (loan.isTopUp && loan.topUpOfLoanId) {
+        const originalLoan = await storage.getLoan(loan.topUpOfLoanId!);
         const previousBalance = loanDetails.previousLoanBalance || originalLoan?.outstandingBalance || '0';
         const prevBalanceNum = parseFloat(previousBalance);
         const prevOutstandingNum = parseFloat(originalLoan?.outstandingBalance || '0');
 
         if (prevBalanceNum > 0) {
-          await storage.updateLoanBalance(loanDetails.topUpOfLoanId, previousBalance);
+          await tx.update(loans).set({ outstandingBalance: previousBalance, updatedAt: new Date() }).where(eq(loans.id, loan.topUpOfLoanId));
         }
 
-        await storage.updateLoanStatus(loanDetails.topUpOfLoanId, 'completed');
+        await tx.update(loans).set({ status: 'completed', updatedAt: new Date() }).where(eq(loans.id, loan.topUpOfLoanId));
 
         const settleRef = `STL${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
         const topUpSplit2 = prevBalanceNum > 0 && originalLoan
           ? await splitLoanRepayment(originalLoan, prevBalanceNum, prevOutstandingNum)
           : { interestPortion: 0, principalPortion: prevBalanceNum, balanceReduction: prevBalanceNum };
-        await storage.createTransaction({
+        await tx.insert(transactions).values({
           memberId: loan.memberId,
           loanId: loanDetails.topUpOfLoanId,
           transactionType: 'loan_payment',
@@ -3830,11 +3835,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }),
         });
         if (prevBalanceNum > 0 && originalLoan) {
-          await postLoanRepaymentJournals(originalLoan, topUpSplit2.interestPortion, topUpSplit2.principalPortion, 'Loan settlement via top-up', settleRef, userId);
+          await postLoanRepaymentJournals(originalLoan, topUpSplit2.interestPortion, topUpSplit2.principalPortion, 'Loan settlement via top-up', settleRef, userId, tx, false);
         }
       }
 
-      await storage.createTransaction({
+      await tx.insert(transactions).values({
         memberId: loan.memberId,
         loanId: loan.id,
         transactionType: 'loan_disbursement',
@@ -3844,75 +3849,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         status: 'completed',
         processedBy: getUserId(req),
       });
+      await recordJournalEntry('loan_disbursement', loan.principalAmount, `Loan disbursement - ${loan.loanNumber}`, referenceNumber, userId, tx, false);
 
-      await recordJournalEntry('loan_disbursement', loan.principalAmount, `Loan disbursement - ${loan.loanNumber}`, referenceNumber, userId);
-
-      const feesCollected: string[] = [];
-      try {
-        const loanTypeInfo = await storage.getLoanTypeByName(loan.loanType || '');
-        if (loanTypeInfo) {
-          const acceptanceFee = parseFloat(loanTypeInfo.acceptanceFee || '0');
-          const processingFeeRate = parseFloat(loanTypeInfo.processingFee || '0');
-          const principalAmount = parseFloat(loan.principalAmount || '0');
-          const processingFeeAmount = processingFeeRate > 0 ? (processingFeeRate / 100) * principalAmount : 0;
-
-          const savingsAccountsList = await storage.getSavingsAccountsByMember(loan.memberId);
-          const primarySavings = savingsAccountsList.find((s: any) => s.accountType === 'regular') || savingsAccountsList[0];
-
-          if (primarySavings) {
-            if (acceptanceFee > 0) {
-              const savingsBalance = parseFloat(primarySavings.balance || '0');
-              if (savingsBalance >= acceptanceFee) {
-                await storage.updateSavingsAccountBalance(primarySavings.id, acceptanceFee.toFixed(2), 'subtract');
-                await storage.createTransaction({
-                  memberId: loan.memberId,
-                  savingsAccountId: primarySavings.id,
-                  loanId: loan.id,
-                  transactionType: 'fee_charge',
-                  amount: acceptanceFee.toFixed(2),
-                  description: `Loan acceptance fee for ${loan.loanNumber}`,
-                  referenceNumber: `ACCFEE-${loan.loanNumber}`,
-                  transactionDate: new Date(),
-                  status: 'completed',
-                  processedBy: userId,
-                });
-                await recordJournalEntry('loan_processing_fee', acceptanceFee, `Loan acceptance fee - ${loan.loanNumber}`, `ACCFEE-${loan.loanNumber}`, userId);
-                feesCollected.push(`Acceptance fee: UGX ${acceptanceFee.toLocaleString()}`);
-              } else {
-                console.warn(`Insufficient savings balance (${savingsBalance}) for acceptance fee (${acceptanceFee}) on loan ${loan.loanNumber}`);
-              }
-            }
-
-            if (processingFeeAmount > 0) {
-              const updatedSavings = await storage.getSavingsAccount(primarySavings.id);
-              const currentBalance = parseFloat(updatedSavings?.balance || primarySavings.balance || '0');
-              if (currentBalance >= processingFeeAmount) {
-                await storage.updateSavingsAccountBalance(primarySavings.id, processingFeeAmount.toFixed(2), 'subtract');
-                await storage.createTransaction({
-                  memberId: loan.memberId,
-                  savingsAccountId: primarySavings.id,
-                  loanId: loan.id,
-                  transactionType: 'fee_charge',
-                  amount: processingFeeAmount.toFixed(2),
-                  description: `Loan processing fee (${processingFeeRate}%) for ${loan.loanNumber}`,
-                  referenceNumber: `PROCFEE-${loan.loanNumber}`,
-                  transactionDate: new Date(),
-                  status: 'completed',
-                  processedBy: userId,
-                });
-                await recordJournalEntry('loan_processing_fee', processingFeeAmount, `Loan processing fee (${processingFeeRate}%) - ${loan.loanNumber}`, `PROCFEE-${loan.loanNumber}`, userId);
-                feesCollected.push(`Processing fee (${processingFeeRate}%): UGX ${processingFeeAmount.toLocaleString()}`);
-              } else {
-                console.warn(`Insufficient savings balance (${currentBalance}) for processing fee (${processingFeeAmount}) on loan ${loan.loanNumber}`);
-              }
-            }
-          } else {
-            console.warn(`No savings account found for member ${loan.memberId} to deduct loan fees`);
-          }
-        }
-      } catch (feeError) {
-        console.error('Error collecting loan fees at disbursement:', feeError);
+      const acceptanceFee = parseFloat(loanTypeInfo?.acceptanceFee || '0');
+      const processingFeeRate = parseFloat(loanTypeInfo?.processingFee || '0');
+      const processingFeeAmount = processingFeeRate > 0 ? (processingFeeRate / 100) * parseFloat(loan.principalAmount || '0') : 0;
+      const savingsRows = await tx.execute(sql`SELECT * FROM ${savingsAccountsTable} WHERE ${savingsAccountsTable.memberId} = ${loan.memberId} ORDER BY ${savingsAccountsTable.id} FOR UPDATE`);
+      const primarySavings = (savingsRows.rows as any[]).find(s => s.account_type === 'regular') || savingsRows.rows[0] as any;
+      const applicableFees = primarySavings ? [acceptanceFee, processingFeeAmount].filter(fee => fee > 0) : [];
+      let remainingSavings = parseFloat(primarySavings?.balance || '0');
+      for (const [index, fee] of applicableFees.entries()) {
+        if (remainingSavings < fee) continue;
+        remainingSavings -= fee;
+        const isAcceptance = index === 0 && acceptanceFee > 0;
+        const feeRef = isAcceptance ? `ACCFEE-${loan.loanNumber}` : `PROCFEE-${loan.loanNumber}`;
+        const feeLabel = isAcceptance ? 'Loan acceptance fee' : `Loan processing fee (${processingFeeRate}%)`;
+        await tx.update(savingsAccountsTable).set({ balance: remainingSavings.toFixed(2), updatedAt: new Date() }).where(eq(savingsAccountsTable.id, primarySavings.id));
+        await tx.insert(transactions).values({ memberId: loan.memberId, savingsAccountId: primarySavings.id, loanId: loan.id, transactionType: 'fee_charge', amount: fee.toFixed(2), description: `${feeLabel} for ${loan.loanNumber}`, referenceNumber: feeRef, transactionDate: new Date(), status: 'completed', processedBy: userId });
+        await recordJournalEntry('loan_processing_fee', fee, `${feeLabel} - ${loan.loanNumber}`, feeRef, userId, tx, false);
+        feesCollected.push(`${isAcceptance ? 'Acceptance fee' : `Processing fee (${processingFeeRate}%)`}: UGX ${fee.toLocaleString()}`);
       }
+      await storage.recalculateSaccoAccountBalancesInTransaction(tx);
+      return loan;
+      });
 
       const disburseMember = await storage.getMember(loan.memberId);
       if (disburseMember?.userId) {
@@ -3955,63 +3914,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { amount, description } = req.body;
       const loanId = await storage.resolveLoanId(req.params.id);
       
-      const loanBefore = await storage.getLoan(loanId);
-      if (!loanBefore) {
-        return res.status(404).json({ message: "Loan not found" });
-      }
-
       const paymentAmount = parseFloat(amount);
       if (!paymentAmount || isNaN(paymentAmount) || paymentAmount <= 0) {
         return res.status(400).json({ message: "Payment amount must be a valid positive number" });
       }
-      const currentOutstanding = parseFloat(loanBefore.outstandingBalance || '0');
-      const effectivePayment = Math.min(paymentAmount, currentOutstanding);
-
-      if (effectivePayment <= 0) {
-        return res.status(400).json({ message: "Loan is already fully paid" });
-      }
-
-      // Determine interest vs principal split for journal entries and balance reduction
-      const { interestPortion, principalPortion, balanceReduction } =
-        await splitLoanRepayment(loanBefore, effectivePayment, currentOutstanding);
-
-      await storage.updateLoanBalance(loanId, balanceReduction.toFixed(2));
-
-      const loan = await storage.getLoan(loanId);
-      if (!loan) {
-        return res.status(404).json({ message: "Loan not found" });
-      }
-
-      const newOutstanding = parseFloat(loan.outstandingBalance || '0');
-      if (newOutstanding <= 0) {
-        await storage.updateLoanStatus(loanId, 'completed');
-      }
-
       const referenceNumber = `PAY${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
-
-      const transaction = await storage.createTransaction({
-        memberId: loan.memberId!,
-        loanId,
-        transactionType: 'loan_payment',
-        amount: effectivePayment.toFixed(2),
-        referenceNumber,
-        description: description || `Loan payment - ${loan.loanNumber}`,
-        status: 'completed',
-        processedBy: getUserId(req),
-        metadata: JSON.stringify({
-          interest: interestPortion,
-          principalRepyt: principalPortion,
-          balanceReduction: balanceReduction,
-          source: 'manual_payment'
-        }),
+      const transaction = await storage.runSaccoLedgerTransaction(async (tx) => {
+        const lockedLoans = await tx.execute(sql`SELECT * FROM ${loans} WHERE ${loans.id} = ${loanId} FOR UPDATE`);
+        const loanBefore = lockedLoans.rows[0] as typeof loans.$inferSelect | undefined;
+        if (!loanBefore) throw new Error("Loan not found");
+        const currentOutstanding = parseFloat(loanBefore.outstandingBalance || '0');
+        const effectivePayment = Math.min(paymentAmount, currentOutstanding);
+        if (effectivePayment <= 0) throw new Error("Loan is already fully paid");
+        const { interestPortion, principalPortion, balanceReduction } =
+          await splitLoanRepayment(loanBefore, effectivePayment, currentOutstanding);
+        const newOutstanding = Math.max(0, currentOutstanding - balanceReduction);
+        await tx.update(loans).set({
+          outstandingBalance: newOutstanding.toFixed(2),
+          status: newOutstanding <= 0 ? 'completed' : loanBefore.status,
+          updatedAt: new Date(),
+        }).where(eq(loans.id, loanId));
+        const [createdTransaction] = await tx.insert(transactions).values({
+          memberId: loanBefore.memberId!,
+          loanId,
+          transactionType: 'loan_payment',
+          amount: effectivePayment.toFixed(2),
+          referenceNumber,
+          description: description || `Loan payment - ${loanBefore.loanNumber}`,
+          status: 'completed',
+          processedBy: getUserId(req),
+          metadata: JSON.stringify({
+            interest: interestPortion,
+            principalRepyt: principalPortion,
+            balanceReduction,
+            source: 'manual_payment'
+          }),
+        }).returning();
+        await postLoanRepaymentJournals(
+          loanBefore,
+          interestPortion,
+          principalPortion,
+          'Loan payment',
+          referenceNumber,
+          getUserId(req)!,
+          tx,
+        );
+        return createdTransaction;
       });
-
-      if (interestPortion > 0) {
-        await recordJournalEntry('loan_interest_income', interestPortion, `Loan interest - ${loan.loanNumber}`, referenceNumber, getUserId(req)!);
-      }
-      if (principalPortion > 0) {
-        await recordJournalEntry('loan_repayment_principal', principalPortion, `Loan principal repayment - ${loan.loanNumber}`, referenceNumber, getUserId(req)!);
-      }
+      const loan = await storage.getLoan(loanId);
+      if (!loan) return res.status(404).json({ message: "Loan not found" });
 
       const paymentMember = await storage.getMember(loan.memberId!);
       if (paymentMember && ['inactive', 'dormant'].includes(paymentMember.status)) {
@@ -4285,22 +4236,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch('/api/transactions/:id/approve', isAuthenticated, requirePermission('approve', 'withdrawals'), async (req: any, res) => {
     try {
       const transactionId = await storage.resolveTransactionId(req.params.id);
-      const transaction = await storage.getTransaction(transactionId);
-      
-      if (!transaction) {
-        return res.status(404).json({ message: "Transaction not found" });
-      }
+      const updatedTransaction = await storage.runSaccoLedgerTransaction(async (tx) => {
+        const [transaction] = await tx.select().from(transactions)
+          .where(eq(transactions.id, transactionId))
+          .for('update');
+        if (!transaction) throw new Error("Transaction not found");
+        if (transaction.status !== 'pending') throw new Error(`Transaction is already ${transaction.status}`);
 
-      if (transaction.transactionType === 'withdrawal' && transaction.savingsAccountId) {
-        await storage.updateSavingsAccountBalance(
-          transaction.savingsAccountId, 
-          transaction.amount, 
-          'subtract'
-        );
-        await recordJournalEntry('member_withdrawal', transaction.amount, `Savings withdrawal approved - Ref: ${transaction.referenceNumber}`, transaction.referenceNumber || `WDR-${transactionId}`, getUserId(req)!);
-      }
+        if (transaction.transactionType === 'withdrawal' && transaction.savingsAccountId) {
+          const [account] = await tx.select().from(savingsAccountsTable)
+            .where(eq(savingsAccountsTable.id, transaction.savingsAccountId))
+            .for('update');
+          if (!account) throw new Error("Savings account not found");
+          if (parseFloat(account.balance || '0') < parseFloat(transaction.amount)) {
+            throw new Error("Insufficient savings balance");
+          }
+          await tx.update(savingsAccountsTable).set({
+            balance: sql`${savingsAccountsTable.balance}::numeric - ${transaction.amount}::numeric`,
+            updatedAt: new Date(),
+          }).where(eq(savingsAccountsTable.id, transaction.savingsAccountId));
+          await recordJournalEntry('member_withdrawal', transaction.amount, `Savings withdrawal approved - Ref: ${transaction.referenceNumber}`, transaction.referenceNumber || `WDR-${transactionId}`, getUserId(req)!, tx);
+          await tx.update(members).set({
+            totalSavings: sql`(SELECT COALESCE(SUM(balance::numeric), 0) FROM savings_accounts WHERE member_id = ${transaction.memberId})`,
+          }).where(eq(members.id, transaction.memberId));
+        }
 
-      const updatedTransaction = await storage.updateTransactionStatus(transactionId, 'completed');
+        const [completed] = await tx.update(transactions).set({ status: 'completed' })
+          .where(eq(transactions.id, transactionId))
+          .returning();
+        return completed;
+      });
       res.json(updatedTransaction);
     } catch (error) {
       console.error("Error approving transaction:", error);
@@ -5911,6 +5876,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .from(members)
         .where(not(inArray(members.status, ['rejected', 'exited'])));
 
+      const [operationalControlTotals, controlAccounts] = await Promise.all([
+        db.execute(sql`
+          SELECT
+            (SELECT COALESCE(SUM(balance::numeric), 0) FROM savings_accounts WHERE status <> 'closed') AS savings,
+            (SELECT COALESCE(SUM(share_capital::numeric), 0) FROM members WHERE status NOT IN ('rejected', 'exited')) AS shares,
+            (SELECT COALESCE(SUM(outstanding_balance::numeric), 0) FROM loans WHERE status IN ('approved', 'active', 'disbursed', 'defaulted')) AS loans
+        `),
+        db.select().from(saccoAccounts).where(inArray(saccoAccounts.accountCode, ['1003', '2001', '2002'])),
+      ]);
+      const controlRows = (operationalControlTotals as any).rows || operationalControlTotals;
+      const operationalTotals = controlRows[0] || {};
+      const controlDefinitions = [
+        { key: 'savings', label: 'Member Savings', accountCode: '2001' },
+        { key: 'shares', label: 'Share Capital', accountCode: '2002' },
+        { key: 'loans', label: 'Loan Portfolio', accountCode: '1003' },
+      ];
+      const controlReconciliation = controlDefinitions.map((definition) => {
+        const account = controlAccounts.find((candidate) => candidate.accountCode === definition.accountCode);
+        const operationalBalance = parseFloat(operationalTotals[definition.key] || '0');
+        const journalBalance = parseFloat(account?.balance || '0');
+        const difference = Math.round((journalBalance - operationalBalance) * 100) / 100;
+        return {
+          ...definition,
+          operationalBalance: operationalBalance.toFixed(2),
+          journalBalance: journalBalance.toFixed(2),
+          difference: difference.toFixed(2),
+          status: account && Math.abs(difference) < 0.01 ? 'matched' : 'discrepancy',
+          message: account ? undefined : `Control account ${definition.accountCode} is not configured`,
+        };
+      });
+
       const accountMap = new Map(accountSums.map(a => [a.memberId, a]));
 
       const loanPaymentSums = await db
@@ -5970,8 +5966,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           matchedAccounts: matched.length,
           discrepancyAccounts: discrepancies.length,
           totalDiscrepancyAmount: totalDiscrepancyAmount.toFixed(2),
+          controlDiscrepancies: controlReconciliation.filter((item) => item.status === 'discrepancy').length,
           reconciliationDate: new Date().toISOString(),
         },
+        controlAccounts: controlReconciliation,
         discrepancies,
         matched,
       });
@@ -6017,7 +6015,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/admin/recalculate-sacco-balances', isAuthenticated, requirePermission('update', 'sacco-accounts'), async (req: any, res) => {
     try {
-      const result = await recalculateSaccoBalances();
+      const result = await storage.recalculateSaccoAccountBalances();
+      await storage.createAuditLog({
+        userId: getUserId(req)!,
+        action: 'update',
+        resource: 'sacco-account-balances',
+        details: `${result.message}. Trial balance debits: ${result.totalDebits.toFixed(2)}, credits: ${result.totalCredits.toFixed(2)}, difference: ${result.difference.toFixed(2)}.`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
       res.json(result);
     } catch (error: any) {
       console.error('Error recalculating SACCO balances:', error);
@@ -7007,50 +7013,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const savingsAccounts = await storage.getSavingsAccountsByMember(member.id);
             const savingsAccount = savingsAccounts.find((s: any) => s.accountType === 'regular') || savingsAccounts[0];
 
-            await storage.updateLoanBalance(loan.id, repaymentAmount.toFixed(2));
-
-            const newBalance = Math.max(0, outstandingBalance - repaymentAmount);
-            if (newBalance <= 0) {
-              await storage.updateLoanStatus(loan.id, 'completed');
-            }
-
             const importRef = reference || `IMP-LR-${Date.now()}-${i}`;
             const split = await splitLoanRepayment(loan, repaymentAmount, outstandingBalance);
-
-            await storage.createTransaction({
-              memberId: member.id,
-              savingsAccountId: savingsAccount?.id || null,
-              loanId: loan.id,
-              transactionType: 'loan_payment',
-              amount: repaymentAmount.toFixed(2),
-              description: description,
-              referenceNumber: reference,
-              performedBy: userId,
-              status: 'completed',
-              metadata: JSON.stringify({
-                interest: split.interestPortion,
-                principalRepyt: split.principalPortion,
-                balanceReduction: split.balanceReduction,
-                source: 'repayment_import'
-              }),
-            });
-            if (split.balanceReduction !== repaymentAmount) {
-              const correctedNewBalance = Math.max(0, outstandingBalance - split.balanceReduction);
-              await storage.updateLoanBalance(loan.id, split.balanceReduction.toFixed(2));
-              if (correctedNewBalance <= 0) {
-                await storage.updateLoanStatus(loan.id, 'completed');
-              }
-            }
-            await postLoanRepaymentJournals(loan, split.interestPortion, split.principalPortion, `Imported loan repayment - ${member.memberNumber}`, importRef, userId);
-
-            if (['inactive', 'dormant'].includes(member.status)) {
-              await db.update(members).set({
+            await storage.runSaccoLedgerTransaction(async (tx) => {
+              const newBalance = Math.max(0, outstandingBalance - split.balanceReduction);
+              await tx.update(loans).set({
+                outstandingBalance: newBalance.toFixed(2),
+                status: newBalance <= 0 ? 'completed' : loan.status,
+                updatedAt: new Date(),
+              }).where(eq(loans.id, loan.id));
+              await tx.insert(transactions).values({
+                memberId: member.id, savingsAccountId: savingsAccount?.id || null, loanId: loan.id,
+                transactionType: 'loan_payment', amount: repaymentAmount.toFixed(2), description,
+                referenceNumber: importRef, processedBy: userId, status: 'completed',
+                metadata: JSON.stringify({ interest: split.interestPortion, principalRepyt: split.principalPortion, balanceReduction: split.balanceReduction, source: 'repayment_import' }),
+              });
+              await postLoanRepaymentJournals(loan, split.interestPortion, split.principalPortion, `Imported loan repayment - ${member.memberNumber}`, importRef, userId, tx);
+              if (['inactive', 'dormant'].includes(member.status)) {
+                await tx.update(members).set({
                 status: 'active' as any,
                 lastActivityDate: new Date(),
                 isActiveSaver: true,
                 updatedAt: new Date(),
-              }).where(eq(members.id, member.id));
-            }
+                }).where(eq(members.id, member.id));
+              }
+            });
 
             if (reference) existingRefs.add(reference);
             successCount++;
@@ -7241,27 +7228,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
               continue;
             }
 
-            await storage.updateSavingsAccountBalance(savingsAccount.id, amount.toFixed(2), 'add');
-
-            await storage.createTransaction({
-              memberId: member.id,
-              savingsAccountId: savingsAccount.id,
-              transactionType: 'deposit',
-              amount: amount.toFixed(2),
-              description: description,
-              referenceNumber: reference,
-              performedBy: userId,
-              status: 'completed',
-            });
-
-            await recordJournalEntry(
-              'member_deposit',
-              amount,
-              `Imported savings deposit - ${member.memberNumber}`,
-              reference || `IMP-SD-${Date.now()}-${i}`,
-              userId
-            );
-
             const importUpdateFields: any = {
               lastSavingsDate: new Date(),
               lastActivityDate: new Date(),
@@ -7270,7 +7236,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
             if (['inactive', 'dormant'].includes(member.status)) {
               importUpdateFields.status = 'active';
             }
-            await db.update(members).set(importUpdateFields).where(eq(members.id, member.id));
+            const importRef = reference || `IMP-SD-${Date.now()}-${i}`;
+            await storage.runSaccoLedgerTransaction(async (tx) => {
+              await tx.update(savingsAccountsTable).set({
+                balance: sql`${savingsAccountsTable.balance} + ${amount.toFixed(2)}`,
+                updatedAt: new Date(),
+              }).where(eq(savingsAccountsTable.id, savingsAccount.id));
+              await tx.insert(transactions).values({
+                memberId: member.id, savingsAccountId: savingsAccount.id, transactionType: 'deposit',
+                amount: amount.toFixed(2), description, referenceNumber: importRef,
+                processedBy: userId, status: 'completed',
+              });
+              await tx.update(members).set(importUpdateFields).where(eq(members.id, member.id));
+              await recordJournalEntry('member_deposit', amount, `Imported savings deposit - ${member.memberNumber}`, importRef, userId, tx);
+            });
 
             if (reference) existingRefs.add(reference);
             successCount++;
@@ -7480,7 +7459,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const approved = calculations.filter((c: any) => c.status === 'approved');
       let posted = 0;
       for (const calc of approved) {
-        await storage.postInterestCalculation(calc.id);
+        await storage.runSaccoLedgerTransaction(async (tx) => {
+          const locked = await tx.execute(sql`SELECT * FROM ${interestCalculations} WHERE ${interestCalculations.id} = ${calc.id} FOR UPDATE`);
+          const current = locked.rows[0] as typeof interestCalculations.$inferSelect | undefined;
+          if (!current || current.status !== 'approved') return;
+          const amount = parseFloat(current.grossInterest || '0');
+          const [postedCalculation] = await tx.update(interestCalculations).set({ status: 'posted', postedAt: new Date(), updatedAt: new Date() })
+            .where(eq(interestCalculations.id, current.id)).returning();
+          if (amount <= 0) return;
+          const referenceNumber = `INT${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+          await tx.insert(interestPayments).values({ interestCalculationId: postedCalculation.id, memberId: postedCalculation.memberId, savingsAccountId: postedCalculation.savingsAccountId, paymentAmount: postedCalculation.grossInterest, paymentMethod: 'credit_to_account', paymentDate: new Date().toISOString().split('T')[0], transactionReference: referenceNumber, status: 'completed', processedBy: getUserId(req)! });
+          await tx.update(savingsAccountsTable).set({ balance: sql`${savingsAccountsTable.balance} + ${postedCalculation.grossInterest}`, updatedAt: new Date() }).where(eq(savingsAccountsTable.id, postedCalculation.savingsAccountId));
+          await tx.update(members).set({ totalSavings: sql`(SELECT COALESCE(SUM(balance::numeric), 0) FROM savings_accounts WHERE member_id = ${postedCalculation.memberId})` }).where(eq(members.id, postedCalculation.memberId));
+          await tx.insert(transactions).values({ memberId: postedCalculation.memberId, savingsAccountId: postedCalculation.savingsAccountId, transactionType: 'interest_credit', amount: postedCalculation.grossInterest, referenceNumber, description: `Interest credit - ${postedCalculation.calculationMethod} method`, status: 'completed', processedBy: getUserId(req)! });
+          await recordJournalEntry('savings_interest_accrual', amount, `Savings interest accrual - member ${postedCalculation.memberId}`, referenceNumber, getUserId(req)!, tx, false);
+          await recordJournalEntry('savings_interest_credit', amount, `Savings interest credited - member ${postedCalculation.memberId}`, referenceNumber, getUserId(req)!, tx);
+        });
         posted++;
       }
       res.json({ posted, total: calculations.length });
@@ -7493,7 +7487,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put('/api/interest-calculations/:id/post', isAuthenticated, requirePermission('post', 'interest-calculations'), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const calculation = await storage.postInterestCalculation(id);
+      const processedBy = getUserId(req)!;
+      const calculation = await storage.runSaccoLedgerTransaction(async (tx) => {
+        const locked = await tx.execute(sql`SELECT * FROM ${interestCalculations} WHERE ${interestCalculations.id} = ${id} FOR UPDATE`);
+        const current = locked.rows[0] as typeof interestCalculations.$inferSelect | undefined;
+        if (!current) throw new Error('Interest calculation not found');
+        if (current.status !== 'approved') throw new Error(`Only approved interest calculations can be posted (current status: ${current.status})`);
+        const amount = parseFloat(current.grossInterest || '0');
+        const [posted] = await tx.update(interestCalculations).set({ status: 'posted', postedAt: new Date(), updatedAt: new Date() })
+          .where(eq(interestCalculations.id, id)).returning();
+        if (amount > 0) {
+          const referenceNumber = `INT${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
+          await tx.insert(interestPayments).values({
+            interestCalculationId: posted.id, memberId: posted.memberId, savingsAccountId: posted.savingsAccountId,
+            paymentAmount: posted.grossInterest, paymentMethod: 'credit_to_account',
+            paymentDate: new Date().toISOString().split('T')[0], transactionReference: referenceNumber,
+            status: 'completed', processedBy,
+          });
+          await tx.update(savingsAccountsTable).set({ balance: sql`${savingsAccountsTable.balance} + ${posted.grossInterest}`, updatedAt: new Date() })
+            .where(eq(savingsAccountsTable.id, posted.savingsAccountId));
+          await tx.update(members).set({ totalSavings: sql`(SELECT COALESCE(SUM(balance::numeric), 0) FROM savings_accounts WHERE member_id = ${posted.memberId})` })
+            .where(eq(members.id, posted.memberId));
+          await tx.insert(transactions).values({
+            memberId: posted.memberId, savingsAccountId: posted.savingsAccountId, transactionType: 'interest_credit',
+            amount: posted.grossInterest, referenceNumber, description: `Interest credit - ${posted.calculationMethod} method`,
+            status: 'completed', processedBy,
+          });
+          await recordJournalEntry('savings_interest_accrual', amount, `Savings interest accrual - member ${posted.memberId}`, referenceNumber, processedBy, tx, false);
+          await recordJournalEntry('savings_interest_credit', amount, `Savings interest credited - member ${posted.memberId}`, referenceNumber, processedBy, tx);
+        }
+        return posted;
+      });
 
       try {
         const member = await storage.getMember(calculation.memberId);
@@ -7539,7 +7563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/interest-payments/:id/process', isAuthenticated, async (req: any, res) => {
+  app.put('/api/interest-payments/:id/process', isAuthenticated, requirePermission('post', 'interest-calculations'), async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const processedBy = getUserId(req)!;
@@ -7638,6 +7662,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/sacco-accounts/:id', isAuthenticated, requirePermission('update', 'sacco-accounts'), async (req: any, res) => {
     try {
+      if (Object.prototype.hasOwnProperty.call(req.body, 'balance')) {
+        return res.status(400).json({ message: "Account balances can only be changed by posted journal entries" });
+      }
       const account = await storage.updateSaccoAccount(parseInt(req.params.id), req.body);
       res.json(account);
     } catch (error) {
@@ -7885,34 +7912,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  async function recalculateSaccoBalances() {
-    const [savingsTotal] = await db
-      .select({ total: sql<string>`COALESCE(SUM(${savingsAccountsTable.balance}::numeric), 0)` })
-      .from(savingsAccountsTable);
-    const actualSavings = parseFloat(savingsTotal?.total || '0');
-
-    const [loansTotal] = await db
-      .select({ total: sql<string>`COALESCE(SUM(${loans.outstandingBalance}::numeric), 0)` })
-      .from(loans)
-      .where(inArray(loans.status, ['active', 'disbursed']));
-    const actualLoans = parseFloat(loansTotal?.total || '0');
-
-    await db.update(saccoAccounts)
-      .set({ balance: actualSavings.toFixed(2) })
-      .where(eq(saccoAccounts.accountCode, '2001'));
-
-    await db.update(saccoAccounts)
-      .set({ balance: actualLoans.toFixed(2) })
-      .where(eq(saccoAccounts.accountCode, '1003'));
-
-    const cashAtBank = actualSavings + actualLoans;
-    await db.update(saccoAccounts)
-      .set({ balance: cashAtBank.toFixed(2) })
-      .where(eq(saccoAccounts.accountCode, '1001'));
-
-    return { message: 'SACCO account balances synced with actual data', actualSavings, actualLoans, cashAtBank };
-  }
-
   setTimeout(async () => {
     try {
       const result = await storage.syncAllMemberTotalSavings();
@@ -7924,7 +7923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   setTimeout(async () => {
     try {
-      await recalculateSaccoBalances();
+      await storage.recalculateSaccoAccountBalances();
       console.log('[sacco-accounts] Startup: recalculated all SACCO account balances from journal entries');
     } catch (error) {
       console.error('[sacco-accounts] Startup recalculation failed:', error);

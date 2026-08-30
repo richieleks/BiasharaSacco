@@ -5,69 +5,42 @@ import { saccoAccounts, saccoJournalEntries, loans, members, savingsAccounts as 
 import { isAuthenticated } from "./replitAuth";
 import { requirePermission, requireRole, type AuthRequest } from "./rbac-middleware";
 import { storage } from "./storage";
+import {
+  calculateTrialBalanceSides,
+  rebuildLedgerBalances,
+  type SaccoAccountType,
+} from "./sacco-ledger";
 
 // ---------------------------------------------------------------------------
-// Operational re-sourcing of financial statements.
-// The double-entry journal layer (sacco_journal_entries) and the cached
-// sacco_accounts.balance column were seeded inconsistently and have drifted
-// from reality, so the Trial Balance, Balance Sheet and Income Statement below
-// are derived directly from the live operational ledgers that members see:
-// savings_accounts (member savings), loans (loan portfolio), members
-// (share capital) and transactions (loan interest/principal split, fees).
-// Because every figure comes from one consistent source the statements are
-// internally consistent and the balance sheet balances by construction.
-// Cash at Bank is the reconciling asset (the SACCO does not maintain a separate
-// cash ledger), computed so that Assets = Liabilities + Equity.
+// Financial statements use posted journals as the auditable source. Cached
+// account balances are never used to manufacture a balancing figure, and Cash
+// at Bank is therefore only the net of journal entries that touch that account.
 // ---------------------------------------------------------------------------
 
-interface IncomeFigures {
-  loanInterest: number;
-  feeIncome: number;
-  membershipIncome: number;
-  savingsInterestExpense: number;
-  totalRevenue: number;
-  totalExpenses: number;
-  netSurplus: number;
-}
+async function getPostedLedgerSnapshot(startDate?: string, endDate?: string) {
+  const conditions = [inArray(saccoJournalEntries.status, ['posted', 'reversed'])];
+  if (startDate) conditions.push(gte(saccoJournalEntries.entryDate, startDate));
+  if (endDate) conditions.push(lte(saccoJournalEntries.entryDate, endDate));
 
-async function getIncomeFigures(startDate?: string, endDate?: string): Promise<IncomeFigures> {
-  const start = startDate || '1900-01-01';
-  const end = endDate || '9999-12-31';
-  const result = await db.execute(sql`
-    SELECT
-      COALESCE(SUM(CASE WHEN transaction_type = 'loan_payment'
-          AND pg_input_is_valid(metadata, 'jsonb')
-          AND pg_input_is_valid(COALESCE(metadata::jsonb->>'interest', ''), 'numeric')
-        THEN (metadata::jsonb->>'interest')::numeric ELSE 0 END), 0) AS loan_interest,
-      COALESCE(SUM(CASE WHEN transaction_type = 'fee_charge' THEN amount::numeric ELSE 0 END), 0) AS fee_income,
-      COALESCE(SUM(CASE WHEN transaction_type = 'membership_fee' THEN amount::numeric ELSE 0 END), 0) AS membership_income,
-      COALESCE(SUM(CASE WHEN transaction_type = 'interest_credit' THEN amount::numeric ELSE 0 END), 0) AS savings_interest_expense
-    FROM transactions
-    WHERE status = 'completed'
-      AND transaction_date::date >= ${start} AND transaction_date::date <= ${end}
-  `);
-  const row = ((result as any).rows || result)[0] || {};
-  const loanInterest = parseFloat(row.loan_interest || '0');
-  const feeIncome = parseFloat(row.fee_income || '0');
-  const membershipIncome = parseFloat(row.membership_income || '0');
-  const savingsInterestExpense = parseFloat(row.savings_interest_expense || '0');
-  const totalRevenue = loanInterest + feeIncome + membershipIncome;
-  const totalExpenses = savingsInterestExpense;
-  return {
-    loanInterest, feeIncome, membershipIncome, savingsInterestExpense,
-    totalRevenue, totalExpenses, netSurplus: totalRevenue - totalExpenses,
-  };
-}
+  const [accounts, entries] = await Promise.all([
+    db.select().from(saccoAccounts).orderBy(saccoAccounts.accountCode),
+    db.select({
+      id: saccoJournalEntries.id,
+      debitAccountId: saccoJournalEntries.debitAccountId,
+      creditAccountId: saccoJournalEntries.creditAccountId,
+      amount: saccoJournalEntries.amount,
+    }).from(saccoJournalEntries).where(conditions.length > 0 ? and(...conditions) : undefined),
+  ]);
 
-async function getOperationalPositions() {
-  const [savingsTotal] = await db.select({ total: sql<string>`COALESCE(SUM(balance::numeric), 0)` }).from(savingsAccountsTable);
-  const [loansTotal] = await db.select({ total: sql<string>`COALESCE(SUM(outstanding_balance::numeric), 0)` }).from(loans).where(inArray(loans.status, ['active', 'disbursed']));
-  const [shareCapitalTotal] = await db.select({ total: sql<string>`COALESCE(SUM(share_capital::numeric), 0)` }).from(members);
-  return {
-    memberSavings: parseFloat(savingsTotal?.total || '0'),
-    loanPortfolio: parseFloat(loansTotal?.total || '0'),
-    shareCapital: parseFloat(shareCapitalTotal?.total || '0'),
-  };
+  return rebuildLedgerBalances(
+    accounts.map((account) => ({
+      id: account.id,
+      accountCode: account.accountCode,
+      accountName: account.accountName,
+      accountType: account.accountType as SaccoAccountType,
+    })),
+    entries,
+  );
 }
 
 export function registerFinancialReportRoutes(app: Express) {
@@ -75,50 +48,39 @@ export function registerFinancialReportRoutes(app: Express) {
   app.get("/api/reports/trial-balance", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
     try {
       const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
-
-      const positions = await getOperationalPositions();
-      const income = await getIncomeFigures(undefined, asOfDate);
-      const retainedSurplus = income.netSurplus;
-      const cashAtBank = (positions.memberSavings + positions.shareCapital + retainedSurplus) - positions.loanPortfolio;
-
-      const defs = [
-        { accountCode: '1001', accountName: 'Cash at Bank', accountType: 'asset', amount: cashAtBank, side: 'debit' },
-        { accountCode: '1003', accountName: 'Loan Portfolio', accountType: 'asset', amount: positions.loanPortfolio, side: 'debit' },
-        { accountCode: '2001', accountName: 'Member Savings', accountType: 'liability', amount: positions.memberSavings, side: 'credit' },
-        { accountCode: '2002', accountName: 'Member Share Capital', accountType: 'equity', amount: positions.shareCapital, side: 'credit' },
-        { accountCode: '4001', accountName: 'Interest on Loans', accountType: 'revenue', amount: income.loanInterest, side: 'credit' },
-        { accountCode: '4002', accountName: 'Loan Processing & Other Fees', accountType: 'revenue', amount: income.feeIncome, side: 'credit' },
-        { accountCode: '4003', accountName: 'Membership Entry Fees', accountType: 'revenue', amount: income.membershipIncome, side: 'credit' },
-        { accountCode: '5012', accountName: 'Interest on Member Savings', accountType: 'expense', amount: income.savingsInterestExpense, side: 'debit' },
-      ];
+      const ledger = await getPostedLedgerSnapshot(undefined, asOfDate);
 
       let totalDebits = 0;
       let totalCredits = 0;
-      const trialBalanceRows = defs
-        .filter((d) => Math.abs(d.amount) > 0.001)
-        .map((d) => {
-          const debit = d.side === 'debit' ? d.amount : 0;
-          const credit = d.side === 'credit' ? d.amount : 0;
-          totalDebits += debit;
-          totalCredits += credit;
+      const trialBalanceRows = ledger.accounts
+        .map((account) => {
+          const { debitBalance, creditBalance } = calculateTrialBalanceSides(account.accountType, account.balance);
+          totalDebits += debitBalance;
+          totalCredits += creditBalance;
           return {
-            accountCode: d.accountCode,
-            accountName: d.accountName,
-            accountType: d.accountType,
-            totalDebits: debit,
-            totalCredits: credit,
-            debitBalance: debit,
-            creditBalance: credit,
+            accountCode: account.accountCode,
+            accountName: account.accountName,
+            accountType: account.accountType,
+            totalDebits: account.totalDebits,
+            totalCredits: account.totalCredits,
+            debitBalance,
+            creditBalance,
           };
-        });
+        })
+        .filter((account) => account.totalDebits !== 0 || account.totalCredits !== 0);
+
+      totalDebits = Math.round(totalDebits * 100) / 100;
+      totalCredits = Math.round(totalCredits * 100) / 100;
+      const difference = Math.round((totalDebits - totalCredits) * 100) / 100;
 
       res.json({
         asOfDate,
         rows: trialBalanceRows,
         totalDebits,
         totalCredits,
-        isBalanced: Math.abs(totalDebits - totalCredits) < 0.01,
-        difference: Math.abs(totalDebits - totalCredits),
+        isBalanced: Math.abs(difference) < 0.01,
+        difference,
+        postedEntryCount: ledger.postedEntryCount,
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -128,25 +90,34 @@ export function registerFinancialReportRoutes(app: Express) {
   app.get("/api/reports/balance-sheet", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
     try {
       const asOfDate = (req.query.asOfDate as string) || new Date().toISOString().split('T')[0];
+      const ledger = await getPostedLedgerSnapshot(undefined, asOfDate);
+      const asItem = (account: typeof ledger.accounts[number]) => ({
+        accountCode: account.accountCode,
+        accountName: account.accountName,
+        balance: account.balance,
+      });
 
-      const positions = await getOperationalPositions();
-      const income = await getIncomeFigures(undefined, asOfDate);
-      const retainedSurplus = income.netSurplus;
-      const cashAtBank = (positions.memberSavings + positions.shareCapital + retainedSurplus) - positions.loanPortfolio;
-
-      const assets = [
-        { accountCode: '1001', accountName: 'Cash at Bank', balance: cashAtBank },
-        { accountCode: '1003', accountName: 'Loan Portfolio', balance: positions.loanPortfolio },
-      ].filter((a) => Math.abs(a.balance) > 0.001);
-
-      const liabilities = [
-        { accountCode: '2001', accountName: 'Member Savings', balance: positions.memberSavings },
-      ].filter((a) => Math.abs(a.balance) > 0.001);
-
+      const assets = ledger.accounts
+        .filter((account) => account.accountType === 'asset' && Math.abs(account.balance) > 0.001)
+        .map(asItem);
+      const liabilities = ledger.accounts
+        .filter((account) => account.accountType === 'liability' && account.accountCode !== '2002' && Math.abs(account.balance) > 0.001)
+        .map(asItem);
+      const revenue = ledger.accounts
+        .filter((account) => account.accountType === 'revenue')
+        .reduce((sum, account) => sum + account.balance, 0);
+      const expenses = ledger.accounts
+        .filter((account) => account.accountType === 'expense')
+        .reduce((sum, account) => sum + account.balance, 0);
+      const currentSurplus = Math.round((revenue - expenses) * 100) / 100;
       const equity = [
-        { accountCode: '2002', accountName: 'Member Share Capital', balance: positions.shareCapital },
-        ...(Math.abs(retainedSurplus) > 0.001 ? [{ accountCode: 'RS', accountName: 'Retained Surplus / (Deficit)', balance: retainedSurplus }] : []),
-      ].filter((a) => Math.abs(a.balance) > 0.001);
+        ...ledger.accounts
+          .filter((account) => (account.accountType === 'equity' || account.accountCode === '2002') && Math.abs(account.balance) > 0.001)
+          .map(asItem),
+        ...(Math.abs(currentSurplus) > 0.001
+          ? [{ accountCode: 'CURRENT-SURPLUS', accountName: 'Current Surplus / (Deficit)', balance: currentSurplus }]
+          : []),
+      ];
 
       const totalAssets = assets.reduce((s, a) => s + a.balance, 0);
       const totalLiabilities = liabilities.reduce((s, a) => s + a.balance, 0);
@@ -158,7 +129,9 @@ export function registerFinancialReportRoutes(app: Express) {
         liabilities: { items: liabilities, total: totalLiabilities },
         equity: { items: equity, total: totalEquity },
         totalLiabilitiesAndEquity: totalLiabilities + totalEquity,
-        isBalanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 1,
+        difference: Math.round((totalAssets - totalLiabilities - totalEquity) * 100) / 100,
+        isBalanced: Math.abs(totalAssets - (totalLiabilities + totalEquity)) < 0.01,
+        postedEntryCount: ledger.postedEntryCount,
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -169,25 +142,23 @@ export function registerFinancialReportRoutes(app: Express) {
     try {
       const startDate = (req.query.startDate as string) || new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0];
       const endDate = (req.query.endDate as string) || new Date().toISOString().split('T')[0];
-
-      const income = await getIncomeFigures(startDate, endDate);
-
-      const revenueRows = [
-        { accountCode: '4001', accountName: 'Interest on Loans', amount: income.loanInterest },
-        { accountCode: '4002', accountName: 'Loan Processing & Other Fees', amount: income.feeIncome },
-        { accountCode: '4003', accountName: 'Membership Entry Fees', amount: income.membershipIncome },
-      ].filter((r) => Math.abs(r.amount) > 0.001);
-
-      const expenseRows = [
-        { accountCode: '5012', accountName: 'Interest on Member Savings', amount: income.savingsInterestExpense },
-      ].filter((r) => Math.abs(r.amount) > 0.001);
+      const ledger = await getPostedLedgerSnapshot(startDate, endDate);
+      const revenueRows = ledger.accounts
+        .filter((account) => account.accountType === 'revenue' && Math.abs(account.balance) > 0.001)
+        .map((account) => ({ accountCode: account.accountCode, accountName: account.accountName, amount: account.balance }));
+      const expenseRows = ledger.accounts
+        .filter((account) => account.accountType === 'expense' && Math.abs(account.balance) > 0.001)
+        .map((account) => ({ accountCode: account.accountCode, accountName: account.accountName, amount: account.balance }));
+      const totalRevenue = revenueRows.reduce((sum, account) => sum + account.amount, 0);
+      const totalExpenses = expenseRows.reduce((sum, account) => sum + account.amount, 0);
 
       res.json({
         startDate,
         endDate,
-        revenue: { items: revenueRows, total: income.totalRevenue },
-        expenses: { items: expenseRows, total: income.totalExpenses },
-        netSurplus: income.netSurplus,
+        revenue: { items: revenueRows, total: totalRevenue },
+        expenses: { items: expenseRows, total: totalExpenses },
+        netSurplus: totalRevenue - totalExpenses,
+        postedEntryCount: ledger.postedEntryCount,
       });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -440,11 +411,19 @@ export function registerFinancialReportRoutes(app: Express) {
       const userId = authReq.user?.id;
       const writeoffId = parseInt(req.params.id);
 
-      const [writeoff] = await db.select().from(loanWriteoffs).where(eq(loanWriteoffs.id, writeoffId));
-      if (!writeoff) return res.status(404).json({ message: 'Write-off not found' });
-      if (writeoff.status !== 'pending') return res.status(400).json({ message: 'Write-off is not pending' });
+      await storage.runSaccoLedgerTransaction(async (tx) => {
+        const [writeoff] = await tx.select().from(loanWriteoffs)
+          .where(eq(loanWriteoffs.id, writeoffId))
+          .for('update');
+        if (!writeoff) throw new Error('Write-off not found');
+        if (writeoff.status !== 'pending') throw new Error('Write-off is not pending');
+        const [loan] = await tx.select().from(loans)
+          .where(eq(loans.id, writeoff.loanId))
+          .for('update');
+        if (!loan) throw new Error('Loan not found');
+        const currentOutstanding = parseFloat(loan.outstandingBalance || '0');
+        if (currentOutstanding <= 0) throw new Error('Loan has no outstanding balance to write off');
 
-      await db.transaction(async (tx) => {
         await tx.update(loanWriteoffs).set({
           status: 'approved',
           approvedBy: userId,
@@ -456,27 +435,23 @@ export function registerFinancialReportRoutes(app: Express) {
           outstandingBalance: '0.00',
         }).where(eq(loans.id, writeoff.loanId));
 
-        let loanLossAccount = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.accountCode, '5011'));
-        if (loanLossAccount.length === 0) {
-          loanLossAccount = await tx.insert(saccoAccounts).values({
-            accountCode: '5011', accountName: 'Loan Loss / Write-Off', accountType: 'expense', balance: '0.00', isActive: true,
-          }).returning();
-        }
+        const loanLossAccount = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.accountCode, '5011'));
         const loanPortfolioAccount = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.accountCode, '1003'));
 
-        if (loanLossAccount.length > 0 && loanPortfolioAccount.length > 0) {
-          await tx.insert(saccoJournalEntries).values({
-            entryNumber: `WO-${Date.now()}`,
-            entryDate: new Date().toISOString().split('T')[0],
-            description: `Loan write-off: ${writeoff.loanNumber}`,
-            debitAccountId: loanLossAccount[0].id,
-            creditAccountId: loanPortfolioAccount[0].id,
-            amount: writeoff.writeoffAmount || writeoff.outstandingBalance,
-            reference: `writeoff:${writeoff.loanId}`,
-            status: 'posted',
-            createdBy: userId!,
-          });
+        if (loanLossAccount.length === 0 || loanPortfolioAccount.length === 0) {
+          throw new Error('Loan write-off control accounts 5011 and 1003 must be configured');
         }
+        await storage.createSaccoJournalEntryInTransaction(tx, {
+          entryNumber: `WO-${Date.now()}`,
+          entryDate: new Date().toISOString().split('T')[0],
+          description: `Loan write-off: ${writeoff.loanNumber}`,
+          debitAccountId: loanLossAccount[0].id,
+          creditAccountId: loanPortfolioAccount[0].id,
+          amount: currentOutstanding.toFixed(2),
+          reference: `writeoff:${writeoff.loanId}`,
+          status: 'posted',
+          createdBy: userId!,
+        });
       });
 
       res.json({ message: 'Loan written off successfully' });
@@ -650,25 +625,31 @@ export function registerFinancialReportRoutes(app: Express) {
     try {
       const distId = parseInt(req.params.id);
 
-      const [dist] = await db.select().from(dividendDistributions).where(eq(dividendDistributions.id, distId));
-      if (!dist) return res.status(404).json({ message: 'Distribution not found' });
-      if (dist.status !== 'approved') return res.status(400).json({ message: 'Distribution must be approved before distributing' });
-
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
 
-      const pendingDividends = await db.select().from(memberDividends)
-        .where(and(eq(memberDividends.distributionId, distId), eq(memberDividends.status, 'pending')));
-
       let distributed = 0;
-      await db.transaction(async (tx) => {
+      await storage.runSaccoLedgerTransaction(async (tx) => {
+        const [dist] = await tx.select().from(dividendDistributions)
+          .where(eq(dividendDistributions.id, distId))
+          .for('update');
+        if (!dist) throw new Error('Distribution not found');
+        if (dist.status !== 'approved') throw new Error('Distribution must be approved before distributing');
+        const pendingDividends = await tx.select().from(memberDividends)
+          .where(and(eq(memberDividends.distributionId, distId), eq(memberDividends.status, 'pending')))
+          .for('update');
+
         const retainedEarningsAcc = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.accountCode, '3001'));
         const memberSavingsAcc = await tx.select().from(saccoAccounts).where(eq(saccoAccounts.accountCode, '2001'));
+        if (pendingDividends.length > 0 && (retainedEarningsAcc.length === 0 || memberSavingsAcc.length === 0)) {
+          throw new Error('Dividend control accounts 3001 and 2001 must be configured');
+        }
 
         for (const div of pendingDividends) {
           if (div.paymentMethod === 'credit_to_savings') {
             const [savingsAcc] = await tx.select().from(savingsAccountsTable)
-              .where(eq(savingsAccountsTable.memberId, div.memberId));
+              .where(eq(savingsAccountsTable.memberId, div.memberId))
+              .for('update');
             if (savingsAcc) {
               const newBalance = parseFloat(savingsAcc.balance) + parseFloat(div.dividendAmount);
               await tx.update(savingsAccountsTable).set({
@@ -687,21 +668,22 @@ export function registerFinancialReportRoutes(app: Express) {
           }).where(eq(memberDividends.id, div.id));
           distributed++;
 
-          if (retainedEarningsAcc.length > 0 && memberSavingsAcc.length > 0) {
-            await tx.insert(saccoJournalEntries).values({
-              entryNumber: `DIV-${dist.id}-${div.memberId}-${Date.now()}`,
-              entryDate: new Date().toISOString().split('T')[0],
-              description: `Dividend distribution - Member ID: ${div.memberId}`,
-              debitAccountId: retainedEarningsAcc[0].id,
-              creditAccountId: memberSavingsAcc[0].id,
-              amount: div.dividendAmount,
-              reference: `dividend:${dist.id}`,
-              status: 'posted',
-              createdBy: userId!,
-            });
-          }
+          await storage.createSaccoJournalEntryInTransaction(tx, {
+            entryNumber: `DIV-${dist.id}-${div.memberId}-${Date.now()}`,
+            entryDate: new Date().toISOString().split('T')[0],
+            description: `Dividend distribution - Member ID: ${div.memberId}`,
+            debitAccountId: retainedEarningsAcc[0].id,
+            creditAccountId: memberSavingsAcc[0].id,
+            amount: div.dividendAmount,
+            reference: `dividend:${dist.id}`,
+            status: 'posted',
+            createdBy: userId!,
+          }, false);
         }
 
+        if (pendingDividends.length > 0) {
+          await storage.recalculateSaccoAccountBalancesInTransaction(tx);
+        }
         await tx.update(dividendDistributions).set({
           status: 'distributed',
           distributedAt: new Date(),
