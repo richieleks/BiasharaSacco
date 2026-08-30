@@ -10,6 +10,7 @@ import {
   interestRates,
   amortizationSchedules,
   interestCalculations,
+  loanInterestCalculations,
   financialYears,
   interestPayments,
   balanceSnapshots,
@@ -17,6 +18,7 @@ import {
   loanTypes,
   loanTerms,
   systemSettings,
+  insertSystemSettingSchema,
   type User,
   type UpsertUser,
   type Member,
@@ -82,7 +84,6 @@ import { eq, ne, desc, sql, like, ilike, or, and, gte, lte, count, getTableColum
 import {
   rebuildLedgerBalances,
   type LedgerRebuildResult,
-  type SaccoAccountType,
 } from "./sacco-ledger";
 
 export interface SaccoBalanceRecalculationResult extends LedgerRebuildResult {
@@ -91,6 +92,31 @@ export interface SaccoBalanceRecalculationResult extends LedgerRebuildResult {
 }
 
 const SACCO_LEDGER_ADVISORY_LOCK_ID = 741_290_031;
+type UserUpdate = Partial<Omit<UpsertUser, "id">>;
+type MemberStatus = NonNullable<Member["status"]>;
+type LoanStatus = NonNullable<Loan["status"]>;
+type LoanApprovalStage = NonNullable<LoanApproval["stage"]>;
+type SystemSettingType = NonNullable<ReturnType<typeof insertSystemSettingSchema.parse>["settingType"]>;
+type SaccoAccountType = NonNullable<SaccoAccount["accountType"]>;
+type LoanInterestCalculation = typeof loanInterestCalculations.$inferSelect;
+type InsertLoanInterestCalculation = typeof loanInterestCalculations.$inferInsert;
+
+const memberStatuses: readonly MemberStatus[] = [
+  "pending", "active", "inactive", "dormant", "suspended", "rejected", "exited",
+];
+const loanStatuses: readonly LoanStatus[] = [
+  "pending", "committee_approved", "manager_approved", "approved", "rejected",
+  "recalled", "disbursed", "active", "completed", "defaulted",
+];
+const loanApprovalStages: readonly LoanApprovalStage[] = ["committee", "treasurer"];
+const systemSettingTypes: readonly SystemSettingType[] = ["string", "number", "boolean", "json"];
+const saccoAccountTypes: readonly SaccoAccountType[] = [
+  "asset", "liability", "equity", "revenue", "expense",
+];
+
+function includesValue<T extends string>(values: readonly T[], value: string): value is T {
+  return values.some((item) => item === value);
+}
 
 // Interface for storage operations
 export interface IStorage {
@@ -98,7 +124,7 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
-  updateUser(id: string, data: Partial<{ username: string; email: string; firstName: string; lastName: string; role: string }>): Promise<User>;
+  updateUser(id: string, data: UserUpdate): Promise<User>;
   deleteUser(id: string): Promise<void>;
   upsertUser(user: UpsertUser): Promise<User>;
 
@@ -234,7 +260,7 @@ export interface IStorage {
   getUpcomingPayments(days: number): Promise<AmortizationScheduleWithDetails[]>;
 
   // Interest calculation operations
-  createInterestCalculation(calculation: InsertInterestCalculation): Promise<InterestCalculation>;
+  createInterestCalculation(calculation: InsertLoanInterestCalculation): Promise<LoanInterestCalculation>;
   calculateAndSaveInterest(loanId: number): Promise<InterestCalculationResult>;
 
   // Advanced loan calculations
@@ -376,7 +402,7 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users).orderBy(users.createdAt);
   }
 
-  async updateUser(id: string, data: Partial<{ username: string; email: string; firstName: string; lastName: string; role: string }>): Promise<User> {
+  async updateUser(id: string, data: UserUpdate): Promise<User> {
     const [user] = await db
       .update(users)
       .set({ ...data, updatedAt: new Date() })
@@ -556,6 +582,9 @@ export class DatabaseStorage implements IStorage {
   async getMembersPaginated(page: number, limit: number, search?: string, status?: string): Promise<{ data: MemberWithDetails[]; total: number }> {
     const conditions: any[] = [];
     if (status && status !== 'all') {
+      if (!includesValue(memberStatuses, status)) {
+        return { data: [], total: 0 };
+      }
       conditions.push(eq(members.status, status));
     } else {
       conditions.push(ne(members.status, 'exited'));
@@ -996,6 +1025,9 @@ export class DatabaseStorage implements IStorage {
       conditions.push(eq(loans.memberId, memberId));
     }
     if (status) {
+      if (!includesValue(loanStatuses, status)) {
+        return { data: [], total: 0 };
+      }
       conditions.push(eq(loans.status, status));
     }
     if (search) {
@@ -1171,6 +1203,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async addLoanApproval(loanId: number, approvedBy: string, stage: string, comments?: string): Promise<LoanApproval> {
+    if (!includesValue(loanApprovalStages, stage)) {
+      throw new Error(`Invalid loan approval stage: ${stage}`);
+    }
     const [approval] = await db
       .insert(loanApprovals)
       .values({ loanId, approvedBy, stage, comments })
@@ -1179,6 +1214,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getLoanApprovals(loanId: number, stage: string): Promise<LoanApproval[]> {
+    if (!includesValue(loanApprovalStages, stage)) {
+      return [];
+    }
     return await db
       .select()
       .from(loanApprovals)
@@ -1787,7 +1825,7 @@ export class DatabaseStorage implements IStorage {
       .where(
         and(
           sql`disbursement_date >= ${startDate}`,
-          inArray(loans.status, ['approved', 'active', 'disbursed', 'closed'])
+          inArray(loans.status, ['approved', 'active', 'disbursed', 'completed'])
         )
       )
       .groupBy(useYearMonth
@@ -2468,9 +2506,9 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Interest calculation operations
-  async createInterestCalculation(calculation: InsertInterestCalculation): Promise<InterestCalculation> {
+  async createInterestCalculation(calculation: InsertLoanInterestCalculation): Promise<LoanInterestCalculation> {
     const [calc] = await db
-      .insert(interestCalculations)
+      .insert(loanInterestCalculations)
       .values(calculation)
       .returning();
     return calc;
@@ -2491,7 +2529,7 @@ export class DatabaseStorage implements IStorage {
       : loanTypeConfig
         ? Number(loanTypeConfig.interestRate)
         : InterestCalculator.getRecommendedRate(loanType, Number(loan.principalAmount));
-    const interestType = (loanTypeConfig?.interestType as 'simple' | 'compound' | 'reducing_balance') || 'reducing_balance';
+    const interestType = loanTypeConfig?.interestType ?? 'reducing_balance';
     const principal = Number(loan.principalAmount);
     const termYears = loan.termMonths / 12;
     const compoundFrequencies: Record<string, number> = { monthly: 12, quarterly: 4, annually: 1 };
@@ -3419,15 +3457,20 @@ export class DatabaseStorage implements IStorage {
 
   async upsertSystemSetting(key: string, value: string, type?: string, description?: string, updatedBy?: string): Promise<SystemSetting> {
     const existing = await this.getSystemSetting(key);
+    const requestedSettingType = type ?? existing?.settingType ?? 'string';
+    if (!includesValue(systemSettingTypes, requestedSettingType)) {
+      throw new Error(`Invalid system setting type: ${requestedSettingType}`);
+    }
+    const settingType = requestedSettingType;
     if (existing) {
       const [updated] = await db.update(systemSettings)
-        .set({ settingValue: value, settingType: type || existing.settingType, description: description || existing.description, updatedBy: updatedBy || existing.updatedBy, updatedAt: new Date() })
+        .set({ settingValue: value, settingType, description: description || existing.description, updatedBy: updatedBy || existing.updatedBy, updatedAt: new Date() })
         .where(eq(systemSettings.settingKey, key))
         .returning();
       return updated;
     } else {
       const [created] = await db.insert(systemSettings)
-        .values({ settingKey: key, settingValue: value, settingType: type || 'string', description, updatedBy })
+        .values({ settingKey: key, settingValue: value, settingType, description, updatedBy })
         .returning();
       return created;
     }
@@ -3453,6 +3496,9 @@ export class DatabaseStorage implements IStorage {
   async getSaccoAccounts(filters?: { accountType?: string; isActive?: boolean }): Promise<SaccoAccount[]> {
     const conditions = [];
     if (filters?.accountType) {
+      if (!includesValue(saccoAccountTypes, filters.accountType)) {
+        return [];
+      }
       conditions.push(eq(saccoAccounts.accountType, filters.accountType));
     }
     if (filters?.isActive !== undefined) {

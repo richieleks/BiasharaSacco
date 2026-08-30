@@ -139,11 +139,11 @@ export async function setupLocalAuth() {
           }
 
           const staffRoles = ['admin', 'manager', 'committee', 'treasurer'];
-          const isStaffUser = user.role && staffRoles.includes(user.role);
+          const isStaffUser = staffRoles.includes(user.role ?? '');
           
           if (!isStaffUser) {
             const member = await storage.getMemberByUserId(user.id);
-            if (member && ['exited', 'suspended'].includes(member.status)) {
+            if (member && (member.status === 'exited' || member.status === 'suspended')) {
               return done(null, false, { message: member.status === 'exited' ? "Your membership has been closed. Please contact the SACCO administrator." : "Your account has been suspended. Please contact the SACCO administrator." });
             }
           }

@@ -16,6 +16,17 @@ import { eq, and, inArray, sql, lt, isNull, isNotNull, or, not } from "drizzle-o
 import ExcelJS from "exceljs";
 import { parseBankImportCsv } from "../csvUtils";
 
+const validUserRoles = ['admin', 'manager', 'committee', 'member'] as const;
+type UserRole = typeof validUserRoles[number];
+
+function isUserRole(value: unknown): value is UserRole {
+  return typeof value === 'string' && validUserRoles.includes(value as UserRole);
+}
+
+function getRouteParam(value: string | string[] | undefined): string {
+  return Array.isArray(value) ? value[0] ?? '' : value ?? '';
+}
+
 interface ImportJob {
   id: string;
   userId: string;
@@ -314,18 +325,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const setting = await storage.getSystemSetting('maintenanceMode');
       const isOn = setting?.settingValue === 'true';
       const announcementSetting = await storage.getSystemSetting('systemAnnouncement');
-      res.json({
+      return res.json({
         maintenanceMode: isOn,
         systemAnnouncement: announcementSetting?.settingValue || '',
       });
     } catch (error) {
-      res.json({ maintenanceMode: false, systemAnnouncement: '' });
+      return res.json({ maintenanceMode: false, systemAnnouncement: '' });
     }
   });
 
   // Auth routes
   app.post('/api/auth/heartbeat', isAuthenticated, async (_req, res) => {
-    res.json({ ok: true });
+    return res.json({ ok: true });
   });
 
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
@@ -362,7 +373,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const { password: _, ...memberUserWithoutPassword } = freshMember.user as any;
             freshMember.user = memberUserWithoutPassword as typeof freshMember.user;
           }
-          res.json({
+          return res.json({
             ...userWithoutPassword,
             mustSetup2FA,
             member: {
@@ -371,14 +382,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
         } else {
-          res.json({ ...userWithoutPassword, mustSetup2FA, member: null, isAdmin: user.role === 'admin' });
+          return res.json({ ...userWithoutPassword, mustSetup2FA, member: null, isAdmin: user.role === 'admin' });
         }
       } else {
-        res.json({ ...userWithoutPassword, mustSetup2FA, member: null, isAdmin: user.role === 'admin' });
+        return res.json({ ...userWithoutPassword, mustSetup2FA, member: null, isAdmin: user.role === 'admin' });
       }
     } catch (error) {
       console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
+      return res.status(500).json({ message: "Failed to fetch user" });
     }
   });
 
@@ -418,10 +429,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         new Map(allPermissions.map(p => [`${p.action}-${p.resource}`, p])).values()
       );
       
-      res.json(uniquePermissions);
+      return res.json(uniquePermissions);
     } catch (error) {
       console.error("Error fetching user permissions:", error);
-      res.status(500).json({ message: "Failed to fetch permissions" });
+      return res.status(500).json({ message: "Failed to fetch permissions" });
     }
   });
 
@@ -456,14 +467,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Role not found" });
       }
 
-      res.json({
+      return res.json({
         name: role.name,
         displayName: role.displayName,
         dashboardType: (role as any).dashboardType || 'member',
       });
     } catch (error) {
       console.error("Error fetching role info:", error);
-      res.status(500).json({ message: "Failed to fetch role info" });
+      return res.status(500).json({ message: "Failed to fetch role info" });
     }
   });
 
@@ -518,7 +529,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const { password: _, ...memberUserWithoutPassword } = updatedMember.user as any;
           updatedMember.user = memberUserWithoutPassword as typeof updatedMember.user;
         }
-        res.json({
+        return res.json({
           ...userWithoutPassword,
           member: {
             ...updatedMember,
@@ -526,11 +537,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         });
       } else {
-        res.json({ ...userWithoutPassword, member: null });
+        return res.json({ ...userWithoutPassword, member: null });
       }
     } catch (error) {
       console.error("Error updating user profile:", error);
-      res.status(500).json({ message: "Failed to update profile" });
+      return res.status(500).json({ message: "Failed to update profile" });
     }
   });
 
@@ -546,14 +557,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         if (user.twoFactorEnabled && user.twoFactorSecret) {
-          return res.json({ 
+          return res.json({
             message: "Two-factor authentication required", 
             requiresTwoFactor: true, 
             username: user.username 
           });
         }
 
-        req.logIn(user, async (err) => {
+        return req.logIn(user, async (err) => {
           if (err) {
             return res.status(500).json({ message: "Login error" });
           }
@@ -590,7 +601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!username || !code) {
         return res.status(400).json({ message: "Username and verification code are required" });
       }
-      passport.authenticate('local', async (err: any, user: any, info: any) => {
+      return passport.authenticate('local', async (err: any, user: any, info: any) => {
         if (err) {
           return res.status(500).json({ message: "Authentication error" });
         }
@@ -615,7 +626,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (delta === null) {
             return res.status(401).json({ message: "Invalid verification code" });
           }
-          req.logIn(user, async (err) => {
+          return req.logIn(user, async (err) => {
             if (err) {
               return res.status(500).json({ message: "Login error" });
             }
@@ -645,7 +656,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/create-user', isAuthenticated, requirePermission('create', 'users'), async (req: AuthRequest, res) => {
     try {
       const { username, password, email, firstName, lastName, role, roles } = req.body;
-      const assignedRoles: string[] = Array.isArray(roles) && roles.length > 0 ? roles : (role ? [role] : ['member']);
+      const requestedRoles: unknown[] = Array.isArray(roles) && roles.length > 0 ? roles : (role ? [role] : ['member']);
+      if (!requestedRoles.every(isUserRole)) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      const assignedRoles: UserRole[] = requestedRoles;
       const primaryRole = assignedRoles[0];
       
       if (!username || !password || !email) {
@@ -696,14 +711,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Remove password from response
       const { password: _, ...userWithoutPassword } = newUser;
       
-      res.status(201).json({ 
+      return res.status(201).json({
         message: "User created successfully", 
         user: userWithoutPassword,
         member: memberProfile
       });
     } catch (error) {
       console.error("Error creating user:", error);
-      res.status(500).json({ message: "Failed to create user" });
+      return res.status(500).json({ message: "Failed to create user" });
     }
   });
 
@@ -735,19 +750,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isUnlinked: true,
       }));
 
-      res.json([...usersWithRoles, ...unlinkedMembers]);
+      return res.json([...usersWithRoles, ...unlinkedMembers]);
     } catch (error) {
       console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
+      return res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 
   app.patch('/api/auth/users/:id', isAuthenticated, requirePermission('update', 'users'), async (req: AuthRequest, res) => {
     try {
-      const { id } = req.params;
+      const id = getRouteParam(req.params.id);
       const { username, email, firstName, lastName, role, roles, password } = req.body;
 
-      const assignedRoles: string[] = Array.isArray(roles) ? roles : [];
+      const requestedRoles: unknown[] = Array.isArray(roles) ? roles : [];
+      if (!requestedRoles.every(isUserRole) || (role !== undefined && !isUserRole(role))) {
+        return res.status(400).json({ message: "Invalid role" });
+      }
+      const assignedRoles: UserRole[] = requestedRoles;
       if (assignedRoles.includes('admin') && assignedRoles.length > 1) {
         return res.status(400).json({ message: "Admin role cannot be combined with other roles" });
       }
@@ -757,7 +776,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (email) updateData.email = email;
       if (firstName) updateData.firstName = firstName;
       if (lastName) updateData.lastName = lastName;
-      const primaryRole = role || (assignedRoles.length > 0 ? assignedRoles[0] : undefined);
+      const primaryRole: UserRole | undefined = role || (assignedRoles.length > 0 ? assignedRoles[0] : undefined);
       if (primaryRole) updateData.role = primaryRole;
       if (password) {
         updateData.password = await hashPassword(password);
@@ -801,39 +820,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password: _, ...userWithoutPassword } = updatedUser as any;
       const updatedMember = await storage.getMemberByUserId(id);
       const memberRoles = updatedMember ? await storage.getMemberRoles(updatedMember.id) : [primaryRole || updatedUser.role];
-      res.json({ ...userWithoutPassword, roles: memberRoles, memberId: updatedMember?.id || null });
+      return res.json({ ...userWithoutPassword, roles: memberRoles, memberId: updatedMember?.id || null });
     } catch (error) {
       console.error("Error updating user:", error);
-      res.status(500).json({ message: "Failed to update user" });
+      return res.status(500).json({ message: "Failed to update user" });
     }
   });
 
   app.get('/api/auth/password-requirements', async (_req, res) => {
     try {
       const secSettings = await getSecuritySettings();
-      res.json({ 
+      return res.json({
         level: secSettings.passwordComplexity, 
         description: getPasswordRequirementsText(secSettings.passwordComplexity) 
       });
     } catch (error) {
-      res.json({ level: 'medium', description: getPasswordRequirementsText('medium') });
+      return res.json({ level: 'medium', description: getPasswordRequirementsText('medium') });
     }
   });
 
   app.post('/api/auth/users/:id/unlock', isAuthenticated, requirePermission('update', 'users'), async (req: AuthRequest, res) => {
     try {
-      const { id } = req.params;
+      const id = getRouteParam(req.params.id);
       await storage.updateUser(id, { failedLoginAttempts: 0, lockedUntil: null });
-      res.json({ message: "User account unlocked successfully" });
+      return res.json({ message: "User account unlocked successfully" });
     } catch (error) {
       console.error("Error unlocking user:", error);
-      res.status(500).json({ message: "Failed to unlock user" });
+      return res.status(500).json({ message: "Failed to unlock user" });
     }
   });
 
   app.post('/api/auth/users/:id/reset-password', isAuthenticated, requirePermission('update', 'users'), async (req: AuthRequest, res) => {
     try {
-      const { id } = req.params;
+      const id = getRouteParam(req.params.id);
       const tempPassword = 'changeme123';
       const hashedPassword = await hashPassword(tempPassword);
       await storage.updateUser(id, { password: hashedPassword, mustChangePassword: true });
@@ -841,7 +860,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const resetUser = await storage.getUser(id);
       await sendNotificationEmail(
         storage,
-        resetUser?.email,
+        resetUser?.email ?? undefined,
         'Your Password Has Been Reset',
         `<p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Hello ${resetUser?.firstName || resetUser?.username || 'there'},</p>
          <p style="color:#475569;font-size:15px;line-height:1.6;margin:0 0 16px;">Your Biashara SACCO account password has been reset by an administrator.</p>
@@ -849,10 +868,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
          <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">For your security, you will be required to set a new password the next time you log in. If you did not expect this change, please contact your SACCO administrator.</p>`
       );
 
-      res.json({ message: "Password reset successfully. User must change password on next login.", tempPassword });
+      return res.json({ message: "Password reset successfully. User must change password on next login.", tempPassword });
     } catch (error) {
       console.error("Error resetting password:", error);
-      res.status(500).json({ message: "Failed to reset password" });
+      return res.status(500).json({ message: "Failed to reset password" });
     }
   });
 
@@ -887,10 +906,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const hashedPassword = await hashPassword(newPassword);
       await storage.updateUser(userId, { password: hashedPassword, mustChangePassword: false });
-      res.json({ message: "Password changed successfully" });
+      return res.json({ message: "Password changed successfully" });
     } catch (error) {
       console.error("Error changing password:", error);
-      res.status(500).json({ message: "Failed to change password" });
+      return res.status(500).json({ message: "Failed to change password" });
     }
   });
 
@@ -914,14 +933,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.updateUser(userId, { twoFactorSecret: secret.base32 });
 
-      res.json({
+      return res.json({
         secret: secret.base32,
         uri: totp.toString(),
         qrData: totp.toString(),
       });
     } catch (error) {
       console.error("Error setting up 2FA:", error);
-      res.status(500).json({ message: "Failed to set up two-factor authentication" });
+      return res.status(500).json({ message: "Failed to set up two-factor authentication" });
     }
   });
 
@@ -963,10 +982,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
          <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">If you did not make this change, please contact your SACCO administrator immediately.</p>`
       );
 
-      res.json({ message: "Two-factor authentication enabled successfully" });
+      return res.json({ message: "Two-factor authentication enabled successfully" });
     } catch (error) {
       console.error("Error verifying 2FA:", error);
-      res.status(500).json({ message: "Failed to verify two-factor authentication" });
+      return res.status(500).json({ message: "Failed to verify two-factor authentication" });
     }
   });
 
@@ -987,10 +1006,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
          <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">If you did not make this change, please contact your SACCO administrator immediately and secure your account.</p>`
       );
 
-      res.json({ message: "Two-factor authentication disabled" });
+      return res.json({ message: "Two-factor authentication disabled" });
     } catch (error) {
       console.error("Error disabling 2FA:", error);
-      res.status(500).json({ message: "Failed to disable two-factor authentication" });
+      return res.status(500).json({ message: "Failed to disable two-factor authentication" });
     }
   });
 
@@ -1021,16 +1040,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Invalid verification code" });
       }
 
-      res.json({ valid: true });
+      return res.json({ valid: true });
     } catch (error) {
       console.error("Error validating 2FA:", error);
-      res.status(500).json({ message: "Failed to validate code" });
+      return res.status(500).json({ message: "Failed to validate code" });
     }
   });
 
   app.delete('/api/auth/users/:id', isAuthenticated, requirePermission('delete', 'users'), async (req: AuthRequest, res) => {
     try {
-      const { id } = req.params;
+      const id = getRouteParam(req.params.id);
       const requestingUserId = getUserId(req);
       
       if (id === requestingUserId) {
@@ -1038,10 +1057,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       await storage.deleteUser(id);
-      res.json({ message: "User deleted successfully" });
+      return res.json({ message: "User deleted successfully" });
     } catch (error) {
       console.error("Error deleting user:", error);
-      res.status(500).json({ message: "Failed to delete user" });
+      return res.status(500).json({ message: "Failed to delete user" });
     }
   });
 
@@ -1071,10 +1090,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (savedJson) {
         try { saved = JSON.parse(savedJson); } catch { saved = {}; }
       }
-      res.json({ ...defaults, ...saved });
+      return res.json({ ...defaults, ...saved });
     } catch (error) {
       console.error("Error fetching user settings:", error);
-      res.status(500).json({ message: "Failed to fetch user settings" });
+      return res.status(500).json({ message: "Failed to fetch user settings" });
     }
   });
 
@@ -1102,13 +1121,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       await storage.upsertUserSettings(userId, JSON.stringify(validSettings));
 
-      res.json({ 
+      return res.json({
         message: "Settings updated successfully", 
         settings: validSettings 
       });
     } catch (error) {
       console.error("Error updating user settings:", error);
-      res.status(500).json({ message: "Failed to update settings" });
+      return res.status(500).json({ message: "Failed to update settings" });
     }
   });
 
@@ -1165,10 +1184,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ ...defaults, ...settingsMap });
+      return res.json({ ...defaults, ...settingsMap });
     } catch (error) {
       console.error("Error fetching admin settings:", error);
-      res.status(500).json({ message: "Failed to fetch admin settings" });
+      return res.status(500).json({ message: "Failed to fetch admin settings" });
     }
   });
 
@@ -1229,10 +1248,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         restartScheduledBackups();
       }
 
-      res.json({ message: "Admin settings updated successfully", settings });
+      return res.json({ message: "Admin settings updated successfully", settings });
     } catch (error) {
       console.error("Error updating admin settings:", error);
-      res.status(500).json({ message: "Failed to update admin settings" });
+      return res.status(500).json({ message: "Failed to update admin settings" });
     }
   });
 
@@ -1257,13 +1276,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (e) {}
       }
       if (result.success) {
-        res.json({ message: 'Resend email connection successful', success: true });
+        return res.json({ message: 'Resend email connection successful', success: true });
       } else {
-        res.status(400).json({ message: result.error || 'Resend connection failed. Ensure the Resend integration is connected.', success: false });
+        return res.status(400).json({ message: result.error || 'Resend connection failed. Ensure the Resend integration is connected.', success: false });
       }
     } catch (error: any) {
       console.error('Email connection test error:', error);
-      res.status(500).json({ message: 'Connection test failed. Verify the Resend integration is connected.', success: false });
+      return res.status(500).json({ message: 'Connection test failed. Verify the Resend integration is connected.', success: false });
     }
   });
 
@@ -1304,13 +1323,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (e) {}
       }
       if (result.success) {
-        res.json({ message: `Test email sent to ${to}`, success: true });
+        return res.json({ message: `Test email sent to ${to}`, success: true });
       } else {
-        res.status(400).json({ message: result.error || 'Failed to send test email. Check the Resend integration and your verified sender address.', success: false });
+        return res.status(400).json({ message: result.error || 'Failed to send test email. Check the Resend integration and your verified sender address.', success: false });
       }
     } catch (error: any) {
       console.error('Email send-test error:', error);
-      res.status(500).json({ message: 'Failed to send test email. Please try again.', success: false });
+      return res.status(500).json({ message: 'Failed to send test email. Please try again.', success: false });
     }
   });
 
@@ -1383,7 +1402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } catch (e) {}
       }
 
-      res.json({
+      return res.json({
         message: `Email sent to ${successCount} recipient(s)${failCount > 0 ? `, ${failCount} failed` : ''}`,
         success: successCount > 0,
         successCount,
@@ -1391,7 +1410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       console.error('Email send error:', error);
-      res.status(500).json({ message: 'Failed to send email. Please try again.', success: false });
+      return res.status(500).json({ message: 'Failed to send email. Please try again.', success: false });
     }
   });
 
@@ -1399,10 +1418,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { createBackup } = await import('../backup');
       const result = await createBackup();
-      res.json({ message: "Backup created successfully", backup: result });
+      return res.json({ message: "Backup created successfully", backup: result });
     } catch (error) {
       console.error("Error creating backup:", error);
-      res.status(500).json({ message: "Failed to create backup" });
+      return res.status(500).json({ message: "Failed to create backup" });
     }
   });
 
@@ -1410,24 +1429,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { getBackupList } = await import('../backup');
       const backups = getBackupList();
-      res.json(backups);
+      return res.json(backups);
     } catch (error) {
       console.error("Error listing backups:", error);
-      res.status(500).json({ message: "Failed to list backups" });
+      return res.status(500).json({ message: "Failed to list backups" });
     }
   });
 
   app.get('/api/admin/backups/:filename', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
     try {
       const { downloadBackup } = await import('../backup');
-      const filepath = downloadBackup(req.params.filename);
+      const filepath = downloadBackup(getRouteParam(req.params.filename));
       if (!filepath) {
         return res.status(404).json({ message: "Backup not found" });
       }
-      res.download(filepath);
+      return res.download(filepath);
     } catch (error) {
       console.error("Error downloading backup:", error);
-      res.status(500).json({ message: "Failed to download backup" });
+      return res.status(500).json({ message: "Failed to download backup" });
     }
   });
 
@@ -1439,7 +1458,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loanToSavingsRatioSetting = await storage.getSystemSetting('loanToSavingsRatio');
       const minLoanApproversSetting = await storage.getSystemSetting('minLoanApprovers');
 
-      res.json({
+      return res.json({
         entranceFee: entranceFeeSetting ? parseFloat(entranceFeeSetting.settingValue) : 15000,
         sharePrice: sharePriceSetting ? parseFloat(sharePriceSetting.settingValue) : 5000,
         loanToSavingsRatio: loanToSavingsRatioSetting ? parseFloat(loanToSavingsRatioSetting.settingValue) : 2.5,
@@ -1447,7 +1466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching public settings:", error);
-      res.status(500).json({ message: "Failed to fetch settings" });
+      return res.status(500).json({ message: "Failed to fetch settings" });
     }
   });
 
@@ -1455,10 +1474,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get('/api/dashboard/metrics', isAuthenticated, requirePermission('read', 'dashboard'), async (req, res) => {
     try {
       const metrics = await storage.getDashboardMetrics();
-      res.json(metrics);
+      return res.json(metrics);
     } catch (error) {
       console.error("Error fetching dashboard metrics:", error);
-      res.status(500).json({ message: "Failed to fetch dashboard metrics" });
+      return res.status(500).json({ message: "Failed to fetch dashboard metrics" });
     }
   });
 
@@ -1467,10 +1486,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const months = Math.min(Math.max(parseInt(req.query.months as string) || 6, 1), 24);
       const analytics = await storage.getDashboardAnalytics(months);
-      res.json(analytics);
+      return res.json(analytics);
     } catch (error) {
       console.error('Error fetching dashboard analytics:', error);
-      res.status(500).json({ message: 'Failed to fetch analytics data' });
+      return res.status(500).json({ message: 'Failed to fetch analytics data' });
     }
   });
 
@@ -1480,10 +1499,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allTransactions = await storage.getRecentTransactions(50); // Get more to filter
       // Filter transactions based on user role
       const filteredTransactions = filterTransactionsByRole(allTransactions, req.member?.roles || ['member'], req.member?.userId || '');
-      res.json(filteredTransactions.slice(0, 10)); // Return top 10 after filtering
+      return res.json(filteredTransactions.slice(0, 10)); // Return top 10 after filtering
     } catch (error) {
       console.error("Error fetching recent transactions:", error);
-      res.status(500).json({ message: "Failed to fetch recent transactions" });
+      return res.status(500).json({ message: "Failed to fetch recent transactions" });
     }
   });
 
@@ -1508,10 +1527,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
       
-      res.json(filteredApprovals);
+      return res.json(filteredApprovals);
     } catch (error) {
       console.error("Error fetching pending approvals:", error);
-      res.status(500).json({ message: "Failed to fetch pending approvals" });
+      return res.status(500).json({ message: "Failed to fetch pending approvals" });
     }
   });
 
@@ -1688,13 +1707,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
              <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">We will notify you by email as soon as your application has been reviewed.</p>`
       );
 
-      res.status(201).json(member);
+      return res.status(201).json(member);
     } catch (error) {
       console.error("Error creating member:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
       }
-      res.status(500).json({ message: "Failed to create member" });
+      return res.status(500).json({ message: "Failed to create member" });
     }
   });
 
@@ -1707,10 +1726,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const pendingMembers = await storage.getPendingMembers();
-      res.json(pendingMembers);
+      return res.json(pendingMembers);
     } catch (error) {
       console.error("Error fetching pending members:", error);
-      res.status(500).json({ message: "Failed to fetch pending members" });
+      return res.status(500).json({ message: "Failed to fetch pending members" });
     }
   });
 
@@ -1757,10 +1776,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
          <p style="color:#475569;font-size:15px;line-height:1.6;margin:0;">Your member number is <strong>${member.memberNumber}</strong>. You can now log in to start saving and access member services.</p>`
       );
 
-      res.json({ message: "Member approved successfully", member });
+      return res.json({ message: "Member approved successfully", member });
     } catch (error) {
       console.error("Error approving member:", error);
-      res.status(500).json({ message: "Failed to approve member" });
+      return res.status(500).json({ message: "Failed to approve member" });
     }
   });
 
@@ -1790,10 +1809,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.json({ message: "Member application rejected", member });
+      return res.json({ message: "Member application rejected", member });
     } catch (error) {
       console.error("Error rejecting member:", error);
-      res.status(500).json({ message: "Failed to reject member" });
+      return res.status(500).json({ message: "Failed to reject member" });
     }
   });
 
@@ -1807,10 +1826,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Member not found" });
       }
 
-      res.json(member);
+      return res.json(member);
     } catch (error) {
       console.error("Error fetching member:", error);
-      res.status(500).json({ message: "Failed to fetch member" });
+      return res.status(500).json({ message: "Failed to fetch member" });
     }
   });
 
@@ -1839,10 +1858,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : await storage.getAllMembers();
       
       const filteredMembers = filterMembersByRole(allMembers, req.member?.roles || ['member'], req.member?.userId || '');
-      res.json(filteredMembers);
+      return res.json(filteredMembers);
     } catch (error) {
       console.error("Error fetching members:", error);
-      res.status(500).json({ message: "Failed to fetch members" });
+      return res.status(500).json({ message: "Failed to fetch members" });
     }
   });
 
@@ -1881,10 +1900,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.headers['user-agent']
       });
       
-      res.json({ success: true, roles });
+      return res.json({ success: true, roles });
     } catch (error) {
       console.error("Error updating member roles:", error);
-      res.status(500).json({ message: "Failed to update member roles" });
+      return res.status(500).json({ message: "Failed to update member roles" });
     }
   });
 
@@ -1893,16 +1912,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const memberId = await storage.resolveMemberId(req.params.id);
       const roles = await storage.getMemberRoles(memberId);
-      res.json(roles);
+      return res.json(roles);
     } catch (error) {
       console.error("Error fetching member roles:", error);
-      res.status(500).json({ message: "Failed to fetch member roles" });
+      return res.status(500).json({ message: "Failed to fetch member roles" });
     }
   });
 
   app.get('/api/members/:id', isAuthenticated, async (req: AuthRequest, res) => {
     try {
-      const memberId = await storage.resolveMemberId(req.params.id);
+      const memberId = await storage.resolveMemberId(getRouteParam(req.params.id));
 
       const userId = getUserId(req);
       if (!userId) {
@@ -1950,16 +1969,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      res.json(member);
+      return res.json(member);
     } catch (error) {
       console.error("Error fetching member:", error);
-      res.status(500).json({ message: "Failed to fetch member" });
+      return res.status(500).json({ message: "Failed to fetch member" });
     }
   });
 
   app.get('/api/members/by-user/:userId', isAuthenticated, async (req: any, res) => {
     try {
-      let userId = req.params.userId;
+      let userId: string | undefined = getRouteParam(req.params.userId);
       
       // Handle "undefined" string from client
       if (userId === 'undefined' || !userId) {
@@ -1974,17 +1993,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-      res.json(member);
+      return res.json(member);
     } catch (error) {
       console.error("Error fetching member by user:", error);
-      res.status(500).json({ message: "Failed to fetch member" });
+      return res.status(500).json({ message: "Failed to fetch member" });
     }
   });
 
   // Post share capital for a member (admin only)
   app.post('/api/members/:id/share-capital', isAuthenticated, requirePermission('create', 'transactions'), async (req: any, res) => {
     try {
-      const memberId = await storage.resolveMemberId(req.params.id);
+      const memberId = await storage.resolveMemberId(getRouteParam(req.params.id));
       const { amount, description } = req.body;
 
       const requestingUser = await storage.getUser(getUserId(req)!);
@@ -2029,7 +2048,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return { transaction: createdTransaction, newShareCapital, isPaidUp, expectedTotal };
       });
 
-      res.json({
+      return res.json({
         transaction,
         shareCapital: newShareCapital,
         isPaidUp,
@@ -2040,15 +2059,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error posting share capital:", error);
-      res.status(500).json({ message: "Failed to post share capital" });
+      return res.status(500).json({ message: "Failed to post share capital" });
     }
   });
 
   app.post('/api/members/:id/waive-share-capital', isAuthenticated, async (req: any, res) => {
     try {
-      const memberId = await storage.resolveMemberId(req.params.id);
+      const memberId = await storage.resolveMemberId(getRouteParam(req.params.id));
       const requestingUser = await storage.getUser(getUserId(req)!);
-      if (!requestingUser || !['admin', 'treasurer'].includes(requestingUser.role)) {
+      if (!requestingUser?.role || !['admin', 'treasurer'].includes(requestingUser.role)) {
         return res.status(403).json({ message: "Only admin or treasurer can waive share capital" });
       }
 
@@ -2064,10 +2083,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isFullyPaidShareholder: waived ? true : undefined,
       });
 
-      res.json({ message: waived ? "Share capital requirement waived" : "Share capital waiver removed" });
+      return res.json({ message: waived ? "Share capital requirement waived" : "Share capital waiver removed" });
     } catch (error) {
       console.error("Error waiving share capital:", error);
-      res.status(500).json({ message: "Failed to update share capital waiver" });
+      return res.status(500).json({ message: "Failed to update share capital waiver" });
     }
   });
 
@@ -2134,10 +2153,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       broadcastDataUpdate(['/api/members', '/api/dashboard', '/api/loans']);
-      res.json(updatedMember);
+      return res.json(updatedMember);
     } catch (error) {
       console.error("Error updating member:", error);
-      res.status(500).json({ message: "Failed to update member" });
+      return res.status(500).json({ message: "Failed to update member" });
     }
   });
 
@@ -2211,19 +2230,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Member exit eligibility check
   app.get('/api/members/:id/exit-eligibility', isAuthenticated, requirePermission('create', 'exit-requests'), async (req: any, res) => {
     try {
-      const memberId = await storage.resolveMemberId(req.params.id);
+      const memberId = await storage.resolveMemberId(getRouteParam(req.params.id));
       const details = await getExitEligibilityDetails(memberId);
-      res.json(details);
+      return res.json(details);
     } catch (error: any) {
       console.error("Error checking exit eligibility:", error);
-      res.status(500).json({ message: error.message || "Failed to check exit eligibility" });
+      return res.status(500).json({ message: error.message || "Failed to check exit eligibility" });
     }
   });
 
   // Submit member exit request (creates a pending_treasurer request)
   app.post('/api/members/:id/exit', isAuthenticated, requirePermission('create', 'exit-requests'), async (req: any, res) => {
     try {
-      const memberId = await storage.resolveMemberId(req.params.id);
+      const memberId = await storage.resolveMemberId(getRouteParam(req.params.id));
       const { reason } = req.body;
       const userId = getUserId(req)!;
 
@@ -2283,10 +2302,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       broadcastDataUpdate(['/api/exit-requests', '/api/members']);
-      res.status(201).json({ message: "Exit request submitted successfully. Awaiting treasurer approval.", exitRequest });
+      return res.status(201).json({ message: "Exit request submitted successfully. Awaiting treasurer approval.", exitRequest });
     } catch (error: any) {
       console.error("Error submitting member exit request:", error);
-      res.status(500).json({ message: error.message || "Failed to submit exit request" });
+      return res.status(500).json({ message: error.message || "Failed to submit exit request" });
     }
   });
 
@@ -2329,17 +2348,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
 
-      res.json(enriched);
+      return res.json(enriched);
     } catch (error: any) {
       console.error("Error fetching exit requests:", error);
-      res.status(500).json({ message: error.message || "Failed to fetch exit requests" });
+      return res.status(500).json({ message: error.message || "Failed to fetch exit requests" });
     }
   });
 
   // Treasurer approves an exit request - processes the actual exit
   app.post('/api/exit-requests/:id/approve', isAuthenticated, requirePermission('approve', 'exit-requests'), async (req: any, res) => {
     try {
-      const requestId = parseInt(req.params.id);
+      const requestId = parseInt(getRouteParam(req.params.id));
       const { comments } = req.body;
       const userId = getUserId(req)!;
 
@@ -2472,17 +2491,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       broadcastDataUpdate(['/api/exit-requests', '/api/members', '/api/dashboard', '/api/savings', '/api/transactions']);
-      res.json({ message: "Exit request approved. Member account has been closed.", exitRequest });
+      return res.json({ message: "Exit request approved. Member account has been closed.", exitRequest });
     } catch (error: any) {
       console.error("Error approving exit request:", error);
-      res.status(500).json({ message: error.message || "Failed to approve exit request" });
+      return res.status(500).json({ message: error.message || "Failed to approve exit request" });
     }
   });
 
   // Treasurer rejects an exit request
   app.post('/api/exit-requests/:id/reject', isAuthenticated, requirePermission('approve', 'exit-requests'), async (req: any, res) => {
     try {
-      const requestId = parseInt(req.params.id);
+      const requestId = parseInt(getRouteParam(req.params.id));
       const { reason } = req.body;
       const userId = getUserId(req)!;
 
@@ -2511,21 +2530,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       broadcastDataUpdate(['/api/exit-requests', '/api/members']);
-      res.json({ message: "Exit request rejected." });
+      return res.json({ message: "Exit request rejected." });
     } catch (error: any) {
       console.error("Error rejecting exit request:", error);
-      res.status(500).json({ message: error.message || "Failed to reject exit request" });
+      return res.status(500).json({ message: error.message || "Failed to reject exit request" });
     }
   });
 
   // Savings account routes
   app.get('/api/members/:id/savings', isAuthenticated, async (req, res) => {
     try {
-      const accounts = await storage.getSavingsAccountsByMember(await storage.resolveMemberId(req.params.id));
-      res.json(accounts);
+      const accounts = await storage.getSavingsAccountsByMember(await storage.resolveMemberId(getRouteParam(req.params.id)));
+      return res.json(accounts);
     } catch (error) {
       console.error("Error fetching savings accounts:", error);
-      res.status(500).json({ message: "Failed to fetch savings accounts" });
+      return res.status(500).json({ message: "Failed to fetch savings accounts" });
     }
   });
 
@@ -2546,7 +2565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastActivityDate: new Date(),
         isActiveSaver: true,
       };
-      if (memberBeforeUpdate && ['inactive', 'dormant'].includes(memberBeforeUpdate.status)) {
+      if (memberBeforeUpdate && ['inactive', 'dormant'].includes(memberBeforeUpdate.status ?? '')) {
         updateFields.status = 'active';
       }
       const transaction = await storage.runSaccoLedgerTransaction(async (tx) => {
@@ -2596,10 +2615,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard', '/api/sacco-accounts', '/api/sacco-journal-entries']);
-      res.status(201).json(transaction);
+      return res.status(201).json(transaction);
     } catch (error) {
       console.error("Error processing deposit:", error);
-      res.status(500).json({ message: "Failed to process deposit" });
+      return res.status(500).json({ message: "Failed to process deposit" });
     }
   });
 
@@ -2614,7 +2633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const userId = getUserId(req)!;
       const userRecord = await storage.getUser(userId);
-      const isStaff = userRecord && ['admin', 'treasurer'].includes(userRecord.role);
+      const isStaff = userRecord && ['admin', 'treasurer'].includes(userRecord.role ?? '');
 
       if (!isStaff) {
         const member = await storage.getMemberByUserId(userId);
@@ -2660,10 +2679,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       broadcastDataUpdate(['/api/savings', '/api/transactions', '/api/dashboard']);
-      res.status(201).json(transaction);
+      return res.status(201).json(transaction);
     } catch (error) {
       console.error("Error processing withdrawal:", error);
-      res.status(500).json({ message: "Failed to process withdrawal" });
+      return res.status(500).json({ message: "Failed to process withdrawal" });
     }
   });
 
@@ -2677,10 +2696,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const eligibilityResult = await businessRulesValidator.checkLoanEligibility(memberId, requestedAmount, loanType);
-      res.json(eligibilityResult);
+      return res.json(eligibilityResult);
     } catch (error) {
       console.error("Error checking loan eligibility:", error);
-      res.status(500).json({ message: "Failed to check loan eligibility" });
+      return res.status(500).json({ message: "Failed to check loan eligibility" });
     }
   });
 
@@ -2837,10 +2856,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       broadcastDataUpdate(['/api/loans', '/api/loans/approval', '/api/dashboard', '/api/loans/my-loans']);
-      res.status(201).json(loan);
+      return res.status(201).json(loan);
     } catch (error) {
       console.error("Error creating loan:", error);
-      res.status(500).json({ message: "Failed to create loan" });
+      return res.status(500).json({ message: "Failed to create loan" });
     }
   });
 
@@ -2852,10 +2871,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Member record not found" });
       }
       const activeLoans = await storage.getMemberActiveLoans(member.id);
-      res.json(activeLoans);
+      return res.json(activeLoans);
     } catch (error) {
       console.error("Error fetching active loans for topup:", error);
-      res.status(500).json({ message: "Failed to fetch active loans" });
+      return res.status(500).json({ message: "Failed to fetch active loans" });
     }
   });
 
@@ -2918,8 +2937,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const outstandingBalance = parseFloat(originalLoan.outstandingBalance || '0');
       const originalPrincipal = parseFloat(originalLoan.principalAmount || '0');
       const originalMonthlyPayment = parseFloat(originalLoan.monthlyPayment || '0');
-      const originalTermMonths = parseInt(originalLoan.termMonths || '0');
+      const originalTermMonths = parseInt(String(originalLoan.termMonths || '0'));
       const originalTotalRepayable = originalMonthlyPayment * originalTermMonths;
+      const topUpActiveLoanTypes = await storage.getActiveLoanTypes();
       const origLoanTypeConfig = topUpActiveLoanTypes.find(lt => lt.name === originalLoan.loanType);
       const origInterestMethod = origLoanTypeConfig?.interestType || 'reducing_balance';
       const isOrigFixedInterest = origInterestMethod === 'simple' || origInterestMethod === 'compound';
@@ -2948,7 +2968,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const savingsAccounts = await storage.getSavingsAccountsByMember(member.id);
       const activeSavingsAccount = savingsAccounts.find(acc => acc.status === 'active');
       if (activeSavingsAccount) {
-        const totalSavings = parseFloat(activeSavingsAccount.balance);
+      const totalSavings = parseFloat(activeSavingsAccount.balance ?? '0');
         const maxByRatio = totalSavings * loanToSavingsRatio;
         if (totalNewPrincipal > maxByRatio) {
           return res.status(400).json({
@@ -3011,7 +3031,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const resolvedInterestRate = matchingLoanType ? matchingLoanType.interestRate : interestRate;
       const decimalInterestRate = parseFloat(resolvedInterestRate) / 100;
-      const topUpActiveLoanTypes = await storage.getActiveLoanTypes();
       const topUpLoanTypeConfig = topUpActiveLoanTypes.find(lt => lt.name === loanType);
       const topUpInterestMethod = topUpLoanTypeConfig?.interestType || 'reducing_balance';
       const topUpTimeInYears = termMonths / 12;
@@ -3098,10 +3117,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.status(201).json(topUpLoan);
+      return res.status(201).json(topUpLoan);
     } catch (error) {
       console.error("Error creating loan top-up:", error);
-      res.status(500).json({ message: "Failed to create loan top-up" });
+      return res.status(500).json({ message: "Failed to create loan top-up" });
     }
   });
 
@@ -3133,10 +3152,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const allLoans = await storage.getAllLoans();
       const filteredLoans = filterLoansByRole(allLoans, req.member?.roles || ['member'], req.member?.userId || '');
-      res.json(filteredLoans);
+      return res.json(filteredLoans);
     } catch (error) {
       console.error("Error fetching loans:", error);
-      res.status(500).json({ message: "Failed to fetch loans" });
+      return res.status(500).json({ message: "Failed to fetch loans" });
     }
   });
 
@@ -3155,10 +3174,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const stats = await storage.getLoanStats(memberId);
-      res.json(stats);
+      return res.json(stats);
     } catch (error) {
       console.error("Error fetching loan stats:", error);
-      res.status(500).json({ message: "Failed to fetch loan stats" });
+      return res.status(500).json({ message: "Failed to fetch loan stats" });
     }
   });
 
@@ -3167,16 +3186,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allLoans = await storage.getAllPendingLoans();
       // Filter loans based on user role
       const filteredLoans = filterLoansByRole(allLoans, req.member?.roles || ['member'], req.member?.userId || '');
-      res.json(filteredLoans);
+      return res.json(filteredLoans);
     } catch (error) {
       console.error("Error fetching pending loans:", error);
-      res.status(500).json({ message: "Failed to fetch pending loans" });
+      return res.status(500).json({ message: "Failed to fetch pending loans" });
     }
   });
 
   app.post('/api/loans/:id/recall', isAuthenticated, async (req: any, res) => {
     try {
-      const loanId = await storage.resolveLoanId(req.params.id);
+      const loanId = await storage.resolveLoanId(getRouteParam(req.params.id));
       const loan = await storage.getLoan(loanId);
       if (!loan) return res.status(404).json({ message: "Loan not found" });
 
@@ -3227,21 +3246,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       broadcastDataUpdate(['/api/loans', '/api/loans/pending', '/api/loans/my-loans', '/api/dashboard', '/api/dashboard/pending-approvals']);
-      res.json({ message: "Loan application recalled successfully.", loan });
+      return res.json({ message: "Loan application recalled successfully.", loan });
     } catch (error: any) {
       console.error("Error recalling loan:", error);
-      res.status(500).json({ message: error.message || "Failed to recall loan" });
+      return res.status(500).json({ message: error.message || "Failed to recall loan" });
     }
   });
 
   app.get('/api/loans/member/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const memberId = await storage.resolveMemberId(req.params.id);
+      const memberId = await storage.resolveMemberId(getRouteParam(req.params.id));
       const loans = await storage.getLoansByMember(memberId);
-      res.json(loans);
+      return res.json(loans);
     } catch (error) {
       console.error("Error fetching member loans:", error);
-      res.status(500).json({ message: "Failed to fetch member loans" });
+      return res.status(500).json({ message: "Failed to fetch member loans" });
     }
   });
 
@@ -3264,10 +3283,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const loans = await storage.getLoansByMember(member.id);
-      res.json(loans);
+      return res.json(loans);
     } catch (error) {
       console.error("Error fetching personal loans:", error);
-      res.status(500).json({ message: "Failed to fetch personal loans" });
+      return res.status(500).json({ message: "Failed to fetch personal loans" });
     }
   });
 
@@ -3335,7 +3354,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'pending',
       }));
 
-      res.json({
+      return res.json({
         approved: approvedList,
         rejected: rejectedList,
         pending: pendingList,
@@ -3348,44 +3367,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching approval activity:", error);
-      res.status(500).json({ message: "Failed to fetch approval activity" });
+      return res.status(500).json({ message: "Failed to fetch approval activity" });
     }
   });
 
   // Get specific loan by ID
   app.get('/api/loans/:id', isAuthenticated, async (req: any, res) => {
     try {
-      const loanId = await storage.resolveLoanId(req.params.id);
+      const loanId = await storage.resolveLoanId(getRouteParam(req.params.id));
 
       const loan = await storage.getLoan(loanId);
       if (!loan) {
         return res.status(404).json({ message: "Loan not found" });
       }
 
-      res.json(loan);
+      return res.json(loan);
     } catch (error) {
       console.error("Error fetching loan:", error);
-      res.status(500).json({ message: "Failed to fetch loan" });
+      return res.status(500).json({ message: "Failed to fetch loan" });
     }
   });
 
   // Get loan transactions/statement
   app.get('/api/loans/:id/transactions', isAuthenticated, async (req: any, res) => {
     try {
-      const loanId = await storage.resolveLoanId(req.params.id);
+      const loanId = await storage.resolveLoanId(getRouteParam(req.params.id));
 
       const transactions = await storage.getTransactionsByLoan(loanId);
-      res.json(transactions);
+      return res.json(transactions);
     } catch (error) {
       console.error("Error fetching loan transactions:", error);
-      res.status(500).json({ message: "Failed to fetch loan transactions" });
+      return res.status(500).json({ message: "Failed to fetch loan transactions" });
     }
   });
 
   // Advanced loan approval endpoints
   app.get('/api/loans/approval/:stage', isAuthenticated, async (req: any, res) => {
     try {
-      const { stage } = req.params;
+      const stage = getRouteParam(req.params.stage);
       const userId = getUserId(req)!;
       const user = await storage.getUser(userId);
       
@@ -3415,16 +3434,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const loans = await storage.getLoansForApproval(stage, userRoles[0] || 'member');
-      res.json(loans);
+      return res.json(loans);
     } catch (error) {
       console.error("Error fetching loans for approval:", error);
-      res.status(500).json({ message: "Failed to fetch loans for approval" });
+      return res.status(500).json({ message: "Failed to fetch loans for approval" });
     }
   });
 
   app.post('/api/loans/:uuid/approve/:stage', isAuthenticated, async (req: any, res) => {
     try {
-      const { uuid, stage } = req.params;
+      const uuid = getRouteParam(req.params.uuid);
+      const stage = getRouteParam(req.params.stage);
       const { comments } = req.body;
       const userId = getUserId(req)!;
 
@@ -3505,7 +3525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/savings', '/api/transactions', '/api/loans/my-approval-activity']);
 
-          res.json({ 
+          return res.json({
             message: `Loan fully approved at committee stage (${approvalCount}/${minApprovers} approvals)`, 
             loan,
             approvalCount,
@@ -3514,7 +3534,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } else {
           broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/loans/my-approval-activity']);
 
-          res.json({ 
+          return res.json({
             message: `Your approval has been recorded (${approvalCount}/${minApprovers} approvals needed). Waiting for more committee approvals.`, 
             loan: loanByUuid,
             approvalCount,
@@ -3618,7 +3638,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
 
         broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/savings', '/api/transactions', '/api/loans/my-approval-activity']);
-        res.json({ message: `Loan ${loan.loanNumber} disbursed successfully`, loan });
+        return res.json({ message: `Loan ${loan.loanNumber} disbursed successfully`, loan });
       } else {
         const loan = await storage.approveLoanAtStage(loanByUuid.id, stage, userId, comments);
 
@@ -3637,17 +3657,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/loans/my-approval-activity']);
-        res.json({ message: `Loan approved at ${stage} stage`, loan });
+        return res.json({ message: `Loan approved at ${stage} stage`, loan });
       }
     } catch (error) {
-      console.error(`Error approving loan at ${req.params.stage} stage:`, error);
-      res.status(500).json({ message: "Failed to approve loan" });
+      console.error(`Error approving loan at ${getRouteParam(req.params.stage)} stage:`, error);
+      return res.status(500).json({ message: "Failed to approve loan" });
     }
   });
 
   app.post('/api/loans/:uuid/reject', isAuthenticated, async (req: any, res) => {
     try {
-      const { uuid } = req.params;
+      const uuid = getRouteParam(req.params.uuid);
       const { reason } = req.body;
       const userId = getUserId(req)!;
 
@@ -3678,16 +3698,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       broadcastDataUpdate(['/api/loans/approval', '/api/loans', '/api/dashboard', '/api/loans/my-loans', '/api/loans/my-approval-activity']);
-      res.json({ message: "Loan rejected", loan });
+      return res.json({ message: "Loan rejected", loan });
     } catch (error) {
       console.error("Error rejecting loan:", error);
-      res.status(500).json({ message: "Failed to reject loan" });
+      return res.status(500).json({ message: "Failed to reject loan" });
     }
   });
 
   app.get('/api/loans/:loanId/approvals', isAuthenticated, async (req: any, res) => {
     try {
-      const loanId = parseInt(req.params.loanId);
+      const loanId = parseInt(getRouteParam(req.params.loanId));
       const approvals = await storage.getLoanApprovals(loanId, 'committee');
       
       let minApprovers = 2;
@@ -3709,7 +3729,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
 
-      res.json({
+      return res.json({
         approvals: approvalsWithUsers,
         approvalCount: approvals.length,
         minApprovers,
@@ -3717,29 +3737,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching loan approvals:", error);
-      res.status(500).json({ message: "Failed to fetch loan approvals" });
+      return res.status(500).json({ message: "Failed to fetch loan approvals" });
     }
   });
 
   app.get('/api/loans/:uuid/approval-history', isAuthenticated, async (req, res) => {
     try {
-      const { uuid } = req.params;
+      const uuid = getRouteParam(req.params.uuid);
       const loan = await storage.getLoanByUuid(uuid);
       if (!loan) {
         return res.status(404).json({ message: "Loan not found" });
       }
       
       const history = await storage.getLoanApprovalHistory(loan.id);
-      res.json(history);
+      return res.json(history);
     } catch (error) {
       console.error("Error fetching loan approval history:", error);
-      res.status(500).json({ message: "Failed to fetch approval history" });
+      return res.status(500).json({ message: "Failed to fetch approval history" });
     }
   });
 
   app.patch('/api/loans/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
-      const loanId = await storage.resolveLoanId(req.params.id);
+      const loanId = await storage.resolveLoanId(getRouteParam(req.params.id));
       const userId = getUserId(req)!;
       
       const loanDetails = await storage.getLoan(loanId);
@@ -3778,10 +3798,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const loan = await storage.updateLoanStatus(loanId, 'approved');
-      res.json(loan);
+      return res.json(loan);
     } catch (error) {
       console.error("Error approving loan:", error);
-      res.status(500).json({ message: "Failed to approve loan" });
+      return res.status(500).json({ message: "Failed to approve loan" });
     }
   });
 
@@ -3789,7 +3809,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req)!;
 
-      const loanId = await storage.resolveLoanId(req.params.id);
+      const loanId = await storage.resolveLoanId(getRouteParam(req.params.id));
       const loanDetails = await storage.getLoan(loanId);
       if (!loanDetails || loanDetails.status !== 'approved') {
         return res.status(400).json({ message: 'Loan must be approved before disbursement' });
@@ -3902,17 +3922,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       broadcastDataUpdate(['/api/loans', '/api/loans/approval', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans', '/api/sacco-accounts', '/api/sacco-journal-entries']);
-      res.json({ ...loan, feesCollected });
+      return res.json({ ...loan, feesCollected });
     } catch (error) {
       console.error("Error disbursing loan:", error);
-      res.status(500).json({ message: "Failed to disburse loan" });
+      return res.status(500).json({ message: "Failed to disburse loan" });
     }
   });
 
   app.post('/api/loans/:id/payment', isAuthenticated, requirePermission('record', 'loan-repayments'), async (req, res) => {
     try {
       const { amount, description } = req.body;
-      const loanId = await storage.resolveLoanId(req.params.id);
+      const loanId = await storage.resolveLoanId(getRouteParam(req.params.id));
       
       const paymentAmount = parseFloat(amount);
       if (!paymentAmount || isNaN(paymentAmount) || paymentAmount <= 0) {
@@ -3965,7 +3985,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!loan) return res.status(404).json({ message: "Loan not found" });
 
       const paymentMember = await storage.getMember(loan.memberId!);
-      if (paymentMember && ['inactive', 'dormant'].includes(paymentMember.status)) {
+      if (paymentMember && ['inactive', 'dormant'].includes(paymentMember.status ?? '')) {
         await db.update(members).set({
           status: 'active' as any,
           lastActivityDate: new Date(),
@@ -3992,20 +4012,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       broadcastDataUpdate(['/api/loans', '/api/transactions', '/api/dashboard', '/api/savings', '/api/loans/my-loans', '/api/sacco-accounts', '/api/sacco-journal-entries']);
-      res.status(201).json(transaction);
+      return res.status(201).json(transaction);
     } catch (error) {
       console.error("Error processing loan payment:", error);
-      res.status(500).json({ message: "Failed to process loan payment" });
+      return res.status(500).json({ message: "Failed to process loan payment" });
     }
   });
 
   app.get('/api/members/:id/loans', isAuthenticated, async (req, res) => {
     try {
-      const loans = await storage.getLoansByMember(await storage.resolveMemberId(req.params.id));
-      res.json(loans);
+      const loans = await storage.getLoansByMember(await storage.resolveMemberId(getRouteParam(req.params.id)));
+      return res.json(loans);
     } catch (error) {
       console.error("Error fetching member loans:", error);
-      res.status(500).json({ message: "Failed to fetch member loans" });
+      return res.status(500).json({ message: "Failed to fetch member loans" });
     }
   });
 
@@ -4035,10 +4055,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user: member.user ? { firstName: member.user.firstName, lastName: member.user.lastName } : undefined,
         },
       }));
-      res.json(accountsWithMember);
+      return res.json(accountsWithMember);
     } catch (error) {
       console.error("Error fetching personal savings:", error);
-      res.status(500).json({ message: "Failed to fetch personal savings" });
+      return res.status(500).json({ message: "Failed to fetch personal savings" });
     }
   });
 
@@ -4059,10 +4079,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const transactions = await storage.getTransactionsByMember(member.id);
-      res.json(transactions);
+      return res.json(transactions);
     } catch (error) {
       console.error("Error fetching personal transactions:", error);
-      res.status(500).json({ message: "Failed to fetch personal transactions" });
+      return res.status(500).json({ message: "Failed to fetch personal transactions" });
     }
   });
 
@@ -4108,10 +4128,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         savingsAccounts = [];
       }
 
-      res.json(savingsAccounts);
+      return res.json(savingsAccounts);
     } catch (error) {
       console.error("Error fetching savings accounts:", error);
-      res.status(500).json({ message: "Failed to fetch savings accounts" });
+      return res.status(500).json({ message: "Failed to fetch savings accounts" });
     }
   });
 
@@ -4128,16 +4148,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const transactions = await storage.getRecentTransactions(limit ? parseInt(limit as string) : undefined);
-      res.json(transactions);
+      return res.json(transactions);
     } catch (error) {
       console.error("Error fetching transactions:", error);
-      res.status(500).json({ message: "Failed to fetch transactions" });
+      return res.status(500).json({ message: "Failed to fetch transactions" });
     }
   });
 
   app.get('/api/members/:id/transactions', isAuthenticated, async (req, res) => {
     try {
-      const memberId = await storage.resolveMemberId(req.params.id);
+      const memberId = await storage.resolveMemberId(getRouteParam(req.params.id));
       const page = parseInt(req.query.page as string) || 1;
       const limit = Math.min(parseInt(req.query.limit as string) || 25, 100);
 
@@ -4166,7 +4186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const totalInterestPaid = (parseFloat(savingsInt?.total || '0') + parseFloat(calcInt?.total || '0')).toFixed(2);
 
-      res.json({
+      return res.json({
         transactions: paginatedTransactions,
         total,
         page,
@@ -4175,13 +4195,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching member transactions:", error);
-      res.status(500).json({ message: "Failed to fetch member transactions" });
+      return res.status(500).json({ message: "Failed to fetch member transactions" });
     }
   });
 
   app.get('/api/savings-accounts/:id/statement', isAuthenticated, async (req, res) => {
     try {
-      const savingsAccountId = await storage.resolveSavingsAccountId(req.params.id);
+      const savingsAccountId = await storage.resolveSavingsAccountId(getRouteParam(req.params.id));
       const account = await storage.getSavingsAccount(savingsAccountId);
       
       if (!account) {
@@ -4214,7 +4234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalInterestEarned = parseFloat(allInterestCalcs[0]?.totalPosted || '0');
       const totalInterestCalculated = parseFloat(allInterestCalcs[0]?.totalAll || '0');
 
-      res.json({
+      return res.json({
         account,
         transactions: result.transactions,
         total: result.total,
@@ -4229,13 +4249,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       console.error("Error fetching account statement:", error);
-      res.status(500).json({ message: "Failed to fetch account statement" });
+      return res.status(500).json({ message: "Failed to fetch account statement" });
     }
   });
 
   app.patch('/api/transactions/:id/approve', isAuthenticated, requirePermission('approve', 'withdrawals'), async (req: any, res) => {
     try {
-      const transactionId = await storage.resolveTransactionId(req.params.id);
+      const transactionId = await storage.resolveTransactionId(getRouteParam(req.params.id));
       const updatedTransaction = await storage.runSaccoLedgerTransaction(async (tx) => {
         const [transaction] = await tx.select().from(transactions)
           .where(eq(transactions.id, transactionId))
@@ -4266,10 +4286,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           .returning();
         return completed;
       });
-      res.json(updatedTransaction);
+      return res.json(updatedTransaction);
     } catch (error) {
       console.error("Error approving transaction:", error);
-      res.status(500).json({ message: "Failed to approve transaction" });
+      return res.status(500).json({ message: "Failed to approve transaction" });
     }
   });
 
@@ -4287,10 +4307,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           status: m.status,
           totalSavings: m.totalSavings,
         }));
-      res.json(eligible);
+      return res.json(eligible);
     } catch (error) {
       console.error("Error fetching eligible guarantors:", error);
-      res.status(500).json({ message: "Failed to fetch eligible guarantors" });
+      return res.status(500).json({ message: "Failed to fetch eligible guarantors" });
     }
   });
 
@@ -4308,10 +4328,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (member.status !== 'active') {
         return res.status(400).json({ valid: false, message: 'This member is not eligible to be a guarantor' });
       }
-      res.json({ valid: true, memberId: member.id, memberNumber: member.memberNumber });
+      return res.json({ valid: true, memberId: member.id, memberNumber: member.memberNumber });
     } catch (error) {
       console.error("Error validating guarantor member:", error);
-      res.status(500).json({ valid: false, message: "Failed to validate member" });
+      return res.status(500).json({ valid: false, message: "Failed to validate member" });
     }
   });
 
@@ -4373,7 +4393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       broadcastDataUpdate(['/api/guarantors', '/api/loans']);
-      res.status(201).json(guarantor);
+      return res.status(201).json(guarantor);
     } catch (error: any) {
       console.error("Error creating guarantor:", error);
       if (error instanceof z.ZodError) {
@@ -4382,14 +4402,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (error?.code === '23505' || error?.message?.includes('guarantors_loan_member_unique')) {
         return res.status(400).json({ message: "This member is already a guarantor for this loan" });
       }
-      res.status(500).json({ message: "Failed to create guarantor" });
+      return res.status(500).json({ message: "Failed to create guarantor" });
     }
   });
 
   // Bulk add guarantors to a loan
   app.post('/api/loans/:loanId/guarantors', isAuthenticated, async (req: any, res) => {
     try {
-      const loanId = await storage.resolveLoanId(req.params.loanId);
+      const loanId = await storage.resolveLoanId(getRouteParam(req.params.loanId));
       const { guarantors: guarantorList } = req.body;
 
       if (!Array.isArray(guarantorList) || guarantorList.length === 0) {
@@ -4460,28 +4480,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       broadcastDataUpdate(['/api/guarantors', '/api/loans']);
-      res.status(201).json(createdGuarantors);
+      return res.status(201).json(createdGuarantors);
     } catch (error) {
       console.error("Error adding guarantors to loan:", error);
-      res.status(500).json({ message: "Failed to add guarantors to loan" });
+      return res.status(500).json({ message: "Failed to add guarantors to loan" });
     }
   });
 
   app.get('/api/guarantors/loan/:loanId', isAuthenticated, async (req, res) => {
     try {
-      const loanId = await storage.resolveLoanId(req.params.loanId);
+      const loanId = await storage.resolveLoanId(getRouteParam(req.params.loanId));
       const guarantors = await storage.getGuarantorsByLoan(loanId);
-      res.json(guarantors);
+      return res.json(guarantors);
     } catch (error) {
       console.error("Error fetching guarantors by loan:", error);
-      res.status(500).json({ message: "Failed to fetch guarantors" });
+      return res.status(500).json({ message: "Failed to fetch guarantors" });
     }
   });
 
   // Guarantor approval endpoints
   app.patch('/api/guarantors/:id/approve', isAuthenticated, async (req: any, res) => {
     try {
-      const guarantorId = await storage.resolveGuarantorId(req.params.id);
+      const guarantorId = await storage.resolveGuarantorId(getRouteParam(req.params.id));
       const { comments } = req.body;
       const userId = getUserId(req)!;
 
@@ -4529,16 +4549,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       broadcastDataUpdate(['/api/guarantors', '/api/loans', '/api/loans/approval']);
-      res.json(updatedGuarantor);
+      return res.json(updatedGuarantor);
     } catch (error) {
       console.error("Error approving guarantor:", error);
-      res.status(500).json({ message: "Failed to approve guarantor request" });
+      return res.status(500).json({ message: "Failed to approve guarantor request" });
     }
   });
 
   app.patch('/api/guarantors/:id/reject', isAuthenticated, async (req: any, res) => {
     try {
-      const guarantorId = await storage.resolveGuarantorId(req.params.id);
+      const guarantorId = await storage.resolveGuarantorId(getRouteParam(req.params.id));
       const { comments } = req.body;
       const userId = getUserId(req)!;
 
@@ -4590,16 +4610,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       broadcastDataUpdate(['/api/guarantors', '/api/loans']);
-      res.json(updatedGuarantor);
+      return res.json(updatedGuarantor);
     } catch (error) {
       console.error("Error rejecting guarantor:", error);
-      res.status(500).json({ message: "Failed to reject guarantor request" });
+      return res.status(500).json({ message: "Failed to reject guarantor request" });
     }
   });
 
   app.patch('/api/guarantors/:id/resend', isAuthenticated, async (req: any, res) => {
     try {
-      const guarantorId = await storage.resolveGuarantorId(req.params.id);
+      const guarantorId = await storage.resolveGuarantorId(getRouteParam(req.params.id));
       const userId = getUserId(req)!;
 
       const guarantor = await storage.getGuarantor(guarantorId);
@@ -4634,10 +4654,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       broadcastDataUpdate(['/api/guarantors', '/api/loans']);
-      res.json(updatedGuarantor);
+      return res.json(updatedGuarantor);
     } catch (error) {
       console.error("Error resending guarantor request:", error);
-      res.status(500).json({ message: "Failed to resend guarantor request" });
+      return res.status(500).json({ message: "Failed to resend guarantor request" });
     }
   });
 
@@ -4656,16 +4676,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const pendingRequests = await storage.getPendingGuarantorRequests(member.id);
-      res.json(pendingRequests);
+      return res.json(pendingRequests);
     } catch (error) {
       console.error("Error fetching pending guarantor requests:", error);
-      res.status(500).json({ message: "Failed to fetch pending guarantor requests" });
+      return res.status(500).json({ message: "Failed to fetch pending guarantor requests" });
     }
   });
 
   app.get('/api/guarantors/member/:memberId', isAuthenticated, async (req, res) => {
     try {
-      const memberId = await storage.resolveMemberId(req.params.memberId);
+      const memberId = await storage.resolveMemberId(getRouteParam(req.params.memberId));
       const guarantors = await storage.getGuarantorsByMember(memberId);
       res.json(guarantors);
     } catch (error) {
@@ -4676,7 +4696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/guarantors/pending/:memberId', isAuthenticated, async (req, res) => {
     try {
-      const memberId = await storage.resolveMemberId(req.params.memberId);
+      const memberId = await storage.resolveMemberId(getRouteParam(req.params.memberId));
       const pendingRequests = await storage.getPendingGuarantorRequests(memberId);
       res.json(pendingRequests);
     } catch (error) {
@@ -4687,7 +4707,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/guarantors/:id/approve', isAuthenticated, async (req, res) => {
     try {
-      const guarantorId = await storage.resolveGuarantorId(req.params.id);
+      const guarantorId = await storage.resolveGuarantorId(getRouteParam(req.params.id));
       const { comments } = req.body;
       const guarantor = await storage.updateGuarantorStatus(guarantorId, 'approved', comments);
       broadcastDataUpdate(['/api/guarantors', '/api/loans', '/api/loans/approval']);
@@ -4700,7 +4720,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/guarantors/:id/reject', isAuthenticated, async (req, res) => {
     try {
-      const guarantorId = await storage.resolveGuarantorId(req.params.id);
+      const guarantorId = await storage.resolveGuarantorId(getRouteParam(req.params.id));
       const { comments } = req.body;
       const guarantor = await storage.updateGuarantorStatus(guarantorId, 'rejected', comments);
       broadcastDataUpdate(['/api/guarantors', '/api/loans']);
@@ -4731,10 +4751,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       const logs = await storage.getAuditLogs(filters);
-      res.json(logs);
+      return res.json(logs);
     } catch (error) {
       console.error("Error fetching audit logs:", error);
-      res.status(500).json({ message: "Failed to fetch audit logs" });
+      return res.status(500).json({ message: "Failed to fetch audit logs" });
     }
   });
 
@@ -4757,15 +4777,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/rbac/roles/:id', isAuthenticated, requirePermission('read', 'roles'), async (req: AuthRequest, res) => {
     try {
-      const roleId = parseInt(req.params.id);
+      const roleId = parseInt(getRouteParam(req.params.id));
       const role = await storage.getRoleById(roleId);
       if (!role) {
         return res.status(404).json({ message: "Role not found" });
       }
-      res.json(role);
+      return res.json(role);
     } catch (error) {
       console.error("Error fetching role:", error);
-      res.status(500).json({ message: "Failed to fetch role" });
+      return res.status(500).json({ message: "Failed to fetch role" });
     }
   });
 
@@ -4794,7 +4814,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/rbac/roles/:id', isAuthenticated, requirePermission('update', 'roles'), async (req: AuthRequest, res) => {
     try {
-      const roleId = parseInt(req.params.id);
+      const roleId = parseInt(getRouteParam(req.params.id));
       const updates = req.body;
       const role = await storage.updateRole(roleId, updates);
       
@@ -4818,7 +4838,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/rbac/roles/:id', isAuthenticated, requirePermission('delete', 'roles'), async (req: AuthRequest, res) => {
     try {
-      const roleId = parseInt(req.params.id);
+      const roleId = parseInt(getRouteParam(req.params.id));
       const role = await storage.getRoleById(roleId);
       
       if (!role) {
@@ -4842,10 +4862,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.get('user-agent'),
       });
       
-      res.json({ message: "Role deleted successfully" });
+      return res.json({ message: "Role deleted successfully" });
     } catch (error) {
       console.error("Error deleting role:", error);
-      res.status(500).json({ message: "Failed to delete role" });
+      return res.status(500).json({ message: "Failed to delete role" });
     }
   });
 
@@ -4861,7 +4881,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/rbac/roles/:id/permissions', isAuthenticated, requirePermission('read', 'roles'), async (req: AuthRequest, res) => {
     try {
-      const roleId = parseInt(req.params.id);
+      const roleId = parseInt(getRouteParam(req.params.id));
       const permissions = await storage.getPermissionsByRole(roleId);
       res.json(permissions);
     } catch (error) {
@@ -4872,7 +4892,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/rbac/roles/:id/permissions', isAuthenticated, requirePermission('update', 'roles'), async (req: AuthRequest, res) => {
     try {
-      const roleId = parseInt(req.params.id);
+      const roleId = parseInt(getRouteParam(req.params.id));
       const { permissionIds } = req.body;
       
       await storage.assignPermissionsToRole(roleId, permissionIds);
@@ -4900,7 +4920,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Member Role Management API routes
   app.get('/api/members/:id/roles', isAuthenticated, requirePermission('read', 'members'), async (req: AuthRequest, res) => {
     try {
-      const memberId = await storage.resolveMemberId(req.params.id);
+      const memberId = await storage.resolveMemberId(getRouteParam(req.params.id));
       
       const [member] = await db
         .select({
@@ -4910,15 +4930,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(members.id, memberId));
 
       if (!member) {
-        res.status(404).json({ message: 'Member not found' });
+        return res.status(404).json({ message: 'Member not found' });
         return;
       }
 
       const memberRolesList = await storage.getMemberRoles(memberId);
-      res.json(memberRolesList);
+      return res.json(memberRolesList);
     } catch (error) {
       console.error('Error fetching member roles:', error);
-      res.status(500).json({ message: 'Failed to fetch member roles' });
+      return res.status(500).json({ message: 'Failed to fetch member roles' });
     }
   });
 
@@ -4969,7 +4989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/interest-rates/product/:productType', isAuthenticated, async (req: any, res) => {
     try {
-      const { productType } = req.params;
+      const productType = getRouteParam(req.params.productType);
       const rate = await storage.getInterestRateByProduct(productType);
       res.json(rate);
     } catch (error) {
@@ -4981,7 +5001,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Amortization schedule routes
   app.get('/api/loans/:uuid/amortization', isAuthenticated, async (req: any, res) => {
     try {
-      const { uuid } = req.params;
+      const uuid = getRouteParam(req.params.uuid);
       // Get loan by UUID first to get the ID for legacy methods
       const loan = await storage.getLoanByUuid(uuid);
       if (!loan) {
@@ -4989,16 +5009,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const schedule = await storage.getAmortizationSchedule(loan.id);
-      res.json(schedule);
+      return res.json(schedule);
     } catch (error) {
       console.error("Error fetching amortization schedule:", error);
-      res.status(500).json({ message: "Failed to fetch amortization schedule" });
+      return res.status(500).json({ message: "Failed to fetch amortization schedule" });
     }
   });
 
   app.post('/api/loans/:uuid/generate-amortization', isAuthenticated, requirePermission('create', 'amortization'), async (req: any, res) => {
     try {
-      const { uuid } = req.params;
+      const uuid = getRouteParam(req.params.uuid);
       // Get loan by UUID first to get the ID for legacy methods
       const loan = await storage.getLoanByUuid(uuid);
       if (!loan) {
@@ -5012,21 +5032,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         action: 'create',
         resource: 'amortization_schedule',
         resourceId: uuid,
-        details: `Generated amortization schedule for loan ${req.params.id}`,
+        details: `Generated amortization schedule for loan ${uuid}`,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent')
       });
 
-      res.json(schedule);
+      return res.json(schedule);
     } catch (error) {
       console.error("Error generating amortization schedule:", error);
-      res.status(500).json({ message: "Failed to generate amortization schedule" });
+      return res.status(500).json({ message: "Failed to generate amortization schedule" });
     }
   });
 
   app.post('/api/loans/:uuid/calculate-interest', isAuthenticated, requirePermission('create', 'interest-calculations'), async (req: any, res) => {
     try {
-      const { uuid } = req.params;
+      const uuid = getRouteParam(req.params.uuid);
       // Get loan by UUID first to get the ID for legacy methods
       const loan = await storage.getLoanByUuid(uuid);
       if (!loan) {
@@ -5045,16 +5065,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.get('User-Agent')
       });
 
-      res.json(result);
+      return res.json(result);
     } catch (error) {
       console.error("Error calculating interest:", error);
-      res.status(500).json({ message: "Failed to calculate interest" });
+      return res.status(500).json({ message: "Failed to calculate interest" });
     }
   });
 
   app.get('/api/loans/:uuid/interest-calculations', isAuthenticated, async (req: any, res) => {
     try {
-      const { uuid } = req.params;
+      const uuid = getRouteParam(req.params.uuid);
       // Get loan by UUID first to get the ID for legacy methods
       const loan = await storage.getLoanByUuid(uuid);
       if (!loan) {
@@ -5062,16 +5082,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       const calculations = await storage.getInterestCalculations(loan.id);
-      res.json(calculations);
+      return res.json(calculations);
     } catch (error) {
       console.error("Error fetching interest calculations:", error);
-      res.status(500).json({ message: "Failed to fetch interest calculations" });
+      return res.status(500).json({ message: "Failed to fetch interest calculations" });
     }
   });
 
   app.post('/api/loans/:id/early-payment-calculation', isAuthenticated, async (req: any, res) => {
     try {
-      const { id } = req.params;
+      const id = getRouteParam(req.params.id);
       const { paymentDate, amount } = req.body;
       
       const result = await storage.calculateEarlyPaymentSavings(
@@ -5132,10 +5152,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (limit) filters.limit = parseInt(limit);
 
       const notifications = await storage.getNotifications(userId, filters);
-      res.json(notifications);
+      return res.json(notifications);
     } catch (error) {
       console.error("Error fetching notifications:", error);
-      res.status(500).json({ message: "Failed to fetch notifications" });
+      return res.status(500).json({ message: "Failed to fetch notifications" });
     }
   });
 
@@ -5147,10 +5167,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       const userId = user.id;
       const count = await storage.getUnreadNotificationCount(userId);
-      res.json({ count });
+      return res.json({ count });
     } catch (error) {
       console.error("Error fetching notification count:", error);
-      res.status(500).json({ message: "Failed to fetch notification count" });
+      return res.status(500).json({ message: "Failed to fetch notification count" });
     }
   });
 
@@ -5182,10 +5202,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast to WebSocket clients
       broadcastNotification(notification);
 
-      res.json(notification);
+      return res.json(notification);
     } catch (error) {
       console.error("Error creating test notification:", error);
-      res.status(500).json({ message: "Failed to create test notification" });
+      return res.status(500).json({ message: "Failed to create test notification" });
     }
   });
 
@@ -5206,10 +5226,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Broadcast notification via WebSocket
       broadcastNotification(notification);
       
-      res.status(201).json(notification);
+      return res.status(201).json(notification);
     } catch (error) {
       console.error("Error creating notification:", error);
-      res.status(500).json({ message: "Failed to create notification" });
+      return res.status(500).json({ message: "Failed to create notification" });
     }
   });
 
@@ -5220,17 +5240,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       const userId = user.id;
-      const notificationId = parseInt(req.params.id);
+      const notificationId = parseInt(getRouteParam(req.params.id));
       
       const notification = await storage.markNotificationAsRead(notificationId, userId);
       if (!notification) {
         return res.status(404).json({ message: "Notification not found" });
       }
       
-      res.json(notification);
+      return res.json(notification);
     } catch (error) {
       console.error("Error marking notification as read:", error);
-      res.status(500).json({ message: "Failed to mark notification as read" });
+      return res.status(500).json({ message: "Failed to mark notification as read" });
     }
   });
 
@@ -5252,17 +5272,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
       const userId = user.id;
-      const notificationId = parseInt(req.params.id);
+      const notificationId = parseInt(getRouteParam(req.params.id));
       
       const deleted = await storage.deleteNotification(notificationId, userId);
       if (!deleted) {
         return res.status(404).json({ message: "Notification not found" });
       }
       
-      res.json({ message: "Notification deleted" });
+      return res.json({ message: "Notification deleted" });
     } catch (error) {
       console.error("Error deleting notification:", error);
-      res.status(500).json({ message: "Failed to delete notification" });
+      return res.status(500).json({ message: "Failed to delete notification" });
     }
   });
 
@@ -5346,6 +5366,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return notification;
     } catch (error) {
       console.error('Error creating notification:', error);
+      return null;
     }
   }
   
@@ -5377,15 +5398,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/loan-types/:id', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(getRouteParam(req.params.id));
       const loanType = await storage.getLoanType(id);
       if (!loanType) {
         return res.status(404).json({ message: 'Loan type not found' });
       }
-      res.json(loanType);
+      return res.json(loanType);
     } catch (error) {
       console.error('Error fetching loan type:', error);
-      res.status(500).json({ message: 'Failed to fetch loan type' });
+      return res.status(500).json({ message: 'Failed to fetch loan type' });
     }
   });
 
@@ -5435,7 +5456,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/loan-types/:id', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(getRouteParam(req.params.id));
       const body = { ...req.body };
       if (body.interestCalculationMethod && !body.interestType) {
         body.interestType = body.interestCalculationMethod;
@@ -5480,7 +5501,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/loan-types/:id', isAuthenticated, requirePermission('delete', 'system-settings'), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(getRouteParam(req.params.id));
       const loanType = await storage.getLoanType(id);
       if (!loanType) {
         return res.status(404).json({ message: 'Loan type not found' });
@@ -5500,10 +5521,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: `Deleted loan type: ${loanType.displayName}`,
       });
 
-      res.json({ message: 'Loan type deleted successfully' });
+      return res.json({ message: 'Loan type deleted successfully' });
     } catch (error) {
       console.error('Error deleting loan type:', error);
-      res.status(500).json({ message: 'Failed to delete loan type' });
+      return res.status(500).json({ message: 'Failed to delete loan type' });
     }
   });
 
@@ -5525,15 +5546,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/loan-terms/:id', isAuthenticated, requirePermission('read', 'system-settings'), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(getRouteParam(req.params.id));
       const loanTerm = await storage.getLoanTerm(id);
       if (!loanTerm) {
         return res.status(404).json({ message: 'Loan term not found' });
       }
-      res.json(loanTerm);
+      return res.json(loanTerm);
     } catch (error) {
       console.error('Error fetching loan term:', error);
-      res.status(500).json({ message: 'Failed to fetch loan term' });
+      return res.status(500).json({ message: 'Failed to fetch loan term' });
     }
   });
 
@@ -5559,7 +5580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/loan-terms/:id', isAuthenticated, requirePermission('update', 'system-settings'), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(getRouteParam(req.params.id));
       const loanTerm = await storage.updateLoanTerm(id, req.body);
       
       // Create audit log
@@ -5580,7 +5601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete('/api/loan-terms/:id', isAuthenticated, requirePermission('delete', 'system-settings'), async (req: AuthRequest, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(getRouteParam(req.params.id));
       const loanTerm = await storage.getLoanTerm(id);
       if (!loanTerm) {
         return res.status(404).json({ message: 'Loan term not found' });
@@ -5600,10 +5621,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: `Deleted loan term: ${loanTerm.termName}`,
       });
 
-      res.json({ message: 'Loan term deleted successfully' });
+      return res.json({ message: 'Loan term deleted successfully' });
     } catch (error) {
       console.error('Error deleting loan term:', error);
-      res.status(500).json({ message: 'Failed to delete loan term' });
+      return res.status(500).json({ message: 'Failed to delete loan term' });
     }
   });
 
@@ -6033,11 +6054,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/reports/:reportType', isAuthenticated, async (req: any, res, next) => {
     const financialStatementTypes = ['trial-balance', 'balance-sheet', 'income-statement'];
-    if (financialStatementTypes.includes(req.params.reportType)) {
+    const reportType = getRouteParam(req.params.reportType);
+    if (financialStatementTypes.includes(reportType)) {
       return next();
     }
     try {
-      const { reportType } = req.params;
       const { startDate, endDate, memberNumber, status } = req.query;
       const userId = getUserId(req);
       const reportUser = await storage.getUser(userId!);
@@ -6238,19 +6259,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
           
         default:
-          return next();
+          return res.status(400).json({ message: 'Unsupported report type' });
       }
 
-      res.json(reportData);
+      return res.json(reportData);
     } catch (error) {
       console.error("Error generating report:", error);
-      res.status(500).json({ message: "Failed to generate report" });
+      return res.status(500).json({ message: "Failed to generate report" });
     }
   });
 
   app.get('/api/reports/download/:reportType', isAuthenticated, async (req: any, res) => {
     try {
-      const { reportType } = req.params;
+      const reportType = getRouteParam(req.params.reportType);
       const format = (req.query.format as string) || 'csv';
       const { startDate, endDate, memberNumber, status } = req.query;
       const userId = getUserId(req);
@@ -6389,7 +6410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           break;
         }
         default:
-          return next();
+          return res.status(400).json({ message: 'Unsupported report type' });
       }
 
       if (format === 'csv') {
@@ -6490,10 +6511,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return;
       }
 
-      res.status(400).json({ message: "Unsupported format" });
+      return res.status(400).json({ message: "Unsupported format" });
     } catch (error) {
       console.error("Error downloading report:", error);
-      res.status(500).json({ message: "Failed to download report" });
+      return res.status(500).json({ message: "Failed to download report" });
     }
   });
 
@@ -6534,7 +6555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: 'Authentication required' });
-      const loanId = parseInt(req.params.id);
+      const loanId = parseInt(getRouteParam(req.params.id));
       if (isNaN(loanId)) return res.status(400).json({ message: 'Invalid loan ID' });
 
       if (!(await canAccessLoanDocs(userId, loanId))) {
@@ -6572,9 +6593,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         uploadedBy: userId,
       }).returning();
 
-      res.json(doc);
+      return res.json(doc);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -6582,7 +6603,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: 'Authentication required' });
-      const loanId = parseInt(req.params.id);
+      const loanId = parseInt(getRouteParam(req.params.id));
       if (isNaN(loanId)) return res.status(400).json({ message: 'Invalid loan ID' });
 
       if (!(await canAccessLoanDocs(userId, loanId))) {
@@ -6590,9 +6611,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const docs = await db.select().from(loanDocuments).where(eq(loanDocuments.loanId, loanId));
-      res.json(docs);
+      return res.json(docs);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -6600,7 +6621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: 'Authentication required' });
-      const docId = parseInt(req.params.docId);
+      const docId = parseInt(getRouteParam(req.params.docId));
       if (isNaN(docId)) return res.status(400).json({ message: 'Invalid document ID' });
 
       const [doc] = await db.select().from(loanDocuments).where(eq(loanDocuments.id, docId));
@@ -6614,9 +6635,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try { fs.unlinkSync(doc.filePath); } catch {}
 
       await db.delete(loanDocuments).where(eq(loanDocuments.id, docId));
-      res.json({ message: 'Document deleted' });
+      return res.json({ message: 'Document deleted' });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -6624,7 +6645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: 'Authentication required' });
-      const docId = parseInt(req.params.docId);
+      const docId = parseInt(getRouteParam(req.params.docId));
       if (isNaN(docId)) return res.status(400).json({ message: 'Invalid document ID' });
 
       const [doc] = await db.select().from(loanDocuments).where(eq(loanDocuments.id, docId));
@@ -6635,9 +6656,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const path = await import('path');
-      res.download(path.resolve(doc.filePath), doc.originalName);
+      return res.download(path.resolve(doc.filePath), doc.originalName);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -6645,7 +6666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: 'Authentication required' });
-      const docId = parseInt(req.params.docId);
+      const docId = parseInt(getRouteParam(req.params.docId));
       if (isNaN(docId)) return res.status(400).json({ message: 'Invalid document ID' });
 
       const [doc] = await db.select().from(loanDocuments).where(eq(loanDocuments.id, docId));
@@ -6660,14 +6681,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const mime = doc.mimeType || 'application/octet-stream';
       res.setHeader('Content-Type', mime);
       res.setHeader('Content-Disposition', `inline; filename="${doc.originalName}"`);
-      res.sendFile(resolved);
+      return res.sendFile(resolved);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
   app.get('/api/import/status/:jobId', isAuthenticated, (req: any, res) => {
-    const job = importJobs.get(req.params.jobId);
+    const job = importJobs.get(getRouteParam(req.params.jobId));
     if (!job) {
       return res.status(404).json({ message: 'Import job not found' });
     }
@@ -6675,7 +6696,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (job.userId !== currentUserId) {
       return res.status(403).json({ message: 'Access denied' });
     }
-    res.json({
+    return res.json({
       id: job.id,
       status: job.status,
       progress: job.progress,
@@ -6695,8 +6716,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const job = createImportJob(userId);
     const filePath = req.file ? req.file.path : './attached_assets/savings_1772043613995.xlsx';
     const createNewMembers = req.body?.createNewMembers !== 'false';
-
-    res.json({ jobId: job.id, message: 'Import started' });
 
     (async () => {
       try {
@@ -6744,6 +6763,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
     })();
+    return res.json({ jobId: job.id, message: 'Import started' });
   });
 
   app.post('/api/import/members', isAuthenticated, requirePermission('execute', 'import-members'), upload.single('file'), async (req: any, res) => {
@@ -6752,8 +6772,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const job = createImportJob(userId);
     const filePath = req.file ? req.file.path : './attached_assets/members_1772094048114.xlsx';
     const updateExisting = req.body?.updateExisting === 'true';
-
-    res.json({ jobId: job.id, message: 'Import started' });
 
     (async () => {
       try {
@@ -6792,6 +6810,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
     })();
+    return res.json({ jobId: job.id, message: 'Import started' });
   });
 
   app.post('/api/import/loans', isAuthenticated, requirePermission('execute', 'import-loans'), upload.single('file'), async (req: any, res) => {
@@ -6805,8 +6824,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const job = createImportJob(userId);
-    res.json({ jobId: job.id, message: 'Import started' });
-
     (async () => {
       try {
         const { importLoansFromExcel } = await import('../importUtils');
@@ -6844,6 +6861,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
     })();
+    return res.json({ jobId: job.id, message: 'Import started' });
   });
 
   app.post('/api/import/loan-repayments', isAuthenticated, requirePermission('execute', 'import-loan-repayments'), upload.single('file'), async (req: any, res) => {
@@ -6866,8 +6884,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const userId = getUserId(req);
     if (!userId) { await cleanupFile(); return res.status(401).json({ message: 'Authentication required' }); }
     const job = createImportJob(userId);
-    res.json({ jobId: job.id, message: 'Import started' });
-
     (async () => {
       try {
         job.status = 'processing';
@@ -7029,7 +7045,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 metadata: JSON.stringify({ interest: split.interestPortion, principalRepyt: split.principalPortion, balanceReduction: split.balanceReduction, source: 'repayment_import' }),
               });
               await postLoanRepaymentJournals(loan, split.interestPortion, split.principalPortion, `Imported loan repayment - ${member.memberNumber}`, importRef, userId, tx);
-              if (['inactive', 'dormant'].includes(member.status)) {
+              if (['inactive', 'dormant'].includes(member.status ?? '')) {
                 await tx.update(members).set({
                 status: 'active' as any,
                 lastActivityDate: new Date(),
@@ -7093,6 +7109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
     })();
+    return res.json({ jobId: job.id, message: 'Import started' });
   });
 
   app.post('/api/import/bulk-savings', isAuthenticated, requirePermission('execute', 'import-bulk-savings'), upload.single('file'), async (req: any, res) => {
@@ -7102,8 +7119,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     const userId = getUserId(req);
     if (!userId) return res.status(401).json({ message: 'Authentication required' });
     const job = createImportJob(userId);
-    res.json({ jobId: job.id, message: 'Import started' });
-
     (async () => {
       try {
         job.status = 'processing';
@@ -7233,7 +7248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               lastActivityDate: new Date(),
               isActiveSaver: true,
             };
-            if (['inactive', 'dormant'].includes(member.status)) {
+            if (['inactive', 'dormant'].includes(member.status ?? '')) {
               importUpdateFields.status = 'active';
             }
             const importRef = reference || `IMP-SD-${Date.now()}-${i}`;
@@ -7304,6 +7319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
     })();
+    return res.json({ jobId: job.id, message: 'Import started' });
   });
 
   // ===== INTEREST CALCULATIONS ROUTES =====
@@ -7352,16 +7368,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const financialYear = await storage.createFinancialYear(req.body);
-      res.status(201).json(financialYear);
+      return res.status(201).json(financialYear);
     } catch (error) {
       console.error('Error creating financial year:', error);
-      res.status(500).json({ message: 'Failed to create financial year' });
+      return res.status(500).json({ message: 'Failed to create financial year' });
     }
   });
 
   app.put('/api/financial-years/:id/activate', isAuthenticated, requirePermission('create', 'financial-years'), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(getRouteParam(req.params.id));
       const financialYear = await storage.setActiveFinancialYear(id);
       res.json(financialYear);
     } catch (error) {
@@ -7418,7 +7434,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/interest-calculations/:id/approve', isAuthenticated, requirePermission('post', 'interest-calculations'), async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(getRouteParam(req.params.id));
       const approvedBy = getUserId(req)!;
       const calculation = await storage.approveInterestCalculation(id, approvedBy);
       res.json(calculation);
@@ -7442,10 +7458,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         await storage.approveInterestCalculation(calc.id, approvedBy);
         approved++;
       }
-      res.json({ approved, total: calculations.length });
+      return res.json({ approved, total: calculations.length });
     } catch (error) {
       console.error('Error approving all interest calculations:', error);
-      res.status(500).json({ message: 'Failed to approve all interest calculations' });
+      return res.status(500).json({ message: 'Failed to approve all interest calculations' });
     }
   });
 
@@ -7477,16 +7493,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
         posted++;
       }
-      res.json({ posted, total: calculations.length });
+      return res.json({ posted, total: calculations.length });
     } catch (error) {
       console.error('Error posting all interest calculations:', error);
-      res.status(500).json({ message: 'Failed to post all interest calculations' });
+      return res.status(500).json({ message: 'Failed to post all interest calculations' });
     }
   });
 
   app.put('/api/interest-calculations/:id/post', isAuthenticated, requirePermission('post', 'interest-calculations'), async (req, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(getRouteParam(req.params.id));
       const processedBy = getUserId(req)!;
       const calculation = await storage.runSaccoLedgerTransaction(async (tx) => {
         const locked = await tx.execute(sql`SELECT * FROM ${interestCalculations} WHERE ${interestCalculations.id} = ${id} FOR UPDATE`);
@@ -7565,7 +7581,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.put('/api/interest-payments/:id/process', isAuthenticated, requirePermission('post', 'interest-calculations'), async (req: any, res) => {
     try {
-      const id = parseInt(req.params.id);
+      const id = parseInt(getRouteParam(req.params.id));
       const processedBy = getUserId(req)!;
       const payment = await storage.processInterestPayment(id, processedBy);
       res.json(payment);
@@ -7578,7 +7594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Interest reports
   app.get('/api/interest-reports/:financialYearId', isAuthenticated, async (req, res) => {
     try {
-      const financialYearId = parseInt(req.params.financialYearId);
+      const financialYearId = parseInt(getRouteParam(req.params.financialYearId));
       const report = await storage.generateInterestReport(financialYearId);
       res.json(report);
     } catch (error) {
@@ -7615,12 +7631,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/sacco-accounts/:id', isAuthenticated, requirePermission('read', 'sacco-accounts'), async (req: any, res) => {
     try {
-      const account = await storage.getSaccoAccount(parseInt(req.params.id));
+      const account = await storage.getSaccoAccount(parseInt(getRouteParam(req.params.id)));
       if (!account) return res.status(404).json({ message: "Account not found" });
-      res.json(account);
+      return res.json(account);
     } catch (error) {
       console.error("Error fetching SACCO account:", error);
-      res.status(500).json({ message: "Failed to fetch account" });
+      return res.status(500).json({ message: "Failed to fetch account" });
     }
   });
 
@@ -7628,7 +7644,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { startDate, endDate } = req.query;
       const statement = await storage.getSaccoAccountStatement(
-        parseInt(req.params.id),
+        parseInt(getRouteParam(req.params.id)),
         startDate as string,
         endDate as string
       );
@@ -7650,13 +7666,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: `Invalid account type. Must be one of: ${validTypes.join(', ')}` });
       }
       const account = await storage.createSaccoAccount({ accountCode, accountName, accountType, description });
-      res.status(201).json(account);
+      return res.status(201).json(account);
     } catch (error: any) {
       console.error("Error creating SACCO account:", error);
       if (error?.code === '23505') {
         return res.status(400).json({ message: "An account with this code already exists" });
       }
-      res.status(500).json({ message: "Failed to create account" });
+      return res.status(500).json({ message: "Failed to create account" });
     }
   });
 
@@ -7665,11 +7681,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (Object.prototype.hasOwnProperty.call(req.body, 'balance')) {
         return res.status(400).json({ message: "Account balances can only be changed by posted journal entries" });
       }
-      const account = await storage.updateSaccoAccount(parseInt(req.params.id), req.body);
-      res.json(account);
+      const account = await storage.updateSaccoAccount(parseInt(getRouteParam(req.params.id)), req.body);
+      return res.json(account);
     } catch (error) {
       console.error("Error updating SACCO account:", error);
-      res.status(500).json({ message: "Failed to update account" });
+      return res.status(500).json({ message: "Failed to update account" });
     }
   });
 
@@ -7729,24 +7745,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       broadcastDataUpdate(['/api/sacco-accounts', '/api/sacco-journal-entries', '/api/sacco-accounts/summary']);
-      res.status(201).json(entry);
+      return res.status(201).json(entry);
     } catch (error: any) {
       console.error("Error creating journal entry:", error);
-      res.status(500).json({ message: error.message || "Failed to create journal entry" });
+      return res.status(500).json({ message: error.message || "Failed to create journal entry" });
     }
   });
 
   app.post('/api/sacco-journal-entries/:id/reverse', isAuthenticated, requirePermission('update', 'sacco-accounts'), async (req: any, res) => {
     try {
       const userId = getUserId(req)!;
-      const reversal = await storage.reverseSaccoJournalEntry(parseInt(req.params.id), userId);
+      const journalEntryId = getRouteParam(req.params.id);
+      const reversal = await storage.reverseSaccoJournalEntry(parseInt(journalEntryId), userId);
 
       await storage.createAuditLog({
         userId,
         action: 'update',
         resource: 'sacco-journal-entry',
         resourceId: reversal.id.toString(),
-        details: `Reversed journal entry ${req.params.id}`,
+        details: `Reversed journal entry ${journalEntryId}`,
         ipAddress: req.ip,
         userAgent: req.headers['user-agent'],
       });
@@ -7782,7 +7799,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (creditAccountId && (isNaN(parsedCredit!) || parsedCredit! <= 0)) {
         return res.status(400).json({ message: "Invalid credit account ID" });
       }
-      const mapping = await storage.updateSaccoAccountMapping(parseInt(req.params.id), {
+      const mapping = await storage.updateSaccoAccountMapping(parseInt(getRouteParam(req.params.id)), {
         debitAccountId: parsedDebit,
         creditAccountId: parsedCredit,
       });
@@ -7798,10 +7815,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.headers['user-agent'],
       });
 
-      res.json(mapping);
+      return res.json(mapping);
     } catch (error) {
       console.error("Error updating account mapping:", error);
-      res.status(500).json({ message: "Failed to update account mapping" });
+      return res.status(500).json({ message: "Failed to update account mapping" });
     }
   });
 

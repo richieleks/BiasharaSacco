@@ -273,17 +273,18 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
 
           if (!member.userId) {
             try {
-              const username = await generateUniqueUsername(member.fullName);
-              const defaultPassword = generateDefaultPassword(member.fullName);
+              const memberName = member.fullName ?? accountName;
+              const username = await generateUniqueUsername(memberName);
+              const defaultPassword = generateDefaultPassword(memberName);
               const hashedPwd = await hashPassword(defaultPassword);
-              const nameParts = member.fullName.split(' ');
+              const nameParts = memberName.split(' ');
               const firstName = nameParts[0] || '';
               const lastName = nameParts.slice(1).join(' ') || '';
               const newUser = await storage.upsertUser({
                 id: `member-${Date.now()}-${Math.floor(Math.random() * 10000)}`,
                 username,
                 password: hashedPwd,
-                email: member.email || `${member.fullName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
+                email: member.email || `${memberName.toLowerCase().replace(/\s+/g, '.')}@email.com`,
                 firstName,
                 lastName,
                 role: 'member',
@@ -291,7 +292,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
                 mustChangePassword: true,
                 userType: 'member',
               });
-              await storage.updateMember(member.id, { userId: newUser.id } as any);
+              await storage.updateMember(member.id, { userId: newUser.id });
               member.userId = newUser.id;
               console.log(`Created user account for existing member ${member.fullName}: username=${username}`);
             } catch (userErr) {
@@ -484,7 +485,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
             if (entry.type === 'membership') {
               await storage.createTransaction({
                 memberId: member.id,
-                transactionType: 'membership_fee' as any,
+                transactionType: 'membership_fee',
                 amount: entry.amount.toString(),
                 description: entry.details,
                 transactionDate: entry.date,
@@ -513,7 +514,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
                 const membershipRef = `${entry.refNumber}-MF`;
                 await storage.createTransaction({
                   memberId: member.id,
-                  transactionType: 'membership_fee' as any,
+                  transactionType: 'membership_fee',
                   amount: membershipPortion.toString(),
                   description: `Membership/entrance fee (from ${entry.details})`,
                   transactionDate: entry.date,
@@ -539,7 +540,7 @@ export async function importSavingsFromExcel(filePath: string, options?: { creat
               if (shareCapitalAmount > 0) {
                 await storage.createTransaction({
                   memberId: member.id,
-                  transactionType: 'share_capital' as any,
+                  transactionType: 'share_capital',
                   amount: shareCapitalAmount.toString(),
                   description: `Share capital payment from ${entry.details}`,
                   transactionDate: entry.date,

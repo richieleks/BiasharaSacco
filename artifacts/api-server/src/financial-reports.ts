@@ -43,6 +43,12 @@ async function getPostedLedgerSnapshot(startDate?: string, endDate?: string) {
   );
 }
 
+function parseRouteId(req: Request, parameter: string): number {
+  const value = req.params[parameter];
+  const normalizedValue = Array.isArray(value) ? value[0] : value;
+  return Number.parseInt(normalizedValue ?? "", 10);
+}
+
 export function registerFinancialReportRoutes(app: Express) {
 
   app.get("/api/reports/trial-balance", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
@@ -73,7 +79,7 @@ export function registerFinancialReportRoutes(app: Express) {
       totalCredits = Math.round(totalCredits * 100) / 100;
       const difference = Math.round((totalDebits - totalCredits) * 100) / 100;
 
-      res.json({
+      return res.json({
         asOfDate,
         rows: trialBalanceRows,
         totalDebits,
@@ -83,7 +89,7 @@ export function registerFinancialReportRoutes(app: Express) {
         postedEntryCount: ledger.postedEntryCount,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -123,7 +129,7 @@ export function registerFinancialReportRoutes(app: Express) {
       const totalLiabilities = liabilities.reduce((s, a) => s + a.balance, 0);
       const totalEquity = equity.reduce((s, a) => s + a.balance, 0);
 
-      res.json({
+      return res.json({
         asOfDate,
         assets: { items: assets, total: totalAssets },
         liabilities: { items: liabilities, total: totalLiabilities },
@@ -134,7 +140,7 @@ export function registerFinancialReportRoutes(app: Express) {
         postedEntryCount: ledger.postedEntryCount,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -152,7 +158,7 @@ export function registerFinancialReportRoutes(app: Express) {
       const totalRevenue = revenueRows.reduce((sum, account) => sum + account.amount, 0);
       const totalExpenses = expenseRows.reduce((sum, account) => sum + account.amount, 0);
 
-      res.json({
+      return res.json({
         startDate,
         endDate,
         revenue: { items: revenueRows, total: totalRevenue },
@@ -161,7 +167,7 @@ export function registerFinancialReportRoutes(app: Express) {
         postedEntryCount: ledger.postedEntryCount,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -224,7 +230,7 @@ export function registerFinancialReportRoutes(app: Express) {
       const atRiskAmount = parBuckets.par1_30.amount + parBuckets.par31_60.amount + parBuckets.par61_90.amount +
         parBuckets.par91_180.amount + parBuckets.par181_365.amount + parBuckets.par365_plus.amount;
 
-      res.json({
+      return res.json({
         totalPortfolio,
         totalLoans: loanRows.length,
         atRiskAmount,
@@ -235,7 +241,7 @@ export function registerFinancialReportRoutes(app: Express) {
         buckets: parBuckets,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -300,7 +306,7 @@ export function registerFinancialReportRoutes(app: Express) {
         }
       });
 
-      res.json({
+      return res.json({
         message: 'Provisioning completed',
         totalLoans: loanRows.length,
         totalProvision,
@@ -308,7 +314,7 @@ export function registerFinancialReportRoutes(app: Express) {
         provisionDate,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -333,7 +339,7 @@ export function registerFinancialReportRoutes(app: Express) {
       `);
       const lastDate = ((lastProvision as any).rows || lastProvision)[0]?.last_date;
 
-      res.json({
+      return res.json({
         lastProvisionDate: lastDate,
         categories: rows.map((r: any) => ({
           category: r.category,
@@ -346,7 +352,7 @@ export function registerFinancialReportRoutes(app: Express) {
         totalOutstanding: rows.reduce((s: number, r: any) => s + parseFloat(r.total_outstanding || '0'), 0),
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -354,7 +360,7 @@ export function registerFinancialReportRoutes(app: Express) {
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
-      const loanId = parseInt(req.params.id);
+      const loanId = parseRouteId(req, "id");
       const { reason } = req.body;
 
       if (!reason) return res.status(400).json({ message: 'Write-off reason is required' });
@@ -381,9 +387,9 @@ export function registerFinancialReportRoutes(app: Express) {
         requestedBy: userId!,
       }).returning();
 
-      res.json(writeoff);
+      return res.json(writeoff);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -399,9 +405,9 @@ export function registerFinancialReportRoutes(app: Express) {
         LEFT JOIN users u2 ON u2.id = lw.approved_by
         ORDER BY lw.created_at DESC
       `);
-      res.json((writeoffs as any).rows || writeoffs);
+      return res.json((writeoffs as any).rows || writeoffs);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -409,7 +415,7 @@ export function registerFinancialReportRoutes(app: Express) {
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
-      const writeoffId = parseInt(req.params.id);
+      const writeoffId = parseRouteId(req, "id");
 
       await storage.runSaccoLedgerTransaction(async (tx) => {
         const [writeoff] = await tx.select().from(loanWriteoffs)
@@ -454,9 +460,9 @@ export function registerFinancialReportRoutes(app: Express) {
         });
       });
 
-      res.json({ message: 'Loan written off successfully' });
+      return res.json({ message: 'Loan written off successfully' });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -464,7 +470,7 @@ export function registerFinancialReportRoutes(app: Express) {
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
-      const writeoffId = parseInt(req.params.id);
+      const writeoffId = parseRouteId(req, "id");
       const { reason } = req.body;
 
       await db.update(loanWriteoffs).set({
@@ -474,18 +480,18 @@ export function registerFinancialReportRoutes(app: Express) {
         approvedAt: new Date(),
       }).where(eq(loanWriteoffs.id, writeoffId));
 
-      res.json({ message: 'Write-off request rejected' });
+      return res.json({ message: 'Write-off request rejected' });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
   app.get("/api/financial-years", isAuthenticated, async (req: Request, res: Response) => {
     try {
       const years = await db.select().from(financialYears).orderBy(desc(financialYears.id));
-      res.json(years);
+      return res.json(years);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -551,7 +557,7 @@ export function registerFinancialReportRoutes(app: Express) {
         }
       }
 
-      res.json({
+      return res.json({
         distribution,
         memberCount: memberRows.length,
         totalShares,
@@ -559,7 +565,7 @@ export function registerFinancialReportRoutes(app: Express) {
         totalSurplus,
       });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -577,15 +583,15 @@ export function registerFinancialReportRoutes(app: Express) {
         LEFT JOIN users u2 ON u2.id = dd.approved_by
         ORDER BY dd.created_at DESC
       `);
-      res.json((distributions as any).rows || distributions);
+      return res.json((distributions as any).rows || distributions);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
   app.get("/api/dividends/:id/members", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
     try {
-      const distId = parseInt(req.params.id);
+      const distId = parseRouteId(req, "id");
       const memberDivs = await db.execute(sql`
         SELECT md.*, m.full_name, m.member_number
         FROM member_dividends md
@@ -593,9 +599,9 @@ export function registerFinancialReportRoutes(app: Express) {
         WHERE md.distribution_id = ${distId}
         ORDER BY md.dividend_amount DESC
       `);
-      res.json((memberDivs as any).rows || memberDivs);
+      return res.json((memberDivs as any).rows || memberDivs);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -603,7 +609,7 @@ export function registerFinancialReportRoutes(app: Express) {
     try {
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
-      const distId = parseInt(req.params.id);
+      const distId = parseRouteId(req, "id");
 
       const [dist] = await db.select().from(dividendDistributions).where(eq(dividendDistributions.id, distId));
       if (!dist) return res.status(404).json({ message: 'Distribution not found' });
@@ -615,15 +621,15 @@ export function registerFinancialReportRoutes(app: Express) {
         approvedAt: new Date(),
       }).where(eq(dividendDistributions.id, distId));
 
-      res.json({ message: 'Dividend distribution approved' });
+      return res.json({ message: 'Dividend distribution approved' });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
   app.post("/api/dividends/:id/distribute", isAuthenticated, requireRole('admin', 'treasurer'), async (req: Request, res: Response) => {
     try {
-      const distId = parseInt(req.params.id);
+      const distId = parseRouteId(req, "id");
 
       const authReq = req as AuthRequest;
       const userId = authReq.user?.id;
@@ -690,15 +696,15 @@ export function registerFinancialReportRoutes(app: Express) {
         }).where(eq(dividendDistributions.id, distId));
       });
 
-      res.json({ message: `Dividends distributed to ${distributed} members` });
+      return res.json({ message: `Dividends distributed to ${distributed} members` });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
   app.delete("/api/dividends/:id", isAuthenticated, requireRole('admin'), async (req: Request, res: Response) => {
     try {
-      const distId = parseInt(req.params.id);
+      const distId = parseRouteId(req, "id");
       const [dist] = await db.select().from(dividendDistributions).where(eq(dividendDistributions.id, distId));
       if (!dist) return res.status(404).json({ message: 'Distribution not found' });
       if (dist.status === 'distributed') return res.status(400).json({ message: 'Cannot delete a distributed dividend' });
@@ -708,9 +714,9 @@ export function registerFinancialReportRoutes(app: Express) {
         await tx.delete(dividendDistributions).where(eq(dividendDistributions.id, distId));
       });
 
-      res.json({ message: 'Distribution deleted' });
+      return res.json({ message: 'Distribution deleted' });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -720,7 +726,7 @@ export function registerFinancialReportRoutes(app: Express) {
       const userId = authReq.user?.id;
       if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-      const loanId = parseInt(req.params.id);
+      const loanId = parseRouteId(req, "id");
       const { newRate, newTerm, reason } = req.body;
 
       if (!newRate || !newTerm || !reason || !String(reason).trim()) {
@@ -742,7 +748,7 @@ export function registerFinancialReportRoutes(app: Express) {
       const [loan] = await db.select().from(loans).where(eq(loans.id, loanId));
       if (!loan) return res.status(404).json({ message: 'Loan not found' });
 
-      if (!['active', 'disbursed', 'defaulted'].includes(loan.status)) {
+      if (!loan.status || !['active', 'disbursed', 'defaulted'].includes(loan.status)) {
         return res.status(400).json({ message: 'Only active, disbursed, or defaulted loans can be restructured' });
       }
 
@@ -778,10 +784,10 @@ export function registerFinancialReportRoutes(app: Express) {
         requestedBy: userId,
       }).returning();
 
-      res.json(restructure);
+      return res.json(restructure);
     } catch (error: any) {
       console.error("Error creating restructure request:", error);
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -793,21 +799,21 @@ export function registerFinancialReportRoutes(app: Express) {
         JOIN members m ON m.id = lr.member_id
         ORDER BY lr.created_at DESC
       `);
-      res.json((restructures as any).rows || restructures);
+      return res.json((restructures as any).rows || restructures);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
   app.get("/api/loans/:id/restructure-history", isAuthenticated, requireRole('admin', 'treasurer', 'committee'), async (req: Request, res: Response) => {
     try {
-      const loanId = parseInt(req.params.id);
+      const loanId = parseRouteId(req, "id");
       const history = await db.select().from(loanRestructures)
         .where(eq(loanRestructures.loanId, loanId))
         .orderBy(desc(loanRestructures.createdAt));
-      res.json(history);
+      return res.json(history);
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -817,7 +823,7 @@ export function registerFinancialReportRoutes(app: Express) {
       const userId = authReq.user?.id;
       if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-      const restructureId = parseInt(req.params.id);
+      const restructureId = parseRouteId(req, "id");
 
       const [restructure] = await db.select().from(loanRestructures).where(eq(loanRestructures.id, restructureId));
       if (!restructure) return res.status(404).json({ message: 'Restructure request not found' });
@@ -837,10 +843,10 @@ export function registerFinancialReportRoutes(app: Express) {
         }).where(eq(loans.id, restructure.loanId));
       });
 
-      res.json({ message: 'Restructure approved and new terms applied to the loan' });
+      return res.json({ message: 'Restructure approved and new terms applied to the loan' });
     } catch (error: any) {
       console.error("Error approving restructure:", error);
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 
@@ -850,7 +856,7 @@ export function registerFinancialReportRoutes(app: Express) {
       const userId = authReq.user?.id;
       if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-      const restructureId = parseInt(req.params.id);
+      const restructureId = parseRouteId(req, "id");
       const { reason } = req.body;
 
       const [restructure] = await db.select().from(loanRestructures).where(eq(loanRestructures.id, restructureId));
@@ -864,9 +870,9 @@ export function registerFinancialReportRoutes(app: Express) {
         rejectionReason: reason || 'Rejected by admin',
       }).where(eq(loanRestructures.id, restructureId));
 
-      res.json({ message: 'Restructure request rejected' });
+      return res.json({ message: 'Restructure request rejected' });
     } catch (error: any) {
-      res.status(500).json({ message: error.message });
+      return res.status(500).json({ message: error.message });
     }
   });
 }

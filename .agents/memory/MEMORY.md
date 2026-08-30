@@ -2,3 +2,4 @@
 - [Financial statements re-sourcing](financial-statements-resourcing.md) — TB/BalanceSheet/IncomeStmt derive from operational ledgers, not the drifted journal layer; cash is the balancing plug.
 - [Loan import product rules](loan-import-category-fallback.md) — preserve special categories, normalize percentage rates, and derive schedules from configured product terms.
 - [Bank import CSV parsing](bank-import-csv-parsing.md) — reject malformed syntax at file level while preserving row-level reports for variable column counts.
+- [API TypeScript boundaries](api-typecheck-boundaries.md) — Express 5 route values and Drizzle enums require explicit narrowing and terminal response returns under strict checking.

@@ -25,7 +25,7 @@ export async function createBackup(): Promise<BackupInfo> {
   const filepath = path.join(BACKUP_DIR, filename);
 
   const tables: string[] = [];
-  const backupData: Record<string, any[]> = {};
+  const backupData: Record<string, unknown> = {};
 
   try {
     const membersResult = await storage.getAllMembers();

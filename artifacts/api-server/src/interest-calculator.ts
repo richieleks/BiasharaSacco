@@ -3,8 +3,10 @@ import type {
   InterestRate, 
   AmortizationSchedule, 
   InsertAmortizationSchedule,
-  InsertInterestCalculation 
+  loanInterestCalculations,
 } from "@workspace/db";
+
+type InsertLoanInterestCalculation = typeof loanInterestCalculations.$inferInsert;
 
 export interface InterestCalculationResult {
   totalInterest: number;
@@ -298,10 +300,24 @@ export class InterestCalculator {
     result: number,
     formula: string,
     notes?: string
-  ): InsertInterestCalculation {
+  ): InsertLoanInterestCalculation {
+    const calculationTypes = [
+      'loan_interest',
+      'compound_interest',
+      'simple_interest',
+      'reducing_balance',
+    ] as const;
+    const isCalculationType = (
+      value: string,
+    ): value is typeof calculationTypes[number] =>
+      calculationTypes.some((type) => type === value);
+    const normalizedCalculationType = isCalculationType(calculationType)
+      ? calculationType
+      : 'loan_interest';
+
     return {
       loanId,
-      calculationType: calculationType as any,
+      calculationType: normalizedCalculationType,
       principal: principal.toFixed(2),
       rate: rate.toFixed(2),
       time: time.toFixed(4),

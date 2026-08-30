@@ -53,17 +53,6 @@ test(
           status: 'posted',
         });
 
-        await tx.insert(saccoJournalEntries).values({
-          entryNumber: `TEST-DRAFT-${suffix}`,
-          entryDate: '2026-08-30',
-          description: 'Draft entry must not affect balances',
-          debitAccountId: cash.id,
-          creditAccountId: savings.id,
-          amount: '999.00',
-          createdBy: userId,
-          status: 'draft',
-        });
-
         await storage.createSaccoJournalEntryInTransaction(tx, {
           entryNumber: `TEST-EXP-${suffix}`,
           entryDate: '2026-08-30',

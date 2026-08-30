@@ -48,8 +48,10 @@ export class BusinessRulesValidator {
       }
 
       // BR-L004: Must have been member for at least 3 months
-      const memberJoinDate = member.joinDate || member.createdAt;
-      const membershipDuration = differenceInMonths(new Date(), new Date(memberJoinDate));
+      const memberJoinDate = member.joinDate ?? member.createdAt;
+      const membershipDuration = memberJoinDate
+        ? differenceInMonths(new Date(), memberJoinDate)
+        : 0;
       if (membershipDuration < 3) {
         const remainingMonths = Math.ceil(3 - membershipDuration);
         violations.push(`❌ MEMBERSHIP DURATION: You need ${remainingMonths} more month(s) of active membership. SACCO requires 3 months minimum membership period.`);
@@ -62,8 +64,10 @@ export class BusinessRulesValidator {
       if (!activeSavingsAccount) {
         violations.push("❌ SAVINGS ACCOUNT: You must have an active savings account. Open a savings account with the SACCO before applying for loans.");
       } else {
-        const savingsStartDate = member.joinDate || activeSavingsAccount.createdAt;
-        const accountDuration = differenceInMonths(new Date(), new Date(savingsStartDate));
+        const savingsStartDate = member.joinDate ?? activeSavingsAccount.createdAt;
+        const accountDuration = savingsStartDate
+          ? differenceInMonths(new Date(), savingsStartDate)
+          : 0;
         if (accountDuration < 3) {
           const remainingMonths = Math.ceil(3 - accountDuration);
           violations.push(`❌ SAVINGS DURATION: Your savings account needs ${remainingMonths} more month(s) of operation. SACCO requires 3 months minimum savings history.`);
@@ -105,7 +109,7 @@ export class BusinessRulesValidator {
 
       let maxLoanAmount = 0;
       if (activeSavingsAccount) {
-        const totalSavings = parseFloat(activeSavingsAccount.balance);
+        const totalSavings = parseFloat(activeSavingsAccount.balance ?? '0');
         maxLoanAmount = totalSavings * loanToSavingsRatio;
         
         // BR-L011: Check if savings gradually built up
@@ -139,7 +143,7 @@ export class BusinessRulesValidator {
         if (loanTypeMaxAmount && maxLoanAmount === loanTypeMaxAmount) {
           violations.push(`❌ LOAN TYPE LIMIT: Your requested UGX ${requestedAmount.toLocaleString()} exceeds the maximum UGX ${Math.round(maxLoanAmount).toLocaleString()} allowed for this loan type.`);
         } else if (activeSavingsAccount) {
-          const currentSavings = parseFloat(activeSavingsAccount.balance);
+          const currentSavings = parseFloat(activeSavingsAccount.balance ?? '0');
           violations.push(`❌ LOAN AMOUNT LIMIT: Your requested UGX ${requestedAmount.toLocaleString()} exceeds the maximum UGX ${Math.round(maxLoanAmount).toLocaleString()}. With current savings of UGX ${Math.round(currentSavings).toLocaleString()}, you can borrow up to ${loanToSavingsRatio} times your savings balance.`);
         }
       }
@@ -236,7 +240,7 @@ export class BusinessRulesValidator {
         return 0;
       }
 
-      const totalSavings = parseFloat(activeSavingsAccount.balance);
+      const totalSavings = parseFloat(activeSavingsAccount.balance ?? '0');
       const shareCapital = parseFloat(member.shareContribution || "0");
       
       // Base calculation on 1:2.5 savings ratio
