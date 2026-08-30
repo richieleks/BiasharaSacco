@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Users, PiggyBank, HandCoins, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, Percent } from "lucide-react";
+import { Users, PiggyBank, HandCoins, TrendingUp, ArrowUpRight, ArrowDownRight, Minus, Coins } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 
 export default function MetricsGrid() {
@@ -86,7 +86,7 @@ export default function MetricsGrid() {
     {
       title: "Interest Paid",
       value: formatCurrency(metrics.totalInterestPaid || "0"),
-      icon: Percent,
+      icon: Coins,
       gradient: "from-teal-500 to-cyan-600",
       iconBg: "bg-teal-50 dark:bg-teal-950/50 text-teal-600 dark:text-teal-400",
       accentColor: "bg-teal-500",
