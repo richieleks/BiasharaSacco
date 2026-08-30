@@ -112,15 +112,13 @@ export default function MetricsGrid() {
         return (
           <div key={index} className="metric-card group animate-fade-in" style={{ animationDelay: `${index * 80}ms` }}>
             <div className={`absolute top-0 left-0 right-0 h-[3px] rounded-t-xl bg-gradient-to-r ${metric.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-200`} />
-            <div className="flex items-start justify-between">
-              <div className="space-y-1 min-w-0 flex-1">
-                <p className="text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wide">{metric.title}</p>
-                <p className="font-bold text-slate-900 dark:text-slate-100 tracking-tight whitespace-nowrap tabular-nums leading-tight text-[clamp(1.125rem,1.6vw,1.5rem)]">{metric.value}</p>
-              </div>
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-semibold uppercase tracking-wide">{metric.title}</p>
               <div className={`w-9 h-9 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center ${metric.iconBg} transition-transform group-hover:scale-105 shrink-0 ml-2`}>
                 <metric.icon className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
             </div>
+            <p className="mt-1 font-bold text-slate-900 dark:text-slate-100 tracking-tight whitespace-nowrap tabular-nums leading-tight text-[clamp(1.125rem,1.6vw,1.5rem)]">{metric.value}</p>
             <div className="flex items-center justify-between mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-slate-100 dark:border-slate-700">
               <div className={`flex items-center gap-1 text-[10px] sm:text-xs font-semibold px-1.5 sm:px-2 py-0.5 rounded-full ${getChangeColor(changeVal)}`}>
                 {getChangeIcon(changeVal)}
