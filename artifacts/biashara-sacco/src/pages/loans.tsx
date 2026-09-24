@@ -17,6 +17,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import LoanApplicationForm from "@/components/forms/loan-application-form";
 import LoanTopUpForm from "@/components/forms/loan-topup-form";
+import { formatLoanInterestRate } from "@/lib/loan-rate";
 import { formatCurrency } from "@/lib/utils";
 import { Search, Plus, CheckCircle, XCircle, Clock, HandCoins, DollarSign, ArrowUpCircle, Banknote, Loader2, Undo2 } from "lucide-react";
 
@@ -641,7 +642,7 @@ export default function Loans() {
                       </div>
                       <div>
                         <p className="text-sm text-slate-500 dark:text-slate-400">Interest Rate</p>
-                        <p className="font-medium text-slate-900 dark:text-slate-100">{(parseFloat(loan.interestRate) * 100).toFixed(1)}%</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100">{formatLoanInterestRate(loan.interestRate)}</p>
                       </div>
                       <div>
                         <p className="text-sm text-slate-500 dark:text-slate-400">Term</p>

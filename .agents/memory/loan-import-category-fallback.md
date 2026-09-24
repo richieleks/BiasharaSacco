@@ -15,11 +15,11 @@ Workbook rates expressed as fractions (for example, 0.08) must be normalized to 
 
 **How to apply:** When a matching configured product exists, calculate repayment amounts from its terms even if the statement contains an observed installment; use the observed amount only without product configuration. Allocate rounding differences to the final installment.
 
-Loan rates are stored as percentage points after import normalization, and repayment progress is actual repayment value divided by total repayable—not an inference from principal outstanding.
+Loan rates can use mixed legacy units: imports normalize to percentage points, while regular applications store decimal fractions. Display normalization is read-only: positive values up to 1 are treated as fractions, and larger values as percentage points. Repayment progress is actual repayment value divided by total repayable—not an inference from principal outstanding.
 
-**Why:** Multiplying a stored rate of 8 by 100 displays 800%, while subtracting principal outstanding from principal-plus-interest incorrectly presents interest as already paid before the first repayment.
+**Why:** Multiplying a stored rate of 8 by 100 displays 800%, while interpreting a stored 0.08 as percentage points displays 0.1%. Rewriting saved rates during display would also risk changing financial data. Subtracting principal outstanding from principal-plus-interest incorrectly presents interest as already paid before the first repayment.
 
-**How to apply:** Divide percentage-point rates by 100 only inside financial formulas; display them directly. Sum only repayment transactions for the paid amount and use the same total-repayable denominator shown beside the progress bar.
+**How to apply:** Use shared presentation normalization for loan list/detail screens without mutating records. Convert percentage-point rates to decimal fractions only inside financial formulas. Sum only repayment transactions for the paid amount and use the same total-repayable denominator shown beside the progress bar.
 
 Operational loan and schedule outstanding balances represent total contractual cash still payable, including unpaid interest; principal outstanding is only an internal basis for allocating reducing-balance repayments.
 

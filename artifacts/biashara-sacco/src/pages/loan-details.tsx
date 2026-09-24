@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { formatCurrency } from "@/lib/utils";
+import { formatLoanInterestRate, normalizeLoanInterestRate } from "@/lib/loan-rate";
 import { Pagination } from "@/components/ui/pagination";
 import { useRBAC } from "@/hooks/useRBAC";
 import { useToast } from "@/hooks/use-toast";
@@ -160,10 +161,7 @@ export default function LoanDetails() {
   const principal = parseFloat(loan?.principalAmount || '0');
   const monthlyPayment = parseFloat(loan?.monthlyPayment || '0');
   const termMonths = parseInt(loan?.termMonths || '0');
-  const storedInterestRate = parseFloat(loan?.interestRate || '0');
-  const interestRate = storedInterestRate > 0 && storedInterestRate <= 1
-    ? storedInterestRate * 100
-    : storedInterestRate;
+  const interestRate = normalizeLoanInterestRate(loan?.interestRate);
 
   const totalInterestAmount = (monthlyPayment * termMonths) - principal;
   const totalRepayable = monthlyPayment * termMonths;
@@ -617,7 +615,7 @@ export default function LoanDetails() {
               <div>
                 <Label>New Interest Rate (%)</Label>
                 <Input type="number" step="0.01" min="0" placeholder="e.g. 12" value={restructureRate} onChange={(e) => setRestructureRate(e.target.value)} />
-            <p className="text-xs text-slate-400 mt-1">Current: {interestRate.toFixed(1)}%</p>
+            <p className="text-xs text-slate-400 mt-1">Current: {formatLoanInterestRate(loan?.interestRate)}</p>
               </div>
               <div>
                 <Label>New Term (months)</Label>
@@ -791,7 +789,7 @@ export default function LoanDetails() {
                   <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <Percent className="h-3.5 w-3.5" /> Interest Rate
                   </span>
-                  <span className="text-sm text-slate-900 dark:text-slate-100">{interestRate.toFixed(1)}% per annum</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{formatLoanInterestRate(loan?.interestRate)} per annum</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
@@ -955,7 +953,7 @@ export default function LoanDetails() {
                         Repayment Schedule
                       </CardTitle>
                       <CardDescription className="text-xs mt-1">
-                        Detailed breakdown of {termMonths} monthly payments at {interestRate.toFixed(1)}% per annum ({interestMethod.replace(/_/g, ' ')})
+                        Detailed breakdown of {termMonths} monthly payments at {formatLoanInterestRate(loan?.interestRate)} per annum ({interestMethod.replace(/_/g, ' ')})
                       </CardDescription>
                     </div>
                     <Button
