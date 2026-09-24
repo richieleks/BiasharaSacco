@@ -30,7 +30,6 @@ import {
   CreditCard,
   FileText,
   Activity,
-  ArrowLeft,
   Server,
   Lock,
   AlertTriangle,
@@ -696,15 +695,6 @@ export default function AdminSettingsPage() {
     <div className="max-w-7xl mx-auto p-4 sm:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => navigate('/')}
-          className="flex items-center gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to Dashboard
-        </Button>
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Settings className="h-6 w-6" />
