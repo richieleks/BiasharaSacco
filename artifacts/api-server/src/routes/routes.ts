@@ -15,6 +15,11 @@ import { db } from "../db";
 import { eq, and, inArray, sql, lt, isNull, isNotNull, or, not } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { parseBankImportCsv } from "../csvUtils";
+import {
+  calculateContractualLoanAmounts,
+  splitContractualRepayment,
+  type LoanInterestMethod,
+} from "../loan-balance";
 
 const validUserRoles = ['admin', 'manager', 'committee', 'member'] as const;
 type UserRole = typeof validUserRoles[number];
@@ -248,36 +253,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     };
   }
   async function splitLoanRepayment(loan: any, paymentAmount: number, currentOutstanding: number) {
-    const annualRateDecimal = parseFloat(loan?.interestRate || '0');
-    const monthlyRate = annualRateDecimal / 12;
-    let interestType = 'reducing_balance';
+    let interestType: LoanInterestMethod = 'reducing_balance';
+    let compoundingFrequency = 'monthly';
     try {
       const loanTypes = await storage.getActiveLoanTypes();
       const cfg = loanTypes.find((lt: any) => lt.name === loan?.loanType);
-      if (cfg?.interestType) interestType = cfg.interestType as string;
+      if (cfg?.interestType) interestType = cfg.interestType as LoanInterestMethod;
+      if (cfg?.compoundingFrequency) compoundingFrequency = cfg.compoundingFrequency;
     } catch {}
-    const principalAmt = parseFloat(loan?.principalAmount || '0');
-    const monthlyPaymentAmt = parseFloat(loan?.monthlyPayment || '0');
-    const termMonths = loan?.termMonths || 1;
-
-    let interestPortion = 0;
-    let principalPortion = paymentAmount;
-    let balanceReduction = paymentAmount;
-
-    if (interestType === 'reducing_balance') {
-      const expectedInterest = Math.max(0, currentOutstanding * monthlyRate);
-      interestPortion = Math.min(paymentAmount, expectedInterest);
-      principalPortion = Math.max(0, paymentAmount - interestPortion);
-      balanceReduction = principalPortion;
-    } else {
-      const totalRepayable = monthlyPaymentAmt * termMonths;
-      const totalInterest = Math.max(0, totalRepayable - principalAmt);
-      const interestRatio = totalRepayable > 0 ? totalInterest / totalRepayable : 0;
-      interestPortion = Math.max(0, paymentAmount * interestRatio);
-      principalPortion = Math.max(0, paymentAmount - interestPortion);
-      balanceReduction = paymentAmount;
-    }
-    return { interestPortion, principalPortion, balanceReduction };
+    return splitContractualRepayment({
+      principal: parseFloat(loan?.principalAmount || '0'),
+      annualRatePercentage: parseFloat(loan?.interestRate || '0'),
+      termMonths: loan?.termMonths || 1,
+      interestMethod: interestType,
+      compoundingFrequency,
+      monthlyPayment: parseFloat(loan?.monthlyPayment || '0'),
+    }, paymentAmount, currentOutstanding);
   }
 
   async function postLoanRepaymentJournals(loan: any, interestPortion: number, principalPortion: number, descriptionPrefix: string, reference: string, userId: string, executor?: any, recalculate = true) {
@@ -2790,10 +2781,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate unique loan number
       const loanNumber = `LN${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-      const totalRepayable = monthlyPayment * termMonths;
-      const initialOutstandingBalance = (interestMethod === 'simple' || interestMethod === 'compound')
-        ? totalRepayable.toFixed(2)
-        : principalAmount;
+      const totalRepayable = calculateContractualLoanAmounts({
+        principal,
+        annualRatePercentage: parseFloat(interestRate),
+        termMonths,
+        interestMethod: interestMethod as LoanInterestMethod,
+        compoundingFrequency: loanTypeConfig?.compoundingFrequency || 'monthly',
+        monthlyPayment,
+      }).totalRepayable;
+      const initialOutstandingBalance = totalRepayable.toFixed(2);
 
       const loan = await storage.createLoan({
         memberId,
@@ -3062,10 +3058,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const loanNumber = `LN${Date.now()}${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`;
 
-      const topUpTotalRepayable = monthlyPayment * termMonths;
-      const topUpInitialOutstanding = (topUpInterestMethod === 'simple' || topUpInterestMethod === 'compound')
-        ? topUpTotalRepayable.toFixed(2)
-        : totalNewPrincipal.toFixed(2);
+      const topUpTotalRepayable = calculateContractualLoanAmounts({
+        principal: totalNewPrincipal,
+        annualRatePercentage: parseFloat(resolvedInterestRate),
+        termMonths,
+        interestMethod: topUpInterestMethod as LoanInterestMethod,
+        compoundingFrequency: topUpLoanTypeConfig?.compoundingFrequency || 'monthly',
+        monthlyPayment,
+      }).totalRepayable;
+      const topUpInitialOutstanding = topUpTotalRepayable.toFixed(2);
 
       const topUpLoan = await storage.createLoan({
         memberId: member.id,

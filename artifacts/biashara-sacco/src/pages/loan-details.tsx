@@ -160,7 +160,10 @@ export default function LoanDetails() {
   const principal = parseFloat(loan?.principalAmount || '0');
   const monthlyPayment = parseFloat(loan?.monthlyPayment || '0');
   const termMonths = parseInt(loan?.termMonths || '0');
-  const interestRate = parseFloat(loan?.interestRate || '0');
+  const storedInterestRate = parseFloat(loan?.interestRate || '0');
+  const interestRate = storedInterestRate > 0 && storedInterestRate <= 1
+    ? storedInterestRate * 100
+    : storedInterestRate;
 
   const totalInterestAmount = (monthlyPayment * termMonths) - principal;
   const totalRepayable = monthlyPayment * termMonths;
@@ -205,18 +208,21 @@ export default function LoanDetails() {
       const totalInterest = principal * (interestRate / 100) * (termMonths / 12);
       const monthlyInterest = totalInterest / termMonths;
       const monthlyPrincipal = principal / termMonths;
-      let balance = principal;
+      let principalBalance = principal;
+      let balance = totalRepayable;
 
       for (let i = 1; i <= termMonths; i++) {
         const isLast = i === termMonths;
-        const principalPortion = isLast ? balance : Math.round(monthlyPrincipal * 100) / 100;
-        balance = Math.max(0, balance - principalPortion);
+        const principalPortion = isLast ? principalBalance : Math.round(monthlyPrincipal * 100) / 100;
+        principalBalance = Math.max(0, principalBalance - principalPortion);
+        const payment = isLast ? balance : principalPortion + monthlyInterest;
+        balance = Math.max(0, balance - payment);
         const dueDate = addMonths(startDate, i);
 
         schedule.push({
           month: i,
           dueDate,
-          payment: principalPortion + monthlyInterest,
+          payment,
           principalPortion,
           interestPortion: monthlyInterest,
           balance,
@@ -232,38 +238,45 @@ export default function LoanDetails() {
       const totalInterest = totalAmount - principal;
       const monthlyInterest = totalInterest / termMonths;
       const monthlyPrincipal = principal / termMonths;
-      let balance = principal;
+      let principalBalance = principal;
+      let balance = totalRepayable;
 
       for (let i = 1; i <= termMonths; i++) {
         const isLast = i === termMonths;
-        const principalPortion = isLast ? balance : Math.round(monthlyPrincipal * 100) / 100;
-        balance = Math.max(0, balance - principalPortion);
+        const principalPortion = isLast ? principalBalance : Math.round(monthlyPrincipal * 100) / 100;
+        principalBalance = Math.max(0, principalBalance - principalPortion);
+        const payment = isLast ? balance : principalPortion + monthlyInterest;
+        const interestPortion = Math.max(0, payment - principalPortion);
+        balance = Math.max(0, balance - payment);
         const dueDate = addMonths(startDate, i);
 
         schedule.push({
           month: i,
           dueDate,
-          payment: principalPortion + monthlyInterest,
+          payment,
           principalPortion,
-          interestPortion: monthlyInterest,
+          interestPortion,
           balance,
         });
       }
     } else {
       const monthlyRate = (interestRate / 100) / 12;
-      let balance = principal;
+      let principalBalance = principal;
+      let balance = totalRepayable;
 
       for (let i = 1; i <= termMonths; i++) {
-        const interestPortion = balance * monthlyRate;
-        const principalPortion = Math.min(monthlyPayment - interestPortion, balance);
-        balance = Math.max(0, balance - principalPortion);
+        const interestPortion = principalBalance * monthlyRate;
+        const principalPortion = Math.min(monthlyPayment - interestPortion, principalBalance);
+        principalBalance = Math.max(0, principalBalance - principalPortion);
         const dueDate = addMonths(startDate, i);
         const isLast = i === termMonths;
+        const payment = isLast ? balance : monthlyPayment;
+        balance = Math.max(0, balance - payment);
 
         schedule.push({
           month: i,
           dueDate,
-          payment: isLast ? principalPortion + interestPortion : monthlyPayment,
+          payment,
           principalPortion,
           interestPortion,
           balance: isLast ? 0 : balance,
@@ -604,7 +617,7 @@ export default function LoanDetails() {
               <div>
                 <Label>New Interest Rate (%)</Label>
                 <Input type="number" step="0.01" min="0" placeholder="e.g. 12" value={restructureRate} onChange={(e) => setRestructureRate(e.target.value)} />
-            <p className="text-xs text-slate-400 mt-1">Current: {parseFloat(loan.interestRate || '0').toFixed(1)}%</p>
+            <p className="text-xs text-slate-400 mt-1">Current: {interestRate.toFixed(1)}%</p>
               </div>
               <div>
                 <Label>New Term (months)</Label>
@@ -778,7 +791,7 @@ export default function LoanDetails() {
                   <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">
                     <Percent className="h-3.5 w-3.5" /> Interest Rate
                   </span>
-                  <span className="text-sm text-slate-900 dark:text-slate-100">{parseFloat(loan.interestRate).toFixed(1)}% per annum</span>
+                  <span className="text-sm text-slate-900 dark:text-slate-100">{interestRate.toFixed(1)}% per annum</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1.5">

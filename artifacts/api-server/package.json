@@ -9,7 +9,8 @@
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:csv": "tsx --test src/csvUtils.test.ts",
-    "test:accounting": "tsx --test src/sacco-ledger.test.ts src/sacco-ledger.integration.test.ts"
+    "test:accounting": "tsx --test src/sacco-ledger.test.ts src/sacco-ledger.integration.test.ts",
+    "test:loans": "tsx --test src/loan-balance.test.ts"
   },
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.1",

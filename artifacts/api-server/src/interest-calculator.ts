@@ -111,18 +111,20 @@ export class InterestCalculator {
       const totalInterest = principal * (annualRate / 100) * timeInYears;
       const monthlyInterest = totalInterest / termInMonths;
       const monthlyPrincipal = principal / termInMonths;
-      let remainingBalance = principal;
+      let remainingPrincipal = principal;
+      let remainingContractualBalance = Math.round((principal + totalInterest) * 100) / 100;
       let allocatedInterest = 0;
 
       for (let i = 1; i <= termInMonths; i++) {
         const isLast = i === termInMonths;
-        const principalPayment = isLast ? remainingBalance : Math.round(monthlyPrincipal * 100) / 100;
+        const principalPayment = isLast ? remainingPrincipal : Math.round(monthlyPrincipal * 100) / 100;
         const interestPayment = isLast
           ? Math.round((totalInterest - allocatedInterest) * 100) / 100
           : Math.round(monthlyInterest * 100) / 100;
-        remainingBalance = Math.max(0, remainingBalance - principalPayment);
+        remainingPrincipal = Math.max(0, remainingPrincipal - principalPayment);
         allocatedInterest += interestPayment;
         const totalPayment = principalPayment + interestPayment;
+        remainingContractualBalance = Math.max(0, Math.round((remainingContractualBalance - totalPayment) * 100) / 100);
 
         const paymentDate = new Date(startDate);
         paymentDate.setMonth(paymentDate.getMonth() + i);
@@ -134,7 +136,7 @@ export class InterestCalculator {
           principalAmount: principalPayment.toFixed(2),
           interestAmount: interestPayment.toFixed(2),
           totalPayment: totalPayment.toFixed(2),
-          outstandingBalance: Math.max(0, remainingBalance).toFixed(2),
+          outstandingBalance: remainingContractualBalance.toFixed(2),
           status: 'pending'
         });
       }
@@ -147,13 +149,18 @@ export class InterestCalculator {
       const totalInterest = totalAmount - principal;
       const monthlyInterest = totalInterest / termInMonths;
       const monthlyPrincipal = principal / termInMonths;
-      let remainingBalance = principal;
+      let remainingPrincipal = principal;
+      let remainingContractualBalance = Math.round(totalAmount * 100) / 100;
 
       for (let i = 1; i <= termInMonths; i++) {
         const isLast = i === termInMonths;
-        const principalPayment = isLast ? remainingBalance : Math.round(monthlyPrincipal * 100) / 100;
-        remainingBalance = Math.max(0, remainingBalance - principalPayment);
-        const totalPayment = principalPayment + monthlyInterest;
+        const principalPayment = isLast ? remainingPrincipal : Math.round(monthlyPrincipal * 100) / 100;
+        remainingPrincipal = Math.max(0, remainingPrincipal - principalPayment);
+        const interestPayment = isLast
+          ? Math.round((remainingContractualBalance - principalPayment) * 100) / 100
+          : Math.round(monthlyInterest * 100) / 100;
+        const totalPayment = principalPayment + interestPayment;
+        remainingContractualBalance = Math.max(0, Math.round((remainingContractualBalance - totalPayment) * 100) / 100);
 
         const paymentDate = new Date(startDate);
         paymentDate.setMonth(paymentDate.getMonth() + i);
@@ -163,9 +170,9 @@ export class InterestCalculator {
           paymentNumber: i,
           paymentDate,
           principalAmount: principalPayment.toFixed(2),
-          interestAmount: monthlyInterest.toFixed(2),
+          interestAmount: interestPayment.toFixed(2),
           totalPayment: totalPayment.toFixed(2),
-          outstandingBalance: Math.max(0, remainingBalance).toFixed(2),
+          outstandingBalance: remainingContractualBalance.toFixed(2),
           status: 'pending'
         });
       }
@@ -178,6 +185,7 @@ export class InterestCalculator {
 
       const monthlyRate = (annualRate / 100) / 12;
       let remainingBalance = principal;
+      let remainingContractualBalance = Math.round(monthlyPayment * termInMonths * 100) / 100;
 
       for (let i = 1; i <= termInMonths; i++) {
         const interestPayment = remainingBalance * monthlyRate;
@@ -191,14 +199,19 @@ export class InterestCalculator {
         const paymentDate = new Date(startDate);
         paymentDate.setMonth(paymentDate.getMonth() + i);
 
+        const totalPayment = i === termInMonths
+          ? Math.round((principalPayment + interestPayment) * 100) / 100
+          : Math.round(monthlyPayment * 100) / 100;
+        remainingContractualBalance = Math.max(0, Math.round((remainingContractualBalance - totalPayment) * 100) / 100);
+
         schedule.push({
           loanId,
           paymentNumber: i,
           paymentDate,
           principalAmount: principalPayment.toFixed(2),
           interestAmount: interestPayment.toFixed(2),
-          totalPayment: monthlyPayment.toFixed(2),
-          outstandingBalance: Math.max(0, remainingBalance).toFixed(2),
+          totalPayment: totalPayment.toFixed(2),
+          outstandingBalance: (i === termInMonths ? 0 : remainingContractualBalance).toFixed(2),
           status: 'pending'
         });
       }

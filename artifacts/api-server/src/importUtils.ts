@@ -5,6 +5,7 @@ import { hashPassword } from './localAuth';
 import ExcelJS from 'exceljs';
 import { classifyLoanTransaction, looksLikeInstallment } from './loanImportClassification';
 import { InterestCalculator } from './interest-calculator';
+import { calculateContractualLoanAmounts, calculateRemainingContractualBalance, type LoanInterestMethod } from './loan-balance';
 
 function worksheetToAoa(worksheet: ExcelJS.Worksheet): any[][] {
   const result: any[][] = [];
@@ -1480,15 +1481,6 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               ? headerLoanAmount
               : group.totalDisbursed;
 
-          const isSpecialFullyPaid = group.category === 'special' && group.fullyPaidByThirdInstallment === true;
-          const outstandingBalance = isSpecialFullyPaid
-            ? 0
-            : (loanGroups.length === 1 && closingBalance > 0)
-              ? closingBalance
-              : (closingBalance > 0 && group.category === 'ordinary')
-                ? closingBalance
-                : Math.max(0, group.totalDisbursed - group.totalRepaid);
-
           const termMonths = group.category === 'special' && specialLoanType?.maxTerm
             ? specialLoanType.maxTerm
             : (headerTermMonths || tenure || 12);
@@ -1523,9 +1515,25 @@ export async function importLoansFromExcel(filePath: string, options?: { userId?
               termMonths
             );
           }
-          const monthlyPayment = importedMonthlyPayment > 0
-            ? importedMonthlyPayment
-            : Math.round(calculatedMonthlyPayment * 100) / 100;
+          // Configured product terms are authoritative. Statement installment columns
+          // are only a fallback when the imported category has no configured product.
+          const monthlyPayment = configuredLoanType
+            ? Math.round(calculatedMonthlyPayment * 100) / 100
+            : importedMonthlyPayment > 0
+              ? importedMonthlyPayment
+              : Math.round(calculatedMonthlyPayment * 100) / 100;
+          const contractualAmounts = calculateContractualLoanAmounts({
+            principal: principalAmount,
+            annualRatePercentage: annualInterestRate,
+            termMonths,
+            interestMethod: (configuredLoanType?.interestType || 'reducing_balance') as LoanInterestMethod,
+            compoundingFrequency: configuredLoanType?.compoundingFrequency || 'monthly',
+            monthlyPayment,
+          });
+          const isSpecialFullyPaid = group.category === 'special' && group.fullyPaidByThirdInstallment === true;
+          const outstandingBalance = isSpecialFullyPaid
+            ? 0
+            : calculateRemainingContractualBalance(contractualAmounts.totalRepayable, group.totalRepaid);
 
           const loanData = {
             memberId: member.id,

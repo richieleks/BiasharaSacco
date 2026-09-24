@@ -2592,13 +2592,11 @@ export class DatabaseStorage implements IStorage {
     const interestType = (loanTypeConfig?.interestType as 'simple' | 'compound' | 'reducing_balance') || 'reducing_balance';
     const compoundingFrequency = loanTypeConfig?.compoundingFrequency || 'monthly';
 
-    const outstanding = Number(loan.outstandingBalance || 0);
     const principal = Number(loan.principalAmount);
-    const schedulePrincipal = (outstanding > 0 && outstanding < principal) ? outstanding : principal;
 
     const scheduleData = InterestCalculator.generateAmortizationSchedule(
       loanId,
-      schedulePrincipal,
+      principal,
       rate,
       loan.termMonths,
       loan.disbursementDate || new Date(),
@@ -2628,13 +2626,11 @@ export class DatabaseStorage implements IStorage {
     const interestType = (loanTypeConfig?.interestType as 'simple' | 'compound' | 'reducing_balance') || 'reducing_balance';
     const compoundingFrequency = loanTypeConfig?.compoundingFrequency || 'monthly';
 
-    const outstanding = Number(loan.outstandingBalance || 0);
     const principal = Number(loan.principalAmount);
-    const schedulePrincipal = (outstanding > 0 && outstanding < principal) ? outstanding : principal;
 
     const scheduleData = InterestCalculator.generateAmortizationSchedule(
       loanId,
-      schedulePrincipal,
+      principal,
       rate,
       loan.termMonths,
       loan.disbursementDate || new Date(),
