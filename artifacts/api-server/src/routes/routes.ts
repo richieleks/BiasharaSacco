@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "../storage";
+import { canAccessMemberLoans, loanOwnerGuard, validateLoanGuarantees } from "../loan-security";
 import { setupAuth, isAuthenticated } from "../replitAuth";
 import { setupLocalAuth, hashPassword, validatePasswordComplexity, getSecuritySettings, getPasswordRequirementsText } from "../localAuth";
 import passport from "passport";
@@ -235,6 +236,19 @@ async function ensureMemberProfile(userId: string, options?: { roles?: string[],
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  const memberLoanAccess = (select: (req: Request) => unknown) =>
+    loanOwnerGuard(storage, getUserId, "member", select);
+  const loanAccess = (select: (req: Request) => unknown) =>
+    loanOwnerGuard(storage, getUserId, "loan", select);
+  const guaranteeApprovalError = async (loan: { id: number; memberId: number; loanType: string | null; principalAmount: string }) => {
+    const products = await storage.getAllLoanTypes();
+    return validateLoanGuarantees(
+      products.find(product => product.name === loan.loanType),
+      Number(loan.principalAmount),
+      loan.memberId,
+      await storage.getGuarantorsByLoan(loan.id),
+    );
+  };
   // Extend AuthRequest type to include member data
   interface ExtendedAuthRequest extends Request {
     user?: {
@@ -2673,7 +2687,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Loan eligibility check endpoint  
-  app.post('/api/loans/check-eligibility', isAuthenticated, async (req: any, res) => {
+  app.post('/api/loans/check-eligibility', isAuthenticated, memberLoanAccess(req => req.body?.memberId), async (req: any, res) => {
     try {
       const { memberId, requestedAmount, loanType } = req.body;
       
@@ -2690,7 +2704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Loan routes
-  app.post('/api/loans', isAuthenticated, async (req: any, res) => {
+  app.post('/api/loans', isAuthenticated, memberLoanAccess(req => req.body?.memberId), async (req: any, res) => {
     try {
       const { memberId, loanType, principalAmount, interestRate, termMonths, purpose } = req.body;
       
@@ -2744,6 +2758,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Look up loan type configuration for interest calculation method
       const activeLoanTypes = await storage.getActiveLoanTypes();
       const loanTypeConfig = activeLoanTypes.find(lt => lt.name === loanType);
+      if (!loanTypeConfig) {
+        return res.status(400).json({ message: "Active loan product configuration not found" });
+      }
       const interestMethod = loanTypeConfig?.interestType || 'reducing_balance';
       const principal = parseFloat(principalAmount);
       const timeInYears = termMonths / 12;
@@ -3249,7 +3266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/loans/member/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/loans/member/:id', isAuthenticated, memberLoanAccess(req => req.params.id), async (req: any, res) => {
     try {
       const memberId = await storage.resolveMemberId(getRouteParam(req.params.id));
       const loans = await storage.getLoansByMember(memberId);
@@ -3368,7 +3385,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get specific loan by ID
-  app.get('/api/loans/:id', isAuthenticated, async (req: any, res) => {
+  app.get('/api/loans/:id', isAuthenticated, loanAccess(req => req.params.id), async (req: any, res) => {
     try {
       const loanId = await storage.resolveLoanId(getRouteParam(req.params.id));
 
@@ -3385,7 +3402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get loan transactions/statement
-  app.get('/api/loans/:id/transactions', isAuthenticated, async (req: any, res) => {
+  app.get('/api/loans/:id/transactions', isAuthenticated, loanAccess(req => req.params.id), async (req: any, res) => {
     try {
       const loanId = await storage.resolveLoanId(getRouteParam(req.params.id));
 
@@ -3452,6 +3469,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!loanByUuid) {
         return res.status(404).json({ message: "Loan not found" });
       }
+
+      const guaranteeError = await guaranteeApprovalError(loanByUuid);
+      if (guaranteeError) return res.status(400).json({ message: guaranteeError });
 
       if (stage === 'committee') {
         const guarantorsList = await storage.getGuarantorsByLoan(loanByUuid.id);
@@ -3701,7 +3721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/loans/:loanId/approvals', isAuthenticated, async (req: any, res) => {
+  app.get('/api/loans/:loanId/approvals', isAuthenticated, loanAccess(req => req.params.loanId), async (req: any, res) => {
     try {
       const loanId = parseInt(getRouteParam(req.params.loanId));
       const approvals = await storage.getLoanApprovals(loanId, 'committee');
@@ -3737,7 +3757,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/loans/:uuid/approval-history', isAuthenticated, async (req, res) => {
+  app.get('/api/loans/:uuid/approval-history', isAuthenticated, loanAccess(req => req.params.uuid), async (req, res) => {
     try {
       const uuid = getRouteParam(req.params.uuid);
       const loan = await storage.getLoanByUuid(uuid);
@@ -3772,6 +3792,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!await hasApprovalRole(userId, loanDetails.approvalStage || 'committee')) {
         return res.status(403).json({ message: "You do not have permission to approve this loan." });
       }
+
+      const guaranteeError = await guaranteeApprovalError(loanDetails);
+      if (guaranteeError) return res.status(400).json({ message: guaranteeError });
 
       const guarantors = await storage.getGuarantorsByLoan(loanId);
       if (guarantors.length > 0) {
@@ -4015,7 +4038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/members/:id/loans', isAuthenticated, async (req, res) => {
+  app.get('/api/members/:id/loans', isAuthenticated, memberLoanAccess(req => req.params.id), async (req, res) => {
     try {
       const loans = await storage.getLoansByMember(await storage.resolveMemberId(getRouteParam(req.params.id)));
       return res.json(loans);
@@ -4332,7 +4355,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Guarantor routes
-  app.post('/api/guarantors', isAuthenticated, async (req: any, res) => {
+  app.post('/api/guarantors', isAuthenticated, loanAccess(req => req.body?.loanId), async (req: any, res) => {
     try {
       const validatedData = insertGuarantorSchema.parse(req.body);
       
@@ -4403,7 +4426,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Bulk add guarantors to a loan
-  app.post('/api/loans/:loanId/guarantors', isAuthenticated, async (req: any, res) => {
+  app.post('/api/loans/:loanId/guarantors', isAuthenticated, loanAccess(req => req.params.loanId), async (req: any, res) => {
     try {
       const loanId = await storage.resolveLoanId(getRouteParam(req.params.loanId));
       const { guarantors: guarantorList } = req.body;
@@ -4421,7 +4444,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loanMemberSavings = await storage.getSavingsAccountsByMember(loan.memberId);
       const loanMemberTotalSavings = loanMemberSavings.reduce((sum, acc) => sum + parseFloat(acc.balance || '0'), 0);
       const loanPrincipal = parseFloat(loan.principalAmount || '0');
-      if (loanMemberTotalSavings >= loanPrincipal) {
+      const product = (await storage.getAllLoanTypes()).find(type => type.name === loan.loanType);
+      if (!product) return res.status(400).json({ message: "Loan product configuration not found" });
+      if (!product.requiresGuarantor && loanMemberTotalSavings >= loanPrincipal) {
         return res.status(400).json({ message: "Member's savings fully cover this loan. No guarantors are required." });
       }
 
@@ -4483,7 +4508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/guarantors/loan/:loanId', isAuthenticated, async (req, res) => {
+  app.get('/api/guarantors/loan/:loanId', isAuthenticated, loanAccess(req => req.params.loanId), async (req, res) => {
     try {
       const loanId = await storage.resolveLoanId(getRouteParam(req.params.loanId));
       const guarantors = await storage.getGuarantorsByLoan(loanId);
@@ -4679,7 +4704,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/guarantors/member/:memberId', isAuthenticated, async (req, res) => {
+  app.get('/api/guarantors/member/:memberId', isAuthenticated, memberLoanAccess(req => req.params.memberId), async (req, res) => {
     try {
       const memberId = await storage.resolveMemberId(getRouteParam(req.params.memberId));
       const guarantors = await storage.getGuarantorsByMember(memberId);
@@ -4690,7 +4715,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get('/api/guarantors/pending/:memberId', isAuthenticated, async (req, res) => {
+  app.get('/api/guarantors/pending/:memberId', isAuthenticated, memberLoanAccess(req => req.params.memberId), async (req, res) => {
     try {
       const memberId = await storage.resolveMemberId(getRouteParam(req.params.memberId));
       const pendingRequests = await storage.getPendingGuarantorRequests(memberId);
@@ -6533,21 +6558,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   const canAccessLoanDocs = async (userId: string, loanId: number): Promise<boolean> => {
-    const user = await storage.getUser(userId);
-    if (!user) return false;
-    if (['admin'].includes(user.role || '')) return true;
-    const member = await storage.getMemberByUserId(userId);
-    if (!member) return false;
-    const roles = await storage.getMemberRoles(member.id);
-    if (roles.some(r => ['admin', 'treasurer', 'committee', 'manager'].includes(r))) return true;
-    const [loan] = await db.select().from(loans).where(eq(loans.id, loanId));
-    if (loan && loan.memberId === member.id) return true;
-    const guarantorRows = await db.select().from(guarantors)
-      .where(and(eq(guarantors.loanId, loanId), eq(guarantors.guarantorMemberId, member.id)));
-    return guarantorRows.length > 0;
+    const loan = await storage.getLoan(loanId);
+    return !!loan && await canAccessMemberLoans(storage, userId, loan.memberId);
   };
 
-  app.post('/api/loans/:id/documents', isAuthenticated, loanDocUpload.single('file'), async (req: any, res) => {
+  app.post('/api/loans/:id/documents', isAuthenticated, loanAccess(req => req.params.id), loanDocUpload.single('file'), async (req: any, res) => {
     try {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: 'Authentication required' });

@@ -12,7 +12,7 @@
     "test:two-factor": "tsx --test src/twoFactorSecurity.test.ts",
     "test:csv": "tsx --test src/csvUtils.test.ts",
     "test:accounting": "tsx --test src/sacco-ledger.test.ts src/sacco-ledger.integration.test.ts",
-    "test:loans": "tsx --test src/loan-balance.test.ts"
+    "test:loans": "tsx --test src/loan-balance.test.ts src/loan-security.test.ts"
   },
   "dependencies": {
     "@replit/connectors-sdk": "^0.4.1",

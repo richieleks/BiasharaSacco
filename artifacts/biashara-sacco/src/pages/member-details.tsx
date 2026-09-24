@@ -17,6 +17,7 @@ import { type Member, type MemberWithDetails } from "@workspace/db";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
+import { isOperationalLoan } from "@/lib/loan-status";
 import { useAuth } from "@/hooks/useAuth";
 import {
   ArrowLeft, Edit, User, Phone, Mail, MapPin, Calendar, CreditCard, Building,
@@ -157,7 +158,7 @@ export default function MemberDetails() {
     ? loanStatusFilter === 'all'
       ? loans
       : loanStatusFilter === 'active'
-        ? loans.filter((l: any) => ['active', 'approved', 'disbursed'].includes(l.status))
+        ? loans.filter((l: any) => isOperationalLoan(l.status))
         : loans.filter((l: any) => l.status === loanStatusFilter)
     : [];
 
@@ -439,7 +440,7 @@ export default function MemberDetails() {
         <StatCard
           icon={Banknote}
           label="Active Loans"
-          value={Array.isArray(loans) ? loans.filter((l: any) => ['active', 'approved', 'disbursed'].includes(l.status)).length : 0}
+          value={Array.isArray(loans) ? loans.filter((l: any) => isOperationalLoan(l.status)).length : 0}
           color="orange"
           subtext={`${Array.isArray(loans) ? loans.length : 0} total`}
         />

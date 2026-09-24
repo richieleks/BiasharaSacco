@@ -24,6 +24,7 @@ import {
   DollarSign, CheckCircle, XCircle, ClipboardList, Percent
 } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
+import { isOperationalLoan } from "@/lib/loan-status";
 import { format } from "date-fns";
 
 // Role-specific dashboard components
@@ -716,7 +717,7 @@ function MemberDashboard() {
   const memberName = member?.fullName || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Member';
   const initials = memberName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
   const totalSavings = savingsAccounts?.reduce((sum: number, acc: any) => sum + parseFloat(acc.balance || '0'), 0) || 0;
-  const activeLoans = memberLoans?.filter((l: any) => ['active', 'approved', 'disbursed'].includes(l.status)) || [];
+  const activeLoans = memberLoans?.filter((l: any) => isOperationalLoan(l.status)) || [];
   const totalOutstanding = activeLoans.reduce((sum: number, l: any) => sum + parseFloat(l.outstandingBalance || '0'), 0);
   const numberOfShares = member?.numberOfShares || 4;
   const perSharePrice = systemConfig?.sharePrice ?? parseFloat(member?.shareContribution || "20000");
