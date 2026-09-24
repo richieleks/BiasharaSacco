@@ -8,6 +8,8 @@
     "build": "node ./build.mjs",
     "start": "node --enable-source-maps ./dist/index.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate:two-factor": "tsx src/migrateTwoFactorGuards.ts",
+    "test:two-factor": "tsx --test src/twoFactorSecurity.test.ts",
     "test:csv": "tsx --test src/csvUtils.test.ts",
     "test:accounting": "tsx --test src/sacco-ledger.test.ts src/sacco-ledger.integration.test.ts",
     "test:loans": "tsx --test src/loan-balance.test.ts"

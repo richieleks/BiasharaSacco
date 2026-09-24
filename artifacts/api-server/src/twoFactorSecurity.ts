@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import * as OTPAuth from "otpauth";
 import { z } from "zod";
+import { pool } from "@workspace/db";
+import { PostgresTwoFactorStore } from "./twoFactorStore";
 
 export const CHALLENGE_TTL = 5 * 60_000;
 export const MAX_ATTEMPTS = 5;
@@ -12,23 +14,18 @@ export interface TwoFactorChallenge {
   secret?: string;
 }
 
-// Also guard against concurrently loaded copies of the same session.
-const attempts = new Map<string, { count: number; expiresAt: number; consumed: boolean }>();
+const sharedStore = new PostgresTwoFactorStore(pool);
 export function createChallenge(userId: string, secret?: string, now = Date.now()): TwoFactorChallenge {
   return { id: randomUUID(), userId, expiresAt: now + CHALLENGE_TTL, attempts: 0, ...(secret ? { secret } : {}) };
 }
 
-export function verifyChallenge(challenge: TwoFactorChallenge | undefined, userId: string, secret: string, code: unknown, now = Date.now()): boolean {
+export async function verifyChallenge(challenge: TwoFactorChallenge | undefined, userId: string, secret: string, code: unknown, now = Date.now(), store = sharedStore): Promise<boolean> {
   if (!challenge || challenge.userId !== userId || challenge.expiresAt <= now || challenge.attempts >= MAX_ATTEMPTS) return false;
-  for (const [key, value] of attempts) if (value.expiresAt <= now) attempts.delete(key);
-  const state = attempts.get(challenge.id) ?? { count: challenge.attempts, expiresAt: challenge.expiresAt, consumed: false };
-  if (state.consumed || state.count >= MAX_ATTEMPTS) return false;
-  state.count++;
-  challenge.attempts = state.count;
-  attempts.set(challenge.id, state);
-  if (!validateTotp(secret, code, now)) return false;
-  state.consumed = true;
-  return true;
+  const valid = validateTotp(secret, code, now);
+  const count = await store.attempt(`challenge:${challenge.id}`, challenge.expiresAt, now, MAX_ATTEMPTS, valid, true, challenge.attempts);
+  if (count === undefined) return false;
+  challenge.attempts = count;
+  return valid;
 }
 
 export function validateTotp(secret: string, code: unknown, now = Date.now()): boolean {
@@ -42,14 +39,10 @@ export function validateTotp(secret: string, code: unknown, now = Date.now()): b
 }
 
 // Account-bound limit cannot be reset by obtaining another session.
-const disableAttempts = new Map<string, { count: number; expiresAt: number }>();
-export function authorizeDisable(userId: string, secret: string, code: unknown, now = Date.now()): boolean {
-  for (const [key, value] of disableAttempts) if (value.expiresAt <= now) disableAttempts.delete(key);
-  const state = disableAttempts.get(userId) ?? { count: 0, expiresAt: now + CHALLENGE_TTL };
-  if (state.count >= MAX_ATTEMPTS) return false;
-  state.count++;
-  disableAttempts.set(userId, state);
-  return validateTotp(secret, code, now);
+export async function authorizeDisable(userId: string, secret: string, code: unknown, now = Date.now(), store = sharedStore): Promise<boolean> {
+  const valid = validateTotp(secret, code, now);
+  const count = await store.attempt(`disable:${userId}`, now + CHALLENGE_TTL, now, MAX_ATTEMPTS, valid, false);
+  return count !== undefined && valid;
 }
 
 export const personalSettingsSchema = z.object({

@@ -8,8 +8,8 @@ Count explicit user-activity heartbeats, not background data requests, as sessio
 
 **How to apply:** Preserve this distinction when adding polling or realtime features. Test security policies with isolated accounts and mocked policy providers instead of changing shared SACCO-wide settings or existing users.
 
-Supplemental two-factor replay and disable-attempt guards currently have a single-process assumption.
+Do not use rolling overlap when first migrating process-local two-factor guards to shared storage. Drain the old fleet and allow its five-minute challenge/attempt windows to expire.
 
-**Why:** Session persistence alone does not make simultaneous challenge consumption atomic across application instances.
+**Why:** Session persistence alone does not record atomic consumption, and old process-local consumed challenges and attempt counts cannot be reconstructed after restart.
 
-**How to apply:** Before multi-instance scaling, move challenge consumption and attempt limits to shared atomic storage and verify concurrent requests across instances.
+**How to apply:** Follow the two-factor storage rollout instructions for the first shared-storage deployment; verify concurrency with isolated database fixtures, never real accounts.

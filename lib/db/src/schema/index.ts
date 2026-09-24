@@ -1,3 +1,4 @@
+export * from "./two-factor-guards";
 // Export your models here. Add one export per file
 // export * from "./posts";
 //

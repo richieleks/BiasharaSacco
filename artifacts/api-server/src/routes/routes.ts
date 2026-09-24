@@ -620,7 +620,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               return res.status(403).json({ message: "Membership is not active. Contact your administrator." });
             }
           }
-          if (!verifyChallenge(challenge, fullUser.id, fullUser.twoFactorSecret, req.body?.code)) {
+          if (!await verifyChallenge(challenge, fullUser.id, fullUser.twoFactorSecret, req.body?.code)) {
             return res.status(401).json({ message: "Invalid or expired verification challenge. Try again or sign in again." });
           }
           delete (req.session as any).pendingTwoFactor;
@@ -960,7 +960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       if (user.twoFactorEnabled) return res.status(409).json({ message: "Two-factor authentication is already enabled" });
 
-      if (!verifyChallenge(pending, userId, pending.secret, req.body?.code)) {
+      if (!await verifyChallenge(pending, userId, pending.secret, req.body?.code)) {
         return res.status(400).json({ message: "Invalid or expired verification challenge. Restart setup if necessary." });
       }
 
@@ -997,7 +997,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (required?.settingValue === 'true') return res.status(403).json({ message: "Two-factor authentication is required by SACCO policy" });
       const user = await storage.getUser(userId);
       if (!user?.twoFactorEnabled || !user.twoFactorSecret) return res.status(400).json({ message: "Two-factor authentication is not enabled" });
-      if (!authorizeDisable(userId, user.twoFactorSecret, req.body?.code)) {
+      if (!await authorizeDisable(userId, user.twoFactorSecret, req.body?.code)) {
         return res.status(400).json({ message: "Invalid verification code or too many attempts. Wait five minutes after repeated failures." });
       }
 
