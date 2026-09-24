@@ -20,6 +20,9 @@ async function getSecuritySettings() {
 }
 
 export function validatePasswordComplexity(password: string, level: string): { valid: boolean; message: string } {
+  if (typeof password !== "string" || Buffer.byteLength(password, "utf8") > 72) {
+    return { valid: false, message: "Password must be a string of at most 72 UTF-8 bytes" };
+  }
   switch (level) {
     case 'low':
       if (password.length < 6) {
@@ -141,9 +144,9 @@ export async function setupLocalAuth() {
           const staffRoles = ['admin', 'manager', 'committee', 'treasurer'];
           const isStaffUser = staffRoles.includes(user.role ?? '');
           
-          if (!isStaffUser) {
+          if (!isStaffUser && user.userType !== "system") {
             const member = await storage.getMemberByUserId(user.id);
-            if (member && (member.status === 'exited' || member.status === 'suspended')) {
+            if (member && ['inactive', 'suspended', 'rejected', 'exited'].includes(member.status ?? '')) {
               return done(null, false, { message: member.status === 'exited' ? "Your membership has been closed. Please contact the SACCO administrator." : "Your account has been suspended. Please contact the SACCO administrator." });
             }
           }

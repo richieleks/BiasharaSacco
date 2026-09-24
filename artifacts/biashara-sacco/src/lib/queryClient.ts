@@ -1,5 +1,24 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
 
+export type PasswordRequirements = {
+  level: "low" | "medium" | "high";
+  description: string;
+};
+
+export function validatePasswordAgainstRequirements(password: string, requirements: PasswordRequirements): string | null {
+  const minimum = requirements.level === "high" ? 12 : requirements.level === "medium" ? 8 : 6;
+  if (password.length < minimum) return `Password must be at least ${minimum} characters long`;
+  if (requirements.level !== "low") {
+    if (!/[A-Z]/.test(password)) return "Password must contain at least one uppercase letter";
+    if (!/[a-z]/.test(password)) return "Password must contain at least one lowercase letter";
+    if (!/[0-9]/.test(password)) return "Password must contain at least one number";
+  }
+  if (requirements.level === "high" && !/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    return "Password must contain at least one special character (!@#$%^&*)";
+  }
+  return null;
+}
+
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
     const text = (await res.text()) || res.statusText;

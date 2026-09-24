@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, LogIn, Building2, Shield, Users, PiggyBank, KeyRound, TrendingUp, Lock, Eye, EyeOff, Smartphone, Copy, CheckCircle } from "lucide-react";
 import { SaccoLogo } from "@/components/sacco-logo";
 import { useLocation } from "wouter";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { QRCodeSVG } from "qrcode.react";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 
 export function LoginPage() {
+  const queryClient = useQueryClient();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -33,6 +34,8 @@ export function LoginPage() {
   const [show2FA, setShow2FA] = useState(false);
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [twoFactorUsername, setTwoFactorUsername] = useState("");
+  const [twoFactorStartedAt, setTwoFactorStartedAt] = useState(0);
+  const [twoFactorAttempts, setTwoFactorAttempts] = useState(0);
   const [show2FAEnrollment, setShow2FAEnrollment] = useState(false);
   const [enrollmentData, setEnrollmentData] = useState<{ secret: string; uri: string } | null>(null);
   const [enrollmentCode, setEnrollmentCode] = useState("");
@@ -70,8 +73,13 @@ export function LoginPage() {
       }
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       setShow2FAEnrollment(false);
+      setEnrollmentData(null);
+      setEnrollmentCode("");
+      setEnrollmentError("");
+      setPendingMustSetup2FA(false);
+      await queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
       window.location.href = "/";
     },
     onError: (error: Error) => {
@@ -145,6 +153,10 @@ export function LoginPage() {
     onSuccess: (data) => {
       if (data.requiresTwoFactor) {
         setTwoFactorUsername(data.username);
+        setTwoFactorStartedAt(Date.now());
+        setTwoFactorAttempts(0);
+        setTwoFactorCode("");
+        setPassword("");
         setShow2FA(true);
         setError("");
         return;
@@ -166,11 +178,12 @@ export function LoginPage() {
   });
 
   const twoFactorMutation = useMutation({
-    mutationFn: async (data: { username: string; password: string; code: string }) => {
+    mutationFn: async (data: { username: string; code: string }) => {
       const response = await fetch("/api/auth/login/2fa", {
         method: "POST",
         body: JSON.stringify(data),
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
       });
       if (!response.ok) {
         let errorMessage = "Verification failed";
@@ -180,20 +193,36 @@ export function LoginPage() {
         } catch {
           errorMessage = response.status === 401 ? "Invalid credentials" : "Server error. Please try again.";
         }
-        throw new Error(errorMessage);
+        throw Object.assign(new Error(errorMessage), { status: response.status });
       }
       return response.json();
     },
     onSuccess: (data) => {
+      setTwoFactorUsername("");
+      setTwoFactorCode("");
+      setTwoFactorAttempts(0);
       if (data.mustChangePassword) {
         setShow2FA(false);
+        setPendingMustSetup2FA(!!data.mustSetup2FA);
         setShowChangePassword(true);
+      } else if (data.mustSetup2FA) {
+        setShow2FA(false);
+        startEnrollment();
       } else {
         window.location.href = "/";
       }
     },
-    onError: (error: Error) => {
-      setError(error.message || "Invalid verification code");
+    onError: (error: Error & { status?: number }) => {
+      const attempts = twoFactorAttempts + 1;
+      setTwoFactorAttempts(attempts);
+      if (error.status === 401 && (attempts >= 5 || Date.now() - twoFactorStartedAt >= 5 * 60_000 || error.message.includes("Password verification required"))) {
+        setShow2FA(false);
+        setTwoFactorCode("");
+        setTwoFactorUsername("");
+        setError("Two-factor sign-in expired or reached the attempt limit. Enter your username and password to start again.");
+      } else {
+        setError(error.message || "Invalid verification code");
+      }
     },
   });
 
@@ -640,8 +669,15 @@ export function LoginPage() {
           </DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault();
+            if (Date.now() - twoFactorStartedAt >= 5 * 60_000) {
+              setShow2FA(false);
+              setTwoFactorCode("");
+              setTwoFactorUsername("");
+              setError("Two-factor sign-in expired. Enter your username and password to start again.");
+              return;
+            }
             setError("");
-            twoFactorMutation.mutate({ username: twoFactorUsername, password, code: twoFactorCode });
+            if (/^\d{6}$/.test(twoFactorCode)) twoFactorMutation.mutate({ username: twoFactorUsername, code: twoFactorCode });
           }} className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label htmlFor="twoFactorCode" className="text-slate-300">Verification Code</Label>
@@ -687,6 +723,7 @@ export function LoginPage() {
               onClick={() => {
                 setShow2FA(false);
                 setTwoFactorCode("");
+                setTwoFactorUsername("");
                 setError("");
               }}
               data-testid="button-back-to-login"

@@ -7,6 +7,7 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
+import { createLocalSessionGuard } from "./sessionSecurity";
 
 if (!process.env.REPLIT_DOMAINS) {
   throw new Error("Environment variable REPLIT_DOMAINS not provided");
@@ -119,17 +120,27 @@ export async function setupAuth(app: Express) {
 
   // Simple logout for local auth
   app.get("/api/logout", (req, res) => {
-    req.logout(() => {
-      res.redirect("/");
+    req.session.destroy((error) => {
+      res.clearCookie("connect.sid");
+      if (error) {
+        return res.status(503).json({ message: "Unable to log out. Please try again.", code: "SESSION_STORE_UNAVAILABLE" });
+      }
+      return res.redirect("/");
     });
   });
   
   app.post("/api/auth/logout", (req, res) => {
-    req.logout(() => {
-      res.json({ message: "Logged out successfully" });
+    req.session.destroy((error) => {
+      res.clearCookie("connect.sid");
+      if (error) {
+        return res.status(503).json({ message: "Unable to log out. Please try again.", code: "SESSION_STORE_UNAVAILABLE" });
+      }
+      return res.json({ message: "Logged out successfully" });
     });
   });
 }
+
+const enforceLocalSession = createLocalSessionGuard(storage);
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
@@ -139,28 +150,7 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
   }
 
   if (user && user.authMethod === 'local') {
-    if (req.session && (req.session as any).lastActivity) {
-      try {
-        const allSettings = await storage.getAllSystemSettings();
-        let sessionTimeoutMin = 240;
-        for (const s of allSettings) {
-          if (s.settingKey === 'sessionTimeout') {
-            sessionTimeoutMin = parseInt(s.settingValue, 10) || 240;
-            break;
-          }
-        }
-        const timeoutMs = sessionTimeoutMin * 60 * 1000;
-        const elapsed = Date.now() - (req.session as any).lastActivity;
-        if (elapsed > timeoutMs) {
-          return req.session.destroy((err) => {
-            res.status(401).json({ message: "Session expired due to inactivity. Please log in again." });
-          });
-        }
-      } catch (e) {
-      }
-    }
-    (req.session as any).lastActivity = Date.now();
-    return next();
+    return enforceLocalSession(req, res, next);
   }
 
   // For Replit auth users, check token expiry

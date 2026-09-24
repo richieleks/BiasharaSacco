@@ -540,13 +540,12 @@ export default function AdminSettingsPage() {
   };
 
   // Load system settings from API
-  const { data: systemSettings, isLoading } = useQuery<AdminSettingsData>({
+  const { data: systemSettings, isLoading, isError, error: settingsError, refetch: refetchSystemSettings } = useQuery<AdminSettingsData>({
     queryKey: ['/api/admin/settings'],
     queryFn: async () => {
-      const response = await fetch('/api/admin/settings');
-      if (!response.ok) return settingsDefaults;
+      const response = await apiRequest('GET', '/api/admin/settings');
       const data = await response.json();
-      return { ...settingsDefaults, ...data };
+      return adminSettingsSchema.parse(data);
     },
   });
 
@@ -556,18 +555,19 @@ export default function AdminSettingsPage() {
   });
 
   useEffect(() => {
-    if (systemSettings) {
+    if (systemSettings && !form.formState.isDirty) {
       form.reset(systemSettings);
     }
-  }, [systemSettings]);
+  }, [systemSettings, form]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: AdminSettingsData) => {
       return await apiRequest('PATCH', `/api/admin/settings`, data);
     },
-    onSuccess: () => {
+    onSuccess: (_, values) => {
       toast({ title: "Settings Updated",
         description: "System settings have been updated successfully.", variant: "success" });
+      form.reset(values);
       queryClient.invalidateQueries({ queryKey: ['/api/admin/settings'] });
     },
     onError: (error: Error) => {
@@ -688,7 +688,19 @@ export default function AdminSettingsPage() {
   );
 
   if (isLoading) {
-    return <div>Loading...</div>;
+    return <div className="p-6" role="status">Loading system settings...</div>;
+  }
+
+  if (isError || !systemSettings) {
+    return (
+      <Card className="max-w-xl m-6 border-destructive/40">
+        <CardHeader><CardTitle>System settings unavailable</CardTitle><CardDescription>Could not load saved settings. No changes can be made until they are loaded.</CardDescription></CardHeader>
+        <CardContent className="space-y-3">
+          <p role="alert" className="text-sm text-destructive">{settingsError instanceof Error ? settingsError.message : "Could not load system settings."}</p>
+          <Button type="button" onClick={() => refetchSystemSettings()}>Retry</Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -875,7 +887,7 @@ export default function AdminSettingsPage() {
                                 />
                               </FormControl>
                               <FormDescription>
-                                Auto-logout after inactivity
+                                Organization-wide maximum session duration. Personal inactivity timers may be shorter.
                               </FormDescription>
                               <FormMessage />
                             </FormItem>
@@ -1957,7 +1969,7 @@ export default function AdminSettingsPage() {
                               </Select>
                             </FormControl>
                             <FormDescription>
-                              Automatically log out after period of inactivity
+                              Your personal inactivity timer is capped by the organization-wide session policy. Server sessions can expire even if this page is closed.
                             </FormDescription>
                           </FormItem>
                         )}

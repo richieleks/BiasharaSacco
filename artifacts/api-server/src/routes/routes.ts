@@ -5,6 +5,7 @@ import { storage } from "../storage";
 import { setupAuth, isAuthenticated } from "../replitAuth";
 import { setupLocalAuth, hashPassword, validatePasswordComplexity, getSecuritySettings, getPasswordRequirementsText } from "../localAuth";
 import passport from "passport";
+import { createChallenge, verifyChallenge, authorizeDisable, personalSettingsSchema } from "../twoFactorSecurity";
 import { requirePermission, filterDataByRole, type AuthRequest, filterMembersByRole, filterLoansByRole, filterTransactionsByRole, checkMaintenanceMode, clearMaintenanceModeCache } from "../rbac-middleware";
 import { insertMemberSchema, insertSavingsAccountSchema, insertLoanSchema, insertTransactionSchema, insertGuarantorSchema, insertNotificationSchema, members, memberExitRequests, loans, savingsAccounts as savingsAccountsTable, transactions, interestCalculations, interestPayments, saccoAccounts, loanDocuments, guarantors } from "@workspace/db";
 import { businessRulesValidator } from "../business-rules-validator";
@@ -12,6 +13,7 @@ import { sendEmail, verifyConnection, buildEmailTemplate, getEmailConfig, sendNo
 import { seedAdminUser, seedRBAC } from "../seed";
 import { z } from 'zod';
 import { db } from "../db";
+import { users as usersTable } from "@workspace/db";
 import { eq, and, inArray, sql, lt, isNull, isNotNull, or, not } from "drizzle-orm";
 import ExcelJS from "exceljs";
 import { parseBankImportCsv } from "../csvUtils";
@@ -346,22 +348,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const { password, twoFactorSecret: _tfs, ...userWithoutPassword } = user as typeof user & { password?: string; twoFactorSecret?: string };
 
-      let mustSetup2FA = false;
-      if (!user.twoFactorEnabled) {
-        try {
-          const setting = await storage.getSystemSetting('twoFactorRequired');
-          if (setting?.settingValue === 'true') {
-            mustSetup2FA = true;
-          }
-        } catch (e) {}
-      }
+      // This route remains available during restricted enrollment. Return the
+      // current policy, not a stale serialized login result, and fail closed
+      // when policy storage is unavailable.
+      const twoFactorPolicy = await storage.getSystemSetting('twoFactorRequired');
+      const mustSetup2FA = !user.twoFactorEnabled && twoFactorPolicy?.settingValue === 'true';
       
       if (member) {
         const freshMember = await storage.getMemberByUserId(userId);
         if (freshMember) {
           const roles = await storage.getMemberRoles(freshMember.id);
-          if (freshMember.user && (freshMember.user as any).password) {
-            const { password: _, ...memberUserWithoutPassword } = freshMember.user as any;
+          if (freshMember.user) {
+            const { password: _, twoFactorSecret: _secret, ...memberUserWithoutPassword } = freshMember.user as any;
             freshMember.user = memberUserWithoutPassword as typeof freshMember.user;
           }
           return res.json({
@@ -512,12 +510,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      const { password, ...userWithoutPassword } = user as typeof user & { password?: string };
+      const { password, twoFactorSecret: _secret, ...userWithoutPassword } = user;
       const updatedMember = await storage.getMemberByUserId(userId);
       if (updatedMember) {
         const roles = await storage.getMemberRoles(updatedMember.id);
-        if (updatedMember.user && (updatedMember.user as any).password) {
-          const { password: _, ...memberUserWithoutPassword } = updatedMember.user as any;
+        if (updatedMember.user) {
+          const { password: _, twoFactorSecret: _secret, ...memberUserWithoutPassword } = updatedMember.user as any;
           updatedMember.user = memberUserWithoutPassword as typeof updatedMember.user;
         }
         return res.json({
@@ -539,6 +537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Local auth login endpoint
   app.post('/api/auth/login', 
     (req, res, next) => {
+      delete (req.session as any).pendingTwoFactor;
       passport.authenticate('local', (err: any, user: any, info: any) => {
         if (err) {
           return res.status(500).json({ message: "Authentication error" });
@@ -547,11 +546,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(401).json({ message: info?.message || "Invalid username or password" });
         }
 
+        if (user.twoFactorEnabled && !user.twoFactorSecret) {
+          return res.status(401).json({ message: "Two-factor authentication is misconfigured. Contact your administrator." });
+        }
         if (user.twoFactorEnabled && user.twoFactorSecret) {
-          return res.json({
-            message: "Two-factor authentication required", 
-            requiresTwoFactor: true, 
-            username: user.username 
+          return req.session.regenerate((error) => {
+            if (error) return res.status(500).json({ message: "Authentication error" });
+            (req.session as any).pendingTwoFactor = createChallenge(user.id);
+            return req.session.save((saveError) => {
+              if (saveError) return res.status(500).json({ message: "Authentication error" });
+              return res.json({
+                message: "Two-factor authentication required",
+                requiresTwoFactor: true,
+                username: user.username,
+              });
+            });
           });
         }
 
@@ -559,6 +568,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (err) {
             return res.status(500).json({ message: "Login error" });
           }
+          (req.session as any).twoFactorVerified = false;
+          (req.session as any).lastActivity = Date.now();
           try {
             await storage.createAuditLog({
               userId: user.id,
@@ -578,7 +589,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (setting?.settingValue === 'true') {
                 mustSetup2FA = true;
               }
-            } catch (e) {}
+            } catch (e) {
+              return res.status(503).json({ message: "Security policy is temporarily unavailable. Please try again.", code: "SECURITY_POLICY_UNAVAILABLE" });
+            }
           }
           return res.json({ message: "Login successful", user: safeUser, mustChangePassword: user.mustChangePassword || false, mustSetup2FA });
         });
@@ -587,40 +600,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   app.post('/api/auth/login/2fa',
-    (req, res, next) => {
-      const { username, code } = req.body;
-      if (!username || !code) {
-        return res.status(400).json({ message: "Username and verification code are required" });
-      }
-      return passport.authenticate('local', async (err: any, user: any, info: any) => {
-        if (err) {
-          return res.status(500).json({ message: "Authentication error" });
-        }
-        if (!user) {
-          return res.status(401).json({ message: info?.message || "Invalid credentials" });
-        }
+    async (req, res) => {
         try {
-          const fullUser = await storage.getUserByUsername(username);
+          const challenge = (req.session as any).pendingTwoFactor;
+          if (!challenge || challenge.expiresAt <= Date.now()) {
+            delete (req.session as any).pendingTwoFactor;
+            return res.status(401).json({ message: "Password verification required. Please sign in again." });
+          }
+          const fullUser = await storage.getUser(challenge.userId);
           if (!fullUser || !fullUser.twoFactorSecret || !fullUser.twoFactorEnabled) {
             return res.status(400).json({ message: "Two-factor authentication not configured" });
           }
-          const OTPAuth = await import('otpauth');
-          const totp = new OTPAuth.TOTP({
-            issuer: 'Biashara SACCO',
-            label: fullUser.username || fullUser.email || 'User',
-            algorithm: 'SHA1',
-            digits: 6,
-            period: 30,
-            secret: OTPAuth.Secret.fromBase32(fullUser.twoFactorSecret),
-          });
-          const delta = totp.validate({ token: code, window: 1 });
-          if (delta === null) {
-            return res.status(401).json({ message: "Invalid verification code" });
+          if (fullUser.lockedUntil && new Date(fullUser.lockedUntil).getTime() > Date.now()) {
+            return res.status(401).json({ message: "Account is locked. Please sign in again later." });
           }
+          if (!['admin', 'manager', 'committee', 'treasurer'].includes(fullUser.role ?? '') && fullUser.userType !== 'system') {
+            const member = await storage.getMemberByUserId(fullUser.id);
+            if (member && ['inactive', 'suspended', 'rejected', 'exited'].includes(member.status ?? '')) {
+              return res.status(403).json({ message: "Membership is not active. Contact your administrator." });
+            }
+          }
+          if (!verifyChallenge(challenge, fullUser.id, fullUser.twoFactorSecret, req.body?.code)) {
+            return res.status(401).json({ message: "Invalid or expired verification challenge. Try again or sign in again." });
+          }
+          delete (req.session as any).pendingTwoFactor;
+          const user = fullUser;
+          // Passport 0.7 regenerates the session in logIn; keepSessionInfo is deliberately not used.
           return req.logIn(user, async (err) => {
             if (err) {
               return res.status(500).json({ message: "Login error" });
             }
+            (req.session as any).twoFactorVerified = true;
+            (req.session as any).lastActivity = Date.now();
             try {
               await storage.createAuditLog({
                 userId: user.id,
@@ -633,13 +644,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
               });
             } catch (e) {}
             const { password: _, twoFactorSecret: __, ...safeUser } = user;
-            return res.json({ message: "Login successful", user: safeUser, mustChangePassword: user.mustChangePassword || false });
+            return res.json({ message: "Login successful", user: safeUser, mustChangePassword: user.mustChangePassword || false, mustSetup2FA: false });
           });
         } catch (error) {
           console.error("2FA login error:", error);
           return res.status(500).json({ message: "Authentication error" });
         }
-      })(req, res, next);
     }
   );
 
@@ -700,7 +710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Remove password from response
-      const { password: _, ...userWithoutPassword } = newUser;
+      const { password: _, twoFactorSecret: _secret, ...userWithoutPassword } = newUser;
       
       return res.status(201).json({
         message: "User created successfully", 
@@ -770,6 +780,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const primaryRole: UserRole | undefined = role || (assignedRoles.length > 0 ? assignedRoles[0] : undefined);
       if (primaryRole) updateData.role = primaryRole;
       if (password) {
+        const security = await getSecuritySettings();
+        const validation = validatePasswordComplexity(password, security.passwordComplexity);
+        if (!validation.valid) return res.status(400).json({ message: validation.message });
         updateData.password = await hashPassword(password);
       }
 
@@ -808,7 +821,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const { password: _, ...userWithoutPassword } = updatedUser as any;
+      const { password: _, twoFactorSecret: _secret, ...userWithoutPassword } = updatedUser as any;
       const updatedMember = await storage.getMemberByUserId(id);
       const memberRoles = updatedMember ? await storage.getMemberRoles(updatedMember.id) : [primaryRole || updatedUser.role];
       return res.json({ ...userWithoutPassword, roles: memberRoles, memberId: updatedMember?.id || null });
@@ -910,6 +923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!userId) return res.status(401).json({ message: "User not authenticated" });
       const user = await storage.getUser(userId);
       if (!user) return res.status(404).json({ message: "User not found" });
+      if (user.twoFactorEnabled) return res.status(409).json({ message: "Two-factor authentication is already enabled" });
 
       const OTPAuth = await import('otpauth');
       const secret = new OTPAuth.Secret({ size: 20 });
@@ -922,7 +936,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         secret,
       });
 
-      await storage.updateUser(userId, { twoFactorSecret: secret.base32 });
+      (req.session as any).pendingTwoFactorSetup = createChallenge(userId, secret.base32);
 
       return res.json({
         secret: secret.base32,
@@ -940,29 +954,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: "User not authenticated" });
       const user = await storage.getUser(userId);
-      if (!user || !user.twoFactorSecret) {
+      const pending = (req.session as any).pendingTwoFactorSetup;
+      if (!user || !pending?.secret) {
         return res.status(400).json({ message: "Two-factor authentication not set up" });
       }
+      if (user.twoFactorEnabled) return res.status(409).json({ message: "Two-factor authentication is already enabled" });
 
-      const { code } = req.body;
-      if (!code) return res.status(400).json({ message: "Verification code is required" });
-
-      const OTPAuth = await import('otpauth');
-      const totp = new OTPAuth.TOTP({
-        issuer: 'Biashara SACCO',
-        label: user.username || user.email || 'User',
-        algorithm: 'SHA1',
-        digits: 6,
-        period: 30,
-        secret: OTPAuth.Secret.fromBase32(user.twoFactorSecret),
-      });
-
-      const delta = totp.validate({ token: code, window: 1 });
-      if (delta === null) {
-        return res.status(400).json({ message: "Invalid verification code" });
+      if (!verifyChallenge(pending, userId, pending.secret, req.body?.code)) {
+        return res.status(400).json({ message: "Invalid or expired verification challenge. Restart setup if necessary." });
       }
 
-      await storage.updateUser(userId, { twoFactorEnabled: true });
+      delete (req.session as any).pendingTwoFactorSetup;
+      const enrolled = await db.update(usersTable)
+        .set({ twoFactorEnabled: true, twoFactorSecret: pending.secret })
+        .where(and(eq(usersTable.id, userId), or(eq(usersTable.twoFactorEnabled, false), isNull(usersTable.twoFactorEnabled))))
+        .returning({ id: usersTable.id });
+      if (!enrolled.length) return res.status(409).json({ message: "Two-factor authentication is already enabled" });
+      (req.session as any).twoFactorVerified = true;
+      (req.session as any).lastActivity = Date.now();
 
       await sendNotificationEmail(
         storage,
@@ -984,8 +993,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = getUserId(req);
       if (!userId) return res.status(401).json({ message: "User not authenticated" });
+      const required = await storage.getSystemSetting('twoFactorRequired');
+      if (required?.settingValue === 'true') return res.status(403).json({ message: "Two-factor authentication is required by SACCO policy" });
+      const user = await storage.getUser(userId);
+      if (!user?.twoFactorEnabled || !user.twoFactorSecret) return res.status(400).json({ message: "Two-factor authentication is not enabled" });
+      if (!authorizeDisable(userId, user.twoFactorSecret, req.body?.code)) {
+        return res.status(400).json({ message: "Invalid verification code or too many attempts. Wait five minutes after repeated failures." });
+      }
 
       await storage.updateUser(userId, { twoFactorEnabled: false, twoFactorSecret: null });
+      delete (req.session as any).pendingTwoFactorSetup;
+      (req.session as any).twoFactorVerified = false;
 
       const disabledUser = await storage.getUser(userId);
       await sendNotificationEmail(
@@ -1001,40 +1019,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error disabling 2FA:", error);
       return res.status(500).json({ message: "Failed to disable two-factor authentication" });
-    }
-  });
-
-  app.post('/api/auth/2fa/validate', async (req, res) => {
-    try {
-      const { username, code } = req.body;
-      if (!username || !code) {
-        return res.status(400).json({ message: "Username and code are required" });
-      }
-
-      const user = await storage.getUserByUsername(username);
-      if (!user || !user.twoFactorSecret || !user.twoFactorEnabled) {
-        return res.status(400).json({ message: "Invalid request" });
-      }
-
-      const OTPAuth = await import('otpauth');
-      const totp = new OTPAuth.TOTP({
-        issuer: 'Biashara SACCO',
-        label: user.username || user.email || 'User',
-        algorithm: 'SHA1',
-        digits: 6,
-        period: 30,
-        secret: OTPAuth.Secret.fromBase32(user.twoFactorSecret),
-      });
-
-      const delta = totp.validate({ token: code, window: 1 });
-      if (delta === null) {
-        return res.status(400).json({ message: "Invalid verification code" });
-      }
-
-      return res.json({ valid: true });
-    } catch (error) {
-      console.error("Error validating 2FA:", error);
-      return res.status(500).json({ message: "Failed to validate code" });
     }
   });
 
@@ -1095,7 +1079,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      const settings = req.body;
+      const parsedSettings = personalSettingsSchema.safeParse(req.body);
+      if (!parsedSettings.success) {
+        return res.status(400).json({ message: "Invalid settings", errors: parsedSettings.error.flatten() });
+      }
+      const savedJson = await storage.getUserSettings(userId);
+      const savedSettings = savedJson ? personalSettingsSchema.safeParse(JSON.parse(savedJson)) : null;
+      const settings = { ...(savedSettings?.success ? savedSettings.data : {}), ...parsedSettings.data };
 
       const validSettings = {
         emailNotifications: settings.emailNotifications ?? true,
@@ -1619,6 +1609,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
         const autoPassword = req.body.password || generateDefaultPassword(req.body.fullName);
+        if (req.body.password !== undefined) {
+          const security = await getSecuritySettings();
+          const validation = validatePasswordComplexity(req.body.password, security.passwordComplexity);
+          if (!validation.valid) return res.status(400).json({ message: validation.message });
+        }
         const defaultPassword = await hashPassword(autoPassword);
         const nameParts = (req.body.fullName || '').split(' ');
         const firstName = nameParts[0] || '';

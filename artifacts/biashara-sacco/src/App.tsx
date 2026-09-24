@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Switch, Route, useLocation, Redirect, Router as WouterRouter } from "wouter";
-import { queryClient } from "./lib/queryClient";
+import { apiRequest, queryClient } from "./lib/queryClient";
 import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -184,6 +184,7 @@ function MaintenanceScreen({ announcement }: { announcement?: string }) {
 
 function TwoFactorEnrollmentScreen() {
   const [setupData, setSetupData] = useState<{ secret: string; uri: string } | null>(null);
+  const [enrollmentCompleted, setEnrollmentCompleted] = useState(false);
   const [verifyCode, setVerifyCode] = useState("");
   const [error, setError] = useState("");
   const [secretCopied, setSecretCopied] = useState(false);
@@ -194,12 +195,11 @@ function TwoFactorEnrollmentScreen() {
     setIsSettingUp(true);
     setError("");
     try {
-      const res = await fetch('/api/auth/2fa/setup', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-      if (!res.ok) throw new Error('Failed to set up 2FA');
+      const res = await apiRequest('POST', '/api/auth/2fa/setup');
       const data = await res.json();
       setSetupData(data);
-    } catch {
-      setError('Failed to generate 2FA setup. Please try again.');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to generate 2FA setup. Please try again.');
     } finally {
       setIsSettingUp(false);
     }
@@ -208,19 +208,18 @@ function TwoFactorEnrollmentScreen() {
   useEffect(() => { startSetup(); }, [startSetup]);
 
   const handleVerify = async () => {
+    if (!/^\d{6}$/.test(verifyCode)) return;
     setIsVerifying(true);
     setError("");
     try {
-      const res = await fetch('/api/auth/2fa/verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: verifyCode }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.message || 'Invalid verification code');
+      await apiRequest('POST', '/api/auth/2fa/verify', { code: verifyCode });
+      setEnrollmentCompleted(true);
+      setSetupData(null);
+      setVerifyCode("");
+      await queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
+      if ((queryClient.getQueryData<{ mustSetup2FA?: boolean }>(['/api/auth/user']))?.mustSetup2FA) {
+        setError('Two-factor authentication is enabled. Refresh to update your account status.');
       }
-      queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -246,7 +245,13 @@ function TwoFactorEnrollmentScreen() {
         </div>
 
         <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-6 shadow-sm">
-          {isSettingUp ? (
+          {enrollmentCompleted ? (
+            <div className="space-y-4 text-center">
+              <p className="text-sm text-slate-600 dark:text-slate-300">Two-factor authentication is enabled. Updating your account...</p>
+              {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+              <button onClick={() => window.location.reload()} className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold">Refresh account status</button>
+            </div>
+          ) : isSettingUp ? (
             <div className="flex flex-col items-center gap-3 py-8">
               <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
               <p className="text-sm text-slate-500 dark:text-slate-400">Generating your setup code...</p>
@@ -466,12 +471,12 @@ function Router() {
     );
   }
 
-  if (!isAdmin && maintenanceStatus?.maintenanceMode) {
-    return <MaintenanceScreen announcement={maintenanceStatus.systemAnnouncement} />;
-  }
-
   if ((user as any)?.mustSetup2FA) {
     return <TwoFactorEnrollmentScreen />;
+  }
+
+  if (!isAdmin && maintenanceStatus?.maintenanceMode) {
+    return <MaintenanceScreen announcement={maintenanceStatus.systemAnnouncement} />;
   }
 
   return (

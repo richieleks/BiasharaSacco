@@ -3,3 +3,4 @@
 - [Loan import product rules](loan-import-category-fallback.md) — preserve special categories, normalize percentage rates, and derive schedules from configured product terms.
 - [Bank import CSV parsing](bank-import-csv-parsing.md) — reject malformed syntax at file level while preserving row-level reports for variable column counts.
 - [API TypeScript boundaries](api-typecheck-boundaries.md) — Express 5 route values and Drizzle enums require explicit narrowing and terminal response returns under strict checking.
+- [Security policy decisions](security-policy-decisions.md) — background polling must not extend idle sessions; shared atomic guards are needed before multi-instance scaling.

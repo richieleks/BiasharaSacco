@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, validatePasswordAgainstRequirements, type PasswordRequirements } from "@/lib/queryClient";
 import {
   Form,
   FormControl,
@@ -21,6 +21,8 @@ import { User, Mail, Phone, Building, Calendar, Shield, ArrowLeft, Lock, MapPin,
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { QRCodeSVG } from "qrcode.react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 
 const profileUpdateSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -36,7 +38,7 @@ type ProfileUpdateData = z.infer<typeof profileUpdateSchema>;
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, "Current password is required"),
-  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  newPassword: z.string().min(1, "New password is required"),
   confirmPassword: z.string().min(1, "Please confirm your new password"),
 }).refine((data) => data.newPassword === data.confirmPassword, {
   message: "Passwords do not match",
@@ -51,6 +53,9 @@ export function TwoFactorSetup() {
   const queryClient = useQueryClient();
   const [setupData, setSetupData] = useState<{ secret: string; uri: string } | null>(null);
   const [verifyCode, setVerifyCode] = useState("");
+  const [disableOpen, setDisableOpen] = useState(false);
+  const [disableCode, setDisableCode] = useState("");
+  const [disableError, setDisableError] = useState("");
 
   const is2FAEnabled = (user as any)?.twoFactorEnabled;
 
@@ -84,16 +89,19 @@ export function TwoFactorSetup() {
   });
 
   const disableMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiRequest('POST', '/api/auth/2fa/disable');
+    mutationFn: async (code: string) => {
+      const res = await apiRequest('POST', '/api/auth/2fa/disable', { code });
       return res.json();
     },
     onSuccess: () => {
       toast({ title: "2FA Disabled", description: "Two-factor authentication has been disabled." });
+      setDisableOpen(false);
+      setDisableCode("");
+      setDisableError("");
       queryClient.invalidateQueries({ queryKey: ['/api/auth/user'] });
     },
     onError: (error: Error) => {
-      toast({ title: "Failed", description: error.message, variant: "destructive" });
+      setDisableError(error.message);
     },
   });
 
@@ -122,14 +130,11 @@ export function TwoFactorSetup() {
             <p className="text-sm text-muted-foreground">
               Two-factor authentication is active. You will be asked for a verification code from your authenticator app each time you sign in.
             </p>
-            <Button
+             <p className="text-sm text-muted-foreground">If your organization requires 2FA, it cannot be disabled.</p>
+             <Button
               variant="destructive"
               size="sm"
-              onClick={() => {
-                if (confirm("Are you sure you want to disable two-factor authentication? This will make your account less secure.")) {
-                  disableMutation.mutate();
-                }
-              }}
+               onClick={() => setDisableOpen(true)}
               disabled={disableMutation.isPending}
               data-testid="button-disable-2fa"
             >
@@ -207,6 +212,32 @@ export function TwoFactorSetup() {
           </div>
         )}
       </CardContent>
+       <Dialog open={disableOpen} onOpenChange={(open) => {
+         if (disableMutation.isPending) return;
+         setDisableOpen(open);
+         if (!open) { setDisableCode(""); setDisableError(""); }
+       }}>
+         <DialogContent>
+           <DialogHeader>
+             <DialogTitle>Disable two-factor authentication?</DialogTitle>
+             <DialogDescription>Enter the current 6-digit code from your authenticator app to confirm. This makes your account less secure.</DialogDescription>
+           </DialogHeader>
+           <form onSubmit={(event) => {
+             event.preventDefault();
+             if (/^\d{6}$/.test(disableCode)) disableMutation.mutate(disableCode);
+           }} className="space-y-4">
+             <div className="space-y-2">
+               <Label htmlFor="disable-2fa-code">Authenticator code</Label>
+               <Input id="disable-2fa-code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} pattern="[0-9]{6}" value={disableCode} onChange={(event) => { setDisableCode(event.target.value.replace(/\D/g, "")); setDisableError(""); }} required disabled={disableMutation.isPending} />
+             </div>
+             {disableError && <p role="alert" className="text-sm text-destructive">{disableError}</p>}
+             <div className="flex justify-end gap-2">
+               <Button type="button" variant="outline" disabled={disableMutation.isPending} onClick={() => setDisableOpen(false)}>Cancel</Button>
+               <Button type="submit" variant="destructive" disabled={disableMutation.isPending || disableCode.length !== 6}>{disableMutation.isPending ? "Disabling..." : "Disable 2FA"}</Button>
+             </div>
+           </form>
+         </DialogContent>
+       </Dialog>
     </Card>
   );
 }
@@ -218,6 +249,11 @@ export default function ProfilePage() {
   const [, navigate] = useLocation();
   const [isEditing, setIsEditing] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const { data: passwordRequirements, isLoading: requirementsLoading, isError: requirementsError, refetch: refetchRequirements } = useQuery<PasswordRequirements>({
+    queryKey: ["/api/auth/password-requirements"],
+    queryFn: async () => (await apiRequest("GET", "/api/auth/password-requirements")).json(),
+    staleTime: 60_000,
+  });
 
   const memberData = user?.member;
 
@@ -289,6 +325,15 @@ export default function ProfilePage() {
   };
 
   const handlePasswordSubmit = (data: ChangePasswordData) => {
+    if (!passwordRequirements) {
+      passwordForm.setError("newPassword", { message: "Load password requirements before changing your password." });
+      return;
+    }
+    const error = validatePasswordAgainstRequirements(data.newPassword, passwordRequirements);
+    if (error) {
+      passwordForm.setError("newPassword", { message: error });
+      return;
+    }
     changePasswordMutation.mutate(data);
   };
 
@@ -616,6 +661,7 @@ export default function ProfilePage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>New Password</FormLabel>
+                        <p className="text-xs text-muted-foreground">{passwordRequirements?.description ?? (requirementsLoading ? "Loading password requirements..." : "Password requirements unavailable.")}</p>
                       <FormControl>
                         <Input {...field} type="password" />
                       </FormControl>
@@ -641,7 +687,7 @@ export default function ProfilePage() {
                 <div className="flex gap-2">
                   <Button
                     type="submit"
-                    disabled={changePasswordMutation.isPending}
+                     disabled={changePasswordMutation.isPending || !passwordRequirements}
                   >
                     {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
                   </Button>
@@ -656,6 +702,7 @@ export default function ProfilePage() {
                     Cancel
                   </Button>
                 </div>
+                 {requirementsError && <p className="text-sm text-destructive">Could not load password requirements. <Button type="button" variant="link" onClick={() => refetchRequirements()}>Retry</Button></p>}
               </form>
             </Form>
           ) : (

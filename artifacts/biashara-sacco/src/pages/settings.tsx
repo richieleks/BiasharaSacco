@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, validatePasswordAgainstRequirements, type PasswordRequirements } from "@/lib/queryClient";
 import {
   Form,
   FormControl,
@@ -74,6 +74,11 @@ interface RoleFormData {
 
 function ChangePasswordCard() {
   const { toast } = useToast();
+  const { data: requirements, isLoading: requirementsLoading, isError: requirementsError, refetch: refetchRequirements } = useQuery<PasswordRequirements>({
+    queryKey: ["/api/auth/password-requirements"],
+    queryFn: async () => (await apiRequest("GET", "/api/auth/password-requirements")).json(),
+    staleTime: 60_000,
+  });
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -101,8 +106,13 @@ function ChangePasswordCard() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 8) {
-      toast({ title: "Password Too Short", description: "New password must be at least 8 characters.", variant: "destructive" });
+    if (!requirements) {
+      toast({ title: "Requirements unavailable", description: "Load password requirements before changing your password.", variant: "destructive" });
+      return;
+    }
+    const validationError = validatePasswordAgainstRequirements(newPassword, requirements);
+    if (validationError) {
+      toast({ title: "Password does not meet requirements", description: validationError, variant: "destructive" });
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -120,7 +130,7 @@ function ChangePasswordCard() {
             <KeyRound className="h-5 w-5" />
             Password
           </CardTitle>
-          <CardDescription>Update your account password. Must be at least 8 characters long.</CardDescription>
+          <CardDescription>Update your account password. {requirements ? requirements.description : requirementsLoading ? "Loading password requirements..." : "Password requirements unavailable."}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-5 max-w-md">
           <div className="space-y-2.5">
@@ -158,7 +168,6 @@ function ChangePasswordCard() {
                 placeholder="Enter new password"
                 data-testid="input-new-password"
                 required
-                minLength={8}
               />
               <button
                 type="button"
@@ -181,15 +190,15 @@ function ChangePasswordCard() {
               placeholder="Re-enter new password"
               data-testid="input-confirm-password"
               required
-              minLength={8}
             />
           </div>
+          {requirementsError && <p className="text-sm text-destructive">Could not load password requirements. <Button type="button" variant="link" onClick={() => refetchRequirements()}>Retry</Button></p>}
         </CardContent>
         <CardFooter className="border-t bg-muted/20 px-6 py-4">
           <Button
             type="submit"
             data-testid="button-change-password"
-            disabled={changePasswordMutation.isPending || !currentPassword || !newPassword || !confirmPassword}
+            disabled={changePasswordMutation.isPending || !requirements || !currentPassword || !newPassword || !confirmPassword}
           >
             {changePasswordMutation.isPending ? "Updating..." : "Update Password"}
           </Button>
@@ -562,7 +571,7 @@ export default function SettingsPage() {
                                   <SelectItem value="480">8 hours</SelectItem>
                                 </SelectContent>
                               </Select>
-                              <FormDescription>Log out after inactivity.</FormDescription>
+                              <FormDescription>Your personal inactivity timer is capped by the organization's session timeout policy. Server session expiry applies even if this page is closed.</FormDescription>
                             </FormItem>
                           )} />
                         </CardContent>
